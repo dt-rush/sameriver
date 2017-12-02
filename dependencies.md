@@ -11,7 +11,7 @@ Build Dependencies
 * libsdl2{,-mixer,-image,-ttf}-dev
 
 
-**winsows: mingw env packages (install from source)**
+**windows: mingw env packages (install from source)**
 
 * SDL2-devel-2.0.5-mingw.tar.gz
 * SDL2_image-devel-2.0.1-mingw.tar.gz
@@ -22,8 +22,4 @@ Build Dependencies
 **go packages (go get)**
 
 * github.com/veandco/go-sdl2
-* github.com/veandco/go-sdl2/mix
-* github.com/veandco/go-sdl2/img
-* github.com/veandco/go-sdl2/ttf
-
 * github.com/golang-collections/go-datastructures/bitarray
