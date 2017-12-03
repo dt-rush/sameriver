@@ -21,5 +21,8 @@ Build Dependencies
 
 **go packages (go get)**
 
-* github.com/veandco/go-sdl2
+* github.com/veandco/go-sdl2/sdl
+* github.com/veandco/go-sdl2/mix
+* github.com/veandco/go-sdl2/img
+* github.com/veandco/go-sdl2/ttf
 * github.com/golang-collections/go-datastructures/bitarray
