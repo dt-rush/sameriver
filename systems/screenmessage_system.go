@@ -20,8 +20,8 @@ import (
 	// leaving the textures, etc. up to
 	// the renderer of those components
 	
-//	"github.com/veandco/go-sdl2/sdl_ttf"
-//	"github.com/veandco/go-sdl2/sdl_image"
+//	"github.com/veandco/go-sdl2/ttf"
+//	"github.com/veandco/go-sdl2/img"
 
 )
 

@@ -19,8 +19,6 @@ package engine
 import (
 	"fmt"
 	"sync"
-
-	"github.com/dt-rush/donkeys-qquest/constants"
 )
 
 
@@ -55,7 +53,7 @@ func (s *GameEventSystem) Subscribe (e GameEvent) chan GameEvent {
 }
 
 func (s *GameEventSystem) Publish (e GameEvent) {
-	if constants.DEBUG_GAME_EVENTS {
+	if DEBUG_GAME_EVENTS {
 		fmt.Println (e)
 	}
 	// send e to all streams listening for GameEvent

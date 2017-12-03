@@ -9,6 +9,18 @@
 
 package constants
 
+import (
+	"fmt"
+)
+
+
+
+var VERSION = "0.1.0"
+var WINDOW_TITLE = fmt.Sprintf ("Donkeys QQuest")
+var WINDOW_WIDTH int32 = 400
+var WINDOW_HEIGHT int32 = 300
+var DEBUG_COLLISION = true
+
 
 
 /*

@@ -22,7 +22,7 @@ import (
 	"github.com/dt-rush/donkeys-qquest/constants"
 	
 	"github.com/veandco/go-sdl2/sdl"
-//	"github.com/veandco/go-sdl2/sdl_image"
+//	"github.com/veandco/go-sdl2/img"
 )
 
 type GameScene struct {
@@ -191,7 +191,7 @@ func (s *GameScene) spawn_entities() {
 	// a diff of component-values (map?)
 	player_active := true
 	s.active_component.Set (s.player_id, player_active)
-	player_position := [2]float64 {float64(constants.WIDTH/2), float64(constants.HEIGHT/2)}
+	player_position := [2]float64 {float64(constants.WINDOW_WIDTH/2), float64(constants.WINDOW_HEIGHT/2)}
 	s.position_component.Set (s.player_id, player_position)
 	player_color := uint32 (0xff00AACC)
 	s.color_component.Set (s.player_id, player_color)
@@ -219,7 +219,7 @@ func (s *GameScene) spawn_entities() {
 	// a diff of component-values (map?)
 	donkey_active := true
 	s.active_component.Set (s.donkey_id, donkey_active)
-	donkey_position := [2]float64 {float64(constants.WIDTH/2) + 40, float64(constants.HEIGHT/2) + 40}
+	donkey_position := [2]float64 {float64(constants.WINDOW_WIDTH/2) + 40, float64(constants.WINDOW_HEIGHT/2) + 40}
 	s.position_component.Set (s.donkey_id, donkey_position)
 	donkey_color := uint32 (0xff776622)
 	s.color_component.Set (s.donkey_id, donkey_color)
@@ -256,11 +256,11 @@ func (s *GameScene) spawn_entities() {
 				
 				// donkey experiences acceleration toward center of screen
 				// x
-				if (int32 (donkey_pos[0]) > constants.WIDTH / 2) {donkey_vel[0] -= .1}
-				if (int32 (donkey_pos[0]) < constants.WIDTH / 2) {donkey_vel[0] += .1}
+				if (int32 (donkey_pos[0]) > constants.WINDOW_WIDTH / 2) {donkey_vel[0] -= .1}
+				if (int32 (donkey_pos[0]) < constants.WINDOW_WIDTH / 2) {donkey_vel[0] += .1}
 				// y
-				if (int32 (donkey_pos[1]) > constants.HEIGHT / 2) {donkey_vel[1] -= .1}
-				if (int32 (donkey_pos[1]) < constants.HEIGHT / 2) {donkey_vel[1] += .1}
+				if (int32 (donkey_pos[1]) > constants.WINDOW_HEIGHT / 2) {donkey_vel[1] -= .1}
+				if (int32 (donkey_pos[1]) < constants.WINDOW_HEIGHT / 2) {donkey_vel[1] += .1}
 
 				// TODO replace statements like this with defer statements or at least
 				// find a way to directly update map values, to avoid this weird
@@ -294,8 +294,8 @@ func (s *GameScene) spawn_entities() {
 		flame_id := s.entity_manager.SpawnEntity (flame_components)
 		flame_active := true
 		s.active_component.Set (flame_id, flame_active)
-		flame_position := [2]float64 {rand.Float64() * float64 (constants.WIDTH - 20) + 20,
-			rand.Float64() * float64 (constants.HEIGHT - 20) + 20}
+		flame_position := [2]float64 {rand.Float64() * float64 (constants.WINDOW_WIDTH - 20) + 20,
+			rand.Float64() * float64 (constants.WINDOW_HEIGHT - 20) + 20}
 		s.position_component.Set (flame_id, flame_position)
 		flame_color := uint32 (0xffccaa33)
 		s.color_component.Set (flame_id, flame_color)
@@ -457,7 +457,7 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
 	s.draw_ms_accum += s.func_profiler.Time (func () {
 		
 		renderer.SetDrawColor (0, 0, 0, 255)
-		renderer.FillRect (&sdl.Rect{0, 0, int32 (constants.WIDTH), int32 (constants.HEIGHT)})
+		renderer.FillRect (&sdl.Rect{0, 0, int32 (constants.WINDOW_WIDTH), int32 (constants.WINDOW_HEIGHT)})
 
 		// TODO refactor to go through only entities registered with a draw system
 		// to avoid this index checking
@@ -478,10 +478,11 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
 			pos := s.position_component.Get (i)
 			// ss_pos == "screen-space pos"
 			// note that we're not checking first to see if the entity has a hitbox
+			// draw the box such that its center is where the position of the entity is
 			box := s.hitbox_component.Get (i)
 			ss_pos := make ([]int32, 2)
-			ss_pos [0] = int32 (pos [0])
-			ss_pos [1] = int32 (constants.HEIGHT) - int32 (pos [1])
+			ss_pos [0] = int32 (pos [0] - (box [0] / 2))
+			ss_pos [1] = constants.WINDOW_HEIGHT - (int32 (pos [1]) + int32 (box [1] / 2))
 			screen_rect := sdl.Rect{ss_pos [0],
 				ss_pos [1],
 				int32 (box [0]),
@@ -530,8 +531,6 @@ func (s *GameScene) HandleKeyboardState (keyboard_state []uint8) {
 
 	k := keyboard_state
 
-	fmt.Println (k [sdl.SCANCODE_D])
-
 	// get player v0
 	player_v := s.velocity_component.Get (s.player_id)
 	// get player v1
@@ -544,7 +543,6 @@ func (s *GameScene) HandleKeyboardState (keyboard_state []uint8) {
 	// shift v0 to v1
 	player_v[0] = vx
 	player_v[1] = vy
-	fmt.Println (player_v)
 	// set v in the map (for some reason doesn't modify if we just modify
 	// player_v, you have to actually put(), in effect)
 	s.velocity_component.Set (s.player_id, player_v)

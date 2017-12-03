@@ -17,7 +17,7 @@ import (
 	"github.com/dt-rush/donkeys-qquest/constants"
 	
 	"github.com/veandco/go-sdl2/sdl"
-	"github.com/veandco/go-sdl2/sdl_ttf"
+	"github.com/veandco/go-sdl2/ttf"
 )
 
 type LoadingScene struct {
@@ -60,12 +60,12 @@ func (s *LoadingScene) Init (game *engine.Game) chan bool {
 		s.destroyed = false
 		var err error
 		// load font
-		if s.message_font, err = ttf.OpenFont("assets/test.ttf", 8); err != nil {
+		if s.message_font, err = ttf.OpenFont ("./assets/test.ttf", 8); err != nil {
 			panic(err)
 		}
 		s.five_second_dt_accum = 0
 		// render message ("press space") surface
-		s.message_surface, err = s.message_font.RenderUTF8_Solid ("Loading",
+		s.message_surface, err = s.message_font.RenderUTF8Solid ("Loading",
 			sdl.Color{255, 255, 255, 255})
 		if err != nil {
 			panic (err)
@@ -108,8 +108,8 @@ func (s *LoadingScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
 	
 	windowRect := sdl.Rect{0,
 		0,
-		constants.WIDTH,
-		constants.HEIGHT}
+		constants.WINDOW_WIDTH,
+		constants.WINDOW_HEIGHT}
 
 	renderer.SetDrawColor (0, 0, 0, 255)
 	renderer.FillRect (&windowRect)
@@ -117,7 +117,7 @@ func (s *LoadingScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
 	// write message ("loading")
 	dst := sdl.Rect{40,
 		int32 (135 + 20 * math.Sin (5 * 2 * math.Pi * s.five_second_dt_accum / 5000.0)),
-		constants.WIDTH - 80,
+		constants.WINDOW_WIDTH - 80,
 		24}
 	renderer.Copy (s.message_texture, nil, &dst)
 }

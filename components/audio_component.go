@@ -13,7 +13,7 @@ import (
 	"fmt"
 
 //	"github.com/veandco/go-sdl2/sdl"
-	"github.com/veandco/go-sdl2/sdl_mixer"
+	"github.com/veandco/go-sdl2/mix"
 	"github.com/dt-rush/donkeys-qquest/engine"
 )
 

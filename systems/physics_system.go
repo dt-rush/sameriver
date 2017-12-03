@@ -11,7 +11,7 @@ package systems
 
 import (
 
-	"fmt"
+//	"fmt"
 	
 	"github.com/dt-rush/donkeys-qquest/engine"
 	"github.com/dt-rush/donkeys-qquest/components"
@@ -61,16 +61,14 @@ func (s *PhysicsSystem) Update (dt_ms float64) {
 		// apply velocity to position of entities
 		pos := s.position_component.Get (id)
 		vel := s.velocity_component.Get (id)
-		if (id == 0) {
-			fmt.Println (vel)
-		}
+		
 		dx := vel[0] * (dt_ms / 1000.0)
 		dy := vel[1] * (dt_ms / 1000.0)
 
-		if pos[0] + dx > 0 && pos[0] + dx < float64 (constants.WIDTH - 20) {
+		if pos[0] + dx > 0 && pos[0] + dx < float64 (constants.WINDOW_WIDTH - 20) {
 			pos[0] += dx
 		}
-		if pos[1] + dy > 20 && pos[1] + dy < float64 (constants.HEIGHT) {
+		if pos[1] + dy > 20 && pos[1] + dy < float64 (constants.WINDOW_HEIGHT) {
 			pos[1] += dy
 		}
 		s.position_component.Set (id, pos)

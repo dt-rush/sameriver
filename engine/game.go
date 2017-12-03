@@ -16,6 +16,8 @@ import (
 	"github.com/dt-rush/donkeys-qquest/utils"
 	
 	"github.com/veandco/go-sdl2/sdl"
+	"github.com/veandco/go-sdl2/ttf"
+	"github.com/veandco/go-sdl2/mix"
 )
 
 type Game struct {
@@ -29,13 +31,50 @@ type Game struct {
 	func_profiler utils.FuncProfiler
 }
 
-func (g *Game) Init (window *sdl.Window, renderer *sdl.Renderer) {
+func (g *Game) Init (WINDOW_TITLE string,
+	WINDOW_WIDTH int32,
+	WINDOW_HEIGHT int32) {
+
+	// init systems
+	g.InitSystems()
+
+	// set state
 	g.running = true
 	g.next_scene_chan = make (chan Scene, 1)
 	g.scene_end_sig_chan = make (chan bool)
 	g.func_profiler = utils.FuncProfiler{}
-	g.window = window
-	g.renderer = renderer
+	g.window, g.renderer = BuildWindowAndRenderer (
+		WINDOW_TITLE,
+		WINDOW_WIDTH,
+		WINDOW_HEIGHT)
+}
+
+func (g *Game) InitSystems() {
+
+	var err error
+	
+	// init SDL
+	sdl.Init (sdl.INIT_EVERYTHING)
+	
+	// init SDL TTF
+	err = ttf.Init()
+	if err != nil {
+		panic (err) 
+	}
+	
+	// init SDL Audio
+	err = sdl.Init (sdl.INIT_AUDIO)
+	if err != nil {
+		panic (err)
+	}
+	err = mix.Init (mix.INIT_MP3)
+	if err != nil {
+		panic (err)
+	}
+	err = mix.OpenAudio (22050, mix.DEFAULT_FORMAT, 2, 4096)
+	if err != nil {
+		panic (err)
+	}
 }
 
 func (g *Game) IsRunning() bool {

@@ -17,7 +17,7 @@ import (
 	"github.com/dt-rush/donkeys-qquest/constants"
 
 	"github.com/veandco/go-sdl2/sdl"
-	"github.com/veandco/go-sdl2/sdl_ttf"
+	"github.com/veandco/go-sdl2/ttf"
 )
 
 type MenuScene struct {
@@ -113,9 +113,9 @@ func (s *MenuScene) Init (game *engine.Game) chan bool {
 
 			// TODO figure out why go-sdl2 is failing when
 			// closing two fonts from the same file
-			// s.rainbow_surfaces[i], err = s.title_font.RenderUTF8_Solid ("Donkeys QQuest", color)
+			// s.rainbow_surfaces[i], err = s.title_font.RenderUTF8Solid ("Donkeys QQuest", color)
 			// create the surface
-			s.rainbow_surfaces[i], err = s.small_font.RenderUTF8_Solid ("Donkeys QQuest", color)
+			s.rainbow_surfaces[i], err = s.small_font.RenderUTF8Solid ("Donkeys QQuest", color)
 			if err != nil {
 				panic (err)
 			}
@@ -133,7 +133,7 @@ func (s *MenuScene) Init (game *engine.Game) chan bool {
 
 		// render message ("press space") surface
 		
-		s.message_surface, err = s.small_font.RenderUTF8_Solid ("Press Space",
+		s.message_surface, err = s.small_font.RenderUTF8Solid ("Press Space",
 			sdl.Color{255, 255, 255, 255})
 		if err != nil {
 			panic (err)
@@ -188,8 +188,8 @@ func (s *MenuScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
 	
 	windowRect := sdl.Rect{0,
 		0,
-		constants.WIDTH,
-		constants.HEIGHT}
+		constants.WINDOW_WIDTH,
+		constants.WINDOW_HEIGHT}
 
 	renderer.SetDrawColor (0, 0, 0, 255)
 	renderer.FillRect (&windowRect)
@@ -210,7 +210,7 @@ func (s *MenuScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
 	// write message ("press space")
 	dst = sdl.Rect{40,
 		int32 (165 + 20 * math.Sin (3 * 2 * math.Pi * s.five_second_dt_accum / 5000.0)),
-		constants.WIDTH - 80,
+		constants.WINDOW_WIDTH - 80,
 		24}
 	renderer.Copy (s.message_texture, nil, &dst)
 	// err = s.message_surface.Blit (nil, window_surface, &sdl.Rect{160, 150, 512, 512})
@@ -239,7 +239,12 @@ func (s *MenuScene) HandleKeyboardState (keyboard_state []uint8) {
 
 
 func (s *MenuScene) Destroy() {
+
+	fmt.Println ("MenuScene.Destroy() called")
+	
 	if ! s.destroyed {
+		
+		fmt.Println ("inside MenuScene.Destroy(), ! s.destroyed")
 
 		// TODO figure out why go-sdl2 is failing when
 		// closing two fonts from the same file
