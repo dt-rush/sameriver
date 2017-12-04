@@ -19,8 +19,6 @@ import (
 type EntityManager struct {
 	
 	id_system IDSystem
-	
-	tag_system TagSystem
 
 	component_registry ComponentRegistry
 
@@ -31,15 +29,23 @@ type EntityManager struct {
 	// component_entity_bitarray 
 	
 	entities []int
+	// two one-way maps support a many-to-many relationship
+	// tag -> []IDs
+	tag_entities map[string]([]int)
+	// ID -> []tag
+	entity_tags map[int]([]string)
 }
 
 func (m *EntityManager) Init (capacity int, components []Component) {
 	// init ID subsystem
 	m.id_system.Init (capacity)
-	// init tag subsystem
-	m.tag_system.Init (capacity)
 	// init component registry subsystem
 	m.component_registry.Init (components)
+
+	// init slices, maps
+	m.entities = make ([]int, 0)
+	m.tag_entities = make (map[string]([]int))
+	m.entity_tags = make (map[int]([]string))
 }
 
 
@@ -112,34 +118,75 @@ func (m *EntityManager) DespawnEntity (id int) {
 
 
 
-// TODO: refactor somehow
+
 // TAG SUPPORTING FUNCTIONS
 
 
+
 func (m *EntityManager) TagEntity (id int, tag string) {
-	m.tag_system.TagEntity (id, tag)
+	_, et_ok := m.entity_tags [id]
+	_, te_ok := m.tag_entities [tag]
+	if ! et_ok {
+		m.entity_tags [id] = make ([]string, 0)
+	}
+	if ! te_ok {
+		m.tag_entities [tag] = make ([]int, 0)
+	}
+	m.entity_tags [id] = append (m.entity_tags [id], tag)
+	m.tag_entities [tag] = append (m.tag_entities [tag], id)
+}
+
+func (m *EntityManager) TagEntityUnique (id int, tag string) {
+	if len (m.tag_entities [tag]) != 0 {
+		panic (fmt.Sprintf ("trying to tag unique %s more than once", tag))
+	}
+	m.TagEntity (id, tag)
 }
 
 func (m *EntityManager) TagEntities (ids []int, tag string) {
 	for _, id := range (ids) {
-		m.tag_system.TagEntity (id, tag)
+		m.TagEntity (id, tag)
 	}
 }
 
 func (m *EntityManager) GetEntityTags (id int) []string {
-	return m.tag_system.entity_tags [id]
+	return m.entity_tags [id]
 }
 
 func (m *EntityManager) GetTagEntities (tag string) []int {
-	return m.tag_system.tag_entities [tag]
+	return m.tag_entities [tag]
+}
+
+func (m *EntityManager) GetTagEntityUnique (tag string) int {
+	entity_list := m.tag_entities [tag]
+	if len (entity_list) == 0 {
+		return -1
+	} else {
+		return entity_list[0]
+	}
+}
+
+func (m *EntityManager) EntityHasTag (id int, tag string) bool {
+	for _, entity_tag := range (m.entity_tags [id]) {
+		if entity_tag == tag {
+			return true
+		}
+	}
+	return false
 }
 
 
 
 
-// TODO: refactor somehow
+
+
+
+
+
+
+
 // COMPONENT REGISTRY FUNCTIONS
 
-func (m *EntityManager) EntityHas (id int, component Component) bool {
+func (m *EntityManager) EntityHasComponent (id int, component Component) bool {
 	return m.component_registry.EntityHas (id, component)
 }

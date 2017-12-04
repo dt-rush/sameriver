@@ -20,6 +20,7 @@ import (
 	"github.com/dt-rush/donkeys-qquest/systems"
 	"github.com/dt-rush/donkeys-qquest/utils"
 	"github.com/dt-rush/donkeys-qquest/constants"
+	"github.com/dt-rush/donkeys-qquest/logic"
 	
 	"github.com/veandco/go-sdl2/sdl"
 //	"github.com/veandco/go-sdl2/img"
@@ -168,6 +169,18 @@ func (s *GameScene) setup_ECS() {
 	
 }
 
+func (s *GameScene) add_collision_logic () {
+
+	// load and add collision logic from logic package
+	// exported variable CollisionLogicCollection
+
+	for name, l := range logic.CollisionLogicCollection {
+		id := s.collision_system.AddCollisionLogic (name, l)
+		s.collision_system.SetCollisionLogicActiveState (id, true)
+	}
+
+}
+
 
 
 func (s *GameScene) spawn_entities() {
@@ -198,7 +211,7 @@ func (s *GameScene) spawn_entities() {
 	player_hitbox := [2]float64{20, 20}
 	s.hitbox_component.Set (s.player_id, player_hitbox)
 	// add tag
-	s.entity_manager.TagEntity (s.player_id, "player")
+	s.entity_manager.TagEntityUnique (s.player_id, "player")
 
 	
 
@@ -270,7 +283,7 @@ func (s *GameScene) spawn_entities() {
 			}
 		})(s.donkey_id, &s.position_component, &s.velocity_component))
 	// add tag
-	s.entity_manager.TagEntity (s.donkey_id, "donkey")
+	s.entity_manager.TagEntityUnique (s.donkey_id, "donkey")
 
 	
 
@@ -370,9 +383,8 @@ func (s *GameScene) Init (game *engine.Game) chan bool {
 
 	go func () {
 		s.destroyed = false
-		// set up the entity manager
-		s.entity_manager = engine.EntityManager{}
-		// 10 is a magic number, it scales dynamically anyway
+		
+		
 		all_components := []engine.Component{engine.Component (&s.active_component),
 			engine.Component (&s.sprite_component),
 			engine.Component (&s.color_component),
@@ -380,11 +392,15 @@ func (s *GameScene) Init (game *engine.Game) chan bool {
 			engine.Component (&s.position_component),
 			engine.Component (&s.velocity_component),
 			engine.Component (&s.hitbox_component)}
+		// 10 is a magic number, they scale dynamically anyway
 		s.entity_manager.Init (10, all_components)
 		// set up components and system
 		s.setup_ECS()
+		// set up the collision
+		s.add_collision_logic()
 		// spawn some entities
 		s.spawn_entities()
+		
 		// just to play a little loading screen fun
 		time.Sleep (1 * time.Second)
 		init_done_sig_chan <- true
@@ -473,7 +489,7 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
 			// TODO refactor .has() to be recorded by a component using
 			// a map[int]bitarray backing
 			// detecting if this entity has a sprite
-			has_sprite := s.entity_manager.EntityHas (i, engine.Component (&s.sprite_component))
+			has_sprite := s.entity_manager.EntityHasComponent (i, engine.Component (&s.sprite_component))
 			
 			pos := s.position_component.Get (i)
 			// ss_pos == "screen-space pos"
@@ -594,6 +610,20 @@ func (s *GameScene) Run () {
 						fmt.Printf ("\t\t* %s\n", item)
 					}
 				}
+				// set donkey to respawn
+				// TODO: also simultaneously set invisible?
+				// TODO (possibly): separate "visible" component from "active"?
+				donkey_id := s.entity_manager.GetTagEntityUnique ("donkey")
+				s.active_component.Set (donkey_id, false)
+
+				// sleep 5 seconds before respawning the donkey
+				go func() {
+					time.Sleep (time.Second * 5) // blocking
+					donkey_pos := s.position_component.Get (donkey_id)
+					donkey_pos [0] = rand.Float64() * float64 (constants.WINDOW_WIDTH - 20) + 20
+					donkey_pos [1] = rand.Float64() * float64 (constants.WINDOW_HEIGHT - 20) + 20
+					s.active_component.Set (donkey_id, true)
+				}()
 			}
 		}
 

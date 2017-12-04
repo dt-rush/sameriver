@@ -297,7 +297,7 @@ created by main.(*MenuScene).stop
 			}
 			s.message_surface.Free()
 		})
-		fmt.Println ("finished sdl.Do() call")
+		fmt.Println ("finished sdl.Do() call in menu_scene.Destroy() which called .Free() on some surfaces")
 	}
 	s.destroyed = true
 }
