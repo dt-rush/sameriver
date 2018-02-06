@@ -10,11 +10,11 @@
 package scenes
 
 import (
-    "fmt"
     "math"
 
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/dt-rush/donkeys-qquest/constants"
+    "github.com/dt-rush/donkeys-qquest/utils"
 
     "github.com/veandco/go-sdl2/sdl"
     "github.com/veandco/go-sdl2/ttf"
@@ -29,6 +29,8 @@ type LoadingScene struct {
     running bool
     // used to make destroy() idempotent
     destroyed bool
+    // used to prevent double-initialization
+    initialized bool
     // the game
     game *engine.Game
 
@@ -54,23 +56,26 @@ func (s *LoadingScene) Init (game *engine.Game) chan bool {
     init_done_signal_chan := make (chan bool)
 
     go func () {
-        s.destroyed = false
-        var err error
-        // load font
-        if s.message_font, err = ttf.OpenFont ("./assets/test.ttf", 8); err != nil {
-            panic(err)
-        }
-        s.five_second_dt_accum = 0
-        // render message ("press space") surface
-        s.message_surface, err = s.message_font.RenderUTF8Solid ("Loading",
-            sdl.Color{255, 255, 255, 255})
-        if err != nil {
-            panic (err)
-        }
-        // create the texture
-        s.message_texture, err = s.game.CreateTextureFromSurface (s.message_surface)
-        if err != nil {
-            panic (err)
+        if ! s.initialized {
+            s.destroyed = false
+            var err error
+            // load font
+            if s.message_font, err = ttf.OpenFont ("./assets/test.ttf", 8); err != nil {
+                panic(err)
+            }
+            s.five_second_dt_accum = 0
+            // render message ("press space") surface
+            s.message_surface, err = s.message_font.RenderUTF8Solid ("Loading",
+                sdl.Color{255, 255, 255, 255})
+            if err != nil {
+                panic (err)
+            }
+            // create the texture
+            s.message_texture, err = s.game.CreateTextureFromSurface (s.message_surface)
+            if err != nil {
+                panic (err)
+            }
+            s.initialized = true
         }
         init_done_signal_chan <- true
     }()
@@ -126,7 +131,7 @@ func (s *LoadingScene) HandleKeyboardState (keyboard_state []uint8) {}
 
 
 func (s *LoadingScene) Destroy() {
-    fmt.Println ("loadingscene.destroy()")
+    utils.DebugPrintln ("loadingscene.destroy()")
     if ! s.destroyed {
 
         s.message_font.Close()

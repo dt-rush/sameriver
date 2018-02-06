@@ -105,8 +105,8 @@ func (g *Game) Destroy() {
 func (g *Game) EndCurrentScene() {
     if g.scene != nil {
         g.scene.Stop()
+        <-g.scene_end_signal_chan
     }
-    <-g.scene_end_signal_chan
 }
 
 func (g *Game) End() {
@@ -153,7 +153,7 @@ func (g *Game) CreateTextureFromSurface (surface *sdl.Surface) (*sdl.Texture, er
 
 func (g *Game) SetLoadingScene (scene Scene) {
     g.loading_scene = scene
-    g.loading_scene.Init (g)
+    <-g.loading_scene.Init (g)
 }
 
 func (g *Game) PushScene (scene Scene) {
@@ -163,12 +163,14 @@ func (g *Game) PushScene (scene Scene) {
 }
 
 func (g *Game) RunScene (scene Scene) {
+    utils.DebugPrintf ("wanting to run %s\n", scene.Name())
     // will block until another copy of Game.RunScene()
     // which is running for the already-running scene
     // finishes Game.runGameLoopOnScene, at which point
     // (see the code for runGameLoopOnScene())
     // we send "true" into the channel
     g.EndCurrentScene()
+    utils.DebugPrintln ("g.EndCurrentScene() completed")
     // we're okay to enter another game loop now
     g.scene = scene
     scene.Run()
