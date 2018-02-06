@@ -6,10 +6,15 @@ Build Dependencies
 * At least go1.6.2
 
 
-**linux: apt packages (apt-get install)**:
+**linux**
+
+apt:
 
 * libsdl2{,-mixer,-image,-ttf}-dev
 
+pacman:
+
+* sdl2{,_mixer,_image,_ttf} 
 
 **windows: mingw env packages (install from source)**
 
