@@ -16,7 +16,7 @@ import (
 //	"math/rand"
 
 	"github.com/dt-rush/donkeys-qquest/engine"
-	"github.com/dt-rush/donkeys-qquest/components"
+	"github.com/dt-rush/donkeys-qquest/engine/components"
 //	"github.com/dt-rush/donkeys-qquest/constants"
 )
 

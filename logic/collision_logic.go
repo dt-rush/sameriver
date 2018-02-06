@@ -2,7 +2,7 @@ package logic
 
 import (
 	"github.com/dt-rush/donkeys-qquest/engine"
-	"github.com/dt-rush/donkeys-qquest/systems"
+	"github.com/dt-rush/donkeys-qquest/engine/systems"
 	"github.com/dt-rush/donkeys-qquest/constants"
 )
 
@@ -59,12 +59,6 @@ var CollisionLogicCollection = map [string]systems.CollisionLogic{
 			},
 	},
 }
-
-
-			
-
-
-			
 
 
 

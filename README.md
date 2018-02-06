@@ -62,9 +62,13 @@ The packages described generally:
 
 The game engine structs and functions, providing the abstract backbone on which the actual game logic is built. Can and should be abstractly separated in future from the other folders / packages which are the actual donkeys-qquest content (a game *buiilt* on the engine)
 
-* components
+* engine/components
 
 Definitions for the different types of components
+
+* engine/systems
+
+Definitions of systems
 
 * constants
 
@@ -81,10 +85,6 @@ Holds main.go, the executable entrypoint, from whichh the game engine is initial
 * scenes
 
 Definitions of scenes 
-
-* systems
-
-Definitions of systems
 
 * utils
 
