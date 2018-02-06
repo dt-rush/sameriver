@@ -3,6 +3,8 @@ package engine
 
 import (
     "github.com/veandco/go-sdl2/sdl"
+
+    "github.com/dt-rush/donkeys-qquest/utils"
 )
 
 
@@ -15,9 +17,8 @@ func BuildWindowAndRenderer (window_title string, width int32, height int32) (*s
     window, err := sdl.CreateWindow (window_title,
         sdl.WINDOWPOS_UNDEFINED,
         sdl.WINDOWPOS_UNDEFINED,
-        width,
-        height,
-        sdl.WINDOW_SHOWN)
+        0, 0,
+        sdl.WINDOW_SHOWN | sdl.WINDOW_FULLSCREEN)
     if err != nil {
         panic(err)
     }
@@ -28,6 +29,15 @@ func BuildWindowAndRenderer (window_title string, width int32, height int32) (*s
     if err != nil {
         panic (err)
     }
+
+    window_w, window_h := window.GetSize() 
+    utils.DebugPrintf ("window.GetSize() (w x h): %d x %d\n",
+                        window_w, window_h)
+    // renderer.SetLogicalSize (width, height)
+    sdl.SetHint (sdl.HINT_RENDER_SCALE_QUALITY, "linear")
+    scale_w := float32 (window_w) / float32 (width)
+    scale_h := float32 (window_h) / float32 (height)
+    renderer.SetScale (scale_w, scale_h)
 
     return window, renderer
 }
