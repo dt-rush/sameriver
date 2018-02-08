@@ -43,17 +43,19 @@ func SpawnFlame (entity_manager *engine.EntityManager,
     //    rand.Float64() * float64 (constants.WINDOW_WIDTH - 20) + 20,
     //    rand.Float64() * float64 (constants.WINDOW_HEIGHT - 20) + 20,
     //}
-    flame_position := initial_position 
+    flame_position := initial_position
     position_component.Set (flame_id, flame_position)
 
     // flame_color := uint32 (0xffccaa33)
     // color_component.Set (flame_id, flame_color)
 
-    flame_hitbox := [2]float64{50, 50}
+    flame_hitbox := [2]float64{30, 30}
     hitbox_component.Set (flame_id, flame_hitbox)
 
     flame_sprite := sprite_component.IndexOf ("flame.png")
     sprite_component.Set (flame_id, flame_sprite)
+
+    // add flame logic
 
     player_id := entity_manager.GetTagEntityUnique ("player")
     flame_logic_name := fmt.Sprintf ("flame logic %d", flame_id)
@@ -77,30 +79,25 @@ func FlameLogic (flame_id int,
     player_id int,
     position_component *components.PositionComponent,
     velocity_component *components.VelocityComponent,
-    sprite_component *components.SpriteComponent) (func (float64)) {
+    sprite_component *components.SpriteComponent) (func (int)) {
 
     // closure state
 
     // time accumulator
-    var dt_accum float64 = 0
-    // time accumulator for sprite changing
-    var sprite_dt_accum float64 = 0
+    accum_200 := engine.CreateTimeAccumulator(200)
+    accum_500 := engine.CreateTimeAccumulator(500)
     // current heading
     var heading []float64 = make ([]float64, 2)
 
     // enclosed function
 
-    return func (dt float64) {
-        dt_accum += dt
-        sprite_dt_accum += dt
+    return func (dt_ms int) {
 
         player_pos := position_component.Get (player_id)
         flame_pos := position_component.Get (flame_id)
         flame_vel := velocity_component.Get (flame_id)
 
-        for dt_accum > 200 {
-            // if we hit 1000 ms, reset the counter
-            dt_accum -= 200
+        if accum_200.Tick (dt_ms) {
             // find out how to get to the player
             vector_to_player := [2]float64{
                 player_pos[0] - flame_pos[0],
@@ -108,7 +105,7 @@ func FlameLogic (flame_id int,
             }
             // normalize the above vector
             scale_factor := math.Sqrt (
-                (vector_to_player[0] * vector_to_player[0] + vector_to_player[1] * vector_to_player[1])) 
+                (vector_to_player[0] * vector_to_player[0] + vector_to_player[1] * vector_to_player[1]))
             vector_to_player[0] /= scale_factor
             vector_to_player[1] /= scale_factor
             // ... and trigger change of heading
@@ -119,8 +116,7 @@ func FlameLogic (flame_id int,
 
         }
 
-        for sprite_dt_accum > 500 {
-            sprite_dt_accum -= 500
+        if accum_500.Tick (dt_ms) {
             // toggle flip horizontal
             current_flip := sprite_component.GetFlip (flame_id)
             var new_flip sdl.RendererFlip

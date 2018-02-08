@@ -46,13 +46,13 @@ type MenuScene struct {
     // for iterating thrugh the above
     rainbow_index int
     // for accumulating dt's to manage color shifting in time
-    rainbow_dt_accum float64
+    accum_rainbow engine.TimeAccumulator
     // message = "press space"
     message_surface *sdl.Surface
     // texture of the above, for Renderer.Copy() in draw()
     message_texture *sdl.Texture
     // for general timing, resets at 5000 ms to 0 ms
-    five_second_dt_accum float64
+    accum_5000 engine.TimeAccumulator
 }
 
 
@@ -129,8 +129,8 @@ func (s *MenuScene) Init (game *engine.Game) chan bool {
 
         s.rainbow_index = 0
 
-        s.rainbow_dt_accum = 0
-        s.five_second_dt_accum = 0
+        s.accum_rainbow = engine.CreateTimeAccumulator (COLOR_CHANGE_MS)
+        s.accum_5000 = engine.CreateTimeAccumulator (5000)
 
         // render message ("press space") surface
 
@@ -163,18 +163,15 @@ func (s *MenuScene) IsRunning () bool {
 
 
 
-func (s *MenuScene) Update (dt_ms float64) {
-    s.rainbow_dt_accum += dt_ms
-    for s.rainbow_dt_accum > COLOR_CHANGE_MS {
+func (s *MenuScene) Update (dt_ms int) {
+
+    if s.accum_rainbow.Tick (dt_ms) {
         s.rainbow_index++
-        s.rainbow_dt_accum -= COLOR_CHANGE_MS
         s.rainbow_index %= len (s.rainbow_colors)
     }
 
-    s.five_second_dt_accum += dt_ms
-    for s.five_second_dt_accum > 5000 {
-        s.five_second_dt_accum -= 5000
-    }
+    s.accum_5000.Tick (dt_ms)
+
 }
 
 
@@ -191,20 +188,23 @@ func (s *MenuScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
     renderer.FillRect (&windowRect)
 
     // write title
-    dst := sdl.Rect{
+    title_dst := sdl.Rect{
         constants.WINDOW_WIDTH / 8,
         (constants.WINDOW_HEIGHT * 3) / 8,
-        (constants.WINDOW_WIDTH * 6) / 8, 
+        (constants.WINDOW_WIDTH * 6) / 8,
         constants.WINDOW_HEIGHT / 8}
-    renderer.Copy (s.rainbow_textures [s.rainbow_index], nil, &dst)
+    renderer.Copy (s.rainbow_textures [s.rainbow_index], nil, &title_dst)
 
     // write message ("press space")
     x_offset := constants.WINDOW_WIDTH / 3
-    dst = sdl.Rect{x_offset,
-        int32 (180 + 12 * math.Sin (3 * 2 * math.Pi * s.five_second_dt_accum / 5000.0)),
+    msg_dst := sdl.Rect{
+        x_offset,
+        int32 (
+            float64 (constants.WINDOW_HEIGHT * 2 / 5) +
+            float64 (constants.WINDOW_HEIGHT / 10) * math.Sin (5 * 2 * math.Pi * s.accum_5000.Completion())),
         constants.WINDOW_WIDTH - x_offset * 2,
         20}
-    renderer.Copy (s.message_texture, nil, &dst)
+    renderer.Copy (s.message_texture, nil, &msg_dst)
 }
 
 func (s *MenuScene) transition () {

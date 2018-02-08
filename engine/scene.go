@@ -16,7 +16,7 @@ import (
 type Scene interface {
     Init (game *Game) chan bool
     Run()
-    Update (dt_ms float64)
+    Update (dt_ms int)
     Draw (window *sdl.Window, renderer *sdl.Renderer)
     HandleKeyboardState (keyboard_state []uint8)
     IsRunning() bool

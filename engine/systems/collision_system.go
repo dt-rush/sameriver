@@ -121,7 +121,7 @@ func (s *CollisionSystem) EntityIsCollidable (i int) bool {
 
 }
 
-func (s *CollisionSystem) Update (dt_ms float64) {
+func (s *CollisionSystem) Update (dt_ms int) {
 
     entities := s.entity_manager.Entities()
     for i := 0; i < len (entities); i++ {

@@ -81,13 +81,13 @@ type GameScene struct {
     // function profiler
     func_profiler utils.FuncProfiler
     // profiling data
-    collision_detection_ms_accum float64
+    collision_detection_ms_accum int
     collision_detection_count int
-    physics_ms_accum float64
+    physics_ms_accum int
     physics_count int
-    draw_ms_accum float64
+    draw_ms_accum int
     draw_count int
-    logic_ms_accum float64
+    logic_ms_accum int
     logic_count int
 }
 
@@ -134,7 +134,8 @@ func (s *GameScene) setup_ECS() {
 
     s.logic_system.Init (&s.entity_manager,
         &s.game_event_system,
-        &s.logic_component)
+        &s.logic_component,
+        &s.active_component)
 
 
 
@@ -181,7 +182,7 @@ func (s *GameScene) spawn_entities() {
 
     // spawn N_FLAMES
 
-    s.N_FLAMES = 3
+    s.N_FLAMES = 4
     for i := 0; i < s.N_FLAMES; i++ {
 
         corners := [2]int{i % 2, i / 2}
@@ -243,10 +244,18 @@ func (s *GameScene) Init (game *engine.Game) chan bool {
 func (s *GameScene) Stop () {
     utils.DebugPrintf ("\n\n\n======== ADVENTURE OVER ========\n")
     utils.DebugPrintf ("================================\n\n\n")
-    utils.DebugPrintf ("collision_detection_ms_avg = %.3f ms\n", s.collision_detection_ms_accum / float64 (s.collision_detection_count))
-    utils.DebugPrintf ("physics_ms_avg = %.3f ms\n", s.physics_ms_accum / float64 (s.physics_count))
-    utils.DebugPrintf ("draw_ms_avg = %.3f ms\n", s.draw_ms_accum / float64 (s.draw_count))
-    utils.DebugPrintf ("logic_ms_avg = %.3f ms\n", s.logic_ms_accum / float64 (s.logic_count))
+    utils.DebugPrintf ("collision_detection_ms_avg = %.3f ms\n",
+        float64 (s.collision_detection_ms_accum) /
+        float64 (s.collision_detection_count))
+    utils.DebugPrintf ("physics_ms_avg = %.3f ms\n", 
+        float64 (s.physics_ms_accum) /
+        float64 (s.physics_count))
+    utils.DebugPrintf ("draw_ms_avg = %.3f ms\n", 
+        float64 (s.draw_ms_accum) /
+        float64 (s.draw_count))
+    utils.DebugPrintf ("logic_ms_avg = %.3f ms\n", 
+        float64 (s.logic_ms_accum) /
+        float64 (s.logic_count))
     // set this scene not running
     s.running = false
     // actually ends the game
@@ -259,13 +268,13 @@ func (s *GameScene) IsRunning () bool {
 
 
 
-func (s *GameScene) Update (dt_ms float64) {
+func (s *GameScene) Update (dt_ms int) {
 
     // TODO: form an array of loaded systems and iterate them all
 
     s.physics_count++
     s.physics_ms_accum += s.func_profiler.Time (
-        func (dt_ms float64) (func ()) {
+        func (dt_ms int) (func ()) {
             return func () {
                 s.physics_system.Update (dt_ms)
             }
@@ -273,7 +282,7 @@ func (s *GameScene) Update (dt_ms float64) {
 
     s.collision_detection_count++
     s.collision_detection_ms_accum += s.func_profiler.Time (
-        func (dt_ms float64) (func ()) {
+        func (dt_ms int) (func ()) {
             return func () {
                 s.collision_system.Update (dt_ms)
             }
@@ -281,7 +290,7 @@ func (s *GameScene) Update (dt_ms float64) {
 
     s.logic_count++
     s.logic_ms_accum += s.func_profiler.Time (
-        func (dt_ms float64) (func()) {
+        func (dt_ms int) (func()) {
             return func () {
                 s.logic_system.Update (dt_ms)
             }
@@ -328,7 +337,7 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
 
             if s.entity_manager.EntityHasComponent (i, &s.color_component) {
                 color := s.color_component.Get (i)
-                // extracting color components from 
+                // extracting color components from
                 // uint32 ARGB to uint8 RGBA params
                 renderer.SetDrawColor (
                     uint8 ((color & 0x00ff0000) >> 16),
@@ -372,10 +381,10 @@ func (s *GameScene) HandleKeyboardState (keyboard_state []uint8) {
     // get player v0
     player_v := s.velocity_component.Get (s.player_id)
     // get player v1
-    vx := 200 * float64 (
+    vx := 300 * float64 (
         int8 (k [sdl.SCANCODE_D]) -
             int8 (k [sdl.SCANCODE_A]))
-    vy := 200 * float64 (
+    vy := 300 * float64 (
         int8 (k [sdl.SCANCODE_W]) -
             int8 (k [sdl.SCANCODE_S]))
     // shift v0 to v1

@@ -40,7 +40,7 @@ func (s *PhysicsSystem) Init (entity_manager *engine.EntityManager,
 
 
 
-func (s *PhysicsSystem) Update (dt_ms float64) {
+func (s *PhysicsSystem) Update (dt_ms int) {
     for _, id := range s.entity_manager.Entities() {
         // TODO - note that we never preemptively filter entities or
         // query entities or even check each entity, as to whether they
@@ -60,8 +60,8 @@ func (s *PhysicsSystem) Update (dt_ms float64) {
         pos := s.position_component.Get (id)
         vel := s.velocity_component.Get (id)
 
-        dx := vel[0] * (dt_ms / 1000.0)
-        dy := vel[1] * (dt_ms / 1000.0)
+        dx := vel[0] * (float64 (dt_ms) / 1000.0)
+        dy := vel[1] * (float64 (dt_ms) / 1000.0)
 
         if pos[0] + dx > 0 && 
             pos[0] + dx < float64 (constants.WINDOW_WIDTH - 20) {

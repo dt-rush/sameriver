@@ -62,43 +62,45 @@ func SpawnDonkey (entity_manager *engine.EntityManager,
 
 func DonkeyLogic (donkey_id int,
     position_component *components.PositionComponent,
-    velocity_component *components.VelocityComponent) func (float64) {
+    velocity_component *components.VelocityComponent) func (int) {
 
     // closure state
 
-    // time accumulator
-    var dt_accum float64 = 0
-    // acceleration in a given direction
-    accel := make ([]float64, 2)
+    // time accumulator(s)
+    one_second := engine.CreateTimeAccumulator (1000)
+    // donkey_acceleration in a given direction
+    donkey_accel := make ([]float64, 2)
 
     // enclosed function
 
-    return func (dt float64) {
-        dt_accum += dt
+    return func (dt_ms int) {
+
         donkey_pos := position_component.Get (donkey_id)
         donkey_vel := velocity_component.Get (donkey_id)
 
-        for dt_accum > 1000 {
-            dt_accum -= 1000
-            accel[0] = rand.Float64() - 0.5
-            accel[1] = rand.Float64() - 0.5
+        // every second, set a new random heading (donkeys are finnicky)
+        if one_second.Tick (dt_ms) {
+            donkey_accel[0] = 2 * (rand.Float64() - 0.5)
+            donkey_accel[1] = 2 * (rand.Float64() - 0.5)
         }
-        accel[0] = 0.9 * accel[0]
-        accel[1] = 0.9 * accel[1]
-
-        donkey_vel[0] += 0.8 * math.Cos (2 * math.Pi * dt_accum / 1000.0)
-        donkey_vel[1] += 0.8 * math.Sin (2 * math.Pi * dt_accum / 1000.0)
-
-        donkey_vel[0] += accel[0]
-        donkey_vel[1] += accel[1]
+        // apply the accel
+        donkey_vel[0] += donkey_accel[0]
+        donkey_vel[1] += donkey_accel[1]
+        // decay the accel
+        donkey_accel[0] = 0.9 * donkey_accel[0]
+        donkey_accel[1] = 0.9 * donkey_accel[1]
+        // add some random circular wobble
+        donkey_vel[0] += 1.2 * math.Cos (2 * math.Pi * one_second.Completion())
+        donkey_vel[1] += 1.2 * math.Sin (2 * math.Pi * one_second.Completion())
 
         // donkey experiences acceleration toward center of screen
+        center_accel_strength := 2.0
         // x
-        if (int32 (donkey_pos[0]) > constants.WINDOW_WIDTH / 2) {donkey_vel[0] -= .1}
-        if (int32 (donkey_pos[0]) < constants.WINDOW_WIDTH / 2) {donkey_vel[0] += .1}
+        if (int32 (donkey_pos[0]) > constants.WINDOW_WIDTH / 2) {donkey_vel[0] -= center_accel_strength}
+        if (int32 (donkey_pos[0]) < constants.WINDOW_WIDTH / 2) {donkey_vel[0] += center_accel_strength}
         // y
-        if (int32 (donkey_pos[1]) > constants.WINDOW_HEIGHT / 2) {donkey_vel[1] -= .1}
-        if (int32 (donkey_pos[1]) < constants.WINDOW_HEIGHT / 2) {donkey_vel[1] += .1}
+        if (int32 (donkey_pos[1]) > constants.WINDOW_HEIGHT / 2) {donkey_vel[1] -= center_accel_strength}
+        if (int32 (donkey_pos[1]) < constants.WINDOW_HEIGHT / 2) {donkey_vel[1] += center_accel_strength}
 
         velocity_component.Set (donkey_id, donkey_vel)
     }

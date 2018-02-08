@@ -33,7 +33,7 @@ func SpawnPlayer (entity_manager *engine.EntityManager,
     player_color := uint32 (0xff00AACC)
     color_component.Set (player_id, player_color)
 
-    player_hitbox := [2]float64{20, 20}
+    player_hitbox := [2]float64{10, 10}
     hitbox_component.Set (player_id, player_hitbox)
 
     // add tag

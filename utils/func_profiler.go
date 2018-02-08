@@ -31,12 +31,12 @@ func (fp *FuncProfiler) Init (capacity int) {
     // that gets called repeatedly (how to catch stop?)
 }
 
-func (fp *FuncProfiler) Time (f func ()) float64 {
+func (fp *FuncProfiler) Time (f func ()) int {
     t0 := time.Now().UnixNano()
     // NOTA BENE: f() must block to be timed accurately at all!
     // we're not tracking go routines here at all
     f()
     t1 := time.Now().UnixNano()
-    milliseconds := float64 (t1 - t0) / 1e6
+    milliseconds := int (t1 - t0) / 1e6
     return milliseconds
 }

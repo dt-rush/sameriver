@@ -39,10 +39,13 @@ type LoadingScene struct {
 
     message_font *ttf.Font
 
-    message_surface *sdl.Surface // message = "loading"
-    message_texture *sdl.Texture // texture of the above, for Renderer.Copy() in draw()
+    // message = "loading"
+    message_surface *sdl.Surface
+    // texture of the above, for Renderer.Copy() in draw()
+    message_texture *sdl.Texture
 
-    five_second_dt_accum float64 // for general timing, resets at 5000 ms to 0 ms
+    // time accumulator for bouncing the word "loading"
+    accum_5000 engine.TimeAccumulator
 }
 
 
@@ -59,11 +62,12 @@ func (s *LoadingScene) Init (game *engine.Game) chan bool {
         if ! s.initialized {
             s.destroyed = false
             var err error
+            // create the time accumulator
+            s.accum_5000 = engine.CreateTimeAccumulator (5000)
             // load font
-            if s.message_font, err = ttf.OpenFont ("./assets/test.ttf", 8); err != nil {
+            if s.message_font, err = ttf.OpenFont ("./assets/test.ttf", 10); err != nil {
                 panic(err)
             }
-            s.five_second_dt_accum = 0
             // render message ("press space") surface
             s.message_surface, err = s.message_font.RenderUTF8Solid ("Loading",
                 sdl.Color{255, 255, 255, 255})
@@ -90,12 +94,8 @@ func (s *LoadingScene) IsRunning () bool {
     return s.running
 }
 
-func (s *LoadingScene) Update (dt_ms float64) {
-
-    s.five_second_dt_accum += dt_ms
-    for s.five_second_dt_accum > 5000 {
-        s.five_second_dt_accum -= 5000
-    }
+func (s *LoadingScene) Update (dt_ms int) {
+    s.accum_5000.Tick (dt_ms)
 }
 
 
@@ -113,11 +113,15 @@ func (s *LoadingScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
     renderer.FillRect (&windowRect)
 
     // write message ("loading")
-    dst := sdl.Rect{40,
-        int32 (135 + 20 * math.Sin (5 * 2 * math.Pi * s.five_second_dt_accum / 5000.0)),
-        constants.WINDOW_WIDTH - 80,
-        24}
-    renderer.Copy (s.message_texture, nil, &dst)
+    x_offset := constants.WINDOW_WIDTH / 3
+    msg_dst := sdl.Rect{
+        x_offset,
+        int32 (
+            float64 (constants.WINDOW_HEIGHT * 2 / 5) +
+            float64 (constants.WINDOW_HEIGHT / 10) * math.Sin (5 * 2 * math.Pi * s.accum_5000.Completion())),
+        constants.WINDOW_WIDTH - x_offset * 2,
+        20}
+    renderer.Copy (s.message_texture, nil, &msg_dst)
 }
 
 

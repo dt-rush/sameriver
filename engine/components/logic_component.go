@@ -6,7 +6,7 @@ import (
 
 type LogicUnit struct {
     Name string
-    Logic func (float64)
+    Logic func (int)
 }
 
 
@@ -29,7 +29,7 @@ func (c *LogicComponent) Get (id int) LogicUnit {
 }
 
 func (c *LogicComponent) DefaultValue() interface{} {
-    return LogicUnit {"empty function", func (float64) {}}
+    return LogicUnit {"empty function", func (int) {}}
 }
 
 func (c *LogicComponent) String() string {

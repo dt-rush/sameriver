@@ -188,7 +188,7 @@ func (g *Game) runGameLoopOnScene (scene Scene) {
     t0 := <-ticker.C
     accum := 0
     gameloop_counter := 0
-    gameloop_ms_accum := 0.0
+    gameloop_ms_accum := 0
     utils.DebugPrintf ("\\\\\\  /// %s starting to run\n",
                         scene.Name())
     // loop
@@ -198,9 +198,9 @@ func (g *Game) runGameLoopOnScene (scene Scene) {
         gameloop_ms_accum += g.func_profiler.Time (func () {
             // update ticker, calculate loop dt
             t1 := <-ticker.C
-            dt_ms := float64 (t1.UnixNano() - t0.UnixNano()) / 1e6
+            dt_ms := int ((t1.UnixNano() - t0.UnixNano()) / 1e6)
             // draw active scene at framerate (60 fps)
-            accum += int (dt_ms)
+            accum += dt_ms
             if accum > 1000 / 60 {
                 // eat any backlog, just draw the current frame
                 for accum > 1000 / 60 {
