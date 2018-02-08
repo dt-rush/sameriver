@@ -183,6 +183,16 @@ func (s *GameScene) spawn_entities() {
 
     s.N_FLAMES = 3
     for i := 0; i < s.N_FLAMES; i++ {
+
+        corners := [2]int{i % 2, i / 2}
+
+        utils.DebugPrintf ("spawning flame in corner %d, %d\n", corners[0], corners[1])
+
+        initial_position := [2]float64{
+            float64 (int (constants.WINDOW_WIDTH - 50) * corners [0] + 25),
+            float64 (int (constants.WINDOW_HEIGHT - 50)  * corners [1] + 25),
+        }
+
         entities.SpawnFlame (&s.entity_manager,
             &s.active_component,
             &s.position_component,
@@ -190,7 +200,9 @@ func (s *GameScene) spawn_entities() {
             &s.color_component,
             &s.hitbox_component,
             &s.sprite_component,
-            &s.logic_component)
+            &s.logic_component,
+            initial_position,
+        )
     }
 }
 
