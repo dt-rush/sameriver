@@ -14,8 +14,9 @@
 .glide/
 *.png
 
-# ignore the built binary
-bin/donkeysqquest
+# ignore the built binary/ies
+bin/*
 
-# ignore vim .swp files
+# ignore vim .swp and .swo files
 *.swp
+*.swo

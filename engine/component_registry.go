@@ -13,7 +13,7 @@ package engine
 import (
     "fmt"
 
-    // bitarray impl
+    // TODO: add bitarray implementation
 
 )
 
@@ -27,8 +27,9 @@ type ComponentRegistry struct {
     // on a given entity
     // length of bitarrays determined by N components
     data map [int]bitarray
-    // supporting map of the components to their indexes in the bitarrays
-    // uses the fact that Name() is unique (has to be!!!)
+    // supporting map of the components to their 
+    // indexes in the bitarrays uses the fact that Name() 
+    // is unique (has to be!!!)
     component_indexes map [string]int
     // current bitarray size (number of components)
     bitarray_sz int

@@ -12,36 +12,40 @@ package systems
 
 import (
 
-	"github.com/veandco/go-sdl2/sdl"
-
-	// TODO  re: big philosophical debate lower down
-	// figure if these are needed, it might be that all
-	// this system needs to do is spawn entities with components,
-	// leaving the textures, etc. up to
-	// the renderer of those components
-	
-//	"github.com/veandco/go-sdl2/ttf"
-//	"github.com/veandco/go-sdl2/img"
+    "github.com/veandco/go-sdl2/sdl"
+    "github.com/veandco/go-sdl2/ttf"
 
 )
+
+
+type ScreenMessage struct {
+    msg string
+    floating bool
+    // the top-left corner of the box, where (0, 0) is
+    // the bottom-left corner of the screen
+    position_x int
+    position_y int
+}
 
 // responsible for spawning screen message entities
 // managing their lifecycles, and destroying their resources
 // when needed
-type ScreenmessageSystem struct {
-	// TODO  re: big philosophical debate lower down
-	// if messages is map of string -> int
-	// are those ints ID's of the message entities, or
-	// are they indexes into an array of textures?
-	// surely the textures need positions, etc.
-	// starts to seem that these should be entities, yeah
-	messages map[string]int
-	textures []*sdl.Texture
+type ScreenMessageSystem struct {
+    messages map[string]int
+    textures map [int]*sdl.Texture
+    small_font *ttf.Font
 }
 
-// TODO big philoosophical debate here: SHOULD MENUS AND MESSAGES BE ENTITIES TOO?
+func (s *ScreenMessageSystem) Init (capacity int) {
+    var err error
+    s.messages = make (map[string]int, capacity)
+    s.textures = make (map[int]*sdl.Texture, capacity)
+    if s.small_font, err = ttf.OpenFont("assets/test.ttf", 9); err != nil {
+        panic(err)
+    }
+}
 
-func (s *ScreenmessageSystem) init (capacity int) {
-	s.messages = make (map[string]int, capacity)
-	s.textures = make ([]*sdl.Texture, capacity)
+func (s *ScreenMessageSystem) DisplayScreenMessage (m ScreenMessage) {
+    // render the texture 
+
 }

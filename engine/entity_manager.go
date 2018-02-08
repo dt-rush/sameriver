@@ -1,8 +1,8 @@
 /**
-  * 
-  * 
-  * 
-  * 
+  *
+  *
+  *
+  *
 **/
 
 
@@ -17,7 +17,7 @@ import (
 )
 
 type EntityManager struct {
-    
+
     id_system IDSystem
 
     component_registry ComponentRegistry
@@ -25,9 +25,9 @@ type EntityManager struct {
     // TODO: implement, along with selector functions and logical operators...
     // entity_tag_bitarray // TODO: type?
     // tag_entity_bitarray // TODO: type?
-    // entity_component_bitarray 
-    // component_entity_bitarray 
-    
+    // entity_component_bitarray
+    // component_entity_bitarray
+
     entities []int
     // two one-way maps support a many-to-many relationship
     // tag -> []IDs
@@ -108,7 +108,7 @@ func (m *EntityManager) DespawnEntity (id int) {
         if i == id {
             // delete the element at i
             // (put it at the end and return a truncated by 1 list
-            _i := len (m.entities) - 1 
+            _i := len (m.entities) - 1
             m.entities [_i], m.entities [i] = m.entities [i], m.entities [_i]
             m.entities = m.entities [:_i]
 

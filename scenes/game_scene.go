@@ -1,8 +1,8 @@
-/**
-  *
-  *
-  *
-  *
+/*
+ *
+ *
+ *
+ *
 **/
 
 
@@ -11,14 +11,14 @@ package scenes
 
 import (
     "time"
-    "math"
     "math/rand"
 
+    "github.com/dt-rush/donkeys-qquest/utils"
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/dt-rush/donkeys-qquest/engine/components"
     "github.com/dt-rush/donkeys-qquest/engine/systems"
-    "github.com/dt-rush/donkeys-qquest/utils"
     "github.com/dt-rush/donkeys-qquest/constants"
+    "github.com/dt-rush/donkeys-qquest/entities"
     "github.com/dt-rush/donkeys-qquest/logic"
 
     "github.com/veandco/go-sdl2/sdl"
@@ -36,14 +36,19 @@ type GameScene struct {
     game *engine.Game
 
     // ECS declarations
+
     // entity manager
     entity_manager engine.EntityManager
     // gameevent system
     game_event_system engine.GameEventSystem
+
     // special keys into the entity array
     player_id int
     donkey_id int
     N_FLAMES int
+
+    // components
+
     // active component
     active_component components.ActiveComponent
     // sprite component
@@ -58,8 +63,13 @@ type GameScene struct {
     velocity_component components.VelocityComponent
     // hitbox component
     hitbox_component components.HitboxComponent
+    // logic component
+    logic_component components.LogicComponent
+
+    // systems
+
     // screenmessage system
-    screenmessage_system systems.ScreenmessageSystem
+    screenmessage_system systems.ScreenMessageSystem
     // collision system
     collision_system systems.CollisionSystem
     // physics system
@@ -81,11 +91,6 @@ type GameScene struct {
     logic_count int
 }
 
-
-
-
-
-
 func (s *GameScene) setup_ECS() {
 
     // ECS (TM)
@@ -106,23 +111,15 @@ func (s *GameScene) setup_ECS() {
     s.velocity_component.Init (s.entity_manager.NumberOfEntities(), s.game)
     // hitbox component
     s.hitbox_component.Init (s.entity_manager.NumberOfEntities(), s.game)
-
+    // logic component
+    s.logic_component.Init (s.entity_manager.NumberOfEntities(), s.game)
     // init systems
 
     // TODO: determine how to tune capacity here
     // 4 as a nonsense magic number
     s.game_event_system.Init (4)
 
-
-    // TODO, turn into a system (TM) which can spawn entities
-    // YES< FCUK IT, SCREENMESSAGES ARE ENTITIES,
-    // SO WILL BE MENUS
-    // YOU CAN STILL BACK THEM WITH SYSTEMS AND LOGIC FUNCS
-
-//  s.screenmessage_system.init (4)
-
-
-    // init (TM) systems
+    s.screenmessage_system.Init (4)
 
     s.collision_system.Init (&s.entity_manager,
         &s.active_component,
@@ -136,7 +133,8 @@ func (s *GameScene) setup_ECS() {
         &s.velocity_component)
 
     s.logic_system.Init (&s.entity_manager,
-        &s.game_event_system)
+        &s.game_event_system,
+        &s.logic_component)
 
 
 
@@ -160,197 +158,41 @@ func (s *GameScene) add_collision_logic () {
 
 
 func (s *GameScene) spawn_entities() {
-        // spawn some entities
-
-    // spawn entities by entity_manager.spawn_entity ([]Component)).
-    // This allocates component data for each entity
 
     // spawn a player
 
-    player_components := []engine.Component{engine.Component(&s.active_component),
-        engine.Component(&s.position_component),
-        engine.Component(&s.velocity_component),
-        engine.Component(&s.hitbox_component)}
-    // engine.Component(&s.logic_component),
-    // engine.Component(&s.color_component),
-    // engine.Component(&s.sprite_component),
-
-    s.player_id = s.entity_manager.SpawnEntity (player_components)
-    // TODO refactor into a function on entity_manager accepting
-    // a diff of component-values (map?)
-    player_active := true
-    s.active_component.Set (s.player_id, player_active)
-    player_position := [2]float64 {float64(constants.WINDOW_WIDTH/2), float64(constants.WINDOW_HEIGHT/2)}
-    s.position_component.Set (s.player_id, player_position)
-    player_color := uint32 (0xff00AACC)
-    s.color_component.Set (s.player_id, player_color)
-    player_hitbox := [2]float64{20, 20}
-    s.hitbox_component.Set (s.player_id, player_hitbox)
-    // add tag
-    s.entity_manager.TagEntityUnique (s.player_id, "player")
-
-
+    s.player_id = entities.SpawnPlayer (&s.entity_manager,
+        &s.active_component,
+        &s.position_component,
+        &s.velocity_component,
+        &s.color_component,
+        &s.hitbox_component)
 
 
     // spawn a donkey
 
-    donkey_components := []engine.Component{engine.Component(&s.active_component),
-        engine.Component(&s.position_component),
-        engine.Component(&s.velocity_component),
-        engine.Component(&s.hitbox_component)}
-    // engine.Component(&s.logic_component),
-    // engine.Component(&s.color_component),
-    // engine.Component(&s.sprite_component)
-
-    s.donkey_id = s.entity_manager.SpawnEntity (donkey_components)
-    // init the entity's component values
-    // TODO refactor into a function on entity_manager accepting
-    // a diff of component-values (map?)
-    donkey_active := true
-    s.active_component.Set (s.donkey_id, donkey_active)
-    donkey_position := [2]float64 {float64(constants.WINDOW_WIDTH/2) + 40, float64(constants.WINDOW_HEIGHT/2) + 40}
-    s.position_component.Set (s.donkey_id, donkey_position)
-    donkey_color := uint32 (0xff776622)
-    s.color_component.Set (s.donkey_id, donkey_color)
-    donkey_hitbox := [2]float64{24, 24}
-    s.hitbox_component.Set (s.donkey_id, donkey_hitbox)
-    // add donkey logic
-    s.logic_system.RunLogic ((func (donkey_id int,
-        position_component *components.PositionComponent,
-        velocity_component *components.VelocityComponent) (func (float64)) {
-            // closure state
-            // time accumulator
-            var dt_accum float64 = 0
-            // acceleration in a given direction
-            accel := make ([]float64, 2)
-            // enclosed function
-            return func (dt float64) {
-                dt_accum += dt
-                donkey_pos := position_component.Get (donkey_id)
-                donkey_vel := velocity_component.Get (donkey_id)
-
-                if dt_accum > 1000 {
-                    dt_accum -= 1000
-                    accel[0] = rand.Float64() - 0.5
-                    accel[1] = rand.Float64() - 0.5
-                }
-                accel[0] = 0.9 * accel[0]
-                accel[1] = 0.9 * accel[1]
-
-                donkey_vel[0] += 0.8 * math.Cos (2 * math.Pi * dt_accum / 1000.0)
-                donkey_vel[1] += 0.8 * math.Sin (2 * math.Pi * dt_accum / 1000.0)
-
-                donkey_vel[0] += accel[0]
-                donkey_vel[1] += accel[1]
-
-                // donkey experiences acceleration toward center of screen
-                // x
-                if (int32 (donkey_pos[0]) > constants.WINDOW_WIDTH / 2) {donkey_vel[0] -= .1}
-                if (int32 (donkey_pos[0]) < constants.WINDOW_WIDTH / 2) {donkey_vel[0] += .1}
-                // y
-                if (int32 (donkey_pos[1]) > constants.WINDOW_HEIGHT / 2) {donkey_vel[1] -= .1}
-                if (int32 (donkey_pos[1]) < constants.WINDOW_HEIGHT / 2) {donkey_vel[1] += .1}
-
-                // TODO replace statements like this with defer statements or at least
-                // find a way to directly update map values, to avoid this weird
-                // modify and replace pattern
-                velocity_component.Set (donkey_id, donkey_vel)
-
-            }
-        })(s.donkey_id, &s.position_component, &s.velocity_component))
-    // add tag
-    s.entity_manager.TagEntityUnique (s.donkey_id, "donkey")
-
-
+    s.donkey_id = entities.SpawnDonkey (&s.entity_manager,
+        &s.active_component,
+        &s.position_component,
+        &s.velocity_component,
+        &s.color_component,
+        &s.hitbox_component,
+        &s.logic_component)
 
     // spawn N_FLAMES
 
     s.N_FLAMES = 3
-
     for i := 0; i < s.N_FLAMES; i++ {
-
-        flame_components := []engine.Component{engine.Component(&s.active_component),
-            engine.Component(&s.position_component),
-            engine.Component(&s.velocity_component),
-            engine.Component(&s.hitbox_component),
-            // engine.Component(&s.logic_component),
-            // engine.Component(&s.color_component),
-            engine.Component(&s.sprite_component)}
-
-        // init the entity's component values
-        // TODO refactor into a function on entity_manager accepting
-        // a diff of component-values (map?)
-        flame_id := s.entity_manager.SpawnEntity (flame_components)
-        flame_active := true
-        s.active_component.Set (flame_id, flame_active)
-        flame_position := [2]float64 {rand.Float64() * float64 (constants.WINDOW_WIDTH - 20) + 20,
-            rand.Float64() * float64 (constants.WINDOW_HEIGHT - 20) + 20}
-        s.position_component.Set (flame_id, flame_position)
-        flame_color := uint32 (0xffccaa33)
-        s.color_component.Set (flame_id, flame_color)
-        flame_hitbox := [2]float64{50, 50}
-        s.hitbox_component.Set (flame_id, flame_hitbox)
-        flame_sprite := s.sprite_component.IndexOf ("flame.png")
-        s.sprite_component.Set (flame_id, flame_sprite)
-        // add flame logic
-        s.logic_system.RunLogic ((func (flame_id int,
-            position_component *components.PositionComponent,
-            velocity_component *components.VelocityComponent,
-            sprite_component *components.SpriteComponent) (func (float64)) {
-            // closure state
-            // time accumulator
-            var dt_accum float64 = 0
-            // time accumulator for sprite changing
-            var sprite_dt_accum float64 = 0
-            // current heading
-            var heading []float64 = make ([]float64, 2)
-
-            // enclosed function
-            return func (dt float64) {
-                dt_accum += dt
-                sprite_dt_accum += dt
-
-                flame_vel := velocity_component.Get (flame_id)
-
-                for dt_accum > 200 {
-                    // if we hit 1000 ms, reset the counter
-                    dt_accum -= 200
-                    // ... and trigger change of heading
-                    heading [0] = 100 * (rand.Float64()*2 - 1)
-                    heading [1] = 100 * (rand.Float64()*2 - 1)
-                    flame_vel [0] = heading [0]
-                    flame_vel [1] = heading [1]
-
-                }
-
-                for sprite_dt_accum > 500 {
-                    sprite_dt_accum -= 500
-                    // toggle flip horizontal
-                    current_flip := s.sprite_component.GetFlip (flame_id)
-                    var new_flip sdl.RendererFlip
-                    if current_flip == sdl.FLIP_NONE {
-                        new_flip = sdl.FLIP_HORIZONTAL
-                    } else {
-                        new_flip = sdl.FLIP_NONE
-                    }
-                    s.sprite_component.SetFlip (flame_id, new_flip)
-                }
-
-                // TODO replace statements like this with defer statements or at least
-                // find a way to directly update map values, to avoid this weird
-                // modify and replace pattern
-                s.velocity_component.Set (flame_id, flame_vel)
-            }
-        })(flame_id, &s.position_component, &s.velocity_component, &s.sprite_component))
-        // apply tags to flame
-        s.entity_manager.TagEntity (flame_id, "flame")
+        entities.SpawnFlame (&s.entity_manager,
+            &s.active_component,
+            &s.position_component,
+            &s.velocity_component,
+            &s.color_component,
+            &s.hitbox_component,
+            &s.sprite_component,
+            &s.logic_component)
     }
 }
-
-
-
-
-
 
 func (s *GameScene) Init (game *engine.Game) chan bool {
 
@@ -360,14 +202,16 @@ func (s *GameScene) Init (game *engine.Game) chan bool {
     go func () {
         s.destroyed = false
 
-
-        all_components := []engine.Component{engine.Component (&s.active_component),
-            engine.Component (&s.sprite_component),
-            engine.Component (&s.color_component),
-            engine.Component (&s.audio_component),
-            engine.Component (&s.position_component),
-            engine.Component (&s.velocity_component),
-            engine.Component (&s.hitbox_component)}
+        all_components := []engine.Component{
+            &s.active_component,
+            &s.position_component,
+            &s.velocity_component,
+            &s.color_component,
+            &s.audio_component,
+            &s.sprite_component,
+            &s.hitbox_component,
+            &s.logic_component,
+        }
         // 10 is a magic number, they scale dynamically anyway
         s.entity_manager.Init (10, all_components)
         // set up components and system
@@ -445,7 +289,7 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
         renderer.SetDrawColor (0, 0, 0, 255)
         renderer.FillRect (&sdl.Rect{0, 0, int32 (constants.WINDOW_WIDTH), int32 (constants.WINDOW_HEIGHT)})
 
-        // TODO refactor to go through only entities registered 
+        // TODO refactor to go through only entities registered
         // with a draw system to avoid this index checking
         for _, i := range s.entity_manager.Entities() {
 
@@ -555,65 +399,62 @@ func (s *GameScene) Destroy() {
     }
 }
 
+func (s *GameScene) SceneLogic () {
+
+    donkey_caught_react := func () {
+
+        donkey_caught_chan := s.game_event_system.Subscribe (constants.GAME_EVENT_DONKEY_CAUGHT)
+        for _ = range (donkey_caught_chan) {
+            utils.DebugPrintln ("\tYOU CAUGHT A DONKEY")
+            // TODO: expand to actual inventory system
+            PRINT_DONKEY_INVENTORY := false
+            if PRINT_DONKEY_INVENTORY {
+                inventory := []string{"1 x donkey fur", "2 x donkey ears", "3 x donkey whiskers", "4 x donkey meats"}
+                for _, item := range (inventory) {
+                    utils.DebugPrintf ("\t\t* %s\n", item)
+                }
+            }
+            // set donkey to respawn
+            // TODO: also simultaneously set invisible?
+            // TODO (possibly): separate "visible" component from "active"?
+            donkey_id := s.entity_manager.GetTagEntityUnique ("donkey")
+            s.active_component.Set (donkey_id, false)
+
+            // sleep 5 seconds before respawning the donkey
+            go func() {
+                time.Sleep (time.Second * 5) // blocking
+                donkey_pos := s.position_component.Get (donkey_id)
+                donkey_pos [0] = rand.Float64() * float64 (constants.WINDOW_WIDTH - 20) + 20
+                donkey_pos [1] = rand.Float64() * float64 (constants.WINDOW_HEIGHT - 20) + 20
+                s.active_component.Set (donkey_id, true)
+            }()
+        }
+    }
+
+    flame_hit_player_react := func () {
+
+        flame_hit_player_chan := s.game_event_system.Subscribe (constants.GAME_EVENT_FLAME_HIT_PLAYER)
+
+        for _ = range (flame_hit_player_chan) {
+            utils.DebugPrintln ("\tYOU DIED BY FALLING IN A FIRE")
+            s.Stop()
+            // s.game.NextSceneChan() <- nil
+        }
+    }
+
+    go donkey_caught_react()
+    go flame_hit_player_react()
+
+}
+
 func (s *GameScene) Run () {
 
     // any scene-specific routines can be spawned in here
     utils.DebugPrintf ("\n\n\n=====================================\n")
     utils.DebugPrintf ("======== ADVENTURE BEGINNING ========\n\n\n\n")
 
-
-
     // spawn scene logic goroutine
-    scene_logic := func () {
-
-        donkey_caught_react := func () {
-            donkey_caught_chan := s.game_event_system.Subscribe (constants.GAME_EVENT_DONKEY_CAUGHT)
-            for _ = range (donkey_caught_chan) {
-                utils.DebugPrintln ("\tYOU CAUGHT A DONKEY")
-                // TODO: expand to actual inventory system
-                PRINT_DONKEY_INVENTORY := false
-                if PRINT_DONKEY_INVENTORY {
-                    inventory := []string{"1 x donkey fur", "2 x donkey ears", "3 x donkey whiskers", "4 x donkey meats"}
-                    for _, item := range (inventory) {
-                        utils.DebugPrintf ("\t\t* %s\n", item)
-                    }
-                }
-                // set donkey to respawn
-                // TODO: also simultaneously set invisible?
-                // TODO (possibly): separate "visible" component from "active"?
-                donkey_id := s.entity_manager.GetTagEntityUnique ("donkey")
-                s.active_component.Set (donkey_id, false)
-
-                // sleep 5 seconds before respawning the donkey
-                go func() {
-                    time.Sleep (time.Second * 5) // blocking
-                    donkey_pos := s.position_component.Get (donkey_id)
-                    donkey_pos [0] = rand.Float64() * float64 (constants.WINDOW_WIDTH - 20) + 20
-                    donkey_pos [1] = rand.Float64() * float64 (constants.WINDOW_HEIGHT - 20) + 20
-                    s.active_component.Set (donkey_id, true)
-                }()
-            }
-        }
-
-        flame_hit_player_react := func () {
-
-            flame_hit_player_chan := s.game_event_system.Subscribe (constants.GAME_EVENT_FLAME_HIT_PLAYER)
-
-            for _ = range (flame_hit_player_chan) {
-                utils.DebugPrintln ("\tYOU DIED BY FALLING IN A FIRE")
-                s.Stop()
-                // s.game.NextSceneChan() <- nil
-            }
-        }
-
-        go donkey_caught_react()
-        go flame_hit_player_react()
-
-    }
-
-    go scene_logic()
-
-
+    go s.SceneLogic()
 
     s.running = true
 

@@ -20,6 +20,8 @@ import (
     "github.com/veandco/go-sdl2/ttf"
 )
 
+const COLOR_CHANGE_MS = 50
+
 type MenuScene struct {
 
     // whether the scene is running
@@ -31,25 +33,26 @@ type MenuScene struct {
 
     // TODO figure out why go-sdl2 is failing when
     // closing two fonts from the same file
-    // title_font *ttf.Font
+    title_font *ttf.Font
     small_font *ttf.Font
 
     // for prerendering the below
-    rainbow_colors []sdl.Color 
+    rainbow_colors []sdl.Color
+
     // rainbow of title texts, prerendered
-    rainbow_surfaces []*sdl.Surface 
+    rainbow_surfaces []*sdl.Surface
     // textures of the above, for Renderer.Copy() in draw()
-    rainbow_textures []*sdl.Texture 
+    rainbow_textures []*sdl.Texture
     // for iterating thrugh the above
-    rainbow_index int 
-    // for accumulating dt's to manage color shifting in time 
-    rainbow_dt_accum float64 
+    rainbow_index int
+    // for accumulating dt's to manage color shifting in time
+    rainbow_dt_accum float64
     // message = "press space"
-    message_surface *sdl.Surface 
+    message_surface *sdl.Surface
     // texture of the above, for Renderer.Copy() in draw()
-    message_texture *sdl.Texture 
+    message_texture *sdl.Texture
     // for general timing, resets at 5000 ms to 0 ms
-    five_second_dt_accum float64 
+    five_second_dt_accum float64
 }
 
 
@@ -72,9 +75,9 @@ func (s *MenuScene) Init (game *engine.Game) chan bool {
 
         // TODO figure out why go-sdl2 is failing when
         // closing two fonts from the same file
-        // if s.title_font, err = ttf.OpenFont("assets/test.ttf", 24); err != nil {
-        //  panic(err)
-        // }
+        if s.title_font, err = ttf.OpenFont("assets/test.ttf", 32); err != nil {
+            panic(err)
+        }
 
         if s.small_font, err = ttf.OpenFont("assets/test.ttf", 16); err != nil {
             panic(err)
@@ -113,7 +116,7 @@ func (s *MenuScene) Init (game *engine.Game) chan bool {
             // closing two fonts from the same file
             // s.rainbow_surfaces[i], err = s.title_font.RenderUTF8Solid ("Donkeys QQuest", color)
             // create the surface
-            s.rainbow_surfaces[i], err = s.small_font.RenderUTF8Solid ("Donkeys QQuest", color)
+            s.rainbow_surfaces[i], err = s.title_font.RenderUTF8Solid ("Donkeys QQuest", color)
             if err != nil {
                 panic (err)
             }
@@ -148,7 +151,7 @@ func (s *MenuScene) Init (game *engine.Game) chan bool {
 
 }
 
-func (s *MenuScene) Stop () {
+func (s *MenuScene) Stop() {
     s.running = false
 }
 
@@ -162,9 +165,9 @@ func (s *MenuScene) IsRunning () bool {
 
 func (s *MenuScene) Update (dt_ms float64) {
     s.rainbow_dt_accum += dt_ms
-    for s.rainbow_dt_accum > 1000 {
+    for s.rainbow_dt_accum > COLOR_CHANGE_MS {
         s.rainbow_index++
-        s.rainbow_dt_accum -= 1000
+        s.rainbow_dt_accum -= COLOR_CHANGE_MS
         s.rainbow_index %= len (s.rainbow_colors)
     }
 
@@ -179,7 +182,7 @@ func (s *MenuScene) Update (dt_ms float64) {
 
 
 func (s *MenuScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
-    // fill background 
+    // fill background
     windowRect := sdl.Rect{0,
         0,
         constants.WINDOW_WIDTH,
@@ -192,10 +195,11 @@ func (s *MenuScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
     renderer.Copy (s.rainbow_textures [s.rainbow_index], nil, &dst)
 
     // write message ("press space")
-    dst = sdl.Rect{40,
-        int32 (165 + 20 * math.Sin (3 * 2 * math.Pi * s.five_second_dt_accum / 5000.0)),
-        constants.WINDOW_WIDTH - 80,
-        24}
+    x_offset := constants.WINDOW_WIDTH / 3
+    dst = sdl.Rect{x_offset,
+        int32 (180 + 12 * math.Sin (3 * 2 * math.Pi * s.five_second_dt_accum / 5000.0)),
+        constants.WINDOW_WIDTH - x_offset * 2,
+        20}
     renderer.Copy (s.message_texture, nil, &dst)
 }
 

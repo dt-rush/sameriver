@@ -12,21 +12,21 @@ package components
 
 
 import (
-	"fmt"
+    "fmt"
 
-	"github.com/dt-rush/donkeys-qquest/engine"
+    "github.com/dt-rush/donkeys-qquest/engine"
 )
 
 
 
 type ActiveComponent struct {
 
-	data map[int]bool
+    data map[int]bool
 
 }
 
 func (c *ActiveComponent) Init (capacity int, game *engine.Game) {
-	c.data = make (map[int]bool, capacity)
+    c.data = make (map[int]bool, capacity)
 }
 
 
@@ -35,29 +35,29 @@ func (c *ActiveComponent) Init (capacity int, game *engine.Game) {
 // TODO factor out the "get all active components with hitbox and position"
 // ...
 func (c *ActiveComponent) Has (id int) bool {
-	_, ok := c.data[id]
-	return ok
+    _, ok := c.data[id]
+    return ok
 }
 
 func (c *ActiveComponent) Get (id int) bool {
-	return c.data [id]
+    return c.data [id]
 }
 
 func (c *ActiveComponent) Set (id int, val interface{}) {
-	val_ := val.(bool)
-	c.data[id] = val_
+    val_ := val.(bool)
+    c.data[id] = val_
 }
 
 func (c *ActiveComponent) DefaultValue () interface{} {
-	return false
+    return false
 }
 
 func (c *ActiveComponent) String() string {
-	return fmt.Sprintf ("%v", c.data)
+    return fmt.Sprintf ("%v", c.data)
 }
 
 func (c *ActiveComponent) Name() string {
-	return "ActiveComponent"
+    return "ActiveComponent"
 }
 
 

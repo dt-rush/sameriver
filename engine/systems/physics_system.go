@@ -46,6 +46,12 @@ func (s *PhysicsSystem) Update (dt_ms float64) {
         // query entities or even check each entity, as to whether they
         // have position and velocity, we just assume all do, add this
         // checking using a bitarray component mapper
+
+        // TODO: also consider a way of defining tags which apply 
+        // based automatically on whether an entity has a set of
+        // components, so we can retrieve a list of all entities (ID's)
+        // which have position and velocity using a certain name, like
+        // "has_physics"
         if ! s.active_component.Get (id) {
             // don't update inactive entities
             continue

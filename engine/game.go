@@ -30,7 +30,6 @@ type Game struct {
     loading_scene Scene
 
     NextSceneChan chan Scene
-    scene_end_signal_chan chan bool
 
     func_profiler utils.FuncProfiler
 }
@@ -52,7 +51,6 @@ func (g *Game) Init (WINDOW_TITLE string,
     // set state
     g.running = true
     g.NextSceneChan = make (chan Scene, 1)
-    g.scene_end_signal_chan = make (chan bool)
     g.func_profiler = utils.FuncProfiler{}
     g.window, g.renderer = BuildWindowAndRenderer (
         WINDOW_TITLE,
@@ -105,7 +103,6 @@ func (g *Game) Destroy() {
 func (g *Game) EndCurrentScene() {
     if g.scene != nil {
         g.scene.Stop()
-        <-g.scene_end_signal_chan
     }
 }
 
@@ -113,8 +110,6 @@ func (g *Game) End() {
     utils.DebugPrintln ("in game.end()")
     g.EndCurrentScene()
     utils.DebugPrintln ("g.scene.stop() finished")
-    <-g.scene_end_signal_chan
-    utils.DebugPrintln ("got scene_end_signal_chan")
     g.running = false
     g.NextSceneChan <- nil
     utils.DebugPrintln ("g.destroy()")
@@ -129,7 +124,8 @@ func (g *Game) handleEvents () {
         switch t := event.(type) {
         case *sdl.QuitEvent:
             utils.DebugPrintf ("sdl.QuitEvent received: %v\n", t)
-            go g.End()
+            // notice we use a nonblocking goroutine 
+            g.End()
             return
         }
     }
@@ -137,7 +133,7 @@ func (g *Game) handleEvents () {
     keyboard_state := sdl.GetKeyboardState()
     if keyboard_state [sdl.SCANCODE_ESCAPE] == 1 {
         utils.DebugPrintf ("sdl.SCANCODE_ESCAPE was 1 in keyboard_state array\n")
-        go g.End()
+        g.End()
         return
     }
     g.scene.HandleKeyboardState (keyboard_state)
@@ -188,7 +184,7 @@ func (g *Game) runGameLoopOnScene (scene Scene) {
     accum := 0
     gameloop_counter := 0
     gameloop_ms_accum := 0.0
-    utils.DebugPrintf ("///  \\\\\\ %s starting to run\n",
+    utils.DebugPrintf ("\\\\\\  /// %s starting to run\n",
                         scene.Name())
     // loop
     for scene.IsRunning() {
@@ -211,18 +207,17 @@ func (g *Game) runGameLoopOnScene (scene Scene) {
                     g.renderer.Present()
                 })
             }
-            sdl.Delay (16)
             sdl.Do (g.handleEvents)
             scene.Update (dt_ms)
             t0 = t1
+            sdl.Delay (16)
         })
     }
-    utils.DebugPrintln ("\\\\\\\\//// %s stopped running.")
+    utils.DebugPrintf ("//// \\\\\\\\ %s stopped running.",
+                        scene.Name())
     utils.DebugPrintf ("[gameloop_ms_avg = %.3f]\n\n",
-                        scene.Name(),
                         float64 (gameloop_ms_accum) /
                             float64 (gameloop_counter))
-    g.scene_end_signal_chan <- true
 }
 
 

@@ -90,10 +90,6 @@ func (s *LoadingScene) IsRunning () bool {
     return s.running
 }
 
-
-
-
-
 func (s *LoadingScene) Update (dt_ms float64) {
 
     s.five_second_dt_accum += dt_ms
