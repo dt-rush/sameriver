@@ -16,7 +16,7 @@ func SpawnFlame (entity_manager *engine.EntityManager,
     active_component *components.ActiveComponent,
     position_component *components.PositionComponent,
     velocity_component *components.VelocityComponent,
-    color_component *components.ColorComponent,
+    // color_component *components.ColorComponent,
     hitbox_component *components.HitboxComponent,
     sprite_component *components.SpriteComponent,
     logic_component *components.LogicComponent,
@@ -26,7 +26,7 @@ func SpawnFlame (entity_manager *engine.EntityManager,
         engine.Component (active_component),
         engine.Component (position_component),
         engine.Component (velocity_component),
-        engine.Component (color_component),
+        // engine.Component (color_component),
         engine.Component (hitbox_component),
         engine.Component (sprite_component),
         engine.Component (logic_component),
@@ -46,8 +46,8 @@ func SpawnFlame (entity_manager *engine.EntityManager,
     flame_position := initial_position 
     position_component.Set (flame_id, flame_position)
 
-    flame_color := uint32 (0xffccaa33)
-    color_component.Set (flame_id, flame_color)
+    // flame_color := uint32 (0xffccaa33)
+    // color_component.Set (flame_id, flame_color)
 
     flame_hitbox := [2]float64{50, 50}
     hitbox_component.Set (flame_id, flame_hitbox)
@@ -112,8 +112,8 @@ func FlameLogic (flame_id int,
             vector_to_player[0] /= scale_factor
             vector_to_player[1] /= scale_factor
             // ... and trigger change of heading
-            heading [0] = 50 * (2 * (rand.Float64()*2 - 1) + vector_to_player [0])
-            heading [1] = 50 * (2 * (rand.Float64()*2 - 1) + vector_to_player [1])
+            heading [0] = 75 * (2 * (rand.Float64()*2 - 1) + vector_to_player [0])
+            heading [1] = 75 * (2 * (rand.Float64()*2 - 1) + vector_to_player [1])
             flame_vel [0] = heading [0]
             flame_vel [1] = heading [1]
 

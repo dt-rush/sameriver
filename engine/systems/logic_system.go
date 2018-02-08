@@ -25,7 +25,8 @@ type LogicSystem struct {
     logic_component *components.LogicComponent
 }
 
-func (s *LogicSystem) Init (entity_manager *engine.EntityManager,
+func (s *LogicSystem) Init (
+    entity_manager *engine.EntityManager,
     game_event_system *engine.GameEventSystem,
     logic_component *components.LogicComponent) {
 

@@ -90,17 +90,6 @@ func (m *EntityManager) SpawnEntity (components []Component) int {
     return id
 }
 
-// given a list of lists of components, return the result of
-// mapping spawn_entity() over the list of lists of components
-// returns a list of IDs, therefore
-func (m *EntityManager) SpawnEntities (args [][]Component) []int {
-    ids := make ([]int, len (args))
-    for _, arg := range args {
-        ids = append (ids, m.SpawnEntity (arg))
-    }
-    return ids
-}
-
 // seems the array shift makes this inefficient.
 // TODO this is probably thread-unsafe
 func (m *EntityManager) DespawnEntity (id int) {

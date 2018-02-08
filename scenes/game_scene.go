@@ -197,7 +197,7 @@ func (s *GameScene) spawn_entities() {
             &s.active_component,
             &s.position_component,
             &s.velocity_component,
-            &s.color_component,
+            // &s.color_component,
             &s.hitbox_component,
             &s.sprite_component,
             &s.logic_component,
@@ -310,10 +310,6 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
                 continue
             }
 
-            // TODO refactor .has() to be recorded by a component using
-            // a map[int]bitarray backing
-            // detecting if this entity has a sprite
-            has_sprite := s.entity_manager.EntityHasComponent (i, &s.sprite_component)
 
             pos := s.position_component.Get (i)
             // ss_pos == "screen-space pos"
@@ -323,31 +319,33 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
             ss_pos := make ([]int32, 2)
             ss_pos [0] = int32 (pos [0] - (box [0] / 2))
             ss_pos [1] = constants.WINDOW_HEIGHT - (int32 (pos [1]) + int32 (box [1] / 2))
-            screen_rect := sdl.Rect{ss_pos [0],
+            entity_screen_rect := sdl.Rect{ss_pos [0],
                 ss_pos [1],
                 int32 (box [0]),
                 int32 (box [1])}
 
 
 
+            if s.entity_manager.EntityHasComponent (i, &s.color_component) {
+                color := s.color_component.Get (i)
+                // extracting color components from 
+                // uint32 ARGB to uint8 RGBA params
+                renderer.SetDrawColor (
+                    uint8 ((color & 0x00ff0000) >> 16),
+                    uint8 ((color & 0x0000ff00) >> 8),
+                    uint8 ((color & 0x000000ff) >> 0),
+                    uint8 ((color & 0xff000000) >> 24))
+                renderer.FillRect (&entity_screen_rect)
+            }
 
-            color := s.color_component.Get (i)
-            // extracting color components from uint32 ARGB to uint8 RGBA params
-            renderer.SetDrawColor (uint8 ((color & 0x00ff0000) >> 16),
-                uint8 ((color & 0x0000ff00) >> 8),
-                uint8 ((color & 0x000000ff) >> 0),
-                uint8 ((color & 0xff000000) >> 24))
-            renderer.FillRect (&screen_rect)
 
-
-
-            if has_sprite {
+            if s.entity_manager.EntityHasComponent (i, &s.sprite_component) {
                 // implement component data in sprite_component for these as well?
                 var angle float64 = 0
                 var center_p *sdl.Point = nil
                 renderer.CopyEx (s.sprite_component.Get (i),
                     nil,
-                    &screen_rect,
+                    &entity_screen_rect,
                     angle,
                     center_p,
                     s.sprite_component.GetFlip (i))
@@ -355,9 +353,9 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
 
 
             // paint a little white rect where the corner of the box is
-            renderer.SetDrawColor (255, 255, 255, 255)
-            small_rect := sdl.Rect{ss_pos[0], ss_pos[1], 4, 4}
-            renderer.FillRect (&small_rect)
+            // renderer.SetDrawColor (255, 255, 255, 255)
+            // small_rect := sdl.Rect{ss_pos[0], ss_pos[1], 4, 4}
+            // renderer.FillRect (&small_rect)
 
         }
     })
