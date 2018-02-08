@@ -6,19 +6,20 @@ donkeys-qquest
 
 RPG Quest for Donkey Based Plot Items, Action Adventures, Shopkeepers and Dungeons
 
-Will you save the world? Will you rescue Old Man Willis's garden from gophers? What secrets are hidden under the church? Who *are* you and *why are you alive*?
+Will you save the world? Will you rescue Old Man's garden from gophers? What secrets are hidden under the church? Who *are* you and *why are you alive*?
 
-> Inspecting donkey corpse...
->     you found: 
->         donkey pelt x 1
->         donkey ears x 2
->         donkey hooves x 4
->         donkey whiskers x 32
->         gold x 100
->         ruby x 3
->         magic shield x 2
->         health potion x 2
-
+```
+Inspecting donkey corpse...
+    you found: 
+        donkey pelt x 1
+        donkey ears x 2
+        donkey hooves x 4
+        donkey whiskers x 32
+        gold x 100
+        ruby x 3
+        magic shield x 2
+        health potion x 2
+```
 -- ancient proverb
 
 
@@ -27,9 +28,9 @@ Will you save the world? Will you rescue Old Man Willis's garden from gophers? W
 
 #### a. General engine design
 
-###### game logic
+###### entity component system 
 
-The *game logic* is built on an "entity-component-system" architecture, in which:
+The engine is built on an "entity-component-system" architecture, in which:
 
 **Components** are collections of a certain type of data indexed by the ID's of entities. For example, a position component is at bottom a map[int]\([2]float64\)
 
@@ -37,9 +38,9 @@ The *game logic* is built on an "entity-component-system" architecture, in which
 
 **Systems** are collections of logic which operate on subsets of components. 
  
-###### display logic
+###### scenes 
  
-The *display logic* is built on a "scene-based" architecture, in which:
+The engine is also built on a "scene-based" architecture, in which:
 
 **Scenes** are responsible for actually running and displaying game content. They contain various components (in the future, only *references* to components, all of which will be registered and stored with the singleton Game object) and systems needed to support their operation. They are updated each game loop iteration, receiving: 
 
@@ -50,45 +51,4 @@ The *display logic* is built on a "scene-based" architecture, in which:
 Currently, only one active scene can exist at a time, and scenes are destroyed as they pass their successor scene to the game loop (they are initialized and loaded in the background while a singleton loading scene will be displayed until the new scene is ready to take over). In the future, it will be possible to push scenes to a stack and pop them off without destroying the underlying prior scene (ie. for cinematics, menu navigation, "battles", etc.)
 
 ^1. It's possible that the game loop will not draw every iteration in order to keep a certain framerate
-
-
-##### b. Package / folder structure
-
-All subfolders (other than `assets/`) are named for the packages of the source files they contain.
-
-The packages described generally:
-
-* engine
-
-The game engine structs and functions, providing the abstract backbone on which the actual game logic is built. Can and should be abstractly separated in future from the other folders / packages which are the actual donkeys-qquest content (a game *buiilt* on the engine)
-
-* engine/components
-
-Definitions for the different types of components
-
-* engine/systems
-
-Definitions of systems
-
-* constants
-
-Definitions of game constants (should not be used for constant *content*, which should probably be in .json files in `assets/`)
-
-* logic
-
-Definitions of game logic (functions, really), to be loaded into various systems / scenes
-
-* main
-
-Holds main.go, the executable entrypoint, from whichh the game engine is initialized, and the game loop run (TODO: migrate even game loop logic into engine)
-
-* scenes
-
-Definitions of scenes 
-
-* utils
-
-Holds utilites for development, debugging, profiling, content-generation
-
-
 
