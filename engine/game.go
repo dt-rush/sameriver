@@ -52,10 +52,15 @@ func (g *Game) Init (WINDOW_TITLE string,
     g.running = true
     g.NextSceneChan = make (chan Scene, 1)
     g.func_profiler = utils.FuncProfiler{}
+
+    // build the window and renderer
     g.window, g.renderer = BuildWindowAndRenderer (
         WINDOW_TITLE,
         WINDOW_WIDTH,
         WINDOW_HEIGHT)
+
+    // hide the cursor
+    sdl.ShowCursor (0)
 }
 
 func (g *Game) InitSystems() {

@@ -75,11 +75,11 @@ func (s *MenuScene) Init (game *engine.Game) chan bool {
 
         // TODO figure out why go-sdl2 is failing when
         // closing two fonts from the same file
-        if s.title_font, err = ttf.OpenFont("assets/test.ttf", 32); err != nil {
+        if s.title_font, err = ttf.OpenFont("assets/test.ttf", 16); err != nil {
             panic(err)
         }
 
-        if s.small_font, err = ttf.OpenFont("assets/test.ttf", 16); err != nil {
+        if s.small_font, err = ttf.OpenFont("assets/test.ttf", 10); err != nil {
             panic(err)
         }
 
@@ -191,7 +191,11 @@ func (s *MenuScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
     renderer.FillRect (&windowRect)
 
     // write title
-    dst := sdl.Rect{20, 100, 355, 64}
+    dst := sdl.Rect{
+        constants.WINDOW_WIDTH / 8,
+        (constants.WINDOW_HEIGHT * 3) / 8,
+        (constants.WINDOW_WIDTH * 6) / 8, 
+        constants.WINDOW_HEIGHT / 8}
     renderer.Copy (s.rainbow_textures [s.rainbow_index], nil, &dst)
 
     // write message ("press space")

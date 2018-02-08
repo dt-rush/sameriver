@@ -14,6 +14,7 @@ import (
  */
 func BuildWindowAndRenderer (window_title string, width int32, height int32) (*sdl.Window, *sdl.Renderer) {
 
+    // create the window
     window, err := sdl.CreateWindow (window_title,
         sdl.WINDOWPOS_UNDEFINED,
         sdl.WINDOWPOS_UNDEFINED,
@@ -23,6 +24,7 @@ func BuildWindowAndRenderer (window_title string, width int32, height int32) (*s
         panic(err)
     }
 
+    // create the renderer
     renderer, err := sdl.CreateRenderer (window,
         -1,
         sdl.RENDERER_SOFTWARE)
@@ -30,10 +32,10 @@ func BuildWindowAndRenderer (window_title string, width int32, height int32) (*s
         panic (err)
     }
 
-    window_w, window_h := window.GetSize() 
+    // set renderer scale
+    window_w, window_h := window.GetSize()
     utils.DebugPrintf ("window.GetSize() (w x h): %d x %d\n",
                         window_w, window_h)
-    // renderer.SetLogicalSize (width, height)
     sdl.SetHint (sdl.HINT_RENDER_SCALE_QUALITY, "linear")
     scale_w := float32 (window_w) / float32 (width)
     scale_h := float32 (window_h) / float32 (height)
