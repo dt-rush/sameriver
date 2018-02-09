@@ -13,16 +13,18 @@ func SpawnDonkey (entity_manager *engine.EntityManager,
     active_component *components.ActiveComponent,
     position_component *components.PositionComponent,
     velocity_component *components.VelocityComponent,
-    color_component *components.ColorComponent,
+    // color_component *components.ColorComponent,
     hitbox_component *components.HitboxComponent,
+    sprite_component *components.SpriteComponent,
     logic_component *components.LogicComponent) int {
 
     donkey_components := []engine.Component{
         engine.Component (active_component),
         engine.Component (position_component),
         engine.Component (velocity_component),
-        engine.Component (color_component),
+        // engine.Component (color_component),
         engine.Component (hitbox_component),
+        engine.Component (sprite_component),
         engine.Component (logic_component),
     }
 
@@ -36,11 +38,14 @@ func SpawnDonkey (entity_manager *engine.EntityManager,
     donkey_position := [2]float64 {float64(constants.WINDOW_WIDTH/2) + 40, float64(constants.WINDOW_HEIGHT/2) + 40}
     position_component.Set (donkey_id, donkey_position)
 
-    donkey_color := uint32 (0xff776622)
-    color_component.Set (donkey_id, donkey_color)
+    // donkey_color := uint32 (0xff776622)
+    // color_component.Set (donkey_id, donkey_color)
 
     donkey_hitbox := [2]float64{24, 24}
     hitbox_component.Set (donkey_id, donkey_hitbox)
+
+    donkey_sprite := sprite_component.IndexOf ("donkey.png")
+    sprite_component.Set (donkey_id, donkey_sprite)
 
     // add donkey logic
 

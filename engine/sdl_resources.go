@@ -41,5 +41,8 @@ func BuildWindowAndRenderer (window_title string, width int32, height int32) (*s
     scale_h := float32 (window_h) / float32 (height)
     renderer.SetScale (scale_w, scale_h)
 
+    // set renderer alpha
+    renderer.SetDrawBlendMode (sdl.BLENDMODE_NONE)
+
     return window, renderer
 }

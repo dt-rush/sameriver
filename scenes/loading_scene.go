@@ -9,6 +9,16 @@
 
 package scenes
 
+// #cgo windows LDFLAGS: -lSDL2
+// #cgo linux freebsd darwin pkg-config: sdl2
+// #if defined(_WIN32)
+//   #include <SDL2/SDL.h>
+//   #include <stdlib.h>
+// #else
+//   #include <SDL.h>
+// #endif
+import "C"
+
 import (
     "math"
 
@@ -136,6 +146,8 @@ func (s *LoadingScene) Destroy() {
 
         s.message_font.Close()
         s.message_surface.Free()
+        // TODO: is there not a go-sdl2 version of this?
+        C.SDL_DestroyTexture((*C.struct_SDL_Texture)(s.message_texture))
 
     }
     s.destroyed = true

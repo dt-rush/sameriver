@@ -9,7 +9,18 @@
 
 package scenes
 
+// #cgo windows LDFLAGS: -lSDL2
+// #cgo linux freebsd darwin pkg-config: sdl2
+// #if defined(_WIN32)
+//   #include <SDL2/SDL.h>
+//   #include <stdlib.h>
+// #else
+//   #include <SDL.h>
+// #endif
+import "C"
+
 import (
+    "fmt"
     "time"
     "math/rand"
 
@@ -22,6 +33,7 @@ import (
     "github.com/dt-rush/donkeys-qquest/logic"
 
     "github.com/veandco/go-sdl2/sdl"
+    "github.com/veandco/go-sdl2/ttf"
 )
 
 type GameScene struct {
@@ -76,6 +88,16 @@ type GameScene struct {
     physics_system systems.PhysicsSystem
     // logic system
     logic_system systems.LogicSystem
+
+    // score of player in this scene
+    score int
+    score_font *ttf.Font
+    // score
+    score_surface *sdl.Surface
+    // texture of the above, for Renderer.Copy() in draw()
+    score_texture *sdl.Texture
+    // score texture screen width
+    score_rect sdl.Rect
 
     // utilities
     // function profiler
@@ -162,7 +184,8 @@ func (s *GameScene) spawn_entities() {
 
     // spawn a player
 
-    s.player_id = entities.SpawnPlayer (&s.entity_manager,
+    s.player_id = entities.SpawnPlayer (
+        &s.entity_manager,
         &s.active_component,
         &s.position_component,
         &s.velocity_component,
@@ -172,12 +195,14 @@ func (s *GameScene) spawn_entities() {
 
     // spawn a donkey
 
-    s.donkey_id = entities.SpawnDonkey (&s.entity_manager,
+    s.donkey_id = entities.SpawnDonkey (
+        &s.entity_manager,
         &s.active_component,
         &s.position_component,
         &s.velocity_component,
-        &s.color_component,
+        // &s.color_component,
         &s.hitbox_component,
+        &s.sprite_component,
         &s.logic_component)
 
     // spawn N_FLAMES
@@ -194,7 +219,8 @@ func (s *GameScene) spawn_entities() {
             float64 (int (constants.WINDOW_HEIGHT - 50)  * corners [1] + 25),
         }
 
-        entities.SpawnFlame (&s.entity_manager,
+        entities.SpawnFlame (
+            &s.entity_manager,
             &s.active_component,
             &s.position_component,
             &s.velocity_component,
@@ -211,6 +237,8 @@ func (s *GameScene) Init (game *engine.Game) chan bool {
 
     init_done_signal_chan := make (chan bool)
     s.game = game
+
+    s.score = 0
 
     go func () {
         s.destroyed = false
@@ -233,6 +261,13 @@ func (s *GameScene) Init (game *engine.Game) chan bool {
         s.add_collision_logic()
         // spawn some entities
         s.spawn_entities()
+        // load the score font
+        var err error
+        if s.score_font , err = ttf.OpenFont ("./assets/test.ttf", 12); err != nil {
+            panic(err)
+        }
+        // set up the score surface/texture
+        s.update_score_texture()
 
         // just to play a little loading screen fun
         time.Sleep (1 * time.Second)
@@ -241,25 +276,56 @@ func (s *GameScene) Init (game *engine.Game) chan bool {
     return init_done_signal_chan
 }
 
+func (s *GameScene) update_score_texture () {
+    if s.score_surface != nil {
+        s.score_surface.Free()
+    }
+    if s.score_texture != nil {
+        C.SDL_DestroyTexture ((*C.struct_SDL_Texture)(s.score_texture))
+    }
+    // render message ("press space") surface
+    score_msg := fmt.Sprintf ("%d", s.score)
+    var err error
+    s.score_surface, err = s.score_font.RenderUTF8Solid (
+        score_msg,
+        sdl.Color{255, 255, 255, 255})
+    if err != nil {
+        panic (err)
+    }
+    // create the texture
+    s.score_texture, err = s.game.CreateTextureFromSurface (s.score_surface)
+    if err != nil {
+        panic (err)
+    }
+    // set the width of the texture on screen
+    s.score_rect = sdl.Rect{
+        10,
+        10,
+        int32 (len (score_msg) * 20),
+        20}
+}
+
+
+
 func (s *GameScene) Stop () {
     utils.DebugPrintf ("\n\n\n======== ADVENTURE OVER ========\n")
     utils.DebugPrintf ("================================\n\n\n")
     utils.DebugPrintf ("collision_detection_ms_avg = %.3f ms\n",
         float64 (s.collision_detection_ms_accum) /
         float64 (s.collision_detection_count))
-    utils.DebugPrintf ("physics_ms_avg = %.3f ms\n", 
+    utils.DebugPrintf ("physics_ms_avg = %.3f ms\n",
         float64 (s.physics_ms_accum) /
         float64 (s.physics_count))
-    utils.DebugPrintf ("draw_ms_avg = %.3f ms\n", 
+    utils.DebugPrintf ("draw_ms_avg = %.3f ms\n",
         float64 (s.draw_ms_accum) /
         float64 (s.draw_count))
-    utils.DebugPrintf ("logic_ms_avg = %.3f ms\n", 
+    utils.DebugPrintf ("logic_ms_avg = %.3f ms\n",
         float64 (s.logic_ms_accum) /
         float64 (s.logic_count))
     // set this scene not running
     s.running = false
     // actually ends the game
-    s.game.NextSceneChan <- nil
+    // s.game.NextSceneChan <- nil
 }
 
 func (s *GameScene) IsRunning () bool {
@@ -307,18 +373,22 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
     s.draw_count++
     s.draw_ms_accum += s.func_profiler.Time (func () {
 
-        renderer.SetDrawColor (0, 0, 0, 255)
+        renderer.SetDrawColor (0, 0, 0, 200)
         renderer.FillRect (&sdl.Rect{0, 0, int32 (constants.WINDOW_WIDTH), int32 (constants.WINDOW_HEIGHT)})
 
+        renderer.Copy (
+            s.score_texture,
+            nil,
+            &s.score_rect)
+
         // TODO refactor to go through only entities registered
-        // with a draw system to avoid this index checking
+        // with a draw system to avoid checking EntityHasComponent 
         for _, i := range s.entity_manager.Entities() {
 
             if ! s.active_component.Get (i) {
                 // don't draw inactive entities
                 continue
             }
-
 
             pos := s.position_component.Get (i)
             // ss_pos == "screen-space pos"
@@ -332,7 +402,6 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
                 ss_pos [1],
                 int32 (box [0]),
                 int32 (box [1])}
-
 
 
             if s.entity_manager.EntityHasComponent (i, &s.color_component) {
@@ -425,8 +494,12 @@ func (s *GameScene) SceneLogic () {
         donkey_caught_chan := s.game_event_system.Subscribe (constants.GAME_EVENT_DONKEY_CAUGHT)
         for _ = range (donkey_caught_chan) {
             utils.DebugPrintln ("\tYOU CAUGHT A DONKEY")
+
+            s.score += 1
+            s.update_score_texture()
+
             // TODO: expand to actual inventory system
-            PRINT_DONKEY_INVENTORY := false
+            PRINT_DONKEY_INVENTORY := true
             if PRINT_DONKEY_INVENTORY {
                 inventory := []string{"1 x donkey fur", "2 x donkey ears", "3 x donkey whiskers", "4 x donkey meats"}
                 for _, item := range (inventory) {
@@ -456,7 +529,10 @@ func (s *GameScene) SceneLogic () {
 
         for _ = range (flame_hit_player_chan) {
             utils.DebugPrintln ("\tYOU DIED BY FALLING IN A FIRE")
+            game_scene := GameScene{}
+            s.game.NextSceneChan <- &game_scene
             s.Stop()
+            break
             // s.game.NextSceneChan() <- nil
         }
     }
