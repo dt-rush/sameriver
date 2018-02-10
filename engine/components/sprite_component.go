@@ -116,7 +116,7 @@ func (c *SpriteComponent) Init (capacity int, game *engine.Game) {
             log_err (err)
             continue
         }
-        c.sprites [i], err = game.CreateTextureFromSurface (surface)
+        c.sprites [i], err = game.Renderer.CreateTextureFromSurface (surface)
         if err != nil {
             log_err (err)
             continue
@@ -126,12 +126,11 @@ func (c *SpriteComponent) Init (capacity int, game *engine.Game) {
 
 }
 
-
-
-// TODO implement
-// func (c *SpriteComponent) destroy() {
-
-// }
+func (c *SpriteComponent) Destroy() {
+    for _, sprite := range (c.sprites) {
+        sprite.Destroy()
+    }
+}
 
 
 

@@ -19,6 +19,7 @@ type Scene interface {
     Update (dt_ms int)
     Draw (window *sdl.Window, renderer *sdl.Renderer)
     HandleKeyboardState (keyboard_state []uint8)
+    HandleKeyboardEvent (keyboard_event *sdl.KeyboardEvent)
     IsRunning() bool
     Stop()
     Name() string

@@ -4,7 +4,7 @@ package engine
 import (
     "github.com/veandco/go-sdl2/sdl"
 
-    "github.com/dt-rush/donkeys-qquest/utils"
+    "github.com/dt-rush/donkeys-qquest/engine/utils"
 )
 
 
@@ -27,7 +27,7 @@ func BuildWindowAndRenderer (window_title string, width int32, height int32) (*s
     // create the renderer
     renderer, err := sdl.CreateRenderer (window,
         -1,
-        sdl.RENDERER_SOFTWARE)
+        sdl.RENDERER_SOFTWARE | sdl.RENDERER_TARGETTEXTURE)
     if err != nil {
         panic (err)
     }
@@ -42,7 +42,7 @@ func BuildWindowAndRenderer (window_title string, width int32, height int32) (*s
     renderer.SetScale (scale_w, scale_h)
 
     // set renderer alpha
-    renderer.SetDrawBlendMode (sdl.BLENDMODE_NONE)
+    renderer.SetDrawBlendMode (sdl.BLENDMODE_BLEND)
 
     return window, renderer
 }

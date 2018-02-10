@@ -16,7 +16,7 @@ func (t *TimeAccumulator) Tick (dt int) bool {
     t.Accum += dt
     had_tick := false
     for t.Accum >= t.Period {
-        t.Accum -= t.Period
+        t.Accum %= t.Period
         had_tick = true
     }
     return had_tick

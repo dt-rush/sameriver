@@ -10,18 +10,18 @@ Build Dependencies
 
 apt:
 
-* libsdl2{,-mixer,-image,-ttf}-dev
+* libsdl2{,-mixer,-image,-ttf,-gfx}-dev
 
 pacman:
 
-* sdl2{,_mixer,_image,_ttf} 
+* sdl2{,_mixer,_image,_ttf,_gfx}
 
 **windows: mingw env packages (install from source)**
 
 * SDL2-devel-2.0.5-mingw.tar.gz
 * SDL2_image-devel-2.0.1-mingw.tar.gz
 * SDL2_mixer-devel-2.0.1-mingw.tar.gz
-* SDL2_ttf-devel-2.0.14-mingw.tar.gz 
+* SDL2_ttf-devel-2.0.14-mingw.tar.gz
 
 
 **go packages (go get)**

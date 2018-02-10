@@ -9,25 +9,16 @@
 
 package scenes
 
-// #cgo windows LDFLAGS: -lSDL2
-// #cgo linux freebsd darwin pkg-config: sdl2
-// #if defined(_WIN32)
-//   #include <SDL2/SDL.h>
-//   #include <stdlib.h>
-// #else
-//   #include <SDL.h>
-// #endif
-import "C"
-
 import (
     "fmt"
     "time"
     "math/rand"
 
-    "github.com/dt-rush/donkeys-qquest/utils"
     "github.com/dt-rush/donkeys-qquest/engine"
+    "github.com/dt-rush/donkeys-qquest/engine/utils"
     "github.com/dt-rush/donkeys-qquest/engine/components"
     "github.com/dt-rush/donkeys-qquest/engine/systems"
+
     "github.com/dt-rush/donkeys-qquest/constants"
     "github.com/dt-rush/donkeys-qquest/entities"
     "github.com/dt-rush/donkeys-qquest/logic"
@@ -281,7 +272,7 @@ func (s *GameScene) update_score_texture () {
         s.score_surface.Free()
     }
     if s.score_texture != nil {
-        C.SDL_DestroyTexture ((*C.struct_SDL_Texture)(s.score_texture))
+        s.score_texture.Destroy()
     }
     // render message ("press space") surface
     score_msg := fmt.Sprintf ("%d", s.score)
@@ -293,7 +284,7 @@ func (s *GameScene) update_score_texture () {
         panic (err)
     }
     // create the texture
-    s.score_texture, err = s.game.CreateTextureFromSurface (s.score_surface)
+    s.score_texture, err = s.game.Renderer.CreateTextureFromSurface (s.score_surface)
     if err != nil {
         panic (err)
     }
@@ -324,6 +315,7 @@ func (s *GameScene) Stop () {
         float64 (s.logic_count))
     // set this scene not running
     s.running = false
+    
     // actually ends the game
     // s.game.NextSceneChan <- nil
 }
@@ -373,9 +365,7 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
     s.draw_count++
     s.draw_ms_accum += s.func_profiler.Time (func () {
 
-        renderer.SetDrawColor (0, 0, 0, 200)
-        renderer.FillRect (&sdl.Rect{0, 0, int32 (constants.WINDOW_WIDTH), int32 (constants.WINDOW_HEIGHT)})
-
+        // draw the score
         renderer.Copy (
             s.score_texture,
             nil,
@@ -465,22 +455,20 @@ func (s *GameScene) HandleKeyboardState (keyboard_state []uint8) {
 
 }
 
+func (s *GameScene) HandleKeyboardEvent (keyboard_event *sdl.KeyboardEvent) {
+    // null implementation
+}
+
 func (s *GameScene) Destroy() {
     // destroy resources claimed
     if ! s.destroyed {
         // using sdl.Do to avoid an issue described in comments
         // in menuscene.go
         sdl.Do (func () {
-            // TODO: does this actually matter? currently
-            // main() exits when gamescene ends, and the only way
-            // this scene ends is to return nil, so hey...
-
-            // TODO: philosophical debate
-            // it's unclear whether gamescene will ever stop running
-            // or just push other scenes on a stack (currently the
-            // main() and Game logic don't support this)
-
-            // delete any resources held
+            s.score_surface.Free()
+            s.score_texture.Destroy()
+            s.score_font.Close()
+            s.sprite_component.Destroy()
         })
 
         s.destroyed = true
@@ -516,8 +504,10 @@ func (s *GameScene) SceneLogic () {
             go func() {
                 time.Sleep (time.Second * 5) // blocking
                 donkey_pos := s.position_component.Get (donkey_id)
-                donkey_pos [0] = rand.Float64() * float64 (constants.WINDOW_WIDTH - 20) + 20
-                donkey_pos [1] = rand.Float64() * float64 (constants.WINDOW_HEIGHT - 20) + 20
+                donkey_pos [0] = rand.Float64() * 
+                    float64 (constants.WINDOW_WIDTH - 20) + 20
+                donkey_pos [1] = rand.Float64() * 
+                    float64 (constants.WINDOW_HEIGHT - 20) + 20
                 s.active_component.Set (donkey_id, true)
             }()
         }
@@ -525,15 +515,16 @@ func (s *GameScene) SceneLogic () {
 
     flame_hit_player_react := func () {
 
-        flame_hit_player_chan := s.game_event_system.Subscribe (constants.GAME_EVENT_FLAME_HIT_PLAYER)
+        flame_hit_player_chan := s.game_event_system.Subscribe (
+            constants.GAME_EVENT_FLAME_HIT_PLAYER)
 
         for _ = range (flame_hit_player_chan) {
             utils.DebugPrintln ("\tYOU DIED BY FALLING IN A FIRE")
-            game_scene := GameScene{}
-            s.game.NextSceneChan <- &game_scene
+            game_over_scene := GameOverScene{}
+            s.game.NextScene = &game_over_scene
             s.Stop()
+            // stop listening for these events by breaking 
             break
-            // s.game.NextSceneChan() <- nil
         }
     }
 
@@ -552,6 +543,8 @@ func (s *GameScene) Run () {
     go s.SceneLogic()
 
     s.running = true
+
+    utils.DebugPrintln ("GameScene.Run() completed.")
 
 }
 

@@ -14,7 +14,7 @@ import (
 
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/dt-rush/donkeys-qquest/constants"
-    "github.com/dt-rush/donkeys-qquest/utils"
+    "github.com/dt-rush/donkeys-qquest/engine/utils"
 
     "github.com/veandco/go-sdl2/sdl"
     "github.com/veandco/go-sdl2/ttf"
@@ -64,24 +64,22 @@ func (s *MenuScene) Init (game *engine.Game) chan bool {
 
     s.game = game
     init_done_signal_chan := make (chan bool)
+    s.destroyed = false
 
     go func () {
 
-        s.destroyed = false
-
         var err error
+        // used to render text to textures
+        var surface *sdl.Surface
 
         // load fonts
 
         // TODO figure out why go-sdl2 is failing when
         // closing two fonts from the same file
-        if s.title_font, err = ttf.OpenFont("assets/test.ttf", 16); err != nil {
-            panic(err)
-        }
-
-        if s.small_font, err = ttf.OpenFont("assets/test.ttf", 10); err != nil {
-            panic(err)
-        }
+        s.title_font, err = ttf.OpenFont("assets/test.ttf", 16)
+        if err != nil { panic(err) }
+        s.small_font, err = ttf.OpenFont("assets/test.ttf", 10)
+        if err != nil { panic(err) }
 
         // create rainbow of title surfaces
         s.rainbow_colors = []sdl.Color{sdl.Color{255, 128, 237, 19},
@@ -101,30 +99,25 @@ func (s *MenuScene) Init (game *engine.Game) chan bool {
             sdl.Color{255, 39, 250, 96},
             sdl.Color{255, 80, 253, 51}}
 
-        s.rainbow_surfaces = make ([]*sdl.Surface, len (s.rainbow_colors))
         s.rainbow_textures = make ([]*sdl.Texture, len (s.rainbow_colors))
 
         // render rainbow of titles
 
         // iterate the rainbow colors
         // and prerender the text at the given rainbow color
-        for i, _ := range s.rainbow_surfaces {
+        for i := 0; i < len (s.rainbow_colors); i++ {
 
             color := s.rainbow_colors [i]
 
-            // TODO figure out why go-sdl2 is failing when
-            // closing two fonts from the same file
-            // s.rainbow_surfaces[i], err = s.title_font.RenderUTF8Solid ("Donkeys QQuest", color)
             // create the surface
-            s.rainbow_surfaces[i], err = s.title_font.RenderUTF8Solid ("Donkeys QQuest", color)
-            if err != nil {
-                panic (err)
-            }
+            surface, err = s.title_font.RenderUTF8Solid (
+                "Donkeys QQuest", color)
+            if err != nil { panic (err) }
             // create the texture
-            s.rainbow_textures[i], err = s.game.CreateTextureFromSurface (s.rainbow_surfaces [i])
-            if err != nil {
-                panic (err)
-            }
+            s.rainbow_textures[i], err = s.game.Renderer.CreateTextureFromSurface (surface)
+            if err != nil { panic (err) }
+            // free the surface we used
+            surface.Free()
         }
 
         s.rainbow_index = 0
@@ -133,17 +126,15 @@ func (s *MenuScene) Init (game *engine.Game) chan bool {
         s.accum_5000 = engine.CreateTimeAccumulator (5000)
 
         // render message ("press space") surface
-
-        s.message_surface, err = s.small_font.RenderUTF8Solid ("Press Space",
+        surface, err = s.small_font.RenderUTF8Solid ("Press Space",
             sdl.Color{255, 255, 255, 255})
-        if err != nil {
-            panic (err)
-        }
+        if err != nil { panic (err) }
         // create the texture
-        s.message_texture, err = s.game.CreateTextureFromSurface (s.message_surface)
-        if err != nil {
-            panic (err)
-        }
+        s.message_texture, err = s.game.Renderer.CreateTextureFromSurface (surface)
+        if err != nil { panic (err) }
+        // free the surface we used
+        surface.Free()
+
         init_done_signal_chan <- true
     }()
 
@@ -179,13 +170,6 @@ func (s *MenuScene) Update (dt_ms int) {
 
 
 func (s *MenuScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
-    // fill background
-    windowRect := sdl.Rect{0,
-        0,
-        constants.WINDOW_WIDTH,
-        constants.WINDOW_HEIGHT}
-    renderer.SetDrawColor (0, 0, 0, 255)
-    renderer.FillRect (&windowRect)
 
     // write title
     title_dst := sdl.Rect{
@@ -209,7 +193,7 @@ func (s *MenuScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
 
 func (s *MenuScene) transition () {
     game_scene := GameScene{}
-    s.game.PushScene (&game_scene)
+    s.game.NextScene = &game_scene
     s.Stop()
 }
 
@@ -219,6 +203,10 @@ func (s *MenuScene) HandleKeyboardState (keyboard_state []uint8) {
     if k [sdl.SCANCODE_SPACE] == 1 {
         s.transition()
     }
+}
+
+func (s *MenuScene) HandleKeyboardEvent (keyboard_event *sdl.KeyboardEvent) {
+    // null implementation
 }
 
 func (s *MenuScene) Destroy() {

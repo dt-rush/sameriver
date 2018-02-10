@@ -9,22 +9,12 @@
 
 package scenes
 
-// #cgo windows LDFLAGS: -lSDL2
-// #cgo linux freebsd darwin pkg-config: sdl2
-// #if defined(_WIN32)
-//   #include <SDL2/SDL.h>
-//   #include <stdlib.h>
-// #else
-//   #include <SDL.h>
-// #endif
-import "C"
-
 import (
     "math"
 
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/dt-rush/donkeys-qquest/constants"
-    "github.com/dt-rush/donkeys-qquest/utils"
+    "github.com/dt-rush/donkeys-qquest/engine/utils"
 
     "github.com/veandco/go-sdl2/sdl"
     "github.com/veandco/go-sdl2/ttf"
@@ -85,7 +75,7 @@ func (s *LoadingScene) Init (game *engine.Game) chan bool {
                 panic (err)
             }
             // create the texture
-            s.message_texture, err = s.game.CreateTextureFromSurface (s.message_surface)
+            s.message_texture, err = s.game.Renderer.CreateTextureFromSurface (s.message_surface)
             if err != nil {
                 panic (err)
             }
@@ -97,6 +87,7 @@ func (s *LoadingScene) Init (game *engine.Game) chan bool {
 }
 
 func (s *LoadingScene) Stop () {
+    utils.DebugPrintln ("loading_scene got Stop()")
     s.running = false
 }
 
@@ -136,8 +127,12 @@ func (s *LoadingScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
 
 
 
-func (s *LoadingScene) HandleKeyboardState (keyboard_state []uint8) {}
-
+func (s *LoadingScene) HandleKeyboardState (keyboard_state []uint8) {
+    // null implementation
+}
+func (s *LoadingScene) HandleKeyboardEvent (keyboard_event *sdl.KeyboardEvent) {
+    // null implementation
+}
 
 
 func (s *LoadingScene) Destroy() {
@@ -146,8 +141,7 @@ func (s *LoadingScene) Destroy() {
 
         s.message_font.Close()
         s.message_surface.Free()
-        // TODO: is there not a go-sdl2 version of this?
-        C.SDL_DestroyTexture((*C.struct_SDL_Texture)(s.message_texture))
+        s.message_texture.Destroy()
 
     }
     s.destroyed = true

@@ -13,7 +13,7 @@ import (
     "time"
     "math/rand"
 
-    "github.com/dt-rush/donkeys-qquest/utils"
+    "github.com/dt-rush/donkeys-qquest/engine/utils"
 
     "github.com/veandco/go-sdl2/sdl"
     "github.com/veandco/go-sdl2/ttf"
@@ -23,20 +23,22 @@ import (
 type Game struct {
 
     running bool
-    scene Scene
+    Scene Scene
+    NextScene Scene
+
+    LoadingScene Scene
+
     window *sdl.Window
-    renderer *sdl.Renderer
-
-    loading_scene Scene
-
-    NextSceneChan chan Scene
+    Renderer *sdl.Renderer
+    accum_fps TimeAccumulator
 
     func_profiler utils.FuncProfiler
 }
 
 func (g *Game) Init (WINDOW_TITLE string,
                         WINDOW_WIDTH int32,
-                        WINDOW_HEIGHT int32) {
+                        WINDOW_HEIGHT int32,
+                        FPS int) {
     // seed rand
     seed := time.Now().UTC().UnixNano()
     rand.Seed (seed)
@@ -50,17 +52,19 @@ func (g *Game) Init (WINDOW_TITLE string,
 
     // set state
     g.running = true
-    g.NextSceneChan = make (chan Scene, 1)
     g.func_profiler = utils.FuncProfiler{}
 
     // build the window and renderer
-    g.window, g.renderer = BuildWindowAndRenderer (
+    g.window, g.Renderer = BuildWindowAndRenderer (
         WINDOW_TITLE,
         WINDOW_WIDTH,
         WINDOW_HEIGHT)
 
     // hide the cursor
     sdl.ShowCursor (0)
+
+    // set the FPS rate
+    g.accum_fps = CreateTimeAccumulator (1000 / FPS)
 }
 
 func (g *Game) InitSystems() {
@@ -102,95 +106,81 @@ func (g *Game) Destroy() {
     // free anything else that needs to be destroyed (happens once)
     // do we even need to do this, since the whole program exits
     // when the game does? anyways...
-    g.renderer.Destroy()
+    g.Renderer.Destroy()
 }
 
 func (g *Game) EndCurrentScene() {
-    if g.scene != nil {
-        g.scene.Stop()
+    if g.Scene != nil {
+        utils.DebugPrintf ("in Game.EndCurrentScene(), g.scene is %s\n",
+                            g.Scene.Name())
+        g.Scene.Stop()
+    } else {
+        utils.DebugPrintln ("in Game.EndCurrentScene(), g.scene is nil")
     }
 }
 
 func (g *Game) End() {
-    utils.DebugPrintln ("in game.end()")
-    g.EndCurrentScene()
-    utils.DebugPrintln ("g.scene.stop() finished")
+    utils.DebugPrintln ("in Game.End()")
     g.running = false
-    g.NextSceneChan <- nil
-    utils.DebugPrintln ("g.destroy()")
-    g.Destroy()
+    g.Scene.Stop()
 }
 
-func (g *Game) handleEvents () {
-    // if sdl.QuitEvent occurred, exit immediately
+func (g *Game) handleKeyboard() {
+
+    // poll for events
     sdl.PumpEvents()
     var event sdl.Event
     for event = sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
         switch t := event.(type) {
         case *sdl.QuitEvent:
             utils.DebugPrintf ("sdl.QuitEvent received: %v\n", t)
-            // notice we use a nonblocking goroutine 
+            // notice we use a nonblocking goroutine
             g.End()
             return
+        case *sdl.KeyboardEvent:
+            keyboard_event := event.(*sdl.KeyboardEvent)
+            // if escape, exit immediately, else pass to the scene
+            if keyboard_event.Keysym.Sym == sdl.K_ESCAPE {
+                g.End()
+            } else {
+                g.Scene.HandleKeyboardEvent (keyboard_event)
+            }
         }
     }
-    // if escape, exit immediately
+
+    // pass keyboard state to scene
     keyboard_state := sdl.GetKeyboardState()
-    if keyboard_state [sdl.SCANCODE_ESCAPE] == 1 {
-        utils.DebugPrintf ("sdl.SCANCODE_ESCAPE was 1 in keyboard_state array\n")
-        g.End()
-        return
-    }
-    g.scene.HandleKeyboardState (keyboard_state)
+    g.Scene.HandleKeyboardState (keyboard_state)
 }
 
-func (g *Game) RunLoadingScene () {
-    g.RunScene (g.loading_scene)
-}
-
-func (g *Game) CreateTextureFromSurface (surface *sdl.Surface) (*sdl.Texture, error) {
-    return g.renderer.CreateTextureFromSurface (surface)
-}
-
-func (g *Game) SetLoadingScene (scene Scene) {
-    g.loading_scene = scene
-    <-g.loading_scene.Init (g)
-}
-
-func (g *Game) PushScene (scene Scene) {
+func (g *Game) RunLoadingScene () chan bool {
+    loading_scene_stopped_signal_chan := make (chan bool)
     go func () {
-        g.NextSceneChan <- scene
+        g.runGameLoopOnScene (g.LoadingScene)
+        loading_scene_stopped_signal_chan <- true
     }()
+    return loading_scene_stopped_signal_chan
 }
 
-func (g *Game) RunScene (scene Scene) {
-    utils.DebugPrintf ("wanting to run %s\n", scene.Name())
-    // will block until another copy of Game.RunScene()
-    // which is running for the already-running scene
-    // finishes Game.runGameLoopOnScene, at which point
-    // (see the code for runGameLoopOnScene())
-    // we send "true" into the channel
-    g.EndCurrentScene()
-    utils.DebugPrintln ("g.EndCurrentScene() completed")
-    // we're okay to enter another game loop now
-    g.scene = scene
-    scene.Run()
-    g.runGameLoopOnScene (scene)
-    // destroy resources used by the scene
-    // (but don't trash the laoding scene which is reused)
-    if scene != g.loading_scene {
-        go scene.Destroy()
-    }
+func (g *Game) blankScreen () {
+    g.Renderer.SetDrawColor (0, 0, 0, 255)
+    g.Renderer.Clear()
+}
+
+func (g *Game) RunScene () {
+    utils.DebugPrintf ("wanting to run %s\n", g.Scene.Name())
+    g.Scene.Run()
+    utils.DebugPrintf ("about to run game loop on %s\n", g.Scene.Name())
+    g.runGameLoopOnScene (g.Scene)
 }
 
 func (g *Game) runGameLoopOnScene (scene Scene) {
-    ticker := time.NewTicker (16 * time.Millisecond)
-    t0 := <-ticker.C
-    accum := 0
-    gameloop_counter := 0
-    gameloop_ms_accum := 0
     utils.DebugPrintf ("\\\\\\  /// %s starting to run\n",
                         scene.Name())
+    ticker := time.NewTicker (16 * time.Millisecond)
+    t0 := <-ticker.C
+    gameloop_counter := 0
+    gameloop_ms_accum := 0
     // loop
     for scene.IsRunning() {
         // profiling wrapper TODO find a cleaner way to do this
@@ -199,22 +189,20 @@ func (g *Game) runGameLoopOnScene (scene Scene) {
             // update ticker, calculate loop dt
             t1 := <-ticker.C
             dt_ms := int ((t1.UnixNano() - t0.UnixNano()) / 1e6)
-            // draw active scene at framerate (60 fps)
-            accum += dt_ms
-            if accum > 1000 / 60 {
-                // eat any backlog, just draw the current frame
-                for accum > 1000 / 60 {
-                    accum = accum % (1000 / 60)
-                }
+            // draw active scene at framerate
+            if g.accum_fps.Tick (dt_ms) {
                 sdl.Do (func () {
-                    g.renderer.Clear()
-                    scene.Draw (g.window, g.renderer)
-                    g.renderer.Present()
+                    g.blankScreen()
+                    scene.Draw (g.window, g.Renderer)
+                    g.Renderer.Present()
                 })
             }
-            sdl.Do (g.handleEvents)
+            // handle events and update scene
+            sdl.Do (g.handleKeyboard)
             scene.Update (dt_ms)
+            // time-keeping
             t0 = t1
+            // everyone deserves some rest now and then
             sdl.Delay (16)
         })
     }
@@ -223,6 +211,29 @@ func (g *Game) runGameLoopOnScene (scene Scene) {
     utils.DebugPrintf ("[gameloop_ms_avg = %.3f]\n\n",
                         float64 (gameloop_ms_accum) /
                             float64 (gameloop_counter))
+    // destroy resources used by the scene
+    // (but don't trash the laoding scene which is reused)
+    if scene != g.LoadingScene {
+        utils.DebugPrintf ("Destroying resources used by %s\n", scene.Name())
+        go scene.Destroy()
+    }
+
 }
 
-
+func (g *Game) Run() {
+    for g.IsRunning() {
+        if g.NextScene == nil {
+            utils.DebugPrintln ("NextScene is nil. Game ending.")
+            g.End()
+        } else {
+            loading_scene_stopped_signal_chan := g.RunLoadingScene()
+            g.Scene = g.NextScene
+            g.NextScene = nil
+            g.Scene.Init (g)
+            g.LoadingScene.Stop()
+            <-loading_scene_stopped_signal_chan
+            utils.DebugPrintln ("<-loading_scene_stopped_signal_chan")
+            g.RunScene()
+        }
+    }
+}
