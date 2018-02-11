@@ -9,6 +9,8 @@ package scenes
 
 import (
 
+    "strings"
+
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/dt-rush/donkeys-qquest/constants"
 
@@ -59,15 +61,30 @@ func (s *GameOverScene) Init (game *engine.Game) chan bool {
         s.game.Renderer.SetDrawColor (0, 0, 0, 255)
         s.game.Renderer.Clear()
 
-        // render the "game over" message
+        // render the words "GAME OVER"
         s.render_message_to_texture (
             "GAME OVER",
-            sdl.Color{255,255,255,255},
+            sdl.Color{200,0,0,255},
             &sdl.Rect{
                 constants.WINDOW_WIDTH / 8,
                 (constants.WINDOW_HEIGHT * 3) / 8,
                 (constants.WINDOW_WIDTH * 6) / 8,
                 constants.WINDOW_HEIGHT / 8})
+
+        // render the game over message set up by the game scene
+        lines := strings.Split (
+            s.game.GameState ["game_over_message"],
+            "\n")
+        for i, line := range (lines) {
+            s.render_message_to_texture (
+                line,
+                sdl.Color{200,200,200,255},
+                &sdl.Rect{
+                    constants.WINDOW_WIDTH / 8,
+                    (constants.WINDOW_HEIGHT * (8 + int32(i))) / 16,
+                    (constants.WINDOW_WIDTH * 6) / 8,
+                    constants.WINDOW_HEIGHT / 16})
+        }
 
         // render the player score message
         s.render_message_to_texture (
@@ -77,7 +94,7 @@ func (s *GameOverScene) Init (game *engine.Game) chan bool {
             sdl.Color{230,230,230,255},
             &sdl.Rect{
                 constants.WINDOW_WIDTH / 8,
-                (constants.WINDOW_HEIGHT * 5) / 8,
+                (constants.WINDOW_HEIGHT * 7) / 8,
                 (constants.WINDOW_WIDTH * 6) / 8,
                 constants.WINDOW_HEIGHT / 12})
 

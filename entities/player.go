@@ -3,6 +3,8 @@ package entities
 import (
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/dt-rush/donkeys-qquest/constants"
+
+    "github.com/veandco/go-sdl2/sdl"
 )
 
 func SpawnPlayer (entity_manager *engine.EntityManager,
@@ -30,7 +32,7 @@ func SpawnPlayer (entity_manager *engine.EntityManager,
     player_position := [2]float64 {float64(constants.WINDOW_WIDTH/2), float64(constants.WINDOW_HEIGHT/2)}
     position_component.Set (player_id, player_position)
 
-    player_color := uint32 (0xffffffff)
+    player_color := sdl.Color{255,255,255,255}
     color_component.Set (player_id, player_color)
 
     player_hitbox := [2]float64{5, 5}

@@ -20,13 +20,20 @@ import (
     "github.com/veandco/go-sdl2/mix"
 )
 
+
+
 type Game struct {
 
-    running bool
+    // the scene which the game will be running presently
     Scene Scene
+    // the next scene (exported field, set by scenes 
+    // before they stop themselves)
     NextScene Scene
-
+    // the scene to play while the next scene is running Init()
     LoadingScene Scene
+    // to allow scenes to store data somewhere that other scenes
+    // can access it
+    GameState map[string]string
 
     window *sdl.Window
     Renderer *sdl.Renderer
@@ -45,13 +52,13 @@ func (g *Game) Init (WINDOW_TITLE string,
     if VERBOSE {
         utils.DebugPrintf ("rand seeded with %d\n", seed)
     }
+
     // init systems
     utils.DebugPrintln ("Starting to init SDL systems")
     g.InitSystems()
     utils.DebugPrintln ("Finished init of SDL systems")
 
-    // set state
-    g.running = true
+    // set up func profiler
     g.func_profiler = utils.FuncProfiler{}
 
     // build the window and renderer
@@ -65,6 +72,9 @@ func (g *Game) Init (WINDOW_TITLE string,
 
     // set the FPS rate
     g.accum_fps = CreateTimeAccumulator (1000 / FPS)
+
+    // set up game state
+    g.GameState = make (map[string]string)
 }
 
 func (g *Game) InitSystems() {
@@ -72,7 +82,6 @@ func (g *Game) InitSystems() {
     var err error
 
     // init SDL
-    // sdl.Init (sdl.INIT_VIDEO | sdl.INIT_TIMER)
     sdl.Init (sdl.INIT_EVERYTHING)
 
     // init SDL TTF
@@ -98,10 +107,6 @@ func (g *Game) InitSystems() {
     }
 }
 
-func (g *Game) IsRunning() bool {
-    return g.running
-}
-
 func (g *Game) Destroy() {
     // free anything else that needs to be destroyed (happens once)
     // do we even need to do this, since the whole program exits
@@ -121,7 +126,6 @@ func (g *Game) EndCurrentScene() {
 
 func (g *Game) End() {
     utils.DebugPrintln ("in Game.End()")
-    g.running = false
     g.Scene.Stop()
 }
 
@@ -221,10 +225,11 @@ func (g *Game) runGameLoopOnScene (scene Scene) {
 }
 
 func (g *Game) Run() {
-    for g.IsRunning() {
+    for true {
         if g.NextScene == nil {
             utils.DebugPrintln ("NextScene is nil. Game ending.")
             g.End()
+            break
         } else {
             loading_scene_stopped_signal_chan := g.RunLoadingScene()
             g.Scene = g.NextScene

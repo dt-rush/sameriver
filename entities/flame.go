@@ -9,14 +9,12 @@ import (
 
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/dt-rush/donkeys-qquest/engine/components"
-    // "github.com/dt-rush/donkeys-qquest/constants"
 )
 
 func SpawnFlame (entity_manager *engine.EntityManager,
     active_component *components.ActiveComponent,
     position_component *components.PositionComponent,
     velocity_component *components.VelocityComponent,
-    // color_component *components.ColorComponent,
     hitbox_component *components.HitboxComponent,
     sprite_component *components.SpriteComponent,
     logic_component *components.LogicComponent,
@@ -26,7 +24,6 @@ func SpawnFlame (entity_manager *engine.EntityManager,
         engine.Component (active_component),
         engine.Component (position_component),
         engine.Component (velocity_component),
-        // engine.Component (color_component),
         engine.Component (hitbox_component),
         engine.Component (sprite_component),
         engine.Component (logic_component),
@@ -45,9 +42,6 @@ func SpawnFlame (entity_manager *engine.EntityManager,
     //}
     flame_position := initial_position
     position_component.Set (flame_id, flame_position)
-
-    // flame_color := uint32 (0xffccaa33)
-    // color_component.Set (flame_id, flame_color)
 
     flame_hitbox := [2]float64{30, 30}
     hitbox_component.Set (flame_id, flame_hitbox)

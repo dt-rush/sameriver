@@ -6,7 +6,6 @@
 **/
 
 
-
 package scenes
 
 import (
@@ -174,7 +173,6 @@ func (s *GameScene) add_collision_logic () {
 func (s *GameScene) spawn_entities() {
 
     // spawn a player
-
     s.player_id = entities.SpawnPlayer (
         &s.entity_manager,
         &s.active_component,
@@ -183,31 +181,33 @@ func (s *GameScene) spawn_entities() {
         &s.color_component,
         &s.hitbox_component)
 
-
     // spawn a donkey
-
     s.donkey_id = entities.SpawnDonkey (
         &s.entity_manager,
         &s.active_component,
         &s.position_component,
         &s.velocity_component,
-        // &s.color_component,
         &s.hitbox_component,
         &s.sprite_component,
         &s.logic_component)
+    // set donkey inactive initially
+    s.active_component.Set (s.donkey_id, false)
+    
 
     // spawn N_FLAMES
-
     s.N_FLAMES = 4
     for i := 0; i < s.N_FLAMES; i++ {
 
         corners := [2]int{i % 2, i / 2}
 
-        utils.DebugPrintf ("spawning flame in corner %d, %d\n", corners[0], corners[1])
+        utils.DebugPrintf ("spawning flame in corner %d, %d\n", 
+            corners[0], corners[1])
 
         initial_position := [2]float64{
-            float64 (int (constants.WINDOW_WIDTH - 50) * corners [0] + 25),
-            float64 (int (constants.WINDOW_HEIGHT - 50)  * corners [1] + 25),
+            float64 (int (constants.WINDOW_WIDTH - 50) * 
+                corners [0] + 25),
+            float64 (int (constants.WINDOW_HEIGHT - 50)  * 
+                corners [1] + 25),
         }
 
         entities.SpawnFlame (
@@ -215,7 +215,6 @@ func (s *GameScene) spawn_entities() {
             &s.active_component,
             &s.position_component,
             &s.velocity_component,
-            // &s.color_component,
             &s.hitbox_component,
             &s.sprite_component,
             &s.logic_component,
@@ -315,7 +314,7 @@ func (s *GameScene) Stop () {
         float64 (s.logic_count))
     // set this scene not running
     s.running = false
-    
+
     // actually ends the game
     // s.game.NextSceneChan <- nil
 }
@@ -372,7 +371,7 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
             &s.score_rect)
 
         // TODO refactor to go through only entities registered
-        // with a draw system to avoid checking EntityHasComponent 
+        // with a draw system to avoid checking EntityHasComponent
         for _, i := range s.entity_manager.Entities() {
 
             if ! s.active_component.Get (i) {
@@ -394,15 +393,15 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
                 int32 (box [1])}
 
 
-            if s.entity_manager.EntityHasComponent (i, &s.color_component) {
+            if s.entity_manager.EntityHasComponent (i,
+                &s.color_component) {
+
                 color := s.color_component.Get (i)
-                // extracting color components from
-                // uint32 ARGB to uint8 RGBA params
                 renderer.SetDrawColor (
-                    uint8 ((color & 0x00ff0000) >> 16),
-                    uint8 ((color & 0x0000ff00) >> 8),
-                    uint8 ((color & 0x000000ff) >> 0),
-                    uint8 ((color & 0xff000000) >> 24))
+                    color.R,
+                    color.G,
+                    color.B,
+                    color.A)
                 renderer.FillRect (&entity_screen_rect)
             }
 
@@ -418,12 +417,6 @@ func (s *GameScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
                     center_p,
                     s.sprite_component.GetFlip (i))
             }
-
-
-            // paint a little white rect where the corner of the box is
-            // renderer.SetDrawColor (255, 255, 255, 255)
-            // small_rect := sdl.Rect{ss_pos[0], ss_pos[1], 4, 4}
-            // renderer.FillRect (&small_rect)
 
         }
     })
@@ -441,11 +434,11 @@ func (s *GameScene) HandleKeyboardState (keyboard_state []uint8) {
     player_v := s.velocity_component.Get (s.player_id)
     // get player v1
     vx := 300 * float64 (
-        int8 (k [sdl.SCANCODE_D]) -
-            int8 (k [sdl.SCANCODE_A]))
+        int8 (k [sdl.SCANCODE_D] | k [sdl.SCANCODE_RIGHT]) -
+            int8 (k [sdl.SCANCODE_A] | k [sdl.SCANCODE_LEFT]))
     vy := 300 * float64 (
-        int8 (k [sdl.SCANCODE_W]) -
-            int8 (k [sdl.SCANCODE_S]))
+        int8 (k [sdl.SCANCODE_W] | k [sdl.SCANCODE_UP]) -
+            int8 (k [sdl.SCANCODE_S] | k [sdl.SCANCODE_DOWN]))
     // shift v0 to v1
     player_v[0] = vx
     player_v[1] = vy
@@ -477,6 +470,22 @@ func (s *GameScene) Destroy() {
 
 func (s *GameScene) SceneLogic () {
 
+    donkey_respawn_watcher := func () {
+        for true {
+            // sleep 5 seconds before respawning the donkey
+            if ! s.active_component.Get (s.donkey_id) { 
+                time.Sleep (time.Second * 5) // blocking
+                donkey_pos := s.position_component.Get (s.donkey_id)
+                donkey_pos [0] = rand.Float64() *
+                    float64 (constants.WINDOW_WIDTH - 20) + 20
+                donkey_pos [1] = rand.Float64() *
+                    float64 (constants.WINDOW_HEIGHT - 20) + 20
+                s.active_component.Set (s.donkey_id, true)
+            }
+            time.Sleep (500)
+        }
+    }
+
     donkey_caught_react := func () {
 
         donkey_caught_chan := s.game_event_system.Subscribe (constants.GAME_EVENT_DONKEY_CAUGHT)
@@ -495,21 +504,11 @@ func (s *GameScene) SceneLogic () {
                 }
             }
             // set donkey to respawn
-            // TODO: also simultaneously set invisible?
-            // TODO (possibly): separate "visible" component from "active"?
+            // TODO: separate "visible" component from "active"?
             donkey_id := s.entity_manager.GetTagEntityUnique ("donkey")
             s.active_component.Set (donkey_id, false)
 
-            // sleep 5 seconds before respawning the donkey
-            go func() {
-                time.Sleep (time.Second * 5) // blocking
-                donkey_pos := s.position_component.Get (donkey_id)
-                donkey_pos [0] = rand.Float64() * 
-                    float64 (constants.WINDOW_WIDTH - 20) + 20
-                donkey_pos [1] = rand.Float64() * 
-                    float64 (constants.WINDOW_HEIGHT - 20) + 20
-                s.active_component.Set (donkey_id, true)
-            }()
+            
         }
     }
 
@@ -520,14 +519,23 @@ func (s *GameScene) SceneLogic () {
 
         for _ = range (flame_hit_player_chan) {
             utils.DebugPrintln ("\tYOU DIED BY FALLING IN A FIRE")
+            // set up game over message based on score
+            var game_over_message string
+            if s.score == 0 {
+                game_over_message = "You didn't manage to catch any donkeys.\nBetter luck next time though!"
+            } else {
+                game_over_message = fmt.Sprintf ("You caught %d donkeys.\nCongratulations, PLAYER NAME", s.score)
+            }
+            s.game.GameState ["game_over_message"] = game_over_message
             game_over_scene := GameOverScene{}
             s.game.NextScene = &game_over_scene
             s.Stop()
-            // stop listening for these events by breaking 
+            // stop listening for these events by breaking
             break
         }
     }
 
+    go donkey_respawn_watcher()
     go donkey_caught_react()
     go flame_hit_player_react()
 

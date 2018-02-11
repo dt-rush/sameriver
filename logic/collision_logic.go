@@ -7,6 +7,8 @@ import (
 )
 
 
+// TODO refactor into game-scene package
+
 // check donkey-player collision
 
 var CollisionLogicCollection = map [string]systems.CollisionLogic{
