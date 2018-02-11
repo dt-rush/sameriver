@@ -14,7 +14,6 @@ import (
 
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/dt-rush/donkeys-qquest/constants"
-    "github.com/dt-rush/donkeys-qquest/engine/utils"
 
     "github.com/veandco/go-sdl2/sdl"
     "github.com/veandco/go-sdl2/ttf"
@@ -211,11 +210,11 @@ func (s *MenuScene) HandleKeyboardEvent (keyboard_event *sdl.KeyboardEvent) {
 
 func (s *MenuScene) Destroy() {
 
-    utils.DebugPrintln ("MenuScene.Destroy() called")
+    engine.Logger.Println ("MenuScene.Destroy() called")
 
     if ! s.destroyed {
 
-        utils.DebugPrintln ("inside MenuScene.Destroy(), ! s.destroyed")
+        engine.Logger.Println ("inside MenuScene.Destroy(), ! s.destroyed")
 
         // TODO figure out why go-sdl2 is failing when
         // closing two fonts from the same file
@@ -259,16 +258,16 @@ created by main.(*MenuScene).stop
         //   after this change
         //
         //   -- (27 of May, 2017)
-        utils.DebugPrintln ("about to call sdl.Do in menuscene.destroy()")
+        engine.Logger.Println ("about to call sdl.Do in menuscene.destroy()")
         sdl.Do (func () {
-            utils.DebugPrintln ("in sdl.Do() func for menuscene.destroy()")
+            engine.Logger.Println ("in sdl.Do() func for menuscene.destroy()")
             s.small_font.Close()
             for i, _ := range s.rainbow_surfaces {
                 s.rainbow_surfaces [i].Free()
             }
             s.message_surface.Free()
         })
-        utils.DebugPrintln ("finished sdl.Do() call in menu_scene.Destroy() which called .Free() on some surfaces")
+        engine.Logger.Println ("finished sdl.Do() call in menu_scene.Destroy() which called .Free() on some surfaces")
     }
     s.destroyed = true
 }

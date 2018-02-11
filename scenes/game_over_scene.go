@@ -28,7 +28,8 @@ type GameOverScene struct {
     game *engine.Game
 
     // needed to write strings to graphics
-    font *ttf.Font
+    pixel_font *ttf.Font
+    text_font *ttf.Font
     // texture used to write multiple text textures to. saved statically
     // and drawn to the screen
     screen_texture *sdl.Texture
@@ -42,11 +43,12 @@ func (s *GameOverScene) Init (game *engine.Game) chan bool {
     go func () {
         var err error
 
-        if s.font, err = ttf.OpenFont("assets/test.ttf", 16); err != nil {
-            panic(err)
-        }
+        s.pixel_font, err = ttf.OpenFont("assets/test.ttf", 16)
+        if err != nil { panic(err) }
+        s.text_font, err = ttf.OpenFont("assets/test.ttf", 24)
+        if err != nil { panic(err) }
 
-        // create a texture to render to 
+        // create a texture to render to
         s.screen_texture, err = s.game.Renderer.CreateTexture (
             sdl.PIXELFORMAT_RGBA8888,
             sdl.TEXTUREACCESS_TARGET,
@@ -57,14 +59,15 @@ func (s *GameOverScene) Init (game *engine.Game) chan bool {
         // set the renderer's texture to screen_texture
         s.game.Renderer.SetRenderTarget (s.screen_texture)
 
-        // write a black background to the screen texture 
+        // write a black background to the screen texture
         s.game.Renderer.SetDrawColor (0, 0, 0, 255)
         s.game.Renderer.Clear()
 
         // render the words "GAME OVER"
         s.render_message_to_texture (
             "GAME OVER",
-            sdl.Color{200,0,0,255},
+            s.pixel_font,
+            sdl.Color{255,0,0,255},
             &sdl.Rect{
                 constants.WINDOW_WIDTH / 8,
                 (constants.WINDOW_HEIGHT * 3) / 8,
@@ -72,31 +75,36 @@ func (s *GameOverScene) Init (game *engine.Game) chan bool {
                 constants.WINDOW_HEIGHT / 8})
 
         // render the game over message set up by the game scene
+        tab_x_offset := constants.WINDOW_WIDTH / 5
         lines := strings.Split (
             s.game.GameState ["game_over_message"],
             "\n")
         for i, line := range (lines) {
             s.render_message_to_texture (
                 line,
-                sdl.Color{200,200,200,255},
+                s.text_font,
+                sdl.Color{128,128,128,255},
                 &sdl.Rect{
-                    constants.WINDOW_WIDTH / 8,
-                    (constants.WINDOW_HEIGHT * (8 + int32(i))) / 16,
-                    (constants.WINDOW_WIDTH * 6) / 8,
+                    tab_x_offset,
+                    (constants.WINDOW_HEIGHT *
+                        (8 + int32(i))) / 16,
+                    (constants.WINDOW_WIDTH / 64) *
+                        int32 (len (line)),
                     constants.WINDOW_HEIGHT / 16})
         }
 
         // render the player score message
+        play_again_msg := "play again? [y / n]"
         s.render_message_to_texture (
-            // TODO determine how to pass info between scenes
-            // fmt.Sprintf ("You managed to capture %d donkeys", score),
-            "Play again? y/n",
-            sdl.Color{230,230,230,255},
+            play_again_msg,
+            s.text_font,
+            sdl.Color{255,255,255,255},
             &sdl.Rect{
-                constants.WINDOW_WIDTH / 8,
+                tab_x_offset,
                 (constants.WINDOW_HEIGHT * 7) / 8,
-                (constants.WINDOW_WIDTH * 6) / 8,
-                constants.WINDOW_HEIGHT / 12})
+                (constants.WINDOW_WIDTH / 64) *
+                    int32 (len (play_again_msg)),
+                constants.WINDOW_HEIGHT / 16})
 
         // write the "replay?" message
         // TODO: implement dialogue-selection struct to enable the left/right
@@ -133,7 +141,8 @@ func (s *GameOverScene) Destroy () {
     if ! s.destroyed {
         s.destroyed = true
         s.screen_texture.Destroy()
-        s.font.Close()
+        s.pixel_font.Close()
+        s.text_font.Close()
     }
 }
 
@@ -173,6 +182,7 @@ func (s *GameOverScene) HandleKeyboardEvent (keyboard_event *sdl.KeyboardEvent) 
 
 func (s *GameOverScene) render_message_to_texture (
     msg string,
+    font *ttf.Font,
     color sdl.Color,
     dst *sdl.Rect) {
 
@@ -180,7 +190,7 @@ func (s *GameOverScene) render_message_to_texture (
     var surface *sdl.Surface
     var texture *sdl.Texture
     var err error
-        surface, err = s.font.RenderUTF8Solid (msg, color)
+        surface, err = font.RenderUTF8Solid (msg, color)
     if err != nil { panic (err) }
     texture, err = s.game.Renderer.CreateTextureFromSurface (surface)
     if err != nil { panic (err) }

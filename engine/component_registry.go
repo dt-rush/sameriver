@@ -11,8 +11,6 @@ package engine
 
 
 import (
-    "fmt"
-
     // TODO: add bitarray implementation
 
 )
@@ -48,7 +46,7 @@ func (r *ComponentRegistry) Init (components []Component) {
 }
 
 func (r *ComponentRegistry) RegisterEntity (id int, components []Component) {
-    fmt.Println ("registering entity ", id)
+    Logger.Println ("registering entity ", id)
 
     // mark this, horatio: the bitarray IS the entity, or its
     // representation, for this registry, hence the variable name
@@ -79,8 +77,8 @@ func (r *ComponentRegistry) EntityHas (id int, component Component) bool {
 func (r *ComponentRegistry) GetEntity (id int) bitarray {
     entity, ok := r.data [id]
     if !ok {
-        fmt.Printf ("[ComponentRegistry] attempt to get #%d, not in data\n", id)
-        fmt.Printf ("[ComponentRegistry] returning empty bitarray\n")
+        Logger.Printf ("[ComponentRegistry] attempt to get #%d, not in data", id)
+        Logger.Printf ("[ComponentRegistry] returning empty bitarray")
         return make (bitarray, r.bitarray_sz)
     }
     return entity

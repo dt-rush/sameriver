@@ -14,7 +14,6 @@ import (
 
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/dt-rush/donkeys-qquest/constants"
-    "github.com/dt-rush/donkeys-qquest/engine/utils"
 
     "github.com/veandco/go-sdl2/sdl"
     "github.com/veandco/go-sdl2/ttf"
@@ -87,7 +86,7 @@ func (s *LoadingScene) Init (game *engine.Game) chan bool {
 }
 
 func (s *LoadingScene) Stop () {
-    utils.DebugPrintln ("loading_scene got Stop()")
+    engine.Logger.Println ("loading_scene got Stop()")
     s.running = false
 }
 
@@ -136,7 +135,7 @@ func (s *LoadingScene) HandleKeyboardEvent (keyboard_event *sdl.KeyboardEvent) {
 
 
 func (s *LoadingScene) Destroy() {
-    utils.DebugPrintln ("loadingscene.destroy()")
+    engine.Logger.Println ("loadingscene.destroy()")
     if ! s.destroyed {
 
         s.message_font.Close()

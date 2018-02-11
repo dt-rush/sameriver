@@ -14,7 +14,6 @@ import (
     "math/rand"
 
     "github.com/dt-rush/donkeys-qquest/engine"
-    "github.com/dt-rush/donkeys-qquest/engine/utils"
     "github.com/dt-rush/donkeys-qquest/engine/components"
     "github.com/dt-rush/donkeys-qquest/engine/systems"
 
@@ -91,7 +90,7 @@ type GameScene struct {
 
     // utilities
     // function profiler
-    func_profiler utils.FuncProfiler
+    func_profiler engine.FuncProfiler
     // profiling data
     collision_detection_ms_accum int
     collision_detection_count int
@@ -200,7 +199,7 @@ func (s *GameScene) spawn_entities() {
 
         corners := [2]int{i % 2, i / 2}
 
-        utils.DebugPrintf ("spawning flame in corner %d, %d\n", 
+        engine.Logger.Printf ("spawning flame in corner %d, %d", 
             corners[0], corners[1])
 
         initial_position := [2]float64{
@@ -298,18 +297,17 @@ func (s *GameScene) update_score_texture () {
 
 
 func (s *GameScene) Stop () {
-    utils.DebugPrintf ("\n\n\n======== ADVENTURE OVER ========\n")
-    utils.DebugPrintf ("================================\n\n\n")
-    utils.DebugPrintf ("collision_detection_ms_avg = %.3f ms\n",
+    engine.Logger.Printf ("======== ADVENTURE OVER ========")
+    engine.Logger.Printf ("collision_detection_ms_avg = %.3f ms",
         float64 (s.collision_detection_ms_accum) /
         float64 (s.collision_detection_count))
-    utils.DebugPrintf ("physics_ms_avg = %.3f ms\n",
+    engine.Logger.Printf ("physics_ms_avg = %.3f ms",
         float64 (s.physics_ms_accum) /
         float64 (s.physics_count))
-    utils.DebugPrintf ("draw_ms_avg = %.3f ms\n",
+    engine.Logger.Printf ("draw_ms_avg = %.3f ms",
         float64 (s.draw_ms_accum) /
         float64 (s.draw_count))
-    utils.DebugPrintf ("logic_ms_avg = %.3f ms\n",
+    engine.Logger.Printf ("logic_ms_avg = %.3f ms",
         float64 (s.logic_ms_accum) /
         float64 (s.logic_count))
     // set this scene not running
@@ -490,7 +488,7 @@ func (s *GameScene) SceneLogic () {
 
         donkey_caught_chan := s.game_event_system.Subscribe (constants.GAME_EVENT_DONKEY_CAUGHT)
         for _ = range (donkey_caught_chan) {
-            utils.DebugPrintln ("\tYOU CAUGHT A DONKEY")
+            engine.Logger.Println ("\tYOU CAUGHT A DONKEY")
 
             s.score += 1
             s.update_score_texture()
@@ -500,7 +498,7 @@ func (s *GameScene) SceneLogic () {
             if PRINT_DONKEY_INVENTORY {
                 inventory := []string{"1 x donkey fur", "2 x donkey ears", "3 x donkey whiskers", "4 x donkey meats"}
                 for _, item := range (inventory) {
-                    utils.DebugPrintf ("\t\t* %s\n", item)
+                    engine.Logger.Printf ("\t\t* %s", item)
                 }
             }
             // set donkey to respawn
@@ -518,7 +516,7 @@ func (s *GameScene) SceneLogic () {
             constants.GAME_EVENT_FLAME_HIT_PLAYER)
 
         for _ = range (flame_hit_player_chan) {
-            utils.DebugPrintln ("\tYOU DIED BY FALLING IN A FIRE")
+            engine.Logger.Println ("\tYOU DIED BY FALLING IN A FIRE")
             // set up game over message based on score
             var game_over_message string
             if s.score == 0 {
@@ -544,15 +542,14 @@ func (s *GameScene) SceneLogic () {
 func (s *GameScene) Run () {
 
     // any scene-specific routines can be spawned in here
-    utils.DebugPrintf ("\n\n\n=====================================\n")
-    utils.DebugPrintf ("======== ADVENTURE BEGINNING ========\n\n\n\n")
+    engine.Logger.Printf ("======== ADVENTURE BEGINNING ========")
 
     // spawn scene logic goroutine
     go s.SceneLogic()
 
     s.running = true
 
-    utils.DebugPrintln ("GameScene.Run() completed.")
+    engine.Logger.Println ("GameScene.Run() completed.")
 
 }
 

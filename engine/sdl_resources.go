@@ -4,7 +4,6 @@ package engine
 import (
     "github.com/veandco/go-sdl2/sdl"
 
-    "github.com/dt-rush/donkeys-qquest/engine/utils"
 )
 
 
@@ -34,7 +33,7 @@ func BuildWindowAndRenderer (window_title string, width int32, height int32) (*s
 
     // set renderer scale
     window_w, window_h := window.GetSize()
-    utils.DebugPrintf ("window.GetSize() (w x h): %d x %d\n",
+    Logger.Printf ("window.GetSize() (w x h): %d x %d",
                         window_w, window_h)
     sdl.SetHint (sdl.HINT_RENDER_SCALE_QUALITY, "linear")
     scale_w := float32 (window_w) / float32 (width)

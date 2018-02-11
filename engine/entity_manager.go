@@ -14,6 +14,7 @@ import (
 
     "fmt"
 
+
 )
 
 type EntityManager struct {
@@ -69,15 +70,15 @@ func (m *EntityManager) NumberOfEntities () int {
 func (m *EntityManager) SpawnEntity (components []Component) int {
 
     // LOG message
-    fmt.Printf ("spawning entity with components [")
+    Logger.Printf ("spawning entity with components [")
     for _, component := range components {
-        fmt.Printf ("%s,", component.Name())
+        Logger.Printf ("%s,", component.Name())
     }
-    fmt.Printf ("]")
+    Logger.Printf ("]")
 
     // generate an id
     id := m.id_system.Gen()
-    fmt.Printf (" #%d\n", id)
+    Logger.Printf (" #%d", id)
     // allocate component data storage
     for _, component := range components {
         component.Set (id, component.DefaultValue())

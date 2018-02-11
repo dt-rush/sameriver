@@ -104,8 +104,8 @@ func (c *SpriteComponent) Init (capacity int, game *engine.Game) {
     for i, s := range to_load {
         var err error
         log_err := func (err error) {
-            fmt.Printf ("failed to load %s\n", s)
-            fmt.Printf ("%v\n", err)
+            engine.Logger.Printf ("failed to load %s", s)
+            engine.Logger.Printf ("%v", err)
         }
         // add s->i to name_index_map
         c.name_index_map [s] = i

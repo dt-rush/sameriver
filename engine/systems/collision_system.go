@@ -11,7 +11,6 @@ package systems
 
 
 import (
-    "fmt"
 
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/dt-rush/donkeys-qquest/engine/components"
@@ -71,10 +70,10 @@ func (s *CollisionSystem) Init (entity_manager *engine.EntityManager,
 func (s *CollisionSystem) AddCollisionLogic (name string, logic CollisionLogic) int {
 
     id := s.id_system.Gen()
-    fmt.Printf ("about to add collision logic %s\n", name)
+    engine.Logger.Printf ("about to add collision logic %s", name)
     s.collision_logic_collection [id] = logic
     s.collision_logic_ids [name] = id
-    fmt.Printf ("added collision logic %s\n", name)
+    engine.Logger.Printf ("added collision logic %s", name)
     return id
 }
 
