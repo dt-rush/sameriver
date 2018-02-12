@@ -172,9 +172,9 @@ func (s *GameScene) setup_ECS() {
     s.screenmessage_system.Init (initial_capacity)
 
     s.audio_system.Init (initial_capacity)
-    s.audio_system.Load ("assets/hurt.wav")
-    s.audio_system.Load ("assets/coin.wav")
-    s.audio_system.Load ("assets/donkey.wav")
+    s.audio_system.Load ("hurt.wav")
+    s.audio_system.Load ("coin.wav")
+    s.audio_system.Load ("donkey.wav")
 
     s.collision_system.Init (&s.entity_manager,
         &s.active_component,
@@ -471,7 +471,8 @@ func (s *GameScene) Destroy() {
 func (s *GameScene) SceneLogic () {
 
     donkey_respawn_watcher := func () {
-        for true {
+        // TODO: we need some way to terminate these when the scene ends...
+        for s.running {
             // sleep 5 seconds before respawning the donkey
             if ! s.active_component.Get (s.donkey_id) {
                 // respawn the donkeh
@@ -491,30 +492,37 @@ func (s *GameScene) SceneLogic () {
 
     donkey_caught_react := func () {
 
-        donkey_caught_chan := s.game_event_system.Subscribe (logic.GAME_EVENT_DONKEY_CAUGHT)
-        for _ = range (donkey_caught_chan) {
-            engine.Logger.Println ("\tYOU CAUGHT A DONKEY")
+        donkey_caught_chan := s.game_event_system.Subscribe (
+            logic.GAME_EVENT_DONKEY_CAUGHT)
+        for s.running {
+            select {
+            case <-donkey_caught_chan:
 
-            // play coin sound
-            s.audio_system.Play ("coin.wav")
+                engine.Logger.Println ("\tYOU CAUGHT A DONKEY")
 
-            s.score += 1
-            s.update_score_texture()
+                // play coin sound
+                s.audio_system.Play ("coin.wav")
 
-            // TODO: expand to actual inventory system
-            PRINT_DONKEY_INVENTORY := true
-            if PRINT_DONKEY_INVENTORY {
-                inventory := []string{"1 x donkey fur", "2 x donkey ears", "3 x donkey whiskers", "4 x donkey meats"}
-                for _, item := range (inventory) {
-                    engine.Logger.Printf ("\t\t* %s", item)
+                s.score += 1
+                s.update_score_texture()
+
+                // TODO: expand to actual inventory system
+                PRINT_DONKEY_INVENTORY := true
+                if PRINT_DONKEY_INVENTORY {
+                    inventory := []string{"1 x donkey fur", "2 x donkey ears", "3 x donkey whiskers", "4 x donkey meats"}
+                    for _, item := range (inventory) {
+                        engine.Logger.Printf ("\t\t* %s", item)
+                    }
                 }
+                // set donkey to respawn
+                // TODO: separate "visible" component from "active"?
+                donkey_id := s.entity_manager.GetTagEntityUnique ("donkey")
+                s.active_component.Set (donkey_id, false)
+
+            // adding a default case makes the select nonblocking
+            default:
+                time.Sleep(50)
             }
-            // set donkey to respawn
-            // TODO: separate "visible" component from "active"?
-            donkey_id := s.entity_manager.GetTagEntityUnique ("donkey")
-            s.active_component.Set (donkey_id, false)
-
-
         }
     }
 
@@ -523,27 +531,35 @@ func (s *GameScene) SceneLogic () {
         flame_hit_player_chan := s.game_event_system.Subscribe (
             logic.GAME_EVENT_FLAME_HIT_PLAYER)
 
-        for _ = range (flame_hit_player_chan) {
-            engine.Logger.Println ("\tYOU DIED BY FALLING IN A FIRE")
-            // play hurt audio
-            s.audio_system.Play ("hurt.wav")
-            // set up game over message based on score
-            var game_over_message string
-            if s.score == 0 {
-                game_over_message = "You didn't manage to catch any donkeys.\nBetter luck next time though!"
-            } else {
-                plural := ""
-                if s.score > 1 {
-                    plural = "s"
+        for s.running {
+            select {
+            case <-flame_hit_player_chan:
+                engine.Logger.Println ("\tYOU DIED BY FALLING IN A FIRE")
+                // play hurt audio
+                s.audio_system.Play ("hurt.wav")
+                // set up game over message based on score
+                var game_over_message string
+                if s.score == 0 {
+                    game_over_message = "You didn't manage to catch any donkeys.\nBetter luck next time though!"
+                } else {
+                    plural := ""
+                    if s.score > 1 {
+                        plural = "s"
+                    }
+                    game_over_message = fmt.Sprintf (
+                        "You caught %d donkey%s.\nCongratulations!", 
+                        s.score, plural)
                 }
-                game_over_message = fmt.Sprintf ("You caught %d donkey%s.\nCongratulations!", s.score, plural)
+                s.game.GameState ["game_over_message"] = game_over_message
+                game_over_scene := GameOverScene{}
+                s.game.NextScene = &game_over_scene
+                s.Stop()
+                // stop listening for these events by breaking
+                break
+            // adding a default case makes the select nonblocking
+            default:
+                time.Sleep (50)
             }
-            s.game.GameState ["game_over_message"] = game_over_message
-            game_over_scene := GameOverScene{}
-            s.game.NextScene = &game_over_scene
-            s.Stop()
-            // stop listening for these events by breaking
-            break
         }
     }
 

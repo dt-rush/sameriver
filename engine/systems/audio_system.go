@@ -10,6 +10,8 @@
 package systems
 
 import (
+    "fmt"
+
     "github.com/veandco/go-sdl2/mix"
     "github.com/dt-rush/donkeys-qquest/engine"
 )
@@ -22,17 +24,17 @@ func (s *AudioSystem) Play (file string) {
     if s.audio[file] == nil {
         return
     }
-    // play on the first unreserved channel (-1), and
+    // play on channel 1 (so that sounds cut each other off)
     // loop 0 times
     s.audio[file].Play (1, 0)
 }
 
 func (s *AudioSystem) Load (file string) {
     log_err := func (err error) {
-        engine.Logger.Printf ("failed to load %s", file)
+        engine.Logger.Printf ("failed to load assets/%s", file)
         panic (err)
     }
-    chunk, err := mix.LoadWAV (file)
+    chunk, err := mix.LoadWAV (fmt.Sprintf ("assets/%s", file))
     if err != nil {
         log_err (err)
         s.audio [file] = nil
