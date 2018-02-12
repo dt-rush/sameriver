@@ -40,7 +40,7 @@ func (s *ScreenMessageSystem) Init (capacity int) {
     var err error
     s.messages = make (map[string]int, capacity)
     s.textures = make (map[int]*sdl.Texture, capacity)
-    if s.small_font, err = ttf.OpenFont("assets/test.ttf", 9); err != nil {
+    if s.small_font, err = ttf.OpenFont("assets/fixedsys.ttf", 9); err != nil {
         panic(err)
     }
 }

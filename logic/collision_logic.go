@@ -3,23 +3,33 @@ package logic
 import (
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/dt-rush/donkeys-qquest/engine/systems"
-    "github.com/dt-rush/donkeys-qquest/constants"
 )
 
 
 // TODO refactor into game-scene package
 
+var GAME_EVENT_DONKEY_CAUGHT = engine.GameEvent{
+    0,
+    "DONKEY_CAUGHT"}
+var GAME_EVENT_FLAME_HIT_PLAYER = engine.GameEvent{
+    1,
+    "FLAME_HIT_PLAYER"}
+
 // check donkey-player collision
 
 var CollisionLogicCollection = map [string]systems.CollisionLogic{
 
+
+
     "player-donkey": systems.CollisionLogic{
         // NOTE: we have to check whether i = player and j = donkey or
         // i = donkey and j = player, because we don't know
-        // who will be i or j in the "handshake" as ID's are added to a bag of ID's which
-        // may only come out in a given order by coincidence assuring that, for example,
-        // the player were always i and the donkey j, never reaching the donkey first
-        // via i to compare collisions with a player on j
+        // who will be i or j in the "handshake" as ID's are 
+        // added to a bag of ID's which may only come out in 
+        // a given order by coincidence assuring that, for example,
+        // the player were always i and the donkey j, 
+        // never reaching the donkey first via i to compare 
+        // collisions with a player on j
 
         Selector: func (i int,
             j int,
@@ -35,10 +45,11 @@ var CollisionLogicCollection = map [string]systems.CollisionLogic{
         EventGenerator: func (i int,
             j int,
             em *engine.EntityManager) engine.GameEvent {
-
-                return constants.GAME_EVENT_DONKEY_CAUGHT
+                return GAME_EVENT_DONKEY_CAUGHT
             },
     },
+
+
 
     "player-flame": systems.CollisionLogic{
 
@@ -57,7 +68,7 @@ var CollisionLogicCollection = map [string]systems.CollisionLogic{
             j int,
             em *engine.EntityManager) engine.GameEvent {
 
-                return constants.GAME_EVENT_FLAME_HIT_PLAYER
+                return GAME_EVENT_FLAME_HIT_PLAYER
             },
     },
 }

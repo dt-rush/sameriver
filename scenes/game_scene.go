@@ -50,33 +50,21 @@ type GameScene struct {
 
     // components
 
-    // active component
     active_component components.ActiveComponent
-    // sprite component
     sprite_component components.SpriteComponent
-    // color component
     color_component components.ColorComponent
-    // audio component
-    audio_component components.AudioComponent
-    // position component
     position_component components.PositionComponent
-    // velocity component
     velocity_component components.VelocityComponent
-    // hitbox component
     hitbox_component components.HitboxComponent
-    // logic component
     logic_component components.LogicComponent
 
     // systems
 
-    // screenmessage system
     screenmessage_system systems.ScreenMessageSystem
-    // collision system
     collision_system systems.CollisionSystem
-    // physics system
     physics_system systems.PhysicsSystem
-    // logic system
     logic_system systems.LogicSystem
+    audio_system systems.AudioSystem
 
     // score of player in this scene
     score int
@@ -102,35 +90,91 @@ type GameScene struct {
     logic_count int
 }
 
+
+func (s *GameScene) Init (game *engine.Game) chan bool {
+
+    init_done_signal_chan := make (chan bool)
+    s.game = game
+
+    s.score = 0
+
+    go func () {
+        s.destroyed = false
+
+        all_components := []engine.Component{
+            &s.active_component,
+            &s.position_component,
+            &s.velocity_component,
+            &s.color_component,
+            &s.sprite_component,
+            &s.hitbox_component,
+            &s.logic_component,
+        }
+        // 10 is a magic number, they scale dynamically anyway
+        s.entity_manager.Init (10, all_components)
+        // set up components and system
+        s.setup_ECS()
+        // set up the collision
+        s.add_collision_logic()
+        // spawn some entities
+        s.spawn_entities()
+        // load the score font
+        var err error
+        if s.score_font , err = ttf.OpenFont ("assets/test.ttf", 10); err != nil {
+            panic(err)
+        }
+        // set up the score surface/texture
+        s.update_score_texture()
+
+        // just to play a little loading screen fun
+        time.Sleep (1 * time.Second)
+        init_done_signal_chan <- true
+    }()
+    return init_done_signal_chan
+}
+
+
+
 func (s *GameScene) setup_ECS() {
 
     // ECS (TM)
 
     // init components
 
-    // active component
-    s.active_component.Init (s.entity_manager.NumberOfEntities(), s.game)
-    // sprite component
-    s.sprite_component.Init (128, s.game)
-    // color component
-    s.color_component.Init (s.entity_manager.NumberOfEntities(), s.game)
-    // audio component
-    s.audio_component.Init (s.entity_manager.NumberOfEntities(), s.game)
-    // position component
-    s.position_component.Init (s.entity_manager.NumberOfEntities(), s.game)
-    // velocity component
-    s.velocity_component.Init (s.entity_manager.NumberOfEntities(), s.game)
-    // hitbox component
-    s.hitbox_component.Init (s.entity_manager.NumberOfEntities(), s.game)
-    // logic component
-    s.logic_component.Init (s.entity_manager.NumberOfEntities(), s.game)
+    initial_capacity := 128
+
+    s.active_component.Init (
+        initial_capacity,
+        s.game)
+    s.sprite_component.Init (
+        initial_capacity, 
+        s.game)
+    s.color_component.Init (
+        initial_capacity, 
+        s.game)
+    s.position_component.Init (
+        initial_capacity, 
+        s.game)
+    s.velocity_component.Init (
+        initial_capacity, 
+        s.game)
+    s.hitbox_component.Init (
+        initial_capacity, 
+        s.game)
+    s.logic_component.Init (
+        initial_capacity, 
+        s.game)
+
     // init systems
 
-    // TODO: determine how to tune capacity here
-    // 4 as a nonsense magic number
-    s.game_event_system.Init (4)
+    s.game_event_system.Init (initial_capacity)
 
-    s.screenmessage_system.Init (4)
+    s.screenmessage_system.Init (initial_capacity)
+
+    s.audio_system.Init (initial_capacity)
+    s.audio_system.Load ("assets/hurt.wav")
+    s.audio_system.Load ("assets/coin.wav")
+    s.audio_system.Load ("assets/donkey.wav")
 
     s.collision_system.Init (&s.entity_manager,
         &s.active_component,
@@ -141,13 +185,13 @@ func (s *GameScene) setup_ECS() {
     s.physics_system.Init (&s.entity_manager,
         &s.active_component,
         &s.position_component,
-        &s.velocity_component)
+        &s.velocity_component,
+        &s.hitbox_component)
 
     s.logic_system.Init (&s.entity_manager,
         &s.game_event_system,
         &s.logic_component,
         &s.active_component)
-
 
 
     // utilities
@@ -191,7 +235,7 @@ func (s *GameScene) spawn_entities() {
         &s.logic_component)
     // set donkey inactive initially
     s.active_component.Set (s.donkey_id, false)
-    
+
 
     // spawn N_FLAMES
     s.N_FLAMES = 4
@@ -199,13 +243,13 @@ func (s *GameScene) spawn_entities() {
 
         corners := [2]int{i % 2, i / 2}
 
-        engine.Logger.Printf ("spawning flame in corner %d, %d", 
+        engine.Logger.Printf ("spawning flame in corner %d, %d",
             corners[0], corners[1])
 
         initial_position := [2]float64{
-            float64 (int (constants.WINDOW_WIDTH - 50) * 
+            float64 (int (constants.WINDOW_WIDTH - 50) *
                 corners [0] + 25),
-            float64 (int (constants.WINDOW_HEIGHT - 50)  * 
+            float64 (int (constants.WINDOW_HEIGHT - 50)  *
                 corners [1] + 25),
         }
 
@@ -222,48 +266,7 @@ func (s *GameScene) spawn_entities() {
     }
 }
 
-func (s *GameScene) Init (game *engine.Game) chan bool {
 
-    init_done_signal_chan := make (chan bool)
-    s.game = game
-
-    s.score = 0
-
-    go func () {
-        s.destroyed = false
-
-        all_components := []engine.Component{
-            &s.active_component,
-            &s.position_component,
-            &s.velocity_component,
-            &s.color_component,
-            &s.audio_component,
-            &s.sprite_component,
-            &s.hitbox_component,
-            &s.logic_component,
-        }
-        // 10 is a magic number, they scale dynamically anyway
-        s.entity_manager.Init (10, all_components)
-        // set up components and system
-        s.setup_ECS()
-        // set up the collision
-        s.add_collision_logic()
-        // spawn some entities
-        s.spawn_entities()
-        // load the score font
-        var err error
-        if s.score_font , err = ttf.OpenFont ("./assets/test.ttf", 12); err != nil {
-            panic(err)
-        }
-        // set up the score surface/texture
-        s.update_score_texture()
-
-        // just to play a little loading screen fun
-        time.Sleep (1 * time.Second)
-        init_done_signal_chan <- true
-    }()
-    return init_done_signal_chan
-}
 
 func (s *GameScene) update_score_texture () {
     if s.score_surface != nil {
@@ -461,7 +464,6 @@ func (s *GameScene) Destroy() {
             s.score_font.Close()
             s.sprite_component.Destroy()
         })
-
         s.destroyed = true
     }
 }
@@ -471,7 +473,8 @@ func (s *GameScene) SceneLogic () {
     donkey_respawn_watcher := func () {
         for true {
             // sleep 5 seconds before respawning the donkey
-            if ! s.active_component.Get (s.donkey_id) { 
+            if ! s.active_component.Get (s.donkey_id) {
+                // respawn the donkeh
                 time.Sleep (time.Second * 5) // blocking
                 donkey_pos := s.position_component.Get (s.donkey_id)
                 donkey_pos [0] = rand.Float64() *
@@ -479,6 +482,8 @@ func (s *GameScene) SceneLogic () {
                 donkey_pos [1] = rand.Float64() *
                     float64 (constants.WINDOW_HEIGHT - 20) + 20
                 s.active_component.Set (s.donkey_id, true)
+                // play the donkeh sound
+                s.audio_system.Play ("donkey.wav")
             }
             time.Sleep (500)
         }
@@ -486,9 +491,12 @@ func (s *GameScene) SceneLogic () {
 
     donkey_caught_react := func () {
 
-        donkey_caught_chan := s.game_event_system.Subscribe (constants.GAME_EVENT_DONKEY_CAUGHT)
+        donkey_caught_chan := s.game_event_system.Subscribe (logic.GAME_EVENT_DONKEY_CAUGHT)
         for _ = range (donkey_caught_chan) {
             engine.Logger.Println ("\tYOU CAUGHT A DONKEY")
+
+            // play coin sound
+            s.audio_system.Play ("coin.wav")
 
             s.score += 1
             s.update_score_texture()
@@ -506,23 +514,29 @@ func (s *GameScene) SceneLogic () {
             donkey_id := s.entity_manager.GetTagEntityUnique ("donkey")
             s.active_component.Set (donkey_id, false)
 
-            
+
         }
     }
 
     flame_hit_player_react := func () {
 
         flame_hit_player_chan := s.game_event_system.Subscribe (
-            constants.GAME_EVENT_FLAME_HIT_PLAYER)
+            logic.GAME_EVENT_FLAME_HIT_PLAYER)
 
         for _ = range (flame_hit_player_chan) {
             engine.Logger.Println ("\tYOU DIED BY FALLING IN A FIRE")
+            // play hurt audio
+            s.audio_system.Play ("hurt.wav")
             // set up game over message based on score
             var game_over_message string
             if s.score == 0 {
                 game_over_message = "You didn't manage to catch any donkeys.\nBetter luck next time though!"
             } else {
-                game_over_message = fmt.Sprintf ("You caught %d donkeys.\nCongratulations, PLAYER NAME", s.score)
+                plural := ""
+                if s.score > 1 {
+                    plural = "s"
+                }
+                game_over_message = fmt.Sprintf ("You caught %d donkey%s.\nCongratulations!", s.score, plural)
             }
             s.game.GameState ["game_over_message"] = game_over_message
             game_over_scene := GameOverScene{}

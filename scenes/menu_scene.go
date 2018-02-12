@@ -50,8 +50,8 @@ type MenuScene struct {
     message_surface *sdl.Surface
     // texture of the above, for Renderer.Copy() in draw()
     message_texture *sdl.Texture
-    // for general timing, resets at 5000 ms to 0 ms
-    accum_5000 engine.TimeAccumulator
+    // for timing the bounce of "press space"
+    accum_1000 engine.TimeAccumulator
 }
 
 
@@ -122,7 +122,7 @@ func (s *MenuScene) Init (game *engine.Game) chan bool {
         s.rainbow_index = 0
 
         s.accum_rainbow = engine.CreateTimeAccumulator (COLOR_CHANGE_MS)
-        s.accum_5000 = engine.CreateTimeAccumulator (5000)
+        s.accum_1000 = engine.CreateTimeAccumulator (1000)
 
         // render message ("press space") surface
         surface, err = s.small_font.RenderUTF8Solid ("Press Space",
@@ -160,7 +160,7 @@ func (s *MenuScene) Update (dt_ms int) {
         s.rainbow_index %= len (s.rainbow_colors)
     }
 
-    s.accum_5000.Tick (dt_ms)
+    s.accum_1000.Tick (dt_ms)
 
 }
 
@@ -183,8 +183,8 @@ func (s *MenuScene) Draw (window *sdl.Window, renderer *sdl.Renderer) {
     msg_dst := sdl.Rect{
         x_offset,
         int32 (
-            float64 (constants.WINDOW_HEIGHT * 2 / 5) +
-            float64 (constants.WINDOW_HEIGHT / 10) * math.Sin (5 * 2 * math.Pi * s.accum_5000.Completion())),
+            float64 (constants.WINDOW_HEIGHT * 3 / 5) +
+            float64 (constants.WINDOW_HEIGHT / 20) * math.Sin (2 * math.Pi * s.accum_1000.Completion())),
         constants.WINDOW_WIDTH - x_offset * 2,
         20}
     renderer.Copy (s.message_texture, nil, &msg_dst)

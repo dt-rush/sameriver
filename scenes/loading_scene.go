@@ -64,7 +64,7 @@ func (s *LoadingScene) Init (game *engine.Game) chan bool {
             // create the time accumulator
             s.accum_5000 = engine.CreateTimeAccumulator (5000)
             // load font
-            if s.message_font, err = ttf.OpenFont ("./assets/test.ttf", 10); err != nil {
+            if s.message_font, err = ttf.OpenFont ("./assets/fixedsys.ttf", 10); err != nil {
                 panic(err)
             }
             // render message ("press space") surface

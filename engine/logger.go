@@ -11,7 +11,9 @@ import (
     "log"
 )
 
+var TIME_LOGS = 0
+
 var Logger = log.New (
     os.Stdout,
     "[DEBUG] ",
-    log.Lmicroseconds & DEBUG_TIMES)
+    log.Lmicroseconds & TIME_LOGS) 

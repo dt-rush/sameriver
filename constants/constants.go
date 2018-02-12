@@ -1,42 +1,19 @@
 /**
-  * 
-  * This file defines GAME constants 
-  * 
-  * 
+  *
+  * This file defines constants  relevant to the donkeysqquest game
+  *
+  *
 **/
 
 
 
 package constants
 
-import (
-    "fmt"
-)
 
 
-
-var VERSION = "0.2.0"
-var WINDOW_TITLE = fmt.Sprintf ("Donkeys QQuest")
-var WINDOW_WIDTH int32 = 400
-var WINDOW_HEIGHT int32 = 300
-var FPS = 60
-var DEBUG_COLLISION = true
-
-
-
-/*
-*             NOTE ON THE BELOW
-*
-*       FOR THE LOVE OF ALL THAT IS HOLY
-*       KEEP THE CONSTANT DECLARATION STATEMENT AND THE ARRAY ALIGNED
-*/
-
-const (
-    GAME_EVENT_DONKEY_CAUGHT = iota
-    GAME_EVENT_FLAME_HIT_PLAYER = iota
-)
-
-// used to support String()
-var GAME_EVENT_STRINGS = []string{
-    "GAME_EVENT_DONKEY_CAUGHT",
-    "GAME_EVENT_FLAME_HIT_PLAYER"}
+const VERSION = "0.2.0"
+const WINDOW_TITLE = "Donkeys QQuest"
+const WINDOW_WIDTH int32 = 400
+const WINDOW_HEIGHT int32 = 300
+const FPS = 60
+const DEBUG_COLLISION = true

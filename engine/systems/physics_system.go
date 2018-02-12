@@ -24,18 +24,21 @@ type PhysicsSystem struct {
     active_component *components.ActiveComponent
     position_component *components.PositionComponent
     velocity_component *components.VelocityComponent
+    hitbox_component *components.HitboxComponent
 }
 
 
 func (s *PhysicsSystem) Init (entity_manager *engine.EntityManager,
     active_component *components.ActiveComponent,
     position_component *components.PositionComponent,
-    velocity_component *components.VelocityComponent) {
+    velocity_component *components.VelocityComponent,
+    hitbox_component *components.HitboxComponent) {
 
         s.entity_manager = entity_manager
         s.active_component = active_component
         s.position_component = position_component
         s.velocity_component = velocity_component
+        s.hitbox_component = hitbox_component
     }
 
 
@@ -63,12 +66,25 @@ func (s *PhysicsSystem) Update (dt_ms int) {
         dx := vel[0] * (float64 (dt_ms) / 1000.0)
         dy := vel[1] * (float64 (dt_ms) / 1000.0)
 
-        if pos[0] + dx > 0 && 
-            pos[0] + dx < float64 (constants.WINDOW_WIDTH - 20) {
+        box := s.hitbox_component.Get (id)
+
+        if pos[0] + dx < 
+            box[0]/2 {
+            pos[0] = box[0]/2
+        } else if pos[0] + dx > 
+            float64 (constants.WINDOW_WIDTH) - box[0]/2 {
+            pos[0] = float64 (constants.WINDOW_WIDTH) - box[0]/2
+        } else {
             pos[0] += dx
         }
-        if pos[1] + dy > 20 && 
-            pos[1] + dy < float64 (constants.WINDOW_HEIGHT) {
+
+        if pos[1] + dy <
+            box[1]/2 {
+            pos[1] = box[1]/2
+        } else if pos[1] + dy >
+            float64 (constants.WINDOW_HEIGHT) - box[1]/2 {
+            pos[1] = float64 (constants.WINDOW_HEIGHT) - box[1]/2
+        } else {
             pos[1] += dy
         }
         s.position_component.Set (id, pos)

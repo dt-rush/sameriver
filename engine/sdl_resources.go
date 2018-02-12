@@ -26,7 +26,7 @@ func BuildWindowAndRenderer (window_title string, width int32, height int32) (*s
     // create the renderer
     renderer, err := sdl.CreateRenderer (window,
         -1,
-        sdl.RENDERER_SOFTWARE | sdl.RENDERER_TARGETTEXTURE)
+        sdl.RENDERER_SOFTWARE)
     if err != nil {
         panic (err)
     }

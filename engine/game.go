@@ -34,7 +34,7 @@ type Game struct {
     // can access it
     GameState map[string]string
 
-    window *sdl.Window
+    Window *sdl.Window
     Renderer *sdl.Renderer
     accum_fps TimeAccumulator
 
@@ -48,9 +48,7 @@ func (g *Game) Init (WINDOW_TITLE string,
     // seed rand
     seed := time.Now().UTC().UnixNano()
     rand.Seed (seed)
-    if VERBOSE {
-        Logger.Printf ("rand seeded with %d", seed)
-    }
+    Logger.Printf ("rand seeded with %d", seed)
 
     // init systems
     Logger.Println ("Starting to init SDL systems")
@@ -61,7 +59,7 @@ func (g *Game) Init (WINDOW_TITLE string,
     g.func_profiler = FuncProfiler{}
 
     // build the window and renderer
-    g.window, g.Renderer = BuildWindowAndRenderer (
+    g.Window, g.Renderer = BuildWindowAndRenderer (
         WINDOW_TITLE,
         WINDOW_WIDTH,
         WINDOW_HEIGHT)
@@ -92,10 +90,6 @@ func (g *Game) InitSystems() {
     // init SDL Audio
     if (AUDIO_ON) {
         err = sdl.Init (sdl.INIT_AUDIO)
-        if err != nil {
-            panic (err)
-        }
-        err = mix.Init (mix.INIT_MP3)
         if err != nil {
             panic (err)
         }
@@ -196,7 +190,7 @@ func (g *Game) runGameLoopOnScene (scene Scene) {
             if g.accum_fps.Tick (dt_ms) {
                 sdl.Do (func () {
                     g.blankScreen()
-                    scene.Draw (g.window, g.Renderer)
+                    scene.Draw (g.Window, g.Renderer)
                     g.Renderer.Present()
                 })
             }

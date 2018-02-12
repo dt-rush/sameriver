@@ -16,6 +16,7 @@ import (
 
     "github.com/veandco/go-sdl2/sdl"
     "github.com/veandco/go-sdl2/ttf"
+    "github.com/veandco/go-sdl2/img"
     // "github.com/veandco/go-sdl2/gfx"
 )
 
@@ -43,10 +44,14 @@ func (s *GameOverScene) Init (game *engine.Game) chan bool {
     go func () {
         var err error
 
-        s.pixel_font, err = ttf.OpenFont("assets/test.ttf", 16)
+        s.pixel_font, err = ttf.OpenFont("assets/test.ttf", 12)
         if err != nil { panic(err) }
-        s.text_font, err = ttf.OpenFont("assets/test.ttf", 24)
+        s.text_font, err = ttf.OpenFont("assets/test.ttf", 12)
         if err != nil { panic(err) }
+
+        // change the render target of the game's renderer
+        // we'll change it back below
+        s.game.Renderer.SetRenderTarget (s.screen_texture)
 
         // create a texture to render to
         s.screen_texture, err = s.game.Renderer.CreateTexture (
@@ -55,16 +60,29 @@ func (s *GameOverScene) Init (game *engine.Game) chan bool {
             constants.WINDOW_WIDTH,
             constants.WINDOW_HEIGHT)
         if err != nil { panic (err) }
-
-        // set the renderer's texture to screen_texture
         s.game.Renderer.SetRenderTarget (s.screen_texture)
 
         // write a black background to the screen texture
         s.game.Renderer.SetDrawColor (0, 0, 0, 255)
         s.game.Renderer.Clear()
 
+        // render the donkey skull image
+        surface, err := img.Load ("assets/death.png")
+        if err != nil { panic (err) }
+        texture, err := s.game.Renderer.CreateTextureFromSurface (
+            surface)
+        if err != nil { panic (err) }
+        s.game.Renderer.Copy (
+            texture,
+            nil,
+            &sdl.Rect{
+                constants.WINDOW_WIDTH / 6,
+                constants.WINDOW_HEIGHT / 10,
+                (constants.WINDOW_WIDTH * 4) / 6,
+                (constants.WINDOW_HEIGHT * 1) / 4})
+
         // render the words "GAME OVER"
-        s.render_message_to_texture (
+        s.render_message_to_screen_texture (
             "GAME OVER",
             s.pixel_font,
             sdl.Color{255,0,0,255},
@@ -75,43 +93,42 @@ func (s *GameOverScene) Init (game *engine.Game) chan bool {
                 constants.WINDOW_HEIGHT / 8})
 
         // render the game over message set up by the game scene
-        tab_x_offset := constants.WINDOW_WIDTH / 5
+        tab_x_offset := constants.WINDOW_WIDTH / 8
         lines := strings.Split (
             s.game.GameState ["game_over_message"],
             "\n")
         for i, line := range (lines) {
-            s.render_message_to_texture (
+            s.render_message_to_screen_texture (
                 line,
                 s.text_font,
                 sdl.Color{128,128,128,255},
                 &sdl.Rect{
                     tab_x_offset,
                     (constants.WINDOW_HEIGHT *
-                        (8 + int32(i))) / 16,
-                    (constants.WINDOW_WIDTH / 64) *
+                        (9 + int32(i))) / 16,
+                    (constants.WINDOW_WIDTH / 48) *
                         int32 (len (line)),
                     constants.WINDOW_HEIGHT / 16})
         }
 
-        // render the player score message
+        // render the play again? message
+        // TODO: implement dialogue-selection struct to enable
+        // the left/right arrow selection of a continue choice,
+        // and to draw the rectangle using sdl_gfx ThickLineRGBA
         play_again_msg := "play again? [y / n]"
-        s.render_message_to_texture (
+        s.render_message_to_screen_texture (
             play_again_msg,
             s.text_font,
             sdl.Color{255,255,255,255},
             &sdl.Rect{
                 tab_x_offset,
                 (constants.WINDOW_HEIGHT * 7) / 8,
-                (constants.WINDOW_WIDTH / 64) *
+                (constants.WINDOW_WIDTH / 48) *
                     int32 (len (play_again_msg)),
                 constants.WINDOW_HEIGHT / 16})
 
-        // write the "replay?" message
-        // TODO: implement dialogue-selection struct to enable the left/right
-        // arrow selection of a continue choice, and to draw the rectangle
-        // using sdl_gfx ThickLineRGBA
-
-        // restore original render target
+        // set the render target of the game's renderer back to
+        // the proper target
         s.game.Renderer.SetRenderTarget (nil)
 
         init_done_signal_chan <- true
@@ -180,21 +197,24 @@ func (s *GameOverScene) HandleKeyboardEvent (keyboard_event *sdl.KeyboardEvent) 
     }
 }
 
-func (s *GameOverScene) render_message_to_texture (
+func (s *GameOverScene) render_message_to_screen_texture (
     msg string,
     font *ttf.Font,
     color sdl.Color,
     dst *sdl.Rect) {
 
-    // surface & texture to be used in writing the message to the texture
+    // surface & texture to be used in writing the
+    // message to the texture
     var surface *sdl.Surface
     var texture *sdl.Texture
     var err error
         surface, err = font.RenderUTF8Solid (msg, color)
     if err != nil { panic (err) }
-    texture, err = s.game.Renderer.CreateTextureFromSurface (surface)
+    texture, err = s.game.Renderer.CreateTextureFromSurface (
+        surface)
     if err != nil { panic (err) }
-    // this copies our texture to the *target* texture (screen_texture)
+    // this copies our texture to the *target* texture
+    // (screen_texture)
     s.game.Renderer.SetDrawColor (
         color.R,
         color.G,

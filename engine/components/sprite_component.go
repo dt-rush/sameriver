@@ -96,16 +96,14 @@ func (c *SpriteComponent) Init (capacity int, game *engine.Game) {
     // image file enum for now, dynamic load later (TODO)
     const (
         FLAME = "flame.png"
-        FLAME2 = "flame2.png"
-        FLAME3 = "flame3.png"
-        DONKEY1 = "donkey.png"
+        DONKEY = "donkey.png"
     )
-    to_load := []string{FLAME, FLAME2, FLAME3, DONKEY1}
+    to_load := []string{FLAME, DONKEY}
     for i, s := range to_load {
         var err error
         log_err := func (err error) {
             engine.Logger.Printf ("failed to load %s", s)
-            engine.Logger.Printf ("%v", err)
+            panic (err)
         }
         // add s->i to name_index_map
         c.name_index_map [s] = i
