@@ -12,8 +12,8 @@ package systems
 import (
 
     "github.com/dt-rush/donkeys-qquest/engine"
-    "github.com/dt-rush/donkeys-qquest/engine/components"
-    "github.com/dt-rush/donkeys-qquest/constants"
+    "github.com/dt-rush/donkeys-qquest/engine/component"
+    "github.com/dt-rush/donkeys-qquest/constant"
 )
 
 
@@ -72,8 +72,8 @@ func (s *PhysicsSystem) Update (dt_ms int) {
             box[0]/2 {
             pos[0] = box[0]/2
         } else if pos[0] + dx > 
-            float64 (constants.WINDOW_WIDTH) - box[0]/2 {
-            pos[0] = float64 (constants.WINDOW_WIDTH) - box[0]/2
+            float64 (constant.WINDOW_WIDTH) - box[0]/2 {
+            pos[0] = float64 (constant.WINDOW_WIDTH) - box[0]/2
         } else {
             pos[0] += dx
         }
@@ -82,8 +82,8 @@ func (s *PhysicsSystem) Update (dt_ms int) {
             box[1]/2 {
             pos[1] = box[1]/2
         } else if pos[1] + dy >
-            float64 (constants.WINDOW_HEIGHT) - box[1]/2 {
-            pos[1] = float64 (constants.WINDOW_HEIGHT) - box[1]/2
+            float64 (constant.WINDOW_HEIGHT) - box[1]/2 {
+            pos[1] = float64 (constant.WINDOW_HEIGHT) - box[1]/2
         } else {
             pos[1] += dy
         }

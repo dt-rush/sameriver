@@ -1,8 +1,8 @@
 /**
-  * 
-  * 
-  * 
-  * 
+  *
+  *
+  *
+  *
 **/
 
 
@@ -10,6 +10,7 @@
 package components
 
 import (
+    "sync"
     "fmt"
     "github.com/dt-rush/donkeys-qquest/engine"
 )
@@ -17,6 +18,7 @@ import (
 // stores a (length, width) ordered pair
 type HitboxComponent struct {
     data map[int]([2]float64)
+    write_mutex sync.Mutex
 }
 
 func (c *HitboxComponent) Init (capacity int, game *engine.Game) {
@@ -25,7 +27,7 @@ func (c *HitboxComponent) Init (capacity int, game *engine.Game) {
 }
 
 // connected to gamescene.go:
-// TODO factor out the "get all active components 
+// TODO factor out the "get all active components
 // with hitbox and position" into a tag
 func (c *HitboxComponent) Has (id int) bool {
     _, ok := c.data [id]
@@ -33,8 +35,10 @@ func (c *HitboxComponent) Has (id int) bool {
 }
 
 func (c *HitboxComponent) Set (id int, val interface{}) {
+    c.write_mutex.Lock()
     val_ := val.([2]float64)
     c.data[id] = val_
+    c.write_mutex.Unlock()
 }
 
 func (c *HitboxComponent) Get (id int) [2]float64 {
@@ -56,7 +60,7 @@ func (c *HitboxComponent) Name() string {
 
 // TODO implement
 // func (c *AudioComponent) destroy() {
-    
+
 // }
 
 

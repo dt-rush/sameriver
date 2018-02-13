@@ -1,6 +1,7 @@
 package components
 
 import (
+    "sync"
     "github.com/dt-rush/donkeys-qquest/engine"
 )
 
@@ -13,6 +14,7 @@ type LogicUnit struct {
 
 type LogicComponent struct {
     data map[int](LogicUnit)
+    write_mutex sync.Mutex
 }
 
 func (c *LogicComponent) Init (capacity int, game *engine.Game) {
@@ -20,8 +22,10 @@ func (c *LogicComponent) Init (capacity int, game *engine.Game) {
 }
 
 func (c *LogicComponent) Set (id int, val interface{}) {
+    c.write_mutex.Lock()
     val_ := val.(LogicUnit)
     c.data [id] = val_
+    c.write_mutex.Unlock()
 }
 
 func (c *LogicComponent) Get (id int) LogicUnit {
@@ -33,7 +37,7 @@ func (c *LogicComponent) DefaultValue() interface{} {
 }
 
 func (c *LogicComponent) String() string {
-    return "logic component print implementation is TODO" 
+    return "logic component print implementation is TODO"
 }
 
 func (c *LogicComponent) Name() string {

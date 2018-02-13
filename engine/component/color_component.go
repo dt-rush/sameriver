@@ -12,6 +12,7 @@ package components
 
 
 import (
+    "sync"
     "fmt"
     "github.com/dt-rush/donkeys-qquest/engine"
     "github.com/veandco/go-sdl2/sdl"
@@ -20,9 +21,8 @@ import (
 
 
 type ColorComponent struct {
-
     data map[int]sdl.Color
-
+    write_mutex sync.Mutex
 }
 
 func (c *ColorComponent) Init (capacity int, game *engine.Game) {
@@ -34,8 +34,10 @@ func (c *ColorComponent) Get (id int) sdl.Color {
 }
 
 func (c *ColorComponent) Set (id int, val interface{}) {
+    c.write_mutex.Lock()
     val_ := val.(sdl.Color)
     c.data[id] = val_
+    c.write_mutex.Unlock()
 }
 
 func (c *ColorComponent) DefaultValue () interface{} {

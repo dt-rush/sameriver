@@ -2,7 +2,7 @@ package logic
 
 import (
     "github.com/dt-rush/donkeys-qquest/engine"
-    "github.com/dt-rush/donkeys-qquest/engine/systems"
+    "github.com/dt-rush/donkeys-qquest/engine/system"
 )
 
 

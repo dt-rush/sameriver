@@ -12,6 +12,7 @@ package components
 
 
 import (
+    "sync"
     "fmt"
 
     "github.com/dt-rush/donkeys-qquest/engine"
@@ -20,16 +21,13 @@ import (
 
 
 type ActiveComponent struct {
-
     data map[int]bool
-
+    write_mutex sync.Mutex
 }
 
 func (c *ActiveComponent) Init (capacity int, game *engine.Game) {
     c.data = make (map[int]bool, capacity)
 }
-
-
 
 // connected to gamescene.go update():
 // TODO factor out the "get all active components with hitbox and position"
@@ -44,8 +42,10 @@ func (c *ActiveComponent) Get (id int) bool {
 }
 
 func (c *ActiveComponent) Set (id int, val interface{}) {
+    c.write_mutex.Lock()
     val_ := val.(bool)
     c.data[id] = val_
+    c.write_mutex.Unlock()
 }
 
 func (c *ActiveComponent) DefaultValue () interface{} {

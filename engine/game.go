@@ -11,6 +11,7 @@ package engine
 
 import (
     "time"
+    "runtime"
     "math/rand"
 
 
@@ -224,6 +225,7 @@ func (g *Game) Run() {
             g.End()
             break
         } else {
+            
             loading_scene_stopped_signal_chan := g.RunLoadingScene()
             g.Scene = g.NextScene
             g.NextScene = nil
@@ -231,7 +233,17 @@ func (g *Game) Run() {
             g.LoadingScene.Stop()
             <-loading_scene_stopped_signal_chan
             Logger.Println ("<-loading_scene_stopped_signal_chan")
+            if DEBUG_GOROUTINES {
+                Logger.Printf ("Before running %s, NumGoroutine = %d",
+                    g.Scene.Name(),
+                    runtime.NumGoroutine())
+            }
             g.RunScene()
+            if DEBUG_GOROUTINES {
+                Logger.Printf ("After running %s, NumGoroutine = %d",
+                    g.Scene.Name(),
+                    runtime.NumGoroutine())
+            }
         }
     }
 }

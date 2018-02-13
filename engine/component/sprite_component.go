@@ -10,6 +10,7 @@
 package components
 
 import (
+    "sync"
     "fmt"
 
     "github.com/dt-rush/donkeys-qquest/engine"
@@ -27,6 +28,8 @@ type SpriteComponent struct {
     flip []sdl.RendererFlip
     // for getting the index into the *sdl.Texture array via the original filename
     name_index_map map[string]int
+
+    write_mutex sync.Mutex
 }
 
 func (c *SpriteComponent) IndexOf (s string) int {
@@ -38,15 +41,19 @@ func (c *SpriteComponent) Get (id int) *sdl.Texture {
 }
 
 func (c *SpriteComponent) Set (id int, val interface{}) {
+    c.write_mutex.Lock()
     val_ := val.(int)
     c.data [id] = val_
+    c.write_mutex.Unlock()
 }
 
 
 // TODO - separate "flip" into its own component... or just leave it in here,
 // as a sort of side-car of get/set beside the main one
 func (c *SpriteComponent) SetFlip (id int, val sdl.RendererFlip) {
+    c.write_mutex.Lock()
     c.flip [c.data [id]] = val
+    c.write_mutex.Unlock()
 }
 
 func (c *SpriteComponent) GetFlip (id int) sdl.RendererFlip {

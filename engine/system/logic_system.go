@@ -15,7 +15,7 @@ import (
     // "fmt"
 
     "github.com/dt-rush/donkeys-qquest/engine"
-    "github.com/dt-rush/donkeys-qquest/engine/components"
+    "github.com/dt-rush/donkeys-qquest/engine/component"
 )
 
 
