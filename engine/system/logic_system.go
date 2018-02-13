@@ -7,7 +7,7 @@
 
 
 
-package systems
+package system
 
 
 import (
@@ -22,15 +22,15 @@ import (
 type LogicSystem struct {
     entity_manager *engine.EntityManager
     game_event_system *engine.GameEventSystem
-    logic_component *components.LogicComponent
-    active_component *components.ActiveComponent
+    logic_component *component.LogicComponent
+    active_component *component.ActiveComponent
 }
 
 func (s *LogicSystem) Init (
     entity_manager *engine.EntityManager,
     game_event_system *engine.GameEventSystem,
-    logic_component *components.LogicComponent,
-    active_component *components.ActiveComponent,
+    logic_component *component.LogicComponent,
+    active_component *component.ActiveComponent,
     ) {
 
         s.entity_manager = entity_manager

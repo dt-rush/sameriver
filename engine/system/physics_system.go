@@ -7,7 +7,7 @@
 
 
 
-package systems
+package system
 
 import (
 
@@ -20,19 +20,19 @@ import (
 type PhysicsSystem struct {
     // to filter, lookup entities
     entity_manager *engine.EntityManager
-    // components this will use
-    active_component *components.ActiveComponent
-    position_component *components.PositionComponent
-    velocity_component *components.VelocityComponent
-    hitbox_component *components.HitboxComponent
+    // component this will use
+    active_component *component.ActiveComponent
+    position_component *component.PositionComponent
+    velocity_component *component.VelocityComponent
+    hitbox_component *component.HitboxComponent
 }
 
 
 func (s *PhysicsSystem) Init (entity_manager *engine.EntityManager,
-    active_component *components.ActiveComponent,
-    position_component *components.PositionComponent,
-    velocity_component *components.VelocityComponent,
-    hitbox_component *components.HitboxComponent) {
+    active_component *component.ActiveComponent,
+    position_component *component.PositionComponent,
+    velocity_component *component.VelocityComponent,
+    hitbox_component *component.HitboxComponent) {
 
         s.entity_manager = entity_manager
         s.active_component = active_component
@@ -52,7 +52,7 @@ func (s *PhysicsSystem) Update (dt_ms int) {
 
         // TODO: also consider a way of defining tags which apply 
         // based automatically on whether an entity has a set of
-        // components, so we can retrieve a list of all entities (ID's)
+        // component, so we can retrieve a list of all entities (ID's)
         // which have position and velocity using a certain name, like
         // "has_physics"
         if ! s.active_component.Get (id) {

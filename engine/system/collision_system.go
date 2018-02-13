@@ -7,7 +7,7 @@
 
 
 
-package systems
+package system
 
 
 import (
@@ -34,10 +34,10 @@ type CollisionSystem struct {
 
     // To filter, lookup entities
     entity_manager *engine.EntityManager
-    // Components this system will use
-    active_component *components.ActiveComponent
-    position_component *components.PositionComponent
-    hitbox_component *components.HitboxComponent
+    // component this system will use
+    active_component *component.ActiveComponent
+    position_component *component.PositionComponent
+    hitbox_component *component.HitboxComponent
     // How the collision system communicates collision events
     game_event_system *engine.GameEventSystem
     // How the collision system gets populated with specific
@@ -50,9 +50,9 @@ type CollisionSystem struct {
 }
 
 func (s *CollisionSystem) Init (entity_manager *engine.EntityManager,
-    active_component *components.ActiveComponent,
-    position_component *components.PositionComponent,
-    hitbox_component *components.HitboxComponent,
+    active_component *component.ActiveComponent,
+    position_component *component.PositionComponent,
+    hitbox_component *component.HitboxComponent,
     game_event_system *engine.GameEventSystem) {
 
         s.entity_manager = entity_manager
@@ -108,7 +108,7 @@ func (s *CollisionSystem) TestCollision (i int, j int) bool {
 
 func (s *CollisionSystem) EntityIsCollidable (i int) bool {
 
-    // TODO? factor out the "get all active components
+    // TODO? factor out the "get all active component
     // with hitbox and position"
     // logic like this with a usage of the tag system or
     // of the entity-to-component one-to-many bitarray system

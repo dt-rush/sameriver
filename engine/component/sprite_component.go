@@ -7,7 +7,7 @@
 
 
 
-package components
+package component
 
 import (
     "sync"

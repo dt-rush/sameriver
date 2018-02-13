@@ -17,11 +17,11 @@ var GAME_EVENT_FLAME_HIT_PLAYER = engine.GameEvent{
 
 // check donkey-player collision
 
-var CollisionLogicCollection = map [string]systems.CollisionLogic{
+var CollisionLogicCollection = map [string]system.CollisionLogic{
 
 
 
-    "player-donkey": systems.CollisionLogic{
+    "player-donkey": system.CollisionLogic{
         // NOTE: we have to check whether i = player and j = donkey or
         // i = donkey and j = player, because we don't know
         // who will be i or j in the "handshake" as ID's are 
@@ -51,7 +51,7 @@ var CollisionLogicCollection = map [string]systems.CollisionLogic{
 
 
 
-    "player-flame": systems.CollisionLogic{
+    "player-flame": system.CollisionLogic{
 
         Selector: func (i int,
             j int,
