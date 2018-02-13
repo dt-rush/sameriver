@@ -26,7 +26,7 @@ type Game struct {
 
     // the scene which the game will be running presently
     Scene Scene
-    // the next scene (exported field, set by scenes 
+    // the next scene (exported field, set by scenes
     // before they stop themselves)
     NextScene Scene
     // the scene to play while the next scene is running Init()
@@ -154,6 +154,7 @@ func (g *Game) handleKeyboard() {
 func (g *Game) RunLoadingScene () chan bool {
     loading_scene_stopped_signal_chan := make (chan bool)
     go func () {
+        g.LoadingScene.Run()
         g.runGameLoopOnScene (g.LoadingScene)
         loading_scene_stopped_signal_chan <- true
     }()
@@ -225,11 +226,12 @@ func (g *Game) Run() {
             g.End()
             break
         } else {
-            
+
             loading_scene_stopped_signal_chan := g.RunLoadingScene()
             g.Scene = g.NextScene
             g.NextScene = nil
-            g.Scene.Init (g)
+            <-g.Scene.Init (g)
+            Logger.Println ("<-g.Scene.Init (g)")
             g.LoadingScene.Stop()
             <-loading_scene_stopped_signal_chan
             Logger.Println ("<-loading_scene_stopped_signal_chan")
