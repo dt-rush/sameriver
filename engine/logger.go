@@ -2,16 +2,16 @@
 *
 *
 *
-*/
+ */
 
 package engine
 
 import (
-    "os"
-    "log"
+	"log"
+	"os"
 )
 
-var Logger = log.New (
-    os.Stdout,
-    "[DEBUG] ",
-    log.Lmicroseconds)
+var Logger = log.New(
+	os.Stdout,
+	"[DEBUG] ",
+	log.Lmicroseconds)
