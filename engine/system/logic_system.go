@@ -17,20 +17,20 @@ import (
 
 type LogicSystem struct {
 	entity_manager    *engine.EntityManager
-	game_event_system *engine.GameEventSystem
+	game_event_manager *engine.GameEventManager
 	logic_component   *component.LogicComponent
 	active_component  *component.ActiveComponent
 }
 
 func (s *LogicSystem) Init(
 	entity_manager *engine.EntityManager,
-	game_event_system *engine.GameEventSystem,
+	game_event_manager *engine.GameEventManager,
 	logic_component *component.LogicComponent,
 	active_component *component.ActiveComponent,
 ) {
 
 	s.entity_manager = entity_manager
-	s.game_event_system = game_event_system
+	s.game_event_manager = game_event_manager
 	s.logic_component = logic_component
 	s.active_component = active_component
 }

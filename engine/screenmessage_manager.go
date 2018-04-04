@@ -5,7 +5,7 @@
   *
 **/
 
-package system
+package engine
 
 type ScreenMessage interface {
 	Position() [2]int
@@ -45,11 +45,12 @@ type ScreenMessageManager struct {
 	messages   map[int]ScreenMessage
 }
 
-func (s *ScreenMessageManager) Init (capacity int) {
-	// 8 is a good starting capacity, shouldn't need
-	// more than that to start with
-	s.messages = make (map[int]ScreenMessage, 8)
+func (s *ScreenMessageManager) Init () {
+	// arbitrary, can be tuned? Will grow
+	capacity := 4
+	s.messages = make (map[int]ScreenMessage, capacity)
 }
 
 func (s *ScreenMessageManager) Update (dt_ms int) {
+	// TODO: implement
 }

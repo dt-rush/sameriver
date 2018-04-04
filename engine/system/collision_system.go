@@ -34,27 +34,27 @@ type CollisionSystem struct {
 	position_component *component.PositionComponent
 	hitbox_component   *component.HitboxComponent
 	// How the collision system communicates collision events
-	game_event_system *engine.GameEventSystem
+	game_event_manager *engine.GameEventManager
 	// How the collision system gets populated with specific
 	// collision detection logics
 	collision_logic_collection    map[int]CollisionLogic
 	collision_logic_ids           map[string]int
 	collision_logic_active_states map[int]bool
 	// to generate IDs for collision logic
-	id_system engine.IDSystem
+	id_generator engine.IDGenerator
 }
 
 func (s *CollisionSystem) Init(entity_manager *engine.EntityManager,
 	active_component *component.ActiveComponent,
 	position_component *component.PositionComponent,
 	hitbox_component *component.HitboxComponent,
-	game_event_system *engine.GameEventSystem) {
+	game_event_manager *engine.GameEventManager) {
 
 	s.entity_manager = entity_manager
 	s.active_component = active_component
 	s.position_component = position_component
 	s.hitbox_component = hitbox_component
-	s.game_event_system = game_event_system
+	s.game_event_manager = game_event_manager
 
 	s.collision_logic_collection = make(map[int]CollisionLogic)
 	s.collision_logic_ids = make(map[string]int)
@@ -64,7 +64,7 @@ func (s *CollisionSystem) Init(entity_manager *engine.EntityManager,
 
 func (s *CollisionSystem) AddCollisionLogic(name string, logic CollisionLogic) int {
 
-	id := s.id_system.Gen()
+	id := s.id_generator.Gen()
 	engine.Logger.Printf("about to add collision logic %s", name)
 	s.collision_logic_collection[id] = logic
 	s.collision_logic_ids[name] = id
@@ -77,28 +77,21 @@ func (s *CollisionSystem) SetCollisionLogicActiveState(id int, active bool) {
 }
 
 func (s *CollisionSystem) TestCollision(i int, j int) bool {
-
+	// grab component data
 	box := s.hitbox_component.Get(i)
 	other_box := s.hitbox_component.Get(j)
 	center := s.position_component.Get(i)
 	other_center := s.position_component.Get(j)
-
-	// find the distance between the X centers
+	// find the distance between the X and Y centers
+	// NOTE: "abs" is for absolute value
 	dxabs := center[0] - other_center[0]
-	if dxabs < 0 {
-		dxabs *= -1
-	}
-	// find the distance between the Y centers
+	if dxabs < 0 { dxabs *= -1 }
 	dyabs := center[1] - other_center[1]
-	if dyabs < 0 {
-		dyabs *= -1
-	}
-
-	// if the sum of the widths is greater than the x distance, collision (same for y)
-	collision := dxabs*2 < (box[0]+other_box[0]) &&
-		dyabs*2 < (box[1]+other_box[1])
-
-	return collision
+	if dyabs < 0 { dyabs *= -1 }
+	// if the sum of the widths is greater than twice the x distance,
+	// collision has occurred (same for y)
+	return (dxabs*2 < (box[0]+other_box[0]) &&
+			dyabs*2 < (box[1]+other_box[1]))
 }
 
 func (s *CollisionSystem) EntityIsCollidable(i int) bool {
@@ -140,7 +133,7 @@ func (s *CollisionSystem) Update(dt_ms int) {
 					collision_logic.Selector(i, j, s.entity_manager) &&
 					s.TestCollision(i, j) {
 					event_generated := collision_logic.EventGenerator(i, j, s.entity_manager)
-					s.game_event_system.Publish(event_generated)
+					s.game_event_manager.Publish(event_generated)
 				}
 			}
 		}

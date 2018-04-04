@@ -12,7 +12,7 @@ import (
 )
 
 type EntityManager struct {
-	id_system IDSystem
+	id_generator IDGenerator
 
 	component_registry ComponentRegistry
 
@@ -30,9 +30,9 @@ type EntityManager struct {
 	entity_tags map[int]([]string)
 }
 
-func (m *EntityManager) Init(capacity int, components []Component) {
-	// init ID subsystem
-	m.id_system.Init(capacity)
+func (m *EntityManager) Init(components []Component) {
+	// 4 is arbitrary (could be tuned?). this should be expected to grow anyway
+	m.id_generator.Init()
 	// init component registry subsystem
 	m.component_registry.Init(components)
 
@@ -66,7 +66,7 @@ func (m *EntityManager) SpawnEntity(components []Component) int {
 	Logger.Printf("]")
 
 	// generate an id
-	id := m.id_system.Gen()
+	id := m.id_generator.Gen()
 	Logger.Printf(" #%d", id)
 	// allocate component data storage
 	for _, component := range components {
