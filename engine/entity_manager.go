@@ -1,7 +1,8 @@
 /**
   *
+  * Manages the spawning and querying of entities
   *
-  *
+  * TODO: implement selector functions and logical operators
   *
 **/
 
@@ -11,17 +12,13 @@ import (
 	"fmt"
 )
 
+
 type EntityManager struct {
+	// used to generate entity unique IDs
 	id_generator IDGenerator
-
+	// used to keep track of which entities have which componentes
 	component_registry ComponentRegistry
-
-	// TODO: implement, along with selector functions and logical operators...
-	// entity_tag_bitarray // TODO: type?
-	// tag_entity_bitarray // TODO: type?
-	// entity_component_bitarray
-	// component_entity_bitarray
-
+	// the raw list of ID's (entities are ID's)
 	entities []int
 	// two one-way maps support a many-to-many relationship
 	// tag -> []IDs
@@ -35,21 +32,22 @@ func (m *EntityManager) Init(components []Component) {
 	m.id_generator.Init()
 	// init component registry subsystem
 	m.component_registry.Init(components)
-
 	// init slices, maps
 	m.entities = make([]int, 0)
 	m.tag_entities = make(map[string]([]int))
 	m.entity_tags = make(map[int]([]string))
 }
 
+// get the list of ID's (entities)
 func (m *EntityManager) Entities() []int {
 	return m.entities
 }
 
-// ECS maxim: entities are just IDs! These two numbers, of entities and IDs,
-// are always in sync, along with creation and destruction of entities
-// and the freeing of their IDs (currently we just make entities inactive,
-// but at a certain point, deletion code needs to exist) (TODO)
+// ECS maxim: entities are just IDs! These two numbers the number of entities
+// and the number of IDs, are always in sync. The creation and 
+// destruction of entities is parallel to the allocation and freeing of their 
+// IDs (currently we just make entities inactive, but at a certain point, 
+// deletion code needs to exist) (TODO)
 func (m *EntityManager) NumberOfEntities() int {
 	return len(m.entities)
 }
@@ -57,14 +55,12 @@ func (m *EntityManager) NumberOfEntities() int {
 // given a list of components, spawn an entity with the default values
 // returns the ID
 func (m *EntityManager) SpawnEntity(components []Component) int {
-
-	// LOG message
+	// log the spawning of the entity
 	Logger.Printf("spawning entity with components [")
 	for _, component := range components {
 		Logger.Printf("%s,", component.Name())
 	}
 	Logger.Printf("]")
-
 	// generate an id
 	id := m.id_generator.Gen()
 	Logger.Printf(" #%d", id)
