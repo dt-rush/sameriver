@@ -27,6 +27,8 @@ type EntityManager struct {
 	entity_tags map[int]([]string)
 }
 
+// Init the entity manager (requires a list of all components which entities 
+// will be capable of having)
 func (m *EntityManager) Init(components []Component) {
 	// 4 is arbitrary (could be tuned?). this should be expected to grow anyway
 	m.id_generator.Init()
@@ -76,8 +78,13 @@ func (m *EntityManager) SpawnEntity(components []Component) int {
 	return id
 }
 
-// seems the array shift makes this inefficient.
-// TODO this is probably thread-unsafe
+// remove an entity from the entity manager
+// TODO: it seems the array shift makes this inefficient. Maybe collect a list
+// of entities to despawn, and only every so often, do a cleanup of the various
+// data structures by determining the new capacity and writing new arrays / 
+// maps using only the entities which aren't removed
+// TODO: this is probably thread-unsafe
+// TODO: remove the entity from tag and component tracking as well
 func (m *EntityManager) DespawnEntity(id int) {
 	for i := 0; i < len(m.entities); i++ {
 		if i == id {
@@ -91,8 +98,7 @@ func (m *EntityManager) DespawnEntity(id int) {
 	}
 }
 
-// TAG SUPPORTING FUNCTIONS
-
+// apply the given tag to the given entity
 func (m *EntityManager) TagEntity(id int, tag string) {
 	_, et_ok := m.entity_tags[id]
 	_, te_ok := m.tag_entities[tag]
@@ -106,27 +112,34 @@ func (m *EntityManager) TagEntity(id int, tag string) {
 	m.tag_entities[tag] = append(m.tag_entities[tag], id)
 }
 
-func (m *EntityManager) TagEntityUnique(id int, tag string) {
-	if len(m.tag_entities[tag]) != 0 {
-		panic(fmt.Sprintf("trying to tag unique %s more than once", tag))
-	}
-	m.TagEntity(id, tag)
-}
-
+// Tag each of the entities in the provided array of ID's with the given tag
 func (m *EntityManager) TagEntities(ids []int, tag string) {
 	for _, id := range ids {
 		m.TagEntity(id, tag)
 	}
 }
 
+// Get all tags for a given entity
 func (m *EntityManager) GetEntityTags(id int) []string {
 	return m.entity_tags[id]
 }
 
+// Get all entities with the given tag
 func (m *EntityManager) GetTagEntities(tag string) []int {
 	return m.tag_entities[tag]
 }
 
+// Tag an entity uniquely. Panic if another entity is already tagged (this is
+// probably not a good thing to do, TODO: find a better way to guard unique)
+func (m *EntityManager) TagEntityUnique(id int, tag string) {
+	if len(m.tag_entities[tag]) != 0 {
+		panic(fmt.Sprintf("trying to TagEntityUnique for [%s] more than once", 
+				tag))
+	}
+	m.TagEntity(id, tag)
+}
+
+// Get the ID of the unique entity, returning -1 if no entity has that tag
 func (m *EntityManager) GetTagEntityUnique(tag string) int {
 	entity_list := m.tag_entities[tag]
 	if len(entity_list) == 0 {
@@ -136,6 +149,7 @@ func (m *EntityManager) GetTagEntityUnique(tag string) int {
 	}
 }
 
+// Boolean check of whether a given entity has a given tag
 func (m *EntityManager) EntityHasTag(id int, tag string) bool {
 	for _, entity_tag := range m.entity_tags[id] {
 		if entity_tag == tag {
@@ -145,6 +159,7 @@ func (m *EntityManager) EntityHasTag(id int, tag string) bool {
 	return false
 }
 
+// Boolean check of whether a given entity has a given component
 func (m *EntityManager) EntityHasComponent(id int, component Component) bool {
 	return m.component_registry.EntityHas(id, component)
 }
