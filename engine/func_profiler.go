@@ -94,7 +94,7 @@ func (fp *FuncProfiler) Init(mode int) {
 // register a function to be profiled. Allocates the mode-appropriate
 // form of accumulator, returning the ID so the caller can interact with
 // StartTimer and EndTimer
-func (fp *FuncProfiler) Allocate() int {
+func (fp *FuncProfiler) AllocateAccum() int {
 	// generate the ID
 	id := fp.n_funcs + 1
 	// increment the number of funcs stored
@@ -146,3 +146,5 @@ func (fp *FuncProfiler) EndTimer (id int) {
 				milliseconds)
 	}
 }
+
+
