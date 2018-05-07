@@ -10,7 +10,7 @@ Will you save the world? Will you rescue Old Man's garden from gophers? What sec
 
 ```
 Inspecting donkey corpse...
-    you found: 
+    you found:
         donkey pelt x 1
         donkey ears x 2
         donkey hooves x 4
@@ -28,7 +28,7 @@ Inspecting donkey corpse...
 
 #### a. General engine design
 
-###### entity component system 
+###### entity component system
 
 The engine is built on an "entity-component-system" architecture, in which:
 
@@ -36,13 +36,15 @@ The engine is built on an "entity-component-system" architecture, in which:
 
 **Entities** are merely the set of components which their ID's index, and are essentially passed around in the system *as identical with* their ID's.
 
-**Systems** are collections of logic which operate on subsets of components. 
- 
-###### scenes 
- 
+**Systems** are collections of logic which operate on subsets of components.
+
+There are also some **Managers** which are sort of like the glue holding the engine together, or providing services.
+
+###### scenes
+
 The engine is also built on a "scene-based" architecture, in which:
 
-**Scenes** are responsible for actually running and displaying game content. They contain various components (in the future, only *references* to components, all of which will be registered and stored with the singleton Game object) and systems needed to support their operation. They are updated each game loop iteration, receiving: 
+**Scenes** are responsible for actually running and displaying game content. They contain various components (in the future, only *references* to components, all of which will be registered and stored with the singleton Game object) and systems needed to support their operation. They are updated each game loop iteration, receiving:
 
 * keyboard state via a call to a `HandleKeyboardState (keyboard_state []uint8)` method
 * delta-time updates via a call to an `Update (dt_ms float64)` method
