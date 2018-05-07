@@ -1,6 +1,10 @@
 /**
   *
-  *
+  * Used to implement efficient querying of components registered for each
+  * entity ID. Each entity will be associated with a set of bits / bools
+  * which will correspond, by position, to each of a set of registered
+  * components. Thus, it becomes possible to query whether an entity has a
+  * component, or get the full set of components an entity has.
   *
   *
 **/
@@ -9,14 +13,14 @@ package engine
 
 import (
 // TODO: add bitarray implementation
-
 )
-
+// TODO:
 // this type alias is to cover for the fact that bitarray aint' a type til
 // we import an implementation. []bool is shite compared to a proper
 // bitarray lib
 type bitarray []bool
 
+// The registry itself, containing the map of int -> bitarray
 type ComponentRegistry struct {
 	// the real data, a bitarray for the existence of a component
 	// on a given entity
@@ -30,6 +34,9 @@ type ComponentRegistry struct {
 	bitarray_sz int
 }
 
+// Init takes an array of Components (that is, we can't add more dynamically
+// later - the set of Components we register with Init is the set of all
+// Components which entities can have)
 func (r *ComponentRegistry) Init(components []Component) {
 	// init id->bitarray storage
 	r.bitarray_sz = len(components)
@@ -41,9 +48,8 @@ func (r *ComponentRegistry) Init(components []Component) {
 	}
 }
 
+// register an entity and its list of components
 func (r *ComponentRegistry) RegisterEntity(id int, components []Component) {
-	Logger.Println("registering entity ", id)
-
 	// mark this, horatio: the bitarray IS the entity, or its
 	// representation, for this registry, hence the variable name
 	// convention (seen again in other methods)
