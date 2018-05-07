@@ -14,7 +14,6 @@ import (
 	"github.com/veandco/go-sdl2/mix"
 )
 
-
 // AudioManager stores audio as mix.Chunk pointers,
 // keyed by strings (filenames)
 type AudioManager struct {
@@ -28,12 +27,12 @@ func (m *AudioManager) Init() {
 	m.audio = make(map[string](*mix.Chunk), capacity)
 	// read all audio files in assets/
 	files, err := ioutil.ReadDir("assets/")
-    if err != nil {
-        panic (err)
-    }
-    for _, f := range files {
-		m.Load (f.Name())
-    }
+	if err != nil {
+		panic(err)
+	}
+	for _, f := range files {
+		m.Load(f.Name())
+	}
 }
 
 // loads an audio file in the assets/ folder into the map, making it playable
@@ -52,7 +51,7 @@ func (m *AudioManager) Play(file string) {
 	if m.audio[file] == nil {
 		// the value in the map will be nil if the asset
 		// failed to load in Load()
-		Logger.Printf ("attempted to play asset %s, which had failed to load",
+		Logger.Printf("attempted to play asset %s, which had failed to load",
 			file)
 		return
 	} else {

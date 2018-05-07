@@ -14,6 +14,7 @@ package engine
 import (
 // TODO: add bitarray implementation
 )
+
 // TODO:
 // this type alias is to cover for the fact that bitarray aint' a type til
 // we import an implementation. []bool is shite compared to a proper

@@ -12,7 +12,6 @@ import (
 	"fmt"
 )
 
-
 type EntityManager struct {
 	// used to generate entity unique IDs
 	id_generator IDGenerator
@@ -27,7 +26,7 @@ type EntityManager struct {
 	entity_tags map[int]([]string)
 }
 
-// Init the entity manager (requires a list of all components which entities 
+// Init the entity manager (requires a list of all components which entities
 // will be capable of having)
 func (m *EntityManager) Init(components []Component) {
 	// 4 is arbitrary (could be tuned?). this should be expected to grow anyway
@@ -46,9 +45,9 @@ func (m *EntityManager) Entities() []int {
 }
 
 // ECS maxim: entities are just IDs! These two numbers the number of entities
-// and the number of IDs, are always in sync. The creation and 
-// destruction of entities is parallel to the allocation and freeing of their 
-// IDs (currently we just make entities inactive, but at a certain point, 
+// and the number of IDs, are always in sync. The creation and
+// destruction of entities is parallel to the allocation and freeing of their
+// IDs (currently we just make entities inactive, but at a certain point,
 // deletion code needs to exist) (TODO)
 func (m *EntityManager) NumberOfEntities() int {
 	return len(m.entities)
@@ -81,7 +80,7 @@ func (m *EntityManager) SpawnEntity(components []Component) int {
 // remove an entity from the entity manager
 // TODO: it seems the array shift makes this inefficient. Maybe collect a list
 // of entities to despawn, and only every so often, do a cleanup of the various
-// data structures by determining the new capacity and writing new arrays / 
+// data structures by determining the new capacity and writing new arrays /
 // maps using only the entities which aren't removed
 // TODO: this is probably thread-unsafe
 // TODO: remove the entity from tag and component tracking as well
@@ -133,8 +132,8 @@ func (m *EntityManager) GetTagEntities(tag string) []int {
 // probably not a good thing to do, TODO: find a better way to guard unique)
 func (m *EntityManager) TagEntityUnique(id int, tag string) {
 	if len(m.tag_entities[tag]) != 0 {
-		panic(fmt.Sprintf("trying to TagEntityUnique for [%s] more than once", 
-				tag))
+		panic(fmt.Sprintf("trying to TagEntityUnique for [%s] more than once",
+			tag))
 	}
 	m.TagEntity(id, tag)
 }

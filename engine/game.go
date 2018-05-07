@@ -8,6 +8,7 @@
 package engine
 
 import (
+	"fmt"
 	"math/rand"
 	"runtime"
 	"time"
@@ -34,7 +35,8 @@ type Game struct {
 	Renderer  *sdl.Renderer
 	accum_fps TimeAccumulator
 
-	func_profiler FuncProfiler
+	func_profiler        FuncProfiler
+	gameloop_profiler_id int
 }
 
 func (g *Game) Init(WINDOW_TITLE string,
@@ -53,6 +55,8 @@ func (g *Game) Init(WINDOW_TITLE string,
 
 	// set up func profiler
 	g.func_profiler = FuncProfiler{}
+	g.func_profiler.Init(FUNC_PROFILER_SIMPLE)
+	g.gameloop_profiler_id = g.func_profiler.GetStatAccumID("gameloop")
 
 	// build the window and renderer
 	g.Window, g.Renderer = BuildWindowAndRenderer(
@@ -171,40 +175,45 @@ func (g *Game) RunScene() {
 func (g *Game) runGameLoopOnScene(scene Scene) {
 	Logger.Printf("\\\\\\  /// %s starting to run",
 		scene.Name())
+	// set profiler name
+	g.func_profiler.SetName(g.gameloop_profiler_id,
+		fmt.Sprintf("%s gameloop", scene.Name()))
+	// set up ticker to get millisecond dt's to send to scene Update()
 	ticker := time.NewTicker(16 * time.Millisecond)
 	t0 := <-ticker.C
-	gameloop_counter := 0
-	gameloop_ms_accum := 0
-	// loop
+	// gameloop
 	for scene.IsRunning() {
-		// profiling wrapper TODO find a cleaner way to do this
-		gameloop_counter++
-		gameloop_ms_accum += g.func_profiler.Time(func() {
-			// update ticker, calculate loop dt
-			t1 := <-ticker.C
-			dt_ms := int((t1.UnixNano() - t0.UnixNano()) / 1e6)
-			// draw active scene at framerate
-			if g.accum_fps.Tick(dt_ms) {
-				sdl.Do(func() {
-					g.blankScreen()
-					scene.Draw(g.Window, g.Renderer)
-					g.Renderer.Present()
-				})
-			}
-			// handle events and update scene
-			sdl.Do(g.handleKeyboard)
-			scene.Update(dt_ms)
-			// time-keeping
-			t0 = t1
-			// everyone deserves some rest now and then
-			sdl.Delay(16)
-		})
+		// start the profiling timer for the gameloop
+		g.func_profiler.StartTimer(g.gameloop_profiler_id)
+		// update ticker, calculate loop dt
+		t1 := <-ticker.C
+		dt_ms := int((t1.UnixNano() - t0.UnixNano()) / 1e6)
+		// draw active scene at framerate
+		if g.accum_fps.Tick(dt_ms) {
+			sdl.Do(func() {
+				g.blankScreen()
+				scene.Draw(g.Window, g.Renderer)
+				g.Renderer.Present()
+			})
+		}
+		// handle events and update scene
+		sdl.Do(g.handleKeyboard)
+		scene.Update(dt_ms)
+		// prepare the ticker for the next go-round
+		t0 = t1
+		// end the profiling timer
+		g.func_profiler.EndTimer(g.gameloop_profiler_id)
+		// everyone deserves some rest now and then
+		sdl.Delay(16)
 	}
+
+	// Scene has ended. Print a summary
 	Logger.Printf("//// \\\\\\\\ %s stopped running.",
 		scene.Name())
-	Logger.Printf("[gameloop_ms_avg = %.3f]",
-		float64(gameloop_ms_accum)/
-			float64(gameloop_counter))
+	Logger.Print(g.func_profiler.GetSummaryString(g.gameloop_profiler_id))
+	// clear the timer for the new scene to start its timing
+	g.func_profiler.ClearData(g.gameloop_profiler_id)
+
 	// destroy resources used by the scene
 	// (but don't trash the laoding scene which is reused)
 	if scene != g.LoadingScene {

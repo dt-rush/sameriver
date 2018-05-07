@@ -10,13 +10,13 @@ package system
 type ScreenMessage interface {
 	Position() [2]int
 	Text() string
-	Update (dt_ms int)
+	Update(dt_ms int)
 	IsActive() bool
 }
 
 type FixedScreenMessage struct {
 	// the message to display
-	Msg  string
+	Msg string
 	// how many lines of text to show before needing the
 	// player to press space
 	Lines int
@@ -37,19 +37,18 @@ type FloatingScreenMessage struct {
 	Age int
 }
 
-
 // responsible for spawning screen message entities
 // managing their lifecycles, and destroying their resources
 // when needed
 type ScreenMessageManager struct {
-	messages   map[int]ScreenMessage
+	messages map[int]ScreenMessage
 }
 
-func (s *ScreenMessageManager) Init (capacity int) {
+func (s *ScreenMessageManager) Init(capacity int) {
 	// 8 is a good starting capacity, shouldn't need
 	// more than that to start with
-	s.messages = make (map[int]ScreenMessage, 8)
+	s.messages = make(map[int]ScreenMessage, 8)
 }
 
-func (s *ScreenMessageManager) Update (dt_ms int) {
+func (s *ScreenMessageManager) Update(dt_ms int) {
 }

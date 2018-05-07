@@ -16,10 +16,10 @@ import (
 )
 
 type LogicSystem struct {
-	entity_manager    *engine.EntityManager
+	entity_manager     *engine.EntityManager
 	game_event_manager *engine.GameEventManager
-	logic_component   *component.LogicComponent
-	active_component  *component.ActiveComponent
+	logic_component    *component.LogicComponent
+	active_component   *component.ActiveComponent
 }
 
 func (s *LogicSystem) Init(

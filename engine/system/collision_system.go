@@ -85,13 +85,17 @@ func (s *CollisionSystem) TestCollision(i int, j int) bool {
 	// find the distance between the X and Y centers
 	// NOTE: "abs" is for absolute value
 	dxabs := center[0] - other_center[0]
-	if dxabs < 0 { dxabs *= -1 }
+	if dxabs < 0 {
+		dxabs *= -1
+	}
 	dyabs := center[1] - other_center[1]
-	if dyabs < 0 { dyabs *= -1 }
+	if dyabs < 0 {
+		dyabs *= -1
+	}
 	// if the sum of the widths is greater than twice the x distance,
 	// collision has occurred (same for y)
 	return (dxabs*2 < (box[0]+other_box[0]) &&
-			dyabs*2 < (box[1]+other_box[1]))
+		dyabs*2 < (box[1]+other_box[1]))
 }
 
 func (s *CollisionSystem) EntityIsCollidable(i int) bool {
