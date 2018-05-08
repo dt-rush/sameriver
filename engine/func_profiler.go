@@ -1,16 +1,14 @@
 /**
   *
+  * common definitions for the func profiler implementing structs
   * used to profile the execution time of functions
   *
-  * TODO: there has to be a better polymorphism feature in golang than
-  * these switch statements... almost as if this could be an interface...
   *
 **/
 
 package engine
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -20,55 +18,8 @@ const (
 	FUNC_PROFILER_LOSSLESS      = iota
 )
 
-// Accumulator data type to allow the easy computation of an average
-type SimpleAccum struct {
-	// total time consumed by all invocations
-	TotalTime int
-	// number of invocations
-	Invocations int
-}
-
-// Accumulator data type to allow the easy computation of an average
-// along with max, min values to give a slight sense of variance
-type SimpleMinMaxAccum struct {
-	// total time consumed by all invocations
-	TotalTime int
-	// number of invocations
-	Invocations int
-	// minimum and maximum values seen
-	MinimumTime int
-	MaximumTime int
-}
-
-// FuncProfiler stores data on function executions in one of 3 ways,
-// depending on the mode given on Init
-type FuncProfiler struct {
-	// simple_data is a slice, indexed by the func ID, of 2-tuples of
-	// (total ms, invocations) in order to find the average runtime
-	simple_data []SimpleAccum
-	// simple_minmax_data is a slice, indexed by the func ID, of 4-tuples of
-	// (total ms, invocations, min, max) in order to find average
-	// and extreme values
-	simple_minmax_data []SimpleMinMaxAccum
-	// lossless_data is a slice, indexed by the func ID, to a slice of
-	// ints representing each runtime for each invocation.
-	// NOTE:
-	// This will use up a lot (relatively speaking) of memory if you aren't
-	// careful. If the function is invoked on average every 50 ms, you'll
-	// store 80 bytes per second, or 500 MB after about an hour and a half.
-	// That might sound okay, but that's only one function. If you profile 4
-	// such functions, you'll reach 500 MB after about 25 minutes. If you
-	// profile 10 such functions, you'll reach 500 MB after 10 minutes. If you
-	// profile a mere 6 functions invoked every 16 milliseconds, you'll reach
-	// 500 MB in about 5 minutes. Really, this should only be used in a
-	// specialized testing capacity to stress the engine and see what happens,
-	// not for long-term tracking of statistics over the course of gameplay.
-	// NOTE:
-	// Keeping the above in mind, there may be ways to save memory by adding
-	// logic to periodically "reduce" the raw data to its statistical measures
-	// and storing those, maybe even writing the raw data thus-reduced to disk
-	// if requested. But this functionality is not written, and is hence a TODO
-	lossless_data [][]int
+// struct containing data members common to all profilers
+type ProfilerBase struct {
 	// start_times is a slice, indexed by func ID, of ints
 	// used to time individual invocations. The user calls StartTimer(),
 	// which puts the start time into this map, and in EndTimer(), the
@@ -78,139 +29,79 @@ type FuncProfiler struct {
 	// names is a slice, indexed by func ID, of strings
 	// which are the names of the accumulators
 	names []string
-	// mode tells which mode this FuncProfiler is working in
-	Mode int
 	// n_funcs keeps track of the number of functions which have
 	// been registered for profiling
 	n_funcs int
 }
 
-// Init will get the given FuncProfiler into a state where it can be used
-func (fp *FuncProfiler) Init(mode int) {
-	// Initialize the data structures used to store profiling info
-	fp.start_times = make([]int, 1)
-	fp.names = make([]string, 1)
-	switch mode {
-	case FUNC_PROFILER_SIMPLE:
-		fp.simple_data = make([]SimpleAccum, 1)
-	case FUNC_PROFILER_SIMPLE_MINMAX:
-		fp.simple_minmax_data = make([]SimpleMinMaxAccum, 1)
-	case FUNC_PROFILER_LOSSLESS:
-		fp.lossless_data = make([][]int, 1)
+// Create and return a new ProfilerBase struct
+// with its data structures allocated
+func NewProfilerBase() ProfilerBase {
+	return ProfilerBase{
+		start_times: make([]int, 1),
+		names:       make([]string, 1),
+		n_funcs:     0,
 	}
-	// Set the mode
-	fp.Mode = mode
-	// We start at 0 funcs registered
-	fp.n_funcs = 0
 }
 
-// register a function to be profiled. Allocates the mode-appropriate
-// form of statistic accumulator, returning the ID so the caller can interact
-// with StartTimer and EndTimer
-func (fp *FuncProfiler) GetStatAccumID(name string) int {
+// Do the bookkeeping to register a function in the ProfilerBase
+func (b *ProfilerBase) RegisterFunc(name string) int {
 	// generate the ID
-	id := fp.n_funcs + 1
+	id := b.n_funcs + 1
 	// increment the number of funcs stored
-	fp.n_funcs += 1
+	b.n_funcs += 1
 	// store the name
-	fp.names = append(fp.names, name)
-	// allocate storage for the profiling info based on the mode
-	switch fp.Mode {
-	case FUNC_PROFILER_SIMPLE:
-		fp.simple_data = append(fp.simple_data,
-			SimpleAccum{})
-	case FUNC_PROFILER_SIMPLE_MINMAX:
-		fp.simple_minmax_data = append(fp.simple_minmax_data,
-			SimpleMinMaxAccum{})
-	case FUNC_PROFILER_LOSSLESS:
-		fp.lossless_data = append(fp.lossless_data,
-			make([]int, 1))
-	}
+	b.names = append(b.names, name)
 	// create an entry in start times
-	fp.start_times = append(fp.start_times, 0)
+	b.start_times = append(b.start_times, 0)
+	// return the allocated ID
 	return id
 }
 
-// clear the statistic accumulator given the ID
-func (fp *FuncProfiler) ClearData(id int) {
-	switch fp.Mode {
-	case FUNC_PROFILER_SIMPLE:
-		fp.simple_data[id] = SimpleAccum{}
-	case FUNC_PROFILER_SIMPLE_MINMAX:
-		fp.simple_minmax_data[id] = SimpleMinMaxAccum{}
-	case FUNC_PROFILER_LOSSLESS:
-		fp.lossless_data[id] = make([]int, 1)
-	}
+// Get the name of a function from a ProfilerBase object by ID
+func (b *ProfilerBase) GetName(id int) string {
+	return b.names[id]
 }
 
-// Start timing a function
-func (fp *FuncProfiler) StartTimer(id int) {
-	fp.start_times[id] = int(time.Now().UnixNano())
+// Set the name of a function from a ProfilerBase object by ID
+func (b *ProfilerBase) SetName(id int, name string) {
+	b.names[id] = name
 }
 
-// Finish timing a function
-func (fp *FuncProfiler) EndTimer(id int) {
-	// get the elapsed milliseconds by comparing the current time to the
-	// stored start time
+// start timing a function with ProfilerBase
+func (b *ProfilerBase) StartTimer(id int) {
+	b.start_times[id] = int(time.Now().UnixNano())
+}
+
+// start timing a function with ProfilerBase, returning milliseconds elapsed
+func (b *ProfilerBase) EndTimer(id int) int {
 	end_time := int(time.Now().UnixNano())
-	milliseconds := (end_time - fp.start_times[id]) / 1e6
-	// store the statistic according to the mode
-	switch fp.Mode {
+	milliseconds := (end_time - b.start_times[id]) / 1e6
+	return milliseconds
+}
+
+// Generic methods of a FuncProfiler
+type FuncProfiler interface {
+	RegisterFunc(name string) int
+	ClearData(id int)
+	StartTimer(id int)
+	EndTimer(id int)
+	GetName(id int) string
+	SetName(id int, name string)
+	GetAvg(id int) float64
+	GetSummaryString(id int) string
+}
+
+// Create and return a FuncProfiler given the requested mode
+func NewFuncProfiler(mode int) FuncProfiler {
+	var profiler FuncProfiler
+	switch mode {
 	case FUNC_PROFILER_SIMPLE:
-		accum := &fp.simple_data[id]
-		accum.TotalTime += milliseconds
-		accum.Invocations += 1
+		profiler = NewSimpleProfiler()
 	case FUNC_PROFILER_SIMPLE_MINMAX:
-		accum := &fp.simple_minmax_data[id]
-		accum.TotalTime += milliseconds
-		accum.Invocations += 1
-		if milliseconds < accum.MinimumTime {
-			accum.MinimumTime = milliseconds
-		}
-		if milliseconds > accum.MaximumTime {
-			accum.MaximumTime = milliseconds
-		}
+		profiler = NewSimpleMinMaxProfiler()
 	case FUNC_PROFILER_LOSSLESS:
-		fp.lossless_data[id] = append(fp.lossless_data[id],
-			milliseconds)
+		profiler = NewLosslessProfiler()
 	}
-}
-
-// Get the average given a timer ID
-func (fp *FuncProfiler) GetAvg(id int) float64 {
-	avg := 0.0
-	switch fp.Mode {
-	case FUNC_PROFILER_SIMPLE:
-		avg = (float64(fp.simple_data[id].TotalTime) /
-			float64(fp.simple_data[id].Invocations))
-	case FUNC_PROFILER_SIMPLE_MINMAX:
-		avg = (float64(fp.simple_minmax_data[id].TotalTime) /
-			float64(fp.simple_minmax_data[id].Invocations))
-	case FUNC_PROFILER_LOSSLESS:
-		sum := 0
-		count := len(fp.lossless_data[id])
-		for i := 0; i < count; i++ {
-			sum += fp.lossless_data[id][i]
-		}
-		avg = (float64(sum) / float64(count))
-	}
-	return avg
-}
-
-// Return a string displaying the stats for a given statistic accumulator
-// TODO: modify this as the set of functions implementing statistics increases
-func (fp *FuncProfiler) GetSummaryString(id int) string {
-	return fmt.Sprintf("Summary for %s: {Avg: %.3f}",
-		fp.names[id],
-		fp.GetAvg(id))
-}
-
-// Get the name of a timer
-func (fp *FuncProfiler) GetName(id int) string {
-	return fp.names[id]
-}
-
-// Set the name of a timer
-func (fp *FuncProfiler) SetName(id int, name string) {
-	fp.names[id] = name
+	return profiler
 }

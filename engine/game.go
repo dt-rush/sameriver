@@ -54,9 +54,8 @@ func (g *Game) Init(WINDOW_TITLE string,
 	Logger.Println("Finished init of SDL systems")
 
 	// set up func profiler
-	g.func_profiler = FuncProfiler{}
-	g.func_profiler.Init(FUNC_PROFILER_SIMPLE)
-	g.gameloop_profiler_id = g.func_profiler.GetStatAccumID("gameloop")
+	g.func_profiler = NewFuncProfiler(FUNC_PROFILER_SIMPLE)
+	g.gameloop_profiler_id = g.func_profiler.RegisterFunc("gameloop")
 
 	// build the window and renderer
 	g.Window, g.Renderer = BuildWindowAndRenderer(
@@ -68,7 +67,7 @@ func (g *Game) Init(WINDOW_TITLE string,
 	sdl.ShowCursor(0)
 
 	// set the FPS rate
-	g.accum_fps = CreateTimeAccumulator(1000 / FPS)
+	g.accum_fps = NewTimeAccumulator(1000 / FPS)
 
 	// set up game state
 	g.GameState = make(map[string]string)
