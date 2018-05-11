@@ -13,7 +13,7 @@ import (
 // Accumulator data type to allow the easy computation of an average
 type simpleAccum struct {
 	// total time consumed by all invocations
-	totalTime int
+	totalTime float64
 	// number of invocations
 	invocations int
 }
@@ -32,7 +32,7 @@ type simpleProfiler struct {
 // Create a new instance of simpleProfiler
 func NewSimpleProfiler() *simpleProfiler {
 	return &simpleProfiler{
-		accum: make([]simpleAccum, 1),
+		accum: make([]simpleAccum,0),
 		base:  NewProfilerBase(),
 	}
 }
@@ -64,7 +64,7 @@ func (p *simpleProfiler) EndTimer(id int) {
 
 // Get the average runtime for a function
 func (p *simpleProfiler) GetAvg(id int) float64 {
-	return (float64(p.accum[id].totalTime) /
+	return (p.accum[id].totalTime /
 		float64(p.accum[id].invocations))
 }
 

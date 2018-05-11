@@ -16,12 +16,12 @@ type losslessAccum struct {
 	// times taken by each invocation as a simple data series
 	// NOTE:
 	// This will use up a lot (relatively speaking) of memory if you aren't
-	// careful. If the function is invoked on average every 50 ms, you'll
+	// careful. If the function is invoked on average every 100 ms, you'll
 	// store 80 bytes per second, or 500 MB after about an hour and a half.
-	// That might sound okay, but that's only one function. If you profile 4
+	// That might sound okay, but that's only one function. If you profile 2
 	// such functions, you'll reach 500 MB after about 25 minutes. If you
-	// profile 10 such functions, you'll reach 500 MB after 10 minutes. If you
-	// profile a mere 6 functions invoked every 16 milliseconds, you'll reach
+	// profile 5 such functions, you'll reach 500 MB after 10 minutes. If you
+	// profile a mere 3 functions invoked every 16 milliseconds, you'll reach
 	// 500 MB in about 5 minutes. Really, this should only be used in a
 	// specialized testing capacity to stress the engine and see what happens,
 	// not for long-term tracking of statistics over the course of gameplay.
@@ -30,12 +30,12 @@ type losslessAccum struct {
 	// logic to periodically "reduce" the raw data to its statistical measures
 	// and storing those, maybe even writing the raw data thus-reduced to disk
 	// if requested.
-	times []int
+	times []float64
 }
 
 // Create a new losslessAccum
 func newLosslessAccum() losslessAccum {
-	return losslessAccum{make([]int, 1)}
+	return losslessAccum{make([]float64, 0)}
 }
 
 // Profiler struct using the lossless accum
@@ -47,7 +47,7 @@ type losslessProfiler struct {
 // Create a new instance of losslessProfiler
 func NewLosslessProfiler() *losslessProfiler {
 	return &losslessProfiler{
-		accum: make([]losslessAccum, 1),
+		accum: make([]losslessAccum, 0),
 		base:  NewProfilerBase(),
 	}
 }
@@ -78,12 +78,12 @@ func (p *losslessProfiler) EndTimer(id int) {
 
 // Get the average runtime for a function
 func (p *losslessProfiler) GetAvg(id int) float64 {
-	sum := 0
+	sum := 0.0
 	count := len(p.accum[id].times)
 	for i := 0; i < count; i++ {
 		sum += p.accum[id].times[i]
 	}
-	return (float64(sum) / float64(count))
+	return (sum / float64(count))
 }
 
 // Get the name of a given function

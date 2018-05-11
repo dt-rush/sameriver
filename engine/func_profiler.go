@@ -47,7 +47,7 @@ func NewProfilerBase() ProfilerBase {
 // Do the bookkeeping to register a function in the ProfilerBase
 func (b *ProfilerBase) RegisterFunc(name string) int {
 	// generate the ID
-	id := b.n_funcs + 1
+	id := b.n_funcs
 	// increment the number of funcs stored
 	b.n_funcs += 1
 	// store the name
@@ -74,9 +74,9 @@ func (b *ProfilerBase) StartTimer(id int) {
 }
 
 // start timing a function with ProfilerBase, returning milliseconds elapsed
-func (b *ProfilerBase) EndTimer(id int) int {
+func (b *ProfilerBase) EndTimer(id int) float64 {
 	end_time := int(time.Now().UnixNano())
-	milliseconds := (end_time - b.start_times[id]) / 1e6
+	milliseconds := float64(end_time - b.start_times[id]) / float64(1e6)
 	return milliseconds
 }
 

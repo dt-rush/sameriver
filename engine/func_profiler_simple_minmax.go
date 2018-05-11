@@ -14,12 +14,12 @@ import (
 // along with max, min values to give a slight sense of variance
 type simpleMinMaxAccum struct {
 	// total time consumed by all invocations
-	totalTime int
+	totalTime float64
 	// number of invocations
 	invocations int
 	// minimum and maximum values seen
-	minimumTime int
-	maximumTime int
+	minimumTime float64
+	maximumTime float64
 }
 
 // Create a new simpleMinMaxAccum
@@ -36,7 +36,7 @@ type simpleMinMaxProfiler struct {
 // Create a new instance of simpleMinMaxProfiler
 func NewSimpleMinMaxProfiler() *simpleMinMaxProfiler {
 	return &simpleMinMaxProfiler{
-		accum: make([]simpleMinMaxAccum, 1),
+		accum: make([]simpleMinMaxAccum, 0),
 		base:  NewProfilerBase(),
 	}
 }
@@ -74,7 +74,7 @@ func (p *simpleMinMaxProfiler) EndTimer(id int) {
 
 // Get the average runtime for a function
 func (p *simpleMinMaxProfiler) GetAvg(id int) float64 {
-	return (float64(p.accum[id].totalTime) /
+	return (p.accum[id].totalTime /
 		float64(p.accum[id].invocations))
 }
 
