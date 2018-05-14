@@ -11,8 +11,6 @@ import (
 	"sync"
 
 	"github.com/golang-collections/go-datastructures/bitarray"
-
-	"github.com/dt-rush/donkeys-qquest/engine/component"
 )
 
 type EntityManager struct {
@@ -38,9 +36,9 @@ type EntityManager struct {
 	// used to allow systems to keep an updated list of entities which have
 	// components they're interested in operating on (eg. physics watches
 	// for entities with position, velocity, and hitbox)
-	spawnWatchers []QueryWatcher
+	activeWatchers []QueryWatcher
 	// to avoid race conditions
-	spawnWatchersMutex sync.Mutex
+	activeWatchersMutex sync.Mutex
 
 	// data members to support the entity tagging system, which allows us to
 	// associate a set of strings with an entity
@@ -94,15 +92,6 @@ func (m *EntityManager) SpawnEntity(
 	// set the bitarray for this entity
 	m.EntityComponentBitarrays[id] = component_set.ToBitArray()
 
-	// check if anybody has set a query watch on the specific component mix
-	// of this entity. If so, notify them of spawn by sending this id through
-	// the channel
-	for _, watcher := range spawnWatchers {
-		if watcher.Query.Equals(component_set.ToBitArray()) {
-			watcher.Channel <- id
-		}
-	}
-
 	// copy the data into the component storage for each component
 	// (note: we dereference the pointers, this is a real copy, so it's good
 	// that component values are either small pieces of data like [2]uint16
@@ -110,12 +99,9 @@ func (m *EntityManager) SpawnEntity(
 	// although really if a system operating on the component data
 	// expects to work on the data, it should be maintaining a list of
 	// entities with the required components according to the system of
-	// spawnWatchers
+	// activeWatchers
 
-	if component_set.Active == nil {
-		component_set.Active = false
-	}
-	m.components.Active.SafeSet(id, *(component_set.Active))
+	m.components.Active.SafeSet(id, false)
 
 	if component_set.Color == nil {
 		component_set.Color = sdl.Color{}
@@ -157,7 +143,8 @@ func (m *EntityManager) DespawnEntity(id int) {
 	m.entityTableMutex.Lock()
 	defer m.entityTableMutex.Unlock()
 	// set entity inactive
-	m.components.Active.SafeSet(id, false)
+	m.Deactivate(id)
+	// add the ID to the pool of now-available ID's
 	m.availableIDs = append(m.availableIDs, id)
 	// remove tag metadata for this entity
 	tags_to_clear := m.TagsOfEntity[id]
@@ -165,23 +152,40 @@ func (m *EntityManager) DespawnEntity(id int) {
 		m.UntagEntity(id, tag_to_clear)
 	}
 	delete(m.TagsOfEntity, id)
-	// check if anybody has set a query watch on the specific component mix
-	// of this entity. If so, notify them of despawn by sending this -(id + 1)
-	// through the channel
-	for _, watcher := range spawnWatchers {
-		if watcher.Query.Equals(component_set.ToBitArray()) {
-			watcher.Channel <- -(id + 1)
-		}
-	}
+	
 	// unset the bitarray for the entity
 	m.EntityComponentBitarrays[id].Reset()
 }
 
+func Activate (id int) {
+	m.Components.Active.SafeSet (id, true)
+	// check if anybody has set a query watch on the specific component mix
+	// of this entity. If so, notify them of activate by sending this id through
+	// the channel
+	for _, watcher := range activeWatchers {
+		if watcher.Query.Equals(component_set.ToBitArray()) {
+			watcher.Channel <- id
+		}
+	}
+}
+
+func Deactivate (id int) {
+	m.Components.Active.SafeSet (id, false)
+	// check if anybody has set a query watch on the specific component mix
+	// of this entity. If so, notify them of deactivate by sending -(id + 1)
+	// through the channel
+	for _, watcher := range activeWatchers {
+		if watcher.Query.Equals(component_set.ToBitArray()) {
+			watcher.Channel <- -(id + 1)
+		}
+	}
+}
+
 // Return a channel which will receive the id of an entity whenever an entity
-// is spawned with a component set matching the query bitarray, and which will
-// receive -(id + 1) whenever an entity is *despawned* with a component set
+// becomes active with a component set matching the query bitarray, and which
+// will receive -(id + 1) whenever an entity is *despawned* with a component set
 // matching the query bitarray
-func (m *EntityManager) SetSpawnWatcher(
+func (m *EntityManager) SetActiveWatcher(
 	query bitarray.BitArray) QueryWatcher {
 
 	// TODO: this seems as if we're just hoping that the capacity won't exceed
@@ -199,21 +203,21 @@ func (m *EntityManager) SetSpawnWatcher(
 	c := make(chan (int), 8)
 	watcherID := m.watcherIDGen.Gen()
 	qw := QueryWatcher{query, c, watcherID}
-	m.spawnWatchersMutex.Lock()
-	m.spawnWatchers = append(m.spawnWatchers, qw)
-	m.spawnWatchersMutex.Unlock()
+	m.activeWatchersMutex.Lock()
+	m.activeWatchers = append(m.activeWatchers, qw)
+	m.activeWatchersMutex.Unlock()
 	return qw
 }
 
-func (m *EntityManager) UnsetSpawnWatcher(qw QueryWatcher) {
+func (m *EntityManager) UnsetActiveWatcher(qw QueryWatcher) {
 	// find the index of the QueryWatcher in the list and splice it out
-	for i := 0; i < len(m.spawnWatchers); i++ {
+	for i := 0; i < len(m.activeWatchers); i++ {
 		if i == qw.ID {
-			last_ix = len(m.spawnWatchers) - 1
-			m.spawnWatchersMutex.Lock()
-			m.spawnWatchers[i] = m.spawnWatchers[last_ix]
-			m.spawnWatchers = m.spawnWatchers[:last_ix]
-			m.spawnWatchersMutex.Unlock()
+			last_ix = len(m.activeWatchers) - 1
+			m.activeWatchersMutex.Lock()
+			m.activeWatchers[i] = m.activeWatchers[last_ix]
+			m.activeWatchers = m.activeWatchers[:last_ix]
+			m.activeWatchersMutex.Unlock()
 		}
 	}
 }

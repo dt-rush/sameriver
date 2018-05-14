@@ -5,11 +5,10 @@
   *
 **/
 
-package system
+package engine
 
 import (
 	"github.com/dt-rush/donkeys-qquest/engine"
-	"github.com/dt-rush/donkeys-qquest/engine/component"
 )
 
 type CollisionLogic struct {
@@ -29,10 +28,10 @@ type CollisionSystem struct {
 
 	// To filter, lookup entities
 	entity_manager *engine.EntityManager
-	// component this system will use
-	active_component   *component.ActiveComponent
-	position_component *component.PositionComponent
-	hitbox_component   *component.HitboxComponent
+	// query watcher to see spawn/despawn events and update targetted entities
+	spawnWatcher QueryWatcher
+	// targetted entities
+	CollidableEntities []int
 	// How the collision system communicates collision events
 	game_event_manager *engine.GameEventManager
 	// How the collision system gets populated with specific
@@ -44,22 +43,24 @@ type CollisionSystem struct {
 	id_generator engine.IDGenerator
 }
 
-func (s *CollisionSystem) Init(entity_manager *engine.EntityManager,
-	active_component *component.ActiveComponent,
-	position_component *component.PositionComponent,
-	hitbox_component *component.HitboxComponent,
+func (s *CollisionSystem) Init(
+	entity_manager *engine.EntityManager,
 	game_event_manager *engine.GameEventManager) {
 
 	s.entity_manager = entity_manager
-	s.active_component = active_component
-	s.position_component = position_component
-	s.hitbox_component = hitbox_component
 	s.game_event_manager = game_event_manager
+	s.setSpawnWatcher()
 
 	s.collision_logic_collection = make(map[int]CollisionLogic)
 	s.collision_logic_ids = make(map[string]int)
 	s.collision_logic_active_states = make(map[int]bool)
+	s.CollidableEntities = make([]int)
+}
 
+func (s *CollisionSystem) setSpawnWatcher() {
+	query := engine.MakeComponentQuery(
+		engine.POSITION_COMPONENT,
+		engine.HITBOX_COMPONENT)
 }
 
 func (s *CollisionSystem) AddCollisionLogic(name string, logic CollisionLogic) int {
@@ -98,24 +99,9 @@ func (s *CollisionSystem) TestCollision(i int, j int) bool {
 		dyabs*2 < (box[1]+other_box[1]))
 }
 
-func (s *CollisionSystem) EntityIsCollidable(i int) bool {
-
-	// TODO? factor out the "get all active component
-	// with hitbox and position"
-	// logic like this with a usage of the tag system or
-	// of the entity-to-component one-to-many bitarray system
-
-	return (s.active_component.Has(i) &&
-		s.active_component.Get(i)) &&
-		(s.position_component.Has(i) &&
-			s.hitbox_component.Has(i))
-
-}
-
 func (s *CollisionSystem) Update(dt_ms int) {
 
-	entities := s.entity_manager.Entities()
-	for i := 0; i < len(entities); i++ {
+	for i := 0; i < len(c.CollidableEntities); i++ {
 		entity_i := entities[i]
 		if !s.EntityIsCollidable(entity_i) {
 			continue

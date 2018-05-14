@@ -4,7 +4,7 @@
  *
  */
 
-package component
+package engine
 
 import (
 	"github.com/golang-collections/go-datastructures/bitarray"

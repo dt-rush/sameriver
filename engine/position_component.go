@@ -5,17 +5,14 @@
   *
 **/
 
-package component
+package engine
 
 import (
-	"fmt"
 	"sync"
-
-	"github.com/dt-rush/donkeys-qquest/engine"
 )
 
 type PositionComponent struct {
-	Data       [engine.MAX_ENTITIES][2]uint16
+	Data       [MAX_ENTITIES][2]uint16
 	WriteMutex sync.Mutex
 }
 

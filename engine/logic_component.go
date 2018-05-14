@@ -5,10 +5,9 @@
   *
 **/
 
-package component
+package engine
 
 import (
-	"github.com/dt-rush/donkeys-qquest/engine"
 	"sync"
 )
 

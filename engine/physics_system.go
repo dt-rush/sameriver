@@ -5,7 +5,7 @@
   *
 **/
 
-package system
+package engine
 
 import (
 	"github.com/dt-rush/donkeys-qquest/constant"

@@ -5,7 +5,7 @@
   *
 **/
 
-package system
+package engine
 
 type ScreenMessage interface {
 	Position() [2]int
