@@ -76,7 +76,7 @@ func (b *ProfilerBase) StartTimer(id int) {
 // start timing a function with ProfilerBase, returning milliseconds elapsed
 func (b *ProfilerBase) EndTimer(id int) float64 {
 	end_time := int(time.Now().UnixNano())
-	milliseconds := float64(end_time - b.start_times[id]) / float64(1e6)
+	milliseconds := float64(end_time-b.start_times[id]) / float64(1e6)
 	return milliseconds
 }
 

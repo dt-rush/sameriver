@@ -1,6 +1,6 @@
 /**
   *
-  *
+  * Component for the hitbox of an entity
   *
   *
 **/
@@ -9,54 +9,18 @@ package component
 
 import (
 	"fmt"
-	"github.com/dt-rush/donkeys-qquest/engine"
 	"sync"
+
+	"github.com/dt-rush/donkeys-qquest/engine"
 )
 
-// stores a (length, width) ordered pair
-type HitboxComponent struct {
-	data        map[int]([2]float64)
-	write_mutex sync.Mutex
+type VelocityComponent struct {
+	Data       [engine.MAX_ENTITIES][2]uint16
+	WriteMutex sync.Mutex
 }
 
-func (c *HitboxComponent) Init(capacity int, game *engine.Game) {
-	// init data storage
-	c.data = make(map[int]([2]float64), capacity)
+func (c *VelocityComponent) SafeSet(id int, val [2]uint16) {
+	c.WriteMutex.Lock()
+	c.Data[id] = val
+	c.WriteMutex.Unlock()
 }
-
-// connected to gamescene.go:
-// TODO factor out the "get all active components
-// with hitbox and position" into a tag
-func (c *HitboxComponent) Has(id int) bool {
-	_, ok := c.data[id]
-	return ok
-}
-
-func (c *HitboxComponent) Set(id int, val interface{}) {
-	c.write_mutex.Lock()
-	val_ := val.([2]float64)
-	c.data[id] = val_
-	c.write_mutex.Unlock()
-}
-
-func (c *HitboxComponent) Get(id int) [2]float64 {
-	return c.data[id]
-}
-
-func (c *HitboxComponent) DefaultValue() interface{} {
-	r := [2]float64{0, 0}
-	return r
-}
-
-func (c *HitboxComponent) String() string {
-	return fmt.Sprintf("%v", c.data)
-}
-
-func (c *HitboxComponent) Name() string {
-	return "HitboxComponent"
-}
-
-// TODO implement
-// func (c *AudioComponent) destroy() {
-
-// }

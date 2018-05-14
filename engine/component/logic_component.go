@@ -1,3 +1,10 @@
+/**
+  *
+  * Component for a piece of running logic attached to an entity
+  *
+  *
+**/
+
 package component
 
 import (
@@ -6,38 +13,17 @@ import (
 )
 
 type LogicUnit struct {
+	Logic func(dt int)
 	Name  string
-	Logic func(int)
 }
 
 type LogicComponent struct {
-	data        map[int](LogicUnit)
-	write_mutex sync.Mutex
+	Data       [MAX_ENTITIES]LogicUnit
+	WriteMutex sync.Mutex
 }
 
-func (c *LogicComponent) Init(capacity int, game *engine.Game) {
-	c.data = make(map[int](LogicUnit), capacity)
-}
-
-func (c *LogicComponent) Set(id int, val interface{}) {
-	c.write_mutex.Lock()
-	val_ := val.(LogicUnit)
-	c.data[id] = val_
-	c.write_mutex.Unlock()
-}
-
-func (c *LogicComponent) Get(id int) LogicUnit {
-	return c.data[id]
-}
-
-func (c *LogicComponent) DefaultValue() interface{} {
-	return LogicUnit{"empty function", func(int) {}}
-}
-
-func (c *LogicComponent) String() string {
-	return "logic component print implementation is TODO"
-}
-
-func (c *LogicComponent) Name() string {
-	return "LogicComponent"
+func (c *LogicUnit) SafeSet(id int, val LogicUnit) {
+	c.WriteMutex.Lock()
+	c.Data[id] = val
+	c.WriteMutex.Unlock()
 }

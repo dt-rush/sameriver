@@ -32,7 +32,7 @@ type simpleProfiler struct {
 // Create a new instance of simpleProfiler
 func NewSimpleProfiler() *simpleProfiler {
 	return &simpleProfiler{
-		accum: make([]simpleAccum,0),
+		accum: make([]simpleAccum, 0),
 		base:  NewProfilerBase(),
 	}
 }

@@ -8,8 +8,10 @@
 
 package engine
 
-var VERSION = "0.2.0"
-var AUDIO_ON = true
-var DEBUG = true
-var DEBUG_GAME_EVENTS = true
-var DEBUG_GOROUTINES = true
+const VERSION = "0.2.0"
+const AUDIO_ON = true
+const DEBUG = true
+const DEBUG_GAME_EVENTS = true
+const DEBUG_GOROUTINES = true
+
+const MAX_ENTITIES = 1024

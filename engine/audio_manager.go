@@ -25,8 +25,8 @@ func (m *AudioManager) Init() {
 	// can be tuned
 	capacity := 4
 	m.audio = make(map[string](*mix.Chunk), capacity)
-	// read all audio files in assets/
-	files, err := ioutil.ReadDir("assets/")
+	// read all audio files in assets/audio
+	files, err := ioutil.ReadDir("assets/audio")
 	if err != nil {
 		panic(err)
 	}
