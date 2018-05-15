@@ -42,9 +42,9 @@ func (l *UpdatedEntityList) start() {
 				l.Mutex.Lock()
 				Logger.Printf ("inserting #%d to %s\n", id, l.Name)
 				if id >= 0 {
-					l.insert (id)
+					l.insert (uint16(id))
 				} else {
-					l.remove (-(id+1))
+					l.remove (uint16(-(id+1)))
 				}
 				l.Mutex.Unlock()
 				Logger.Println (l.Entities)

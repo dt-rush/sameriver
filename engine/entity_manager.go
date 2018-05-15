@@ -154,7 +154,7 @@ func (m *EntityManager) Activate (id uint16) {
 		Logger.Println ("about to test query watcher")
 		if watcher.Query.Test(id, m) {
 			Logger.Println ("query watcher was true")
-			watcher.Channel <- id
+			watcher.Channel <- int16(id)
 		}
 	}
 }
@@ -166,7 +166,7 @@ func (m *EntityManager) Deactivate (id uint16) {
 	// through the channel
 	for _, watcher := range m.activeWatchers {
 		if watcher.Query.Test(id, m) {
-			watcher.Channel <- -(id + 1)
+			watcher.Channel <- -(int16(id + 1))
 		}
 	}
 }
@@ -183,7 +183,7 @@ func (m *EntityManager) StopUpdatedActiveList (l UpdatedEntityList) {
 }
 
 // Return a channel which will receive the id of an entity whenever an entity
-// becomes active with a component set matching the query bitarray, and which
+/// becomes active with a component set matching the query bitarray, and which
 // will receive -(id + 1) whenever an entity is *despawned* with a component
 // set matching the query bitarray
 func (m *EntityManager) SetActiveWatcher(q Query) QueryWatcher {
@@ -200,7 +200,7 @@ func (m *EntityManager) SetActiveWatcher(q Query) QueryWatcher {
 	// sends/reads, in fact, we could end up in a deadlock through some
 	// obscure condition we hadn't forseen
 
-	c := make(chan(uint16), 8)
+	c := make(chan(int16), 8)
 	watcherID := m.watcherIDGen.Gen()
 	qw := QueryWatcher{q, c, watcherID}
 	m.activeWatchersMutex.Lock()
