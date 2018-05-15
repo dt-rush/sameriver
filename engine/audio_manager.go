@@ -37,7 +37,7 @@ func (m *AudioManager) Init() {
 
 // loads an audio file in the assets/ folder into the map, making it playable
 func (m *AudioManager) Load(file string) {
-	chunk, err := mix.LoadWAV(fmt.Sprintf("assets/%s", file))
+	chunk, err := mix.LoadWAV(fmt.Sprintf("assets/audio/%s", file))
 	if err != nil {
 		Logger.Printf("failed to load assets/%s", file)
 		m.audio[file] = nil
