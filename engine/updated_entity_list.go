@@ -40,9 +40,12 @@ func (l *UpdatedEntityList) start() {
 			case id := <-l.Watcher.Channel:
 				l.Mutex.Lock()
 				if id >= 0 {
+					Logger.Printf("[Updated entity list] %s got insert:%d\n", l.Name, id)
 					l.insert(uint16(id))
 				} else {
-					l.remove(uint16(-(id + 1)))
+					id = -(id + 1)
+					Logger.Printf("[Updated entity list] %s got remove:%d\n", l.Name, id)
+					l.remove(uint16(id))
 				}
 				l.Mutex.Unlock()
 			default:
@@ -59,9 +62,10 @@ func (l *UpdatedEntityList) insert(id uint16) {
 func (l *UpdatedEntityList) remove(id uint16) {
 	last_ix := len(l.Entities) - 1
 	for i := uint16(0); i <= uint16(last_ix); i++ {
-		if i == id {
+		if l.Entities[i] == id {
 			l.Entities[i] = l.Entities[last_ix]
 			l.Entities = l.Entities[:last_ix]
+			break
 		}
 	}
 }

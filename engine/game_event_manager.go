@@ -57,7 +57,7 @@ func (m *GameEventManager) Subscribe(e GameEvent) chan GameEvent {
 
 func (m *GameEventManager) Publish(e GameEvent) {
 	if DEBUG_GAME_EVENTS {
-		Logger.Println(e)
+		Logger.Printf("[Game event manager] E: %s\n", e)
 	}
 	// send e to all streams listening for GameEvent
 	for _, ch := range m.subscribers[e.Code] {

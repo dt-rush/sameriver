@@ -46,10 +46,10 @@ func (s *CollisionSystem) Init(
 func (s *CollisionSystem) AddCollisionLogic(name string, logic CollisionLogic) uint16 {
 
 	id := s.id_generator.Gen()
-	Logger.Printf("about to add collision logic %s", name)
+	Logger.Printf("[Collision system] about to add collision logic %s", name)
 	s.collision_logic_collection[id] = logic
 	s.collision_logic_ids[name] = id
-	Logger.Printf("added collision logic %s", name)
+	Logger.Printf("[Collision system] added collision logic %s", name)
 	return id
 }
 

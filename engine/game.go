@@ -51,12 +51,12 @@ func (g *Game) Init(WINDOW_TITLE string,
 	// seed rand
 	seed := time.Now().UTC().UnixNano()
 	rand.Seed(seed)
-	Logger.Printf("rand seeded with %d", seed)
+	Logger.Printf("[Game] rand seeded with %d", seed)
 
 	// init systems
-	Logger.Println("Starting to init SDL systems")
+	Logger.Println("[Game] Starting to init SDL systems")
 	g.InitSystems()
-	Logger.Println("Finished init of SDL systems")
+	Logger.Println("[Game] Finished init of SDL systems")
 
 	// set up func profiler
 	g.func_profiler = func_profiler.NewFuncProfiler(
@@ -116,16 +116,16 @@ func (g *Game) Destroy() {
 
 func (g *Game) EndCurrentScene() {
 	if g.Scene != nil {
-		Logger.Printf("in Game.EndCurrentScene(), g.scene is %s",
+		Logger.Printf("[Game] in Game.EndCurrentScene(), g.scene is %s",
 			g.Scene.Name())
 		g.Scene.Stop()
 	} else {
-		Logger.Println("in Game.EndCurrentScene(), g.scene is nil")
+		Logger.Println("[Game] in Game.EndCurrentScene(), g.scene is nil")
 	}
 }
 
 func (g *Game) End() {
-	Logger.Println("in Game.End()")
+	Logger.Println("[Game] in Game.End()")
 	g.Scene.Stop()
 }
 
@@ -137,7 +137,7 @@ func (g *Game) handleKeyboard() {
 	for event = sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch t := event.(type) {
 		case *sdl.QuitEvent:
-			Logger.Printf("sdl.QuitEvent received: %v", t)
+			Logger.Printf("[Game] sdl.QuitEvent received: %v", t)
 			// notice we use a nonblocking goroutine
 			g.End()
 			return
@@ -173,14 +173,14 @@ func (g *Game) blankScreen() {
 }
 
 func (g *Game) RunScene() {
-	Logger.Printf("wanting to run %s", g.Scene.Name())
+	Logger.Printf("[Game] wanting to run %s", g.Scene.Name())
 	g.Scene.Run()
-	Logger.Printf("about to run game loop on %s", g.Scene.Name())
+	Logger.Printf("[Game] about to run game loop on %s", g.Scene.Name())
 	g.runGameLoopOnScene(g.Scene)
 }
 
 func (g *Game) runGameLoopOnScene(scene Scene) {
-	Logger.Printf("\\\\\\  /// %s starting to run",
+	Logger.Printf("[Game] \\\\\\  /// %s starting to run",
 		scene.Name())
 	// set profiler name
 	g.func_profiler.SetName(g.gameloop_profiler_id,
@@ -215,7 +215,7 @@ func (g *Game) runGameLoopOnScene(scene Scene) {
 	}
 
 	// Scene has ended. Print a summary
-	Logger.Printf("//// \\\\\\\\ %s stopped running.",
+	Logger.Printf("[Game] //// \\\\\\\\ %s stopped running.",
 		scene.Name())
 	Logger.Print(g.func_profiler.GetSummaryString(g.gameloop_profiler_id))
 	// clear the timer for the new scene to start its timing
@@ -224,7 +224,7 @@ func (g *Game) runGameLoopOnScene(scene Scene) {
 	// destroy resources used by the scene
 	// (but don't trash the laoding scene which is reused)
 	if scene != g.LoadingScene {
-		Logger.Printf("Destroying resources used by %s", scene.Name())
+		Logger.Printf("[Game] Destroying resources used by %s", scene.Name())
 		go scene.Destroy()
 	}
 
@@ -233,7 +233,7 @@ func (g *Game) runGameLoopOnScene(scene Scene) {
 func (g *Game) Run() {
 	for true {
 		if g.NextScene == nil {
-			Logger.Println("NextScene is nil. Game ending.")
+			Logger.Println("[Game] NextScene is nil. Game ending.")
 			g.End()
 			break
 		} else {
@@ -242,18 +242,18 @@ func (g *Game) Run() {
 			g.Scene = g.NextScene
 			g.NextScene = nil
 			<-g.Scene.Init(g)
-			Logger.Println("<-g.Scene.Init (g)")
+			Logger.Println("[Game] <-g.Scene.Init (g)")
 			g.LoadingScene.Stop()
 			<-loading_scene_stopped_signal_chan
-			Logger.Println("<-loading_scene_stopped_signal_chan")
+			Logger.Println("[Game] <-loading_scene_stopped_signal_chan")
 			if DEBUG_GOROUTINES {
-				Logger.Printf("Before running %s, NumGoroutine = %d",
+				Logger.Printf("[Game] Before running %s, NumGoroutine = %d",
 					g.Scene.Name(),
 					runtime.NumGoroutine())
 			}
 			g.RunScene()
 			if DEBUG_GOROUTINES {
-				Logger.Printf("After running %s, NumGoroutine = %d",
+				Logger.Printf("[Game] After running %s, NumGoroutine = %d",
 					g.Scene.Name(),
 					runtime.NumGoroutine())
 			}

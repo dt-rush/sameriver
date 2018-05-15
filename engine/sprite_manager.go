@@ -40,7 +40,7 @@ func (c *SpriteManager) LoadFiles(renderer *sdl.Renderer) {
 	for _, f := range files {
 		var err error
 		log_err := func(err error) {
-			Logger.Printf("failed to load %s", f.Name())
+			Logger.Printf("[Sprite manager] failed to load %s", f.Name())
 			panic(err)
 		}
 		// get image, convert to texture, and store

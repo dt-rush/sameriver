@@ -39,7 +39,7 @@ func (m *AudioManager) Init() {
 func (m *AudioManager) Load(file string) {
 	chunk, err := mix.LoadWAV(fmt.Sprintf("assets/audio/%s", file))
 	if err != nil {
-		Logger.Printf("failed to load assets/%s", file)
+		Logger.Printf("[Audio manager] failed to load assets/%s", file)
 		m.audio[file] = nil
 	} else {
 		m.audio[file] = chunk
@@ -51,7 +51,7 @@ func (m *AudioManager) Play(file string) {
 	if m.audio[file] == nil {
 		// the value in the map will be nil if the asset
 		// failed to load in Load()
-		Logger.Printf("attempted to play asset %s, which had failed to load",
+		Logger.Printf("[Audio manager] attempted to play asset %s, which had failed to load",
 			file)
 		return
 	} else {

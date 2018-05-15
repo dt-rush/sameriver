@@ -87,6 +87,8 @@ func (m *EntityManager) SpawnEntity(
 	id uint16,
 	component_set ComponentSet) {
 
+	Logger.Printf ("[Entity manager] Spawning: %d\n", id)
+
 	m.entityTableMutex.Lock()
 	defer m.entityTableMutex.Unlock()
 
@@ -146,6 +148,7 @@ func (m *EntityManager) DespawnEntity(id uint16) {
 
 // NOTE: do not call this if you've locked Components.Active for reading, haha
 func (m *EntityManager) Activate(id uint16) {
+	Logger.Printf ("[Entity manager] Activating: %d\n", id)
 	m.Components.Active.SafeSet(id, true)
 	// check if anybody has set a query watch on the specific component mix
 	// of this entity. If so, notify them of activate by sending this id
@@ -158,6 +161,7 @@ func (m *EntityManager) Activate(id uint16) {
 }
 
 func (m *EntityManager) Deactivate(id uint16) {
+	Logger.Printf ("[Entity manager] Deactivating: %d\n", id)
 	m.Components.Active.SafeSet(id, false)
 	// check if anybody has set a query watch on the specific component mix
 	// of this entity. If so, notify them of deactivate by sending -(id + 1)
@@ -211,17 +215,19 @@ func (m *EntityManager) UnsetActiveWatcher(qw QueryWatcher) {
 	// find the index of the QueryWatcher in the list and splice it out
 	last_ix := len(m.activeWatchers) - 1
 	for i := uint16(0); i <= uint16(last_ix); i++ {
-		if i == qw.ID {
+		if m.activeWatchers[i].ID == qw.ID {
 			m.activeWatchersMutex.Lock()
 			m.activeWatchers[i] = m.activeWatchers[last_ix]
 			m.activeWatchers = m.activeWatchers[:last_ix]
 			m.activeWatchersMutex.Unlock()
+			break
 		}
 	}
 }
 
 // apply the given tag to the given entity
 func (m *EntityManager) TagEntity(id uint16, tag string) {
+	Logger.Printf ("[Entity manager] Tagging %d with: %s\n", id, tag)
 	m.tagSystemMutex.Lock()
 	defer m.tagSystemMutex.Unlock()
 	_, t_of_e_exists := m.TagsOfEntity[id]
@@ -249,15 +255,16 @@ func (m *EntityManager) UntagEntity(id uint16, tag string) {
 			// reallocating the whole dang thing)
 			m.EntitiesWithTag[tag][i] = m.EntitiesWithTag[tag][last_ix]
 			m.EntitiesWithTag[tag] = m.EntitiesWithTag[tag][:last_ix]
+			break
 		}
 	}
 	// remove the tag from the list of tags for the entity
 	last_ix = len(m.TagsOfEntity[id]) - 1
 	for i := 0; i <= last_ix; i++ {
 		if m.TagsOfEntity[id][i] == tag {
-			last_ix = len(m.TagsOfEntity[id]) - 1
 			m.TagsOfEntity[id][i] = m.TagsOfEntity[id][last_ix]
 			m.TagsOfEntity[id] = m.TagsOfEntity[id][:last_ix]
+			break
 		}
 	}
 }
