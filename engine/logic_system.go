@@ -8,33 +8,31 @@
 package engine
 
 
+// I have chicken wing sauce on my hands
+
 
 type LogicSystem struct {
+	// Reference to entity manager to reach logic component
 	entity_manager     *EntityManager
-	game_event_manager *GameEventManager
-	logic_component    *LogicComponent
-	active_component   *ActiveComponent
+	// targetted entities
+	logicEntities *UpdatedEntityList
 }
 
-func (s *LogicSystem) Init(
-	entity_manager *EntityManager,
-	game_event_manager *GameEventManager,
-	logic_component *LogicComponent,
-	active_component *ActiveComponent,
-) {
-
+func (s *LogicSystem) Init(entity_manager *EntityManager) {
 	s.entity_manager = entity_manager
-	s.game_event_manager = game_event_manager
-	s.logic_component = logic_component
-	s.active_component = active_component
+	// get a regularly updated list of the entities which have logic component
+	query := NewBitArraySubsetQuery (
+		MakeComponentBitArray([]int{LOGIC_COMPONENT}))
+	s.logicEntities = s.entity_manager.GetUpdatedActiveList (query, "logic-bearing")
 }
 
-func (s *LogicSystem) Update(dt_ms int) {
-	for _, id := range s.entity_manager.Entities() {
-		if s.entity_manager.EntityHasComponent(id, s.logic_component) &&
-			s.active_component.Get(id) {
-			logic_unit := s.logic_component.Get(id)
-			logic_unit.Logic(dt_ms)
-		}
+func (s *LogicSystem) Update(dt_ms uint16) {
+	s.entity_manager.Components.Logic.Mutex.Lock()
+	s.logicEntities.Mutex.Lock()
+	defer s.entity_manager.Components.Logic.Mutex.Unlock()
+	defer s.logicEntities.Mutex.Unlock()
+
+	for _, id := range s.logicEntities.Entities {
+		s.entity_manager.Components.Logic.Data[id].Logic(dt_ms)
 	}
 }

@@ -8,7 +8,6 @@
 package engine
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -17,7 +16,7 @@ type VelocityComponent struct {
 	Mutex sync.Mutex
 }
 
-func (c *VelocityComponent) SafeSet(id int, val [2]int16) {
+func (c *VelocityComponent) SafeSet(id uint16, val [2]int16) {
 	c.Mutex.Lock()
 	c.Data[id] = val
 	c.Mutex.Unlock()

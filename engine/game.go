@@ -36,7 +36,7 @@ type Game struct {
 	accum_fps TimeAccumulator
 
 	func_profiler        FuncProfiler
-	gameloop_profiler_id int
+	gameloop_profiler_id uint16
 }
 
 func (g *Game) Init(WINDOW_TITLE string,
@@ -67,7 +67,7 @@ func (g *Game) Init(WINDOW_TITLE string,
 	sdl.ShowCursor(0)
 
 	// set the FPS rate
-	g.accum_fps = NewTimeAccumulator(1000 / FPS)
+	g.accum_fps = NewTimeAccumulator(uint16(1000 / FPS))
 
 	// set up game state
 	g.GameState = make(map[string]string)
@@ -186,7 +186,7 @@ func (g *Game) runGameLoopOnScene(scene Scene) {
 		g.func_profiler.StartTimer(g.gameloop_profiler_id)
 		// update ticker, calculate loop dt
 		t1 := <-ticker.C
-		dt_ms := int((t1.UnixNano() - t0.UnixNano()) / 1e6)
+		dt_ms := uint16((t1.UnixNano() - t0.UnixNano()) / 1e6)
 		// draw active scene at framerate
 		if g.accum_fps.Tick(dt_ms) {
 			sdl.Do(func() {

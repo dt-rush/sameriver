@@ -16,7 +16,7 @@ type PositionComponent struct {
 	Mutex      sync.Mutex
 }
 
-func (c *PositionComponent) SafeSet(id int, val [2]int16) {
+func (c *PositionComponent) SafeSet(id uint16, val [2]int16) {
 	c.Mutex.Lock()
 	c.Data[id] = val
 	c.Mutex.Unlock()

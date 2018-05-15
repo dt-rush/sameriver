@@ -45,9 +45,9 @@ func NewProfilerBase() ProfilerBase {
 }
 
 // Do the bookkeeping to register a function in the ProfilerBase
-func (b *ProfilerBase) RegisterFunc(name string) int {
+func (b *ProfilerBase) RegisterFunc(name string) uint16 {
 	// generate the ID
-	id := b.n_funcs
+	id := uint16(b.n_funcs)
 	// increment the number of funcs stored
 	b.n_funcs += 1
 	// store the name
@@ -59,22 +59,22 @@ func (b *ProfilerBase) RegisterFunc(name string) int {
 }
 
 // Get the name of a function from a ProfilerBase object by ID
-func (b *ProfilerBase) GetName(id int) string {
+func (b *ProfilerBase) GetName(id uint16) string {
 	return b.names[id]
 }
 
 // Set the name of a function from a ProfilerBase object by ID
-func (b *ProfilerBase) SetName(id int, name string) {
+func (b *ProfilerBase) SetName(id uint16, name string) {
 	b.names[id] = name
 }
 
 // start timing a function with ProfilerBase
-func (b *ProfilerBase) StartTimer(id int) {
+func (b *ProfilerBase) StartTimer(id uint16) {
 	b.start_times[id] = int(time.Now().UnixNano())
 }
 
 // start timing a function with ProfilerBase, returning milliseconds elapsed
-func (b *ProfilerBase) EndTimer(id int) float64 {
+func (b *ProfilerBase) EndTimer(id uint16) float64 {
 	end_time := int(time.Now().UnixNano())
 	milliseconds := float64(end_time-b.start_times[id]) / float64(1e6)
 	return milliseconds
@@ -82,14 +82,14 @@ func (b *ProfilerBase) EndTimer(id int) float64 {
 
 // Generic methods of a FuncProfiler
 type FuncProfiler interface {
-	RegisterFunc(name string) int
-	ClearData(id int)
-	StartTimer(id int)
-	EndTimer(id int)
-	GetName(id int) string
-	SetName(id int, name string)
-	GetAvg(id int) float64
-	GetSummaryString(id int) string
+	RegisterFunc(name string) uint16
+	ClearData(id uint16)
+	StartTimer(id uint16)
+	EndTimer(id uint16)
+	GetName(id uint16) string
+	SetName(id uint16, name string)
+	GetAvg(id uint16) float64
+	GetSummaryString(id uint16) string
 }
 
 // Create and return a FuncProfiler given the requested mode

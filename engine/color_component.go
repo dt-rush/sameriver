@@ -17,7 +17,7 @@ type ColorComponent struct {
 	Mutex sync.Mutex
 }
 
-func (c *ColorComponent) SafeSet(id int, val sdl.Color) {
+func (c *ColorComponent) SafeSet(id uint16, val sdl.Color) {
 	c.Mutex.Lock()
 	c.Data[id] = val
 	c.Mutex.Unlock()

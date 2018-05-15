@@ -1,8 +1,12 @@
 package engine
 
 import (
-	"github.com/veandco/go-sdl2/sdl"
+	"fmt"
 	"strings"
+	"io/ioutil"
+
+	"github.com/veandco/go-sdl2/sdl"
+	"github.com/veandco/go-sdl2/img"
 )
 
 type SpriteManager struct {
@@ -14,9 +18,9 @@ func (c *SpriteManager) Init(
 	sprite_component *SpriteComponent,
 	renderer *sdl.Renderer) {
 
-	c.sprite_component = sprite_component
+	c.SpriteComponent = sprite_component
 	c.Textures = make(map[string]*sdl.Texture, 256)
-	c.LoadFiles()
+	c.LoadFiles(renderer)
 }
 
 func (c *SpriteManager) NewSprite(name string) Sprite {
@@ -28,7 +32,7 @@ func (c *SpriteManager) NewSprite(name string) Sprite {
 	}
 }
 
-func (c *SpriteManager) LoadFiles() {
+func (c *SpriteManager) LoadFiles(renderer *sdl.Renderer) {
 	files, err := ioutil.ReadDir("assets/images/sprites")
 	if err != nil {
 		panic(err)
@@ -36,7 +40,7 @@ func (c *SpriteManager) LoadFiles() {
 	for _, f := range files {
 		var err error
 		log_err := func(err error) {
-			engine.Logger.Printf("failed to load %s", f.Name())
+			Logger.Printf("failed to load %s", f.Name())
 			panic(err)
 		}
 		// get image, convert to texture, and store

@@ -16,7 +16,7 @@ type HitboxComponent struct {
 	Mutex sync.Mutex
 }
 
-func (c *HitboxComponent) SafeSet(id int, val [2]uint16) {
+func (c *HitboxComponent) SafeSet(id uint16, val [2]uint16) {
 	c.Mutex.Lock()
 	c.Data[id] = val
 	c.Mutex.Unlock()

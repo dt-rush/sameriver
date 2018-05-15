@@ -7,6 +7,9 @@
 package engine
 
 import (
+	"fmt"
+	"bytes"
+
 	"github.com/golang-collections/go-datastructures/bitarray"
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -28,41 +31,58 @@ type ComponentSet struct {
 	Color    *sdl.Color
 	Hitbox   *[2]uint16
 	Logic    *LogicUnit
-	Position *[2]uint16
+	Position *[2]int16
 	Sprite   *Sprite
-	Velocity *[2]uint16
+	Velocity *[2]int16
 }
 
-func (s *ComponentSet) ToBitarray() bitarray.BitArray {
+func (s *ComponentSet) ToBitArray() bitarray.BitArray {
 	b := bitarray.NewBitArray(uint64(N_COMPONENTS))
 	if s.Active != nil {
-		b.SetBit(ACTIVE_COMPONENT)
+		b.SetBit(uint64(ACTIVE_COMPONENT))
 	}
 	if s.Color != nil {
-		b.SetBit(COLOR_COMPONENT)
+		b.SetBit(uint64(COLOR_COMPONENT))
 	}
 	if s.Hitbox != nil {
-		b.SetBit(HITBOX_COMPONENT)
+		b.SetBit(uint64(HITBOX_COMPONENT))
 	}
 	if s.Logic != nil {
-		b.SetBit(LOGIC_COMPONENT)
+		b.SetBit(uint64(LOGIC_COMPONENT))
 	}
 	if s.Position != nil {
-		b.SetBit(POSITION_COMPONENT)
+		b.SetBit(uint64(POSITION_COMPONENT))
 	}
 	if s.Sprite != nil {
-		b.SetBit(SPRITE_COMPONENT)
+		b.SetBit(uint64(SPRITE_COMPONENT))
 	}
 	if s.Velocity != nil {
-		b.SetBit(VELOCITY_COMPONENT)
+		b.SetBit(uint64(VELOCITY_COMPONENT))
 	}
 	return b
 }
 
-func MakeComponentQuery(components []int) bitarray.BitArray {
+func MakeComponentBitArray(components []int) bitarray.BitArray {
 	b := bitarray.NewBitArray(uint64(N_COMPONENTS))
 	for _, COMPONENT := range components {
-		b.SetBit(COMPONENT)
+		b.SetBit(uint64(COMPONENT))
 	}
 	return b
+}
+
+func ComponentBitArrayToString (b bitarray.BitArray) string {
+	var buf bytes.Buffer
+	buf.WriteString("[")
+	for i := uint64(0); i < N_COMPONENTS; i++ {
+		bit, _ := b.GetBit(i)
+		var val int
+		if bit {
+			val = 1
+		} else {
+			val = 0
+		}
+		buf.WriteString(fmt.Sprintf("%v", val))
+	}
+	buf.WriteString("]")
+	return buf.String()
 }

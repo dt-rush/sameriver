@@ -14,70 +14,69 @@ import (
 type PhysicsSystem struct {
 	// to filter, lookup entities
 	entity_manager *EntityManager
-	// component this will use
-	active_component   *ActiveComponent
-	position_component *PositionComponent
-	velocity_component *VelocityComponent
-	hitbox_component   *HitboxComponent
+	// targetted entities
+	physicsEntities *UpdatedEntityList
 }
 
-func (s *PhysicsSystem) Init(entity_manager *EntityManager,
-	active_component *ActiveComponent,
-	position_component *PositionComponent,
-	velocity_component *VelocityComponent,
-	hitbox_component *HitboxComponent) {
-
+func (s *PhysicsSystem) Init(entity_manager *EntityManager) {
+	// take down a reference to entity manager
 	s.entity_manager = entity_manager
-	s.active_component = active_component
-	s.position_component = position_component
-	s.velocity_component = velocity_component
-	s.hitbox_component = hitbox_component
+	// get a regularly updated list of the entities which have physics
+	// (position, velocity and hitbox)
+	query := NewBitArraySubsetQuery(
+		MakeComponentBitArray([]int{
+			POSITION_COMPONENT,
+			VELOCITY_COMPONENT,
+			HITBOX_COMPONENT}))
+	s.physicsEntities = s.entity_manager.GetUpdatedActiveList (query, "physical")
 }
 
-func (s *PhysicsSystem) Update(dt_ms int) {
-	for _, id := range s.entity_manager.Entities() {
-		// TODO - note that we never preemptively filter entities or
-		// query entities or even check each entity, as to whether they
-		// have position and velocity, we just assume all do, add this
-		// checking using a bitarray component mapper
+// apply velocity to position of entities
+// NOTE: this is called from Update and is covered by its mutex on the
+// components
+func (s *PhysicsSystem) applyPhysics (id uint16, dt_ms uint16) {
+	// read the position and velocity, using dt to compute dx, dy
+	pos := s.entity_manager.Components.Position.Data[id]
+	vel := s.entity_manager.Components.Velocity.Data[id]
+	dx := vel[0] * int16(dt_ms)
+	dy := vel[1] * int16(dt_ms)
+	box := s.entity_manager.Components.Hitbox.Data[id]
+	// prevent from leaving the world in X
+	if pos[0]+dx <
+		int16(box[0]/2) {
+		pos[0] = int16(box[0]/2)
+	} else if pos[0]+dx >
+		int16(constant.WINDOW_WIDTH) - int16(box[0]/2) {
+		pos[0] = int16(constant.WINDOW_WIDTH) - int16(box[0]/2)
+	} else {
+		pos[0] += dx
+	}
+	// prevent from leaving the world in Y
+	if pos[1]+dy <
+		int16(box[1]/2) {
+		pos[1] = int16(box[1]/2)
+	} else if pos[1]+dy >
+		int16(constant.WINDOW_HEIGHT) - int16(box[1]/2) {
+		pos[1] = int16(constant.WINDOW_HEIGHT) - int16(box[1]/2)
+	} else {
+		pos[1] += dy
+	}
+	// set the new position which has been computed
+	s.entity_manager.Components.Position.Data[id] = pos
+}
 
-		// TODO: also consider a way of defining tags which apply
-		// based automatically on whether an entity has a set of
-		// component, so we can retrieve a list of all entities (ID's)
-		// which have position and velocity using a certain name, like
-		// "has_physics"
-		if !s.active_component.Get(id) {
-			// don't update inactive entities
-			continue
-		}
-		// apply velocity to position of entities
-		pos := s.position_component.Get(id)
-		vel := s.velocity_component.Get(id)
+func (s *PhysicsSystem) Update(dt_ms uint16) {
 
-		dx := vel[0] * (float64(dt_ms) / 1000.0)
-		dy := vel[1] * (float64(dt_ms) / 1000.0)
+	s.entity_manager.Components.Position.Mutex.Lock()
+	s.entity_manager.Components.Velocity.Mutex.Lock()
+	s.entity_manager.Components.Hitbox.Mutex.Lock()
+	s.physicsEntities.Mutex.Lock()
+	defer s.entity_manager.Components.Position.Mutex.Unlock()
+	defer s.entity_manager.Components.Velocity.Mutex.Unlock()
+	defer s.entity_manager.Components.Hitbox.Mutex.Unlock()
+	defer s.physicsEntities.Mutex.Unlock()
 
-		box := s.hitbox_component.Get(id)
-
-		if pos[0]+dx <
-			box[0]/2 {
-			pos[0] = box[0] / 2
-		} else if pos[0]+dx >
-			float64(constant.WINDOW_WIDTH)-box[0]/2 {
-			pos[0] = float64(constant.WINDOW_WIDTH) - box[0]/2
-		} else {
-			pos[0] += dx
-		}
-
-		if pos[1]+dy <
-			box[1]/2 {
-			pos[1] = box[1] / 2
-		} else if pos[1]+dy >
-			float64(constant.WINDOW_HEIGHT)-box[1]/2 {
-			pos[1] = float64(constant.WINDOW_HEIGHT) - box[1]/2
-		} else {
-			pos[1] += dy
-		}
-		s.position_component.Set(id, pos)
+	for _, id := range s.physicsEntities.Entities {
+		s.applyPhysics (id, dt_ms)
 	}
 }

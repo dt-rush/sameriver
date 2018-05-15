@@ -7,7 +7,6 @@
 package engine
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/golang-collections/go-datastructures/bitarray"
@@ -18,14 +17,14 @@ type EntityManager struct {
 	// bitarray used to keep track of which entities have which components
 	// (indexes are IDs, bitarrays have bit set if entity has the
 	// component corresponding to that index)
-	EntityComponentBitarrays [MAX_ENTITIES]bitarray.BitArray
+	EntityComponentBitArrays [MAX_ENTITIES]bitarray.BitArray
 	// how many entities there are
 	NumEntities int
 	// the highest index a registered entity resides at
-	HighestID int
+	HighestID uint16
 	// stack of available entity ID's < n_entities (when Deallocate is called
 	// for an ID, we add to this stack)
-	availableIDs []int
+	availableIDs []uint16
 	// to avoid race conditions involving the modification of the above
 	// when multiple goroutines may want to spawn or despawn entities
 	entityTableMutex sync.Mutex
@@ -37,29 +36,31 @@ type EntityManager struct {
 	// components they're interested in operating on (eg. physics watches
 	// for entities with position, velocity, and hitbox)
 	activeWatchers []QueryWatcher
+	// to generate ID's for the active watchers
+	watcherIDGen IDGenerator
 	// to avoid race conditions
 	activeWatchersMutex sync.Mutex
 
 	// data members to support the entity tagging system, which allows us to
 	// associate a set of strings with an entity
 	// tag -> []IDs
-	EntitiesWithTag map[string]([]int)
+	EntitiesWithTag map[string]([]uint16)
 	// ID -> []tag
-	TagsOfEntity map[int]([]string)
+	TagsOfEntity map[uint16]([]string)
 	// to avoid race conditions
 	tagSystemMutex sync.Mutex
 }
 
 func (m *EntityManager) Init() {
 	// allocate component data
-	m.components = AllocateComponentsMemoryBlock()
+	m.Components = AllocateComponentsMemoryBlock()
 	// allocate tag system data members
-	m.EntitiesWithTag = make(map[string]([]int))
-	m.TagsOfEntity = make(map[int]([]string))
+	m.EntitiesWithTag = make(map[string]([]uint16))
+	m.TagsOfEntity = make(map[uint16]([]string))
 }
 
 // get the ID for a new entity
-func (m *EntityManager) AllocateID() int {
+func (m *EntityManager) AllocateID() uint16 {
 	m.entityTableMutex.Lock()
 	defer m.entityTableMutex.Unlock()
 	// if there is a deallocated entity somewhere in the table before the
@@ -74,7 +75,7 @@ func (m *EntityManager) AllocateID() int {
 		// Increment the highest ID (by setting it = to the number of entities,
 		// which will be, given that the table is full up to this point,
 		// highest_id + 1) and return it
-		m.HighestID = m.NumEntities
+		m.HighestID = uint16(m.NumEntities)
 		m.NumEntities += 1
 		return m.HighestID
 	}
@@ -83,63 +84,49 @@ func (m *EntityManager) AllocateID() int {
 // given a list of components, spawn an entity with the default values
 // returns the ID
 func (m *EntityManager) SpawnEntity(
-	id int,
-	component_set ComponentSet) int {
+	id uint16,
+	component_set ComponentSet) {
 
 	m.entityTableMutex.Lock()
 	defer m.entityTableMutex.Unlock()
 
 	// set the bitarray for this entity
-	m.EntityComponentBitarrays[id] = component_set.ToBitArray()
+	m.EntityComponentBitArrays[id] = component_set.ToBitArray()
 
 	// copy the data into the component storage for each component
 	// (note: we dereference the pointers, this is a real copy, so it's good
 	// that component values are either small pieces of data like [2]uint16
-	// or a pointer to a func, etc.). We "zero" the values as best we can,
-	// although really if a system operating on the component data
+	// or a pointer to a func, etc.).
+	// We don't "zero" the values of components not in the entity's set,
+	// because really if a system operating on the component data
 	// expects to work on the data, it should be maintaining a list of
-	// entities with the required components according to the system of
-	// activeWatchers
+	// entities with the required components using an UpdatedEntityList
 
-	m.components.Active.SafeSet(id, false)
+	m.Components.Active.SafeSet(id, false)
 
-	if component_set.Color == nil {
-		component_set.Color = sdl.Color{}
+	if component_set.Color != nil {
+		m.Components.Color.SafeSet(id, *(component_set.Color))
 	}
-	m.components.Color.SafeSet(id, *(component_set.Color))
-
-	if component_set.Hitbox == nil {
-		component_set.Hitbox = [2]uint16{}
+	if component_set.Hitbox != nil {
+		m.Components.Hitbox.SafeSet(id, *(component_set.Hitbox))
 	}
-	m.components.Hitbox.SafeSet(id, *(component_set.Hitbox))
-
-	if component_set.Logic == nil {
-		component_set.Logic = nil
+	if component_set.Logic != nil {
+		m.Components.Logic.SafeSet(id, *(component_set.Logic))
 	}
-	m.components.Logic.SafeSet(id, *(component_set.Logic))
-
-	if component_set.Position == nil {
-		component_set.Position = [2]uint16{}
+	if component_set.Position != nil {
+		m.Components.Position.SafeSet(id, *(component_set.Position))
 	}
-	m.components.Position.SafeSet(id, *(component_set.Position))
-
-	if component_set.Sprite == nil {
-		component_set.Sprite = Sprite{}
+	if component_set.Sprite != nil {
+		m.Components.Sprite.SafeSet(id, *(component_set.Sprite))
 	}
-	m.components.Sprite.SafeSet(id, *(component_set.Sprite))
-
-	if component_set.Velocity == nil {
-		component_set.Velocity = [2]uint16{}
+	if component_set.Velocity != nil {
+		m.Components.Velocity.SafeSet(id, *(component_set.Velocity))
 	}
-	m.components.Velocity.SafeSet(id, *(component_set.Velocity))
-
-	// return the created ID to the caller
-	return id
 }
 
 // forget an entity existed (don't clear the data stored in any component
 // tables though (these will simply be overwritten later)
-func (m *EntityManager) DespawnEntity(id int) {
+func (m *EntityManager) DespawnEntity(id uint16) {
 	m.entityTableMutex.Lock()
 	defer m.entityTableMutex.Unlock()
 	// set entity inactive
@@ -152,50 +139,54 @@ func (m *EntityManager) DespawnEntity(id int) {
 		m.UntagEntity(id, tag_to_clear)
 	}
 	delete(m.TagsOfEntity, id)
-	
+
 	// unset the bitarray for the entity
-	m.EntityComponentBitarrays[id].Reset()
+	m.EntityComponentBitArrays[id].Reset()
 }
 
-func Activate (id int) {
+func (m *EntityManager) Activate (id uint16) {
 	m.Components.Active.SafeSet (id, true)
 	// check if anybody has set a query watch on the specific component mix
-	// of this entity. If so, notify them of activate by sending this id through
-	// the channel
-	for _, watcher := range activeWatchers {
-		if watcher.Query.Equals(component_set.ToBitArray()) {
+	// of this entity. If so, notify them of activate by sending this id
+	// through the channel
+	Logger.Printf ("activating entity #%d\n", id)
+	for _, watcher := range m.activeWatchers {
+		Logger.Println ("about to test query watcher")
+		if watcher.Query.Test(id, m) {
+			Logger.Println ("query watcher was true")
 			watcher.Channel <- id
 		}
 	}
 }
 
-func Deactivate (id int) {
+func (m *EntityManager) Deactivate (id uint16) {
 	m.Components.Active.SafeSet (id, false)
 	// check if anybody has set a query watch on the specific component mix
 	// of this entity. If so, notify them of deactivate by sending -(id + 1)
 	// through the channel
-	for _, watcher := range activeWatchers {
-		if watcher.Query.Equals(component_set.ToBitArray()) {
+	for _, watcher := range m.activeWatchers {
+		if watcher.Query.Test(id, m) {
 			watcher.Channel <- -(id + 1)
 		}
 	}
 }
 
-func (m *EntityManager) GetUpdatedActiveList (query bitarray.BitArray) UpdatedEntityList {
-	return NewUpdatedEntityList (m.SetActiveWatcher(query))
+func (m *EntityManager) GetUpdatedActiveList (
+	q Query, name string) *UpdatedEntityList {
+
+	return NewUpdatedEntityList(m.SetActiveWatcher(q), name)
 }
 
 func (m *EntityManager) StopUpdatedActiveList (l UpdatedEntityList) {
 	m.UnsetActiveWatcher (l.Watcher)
-	m.StopUpdateChannel <- true
+	l.StopUpdateChannel <- true
 }
 
 // Return a channel which will receive the id of an entity whenever an entity
 // becomes active with a component set matching the query bitarray, and which
-// will receive -(id + 1) whenever an entity is *despawned* with a component set
-// matching the query bitarray
-func (m *EntityManager) SetActiveWatcher(
-	query bitarray.BitArray) QueryWatcher {
+// will receive -(id + 1) whenever an entity is *despawned* with a component
+// set matching the query bitarray
+func (m *EntityManager) SetActiveWatcher(q Query) QueryWatcher {
 
 	// TODO: this seems as if we're just hoping that the capacity won't exceed
 	// 8 for any reason, which it could if we spawn a lot of entities and the
@@ -209,9 +200,9 @@ func (m *EntityManager) SetActiveWatcher(
 	// sends/reads, in fact, we could end up in a deadlock through some
 	// obscure condition we hadn't forseen
 
-	c := make(chan (int), 8)
+	c := make(chan(uint16), 8)
 	watcherID := m.watcherIDGen.Gen()
-	qw := QueryWatcher{query, c, watcherID}
+	qw := QueryWatcher{q, c, watcherID}
 	m.activeWatchersMutex.Lock()
 	m.activeWatchers = append(m.activeWatchers, qw)
 	m.activeWatchersMutex.Unlock()
@@ -220,8 +211,8 @@ func (m *EntityManager) SetActiveWatcher(
 
 func (m *EntityManager) UnsetActiveWatcher(qw QueryWatcher) {
 	// find the index of the QueryWatcher in the list and splice it out
-	last_ix = len(m.activeWatchers) - 1
-	for i := 0; i <= last_ix; i++ {
+	last_ix := len(m.activeWatchers) - 1
+	for i := uint16(0); i <= uint16(last_ix); i++ {
 		if i == qw.ID {
 			m.activeWatchersMutex.Lock()
 			m.activeWatchers[i] = m.activeWatchers[last_ix]
@@ -232,7 +223,7 @@ func (m *EntityManager) UnsetActiveWatcher(qw QueryWatcher) {
 }
 
 // apply the given tag to the given entity
-func (m *EntityManager) TagEntity(id int, tag string) {
+func (m *EntityManager) TagEntity(id uint16, tag string) {
 	m.tagSystemMutex.Lock()
 	defer m.tagSystemMutex.Unlock()
 	_, t_of_e_exists := m.TagsOfEntity[id]
@@ -241,68 +232,47 @@ func (m *EntityManager) TagEntity(id int, tag string) {
 		m.TagsOfEntity[id] = make([]string, 0)
 	}
 	if !e_with_t_exists {
-		m.EntitiesWithTag[tag] = make([]int, 0)
+		m.EntitiesWithTag[tag] = make([]uint16, 0)
 	}
 	m.TagsOfEntity[id] = append(m.TagsOfEntity[id], tag)
 	m.EntitiesWithTag[tag] = append(m.EntitiesWithTag[tag], id)
 }
 
 // remove a tag from an entity
-func (m *EntityManager) UntagEntity(id int, tag string) {
+func (m *EntityManager) UntagEntity(id uint16, tag string) {
 	m.tagSystemMutex.Lock()
 	defer m.tagSystemMutex.Unlock()
 	// remove the id from the list of entities with the tag
-	id_list := &m.EntitiesWithTag[tag]
-	for i := 0; i < len(id_list); i++ {
-		if id_list[i] == id {
+	last_ix := len (m.EntitiesWithTag[tag]) - 1
+	for i := 0; i <= last_ix; i++ {
+		if m.EntitiesWithTag[tag][i] == id {
 			// thanks to https://stackoverflow.com/a/37359662 for this nice
 			// little splice idiom when we don't care about slice order (saves
 			// reallocating the whole dang thing)
-			last_ix = len(id_list) - 1
-			id_list[i] = id_list[last_ix]
-			id_list = id_list[:last_ix]
+			m.EntitiesWithTag[tag][i] = m.EntitiesWithTag[tag][last_ix]
+			m.EntitiesWithTag[tag] = m.EntitiesWithTag[tag][:last_ix]
 		}
 	}
 	// remove the tag from the list of tags for the entity
-	tag_list := &m.TagsOfEntity[id]
-	for i := 0; i < len(tag_list); i++ {
-		if tag_list[i] == tag {
-			last_ix = len(tag_list) - 1
-			tag_list[i] = tag_list[last_ix]
-			tag_list = tag_list[:last_ix]
+	last_ix = len (m.TagsOfEntity[id]) - 1
+	for i := 0; i <= last_ix; i++ {
+		if m.TagsOfEntity[id][i] == tag {
+			last_ix = len(m.TagsOfEntity[id]) - 1
+			m.TagsOfEntity[id][i] = m.TagsOfEntity[id][last_ix]
+			m.TagsOfEntity[id] = m.TagsOfEntity[id][:last_ix]
 		}
 	}
 }
 
 // Tag each of the entities in the provided array of ID's with the given tag
-func (m *EntityManager) TagEntities(ids []int, tag string) {
+func (m *EntityManager) TagEntities(ids []uint16, tag string) {
 	for _, id := range ids {
 		m.TagEntity(id, tag)
 	}
 }
 
-// Tag an entity uniquely. Panic if another entity is already tagged (this is
-// probably not a good thing to do, TODO: find a better way to guard unique)
-func (m *EntityManager) TagEntityUnique(id int, tag string) {
-	if len(m.EntitiesWithTag[tag]) != 0 {
-		panic(fmt.Sprintf("trying to TagEntityUnique for [%s] more than once",
-			tag))
-	}
-	m.TagEntity(id, tag)
-}
-
-// Get the ID of the unique entity, returning -1 if no entity has that tag
-func (m *EntityManager) GetTagEntityUnique(tag string) int {
-	entity_list := m.EntitiesWithTag[tag]
-	if len(entity_list) == 0 {
-		return -1
-	} else {
-		return entity_list[0]
-	}
-}
-
 // Boolean check of whether a given entity has a given tag
-func (m *EntityManager) EntityHasTag(id int, tag string) bool {
+func (m *EntityManager) EntityHasTag(id uint16, tag string) bool {
 	for _, entity_tag := range m.TagsOfEntity[id] {
 		if entity_tag == tag {
 			return true
@@ -312,7 +282,7 @@ func (m *EntityManager) EntityHasTag(id int, tag string) bool {
 }
 
 // Boolean check of whether a given entity has a given component
-func (m *EntityManager) EntityHasComponent(id int, COMPONENT int) bool {
-	b, _ := m.EntityComponentBitArrays[id].GetBit(COMPONENT)
+func (m *EntityManager) EntityHasComponent(id uint16, COMPONENT int) bool {
+	b, _ := m.EntityComponentBitArrays[id].GetBit(uint64(COMPONENT))
 	return b
 }

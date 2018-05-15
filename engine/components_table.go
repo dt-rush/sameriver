@@ -22,12 +22,12 @@ type ComponentsTable struct {
 
 func AllocateComponentsMemoryBlock() ComponentsTable {
 	c := ComponentsTable{}
-	c.active = &ActiveComponent{}
-	c.color = &ColorComponent{}
-	c.hitbox = &HitboxComponent{}
-	c.logic = &LogicComponent{}
-	c.position = &PositionComponent{}
-	c.sprite = &SpriteComponent{}
-	c.velocity = &VelocityComponent{}
+	c.Active = &ActiveComponent{}
+	c.Color = &ColorComponent{}
+	c.Hitbox = &HitboxComponent{}
+	c.Logic = &LogicComponent{}
+	c.Position = &PositionComponent{}
+	c.Sprite = &SpriteComponent{}
+	c.Velocity = &VelocityComponent{}
 	return c
 }

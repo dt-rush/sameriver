@@ -38,24 +38,24 @@ func NewSimpleProfiler() *simpleProfiler {
 }
 
 // Register a function for profiling
-func (p *simpleProfiler) RegisterFunc(name string) int {
+func (p *simpleProfiler) RegisterFunc(name string) uint16 {
 	id := p.base.RegisterFunc(name)
 	p.accum = append(p.accum, newSimpleAccum())
 	return id
 }
 
 // Clear the data associated with a function
-func (p *simpleProfiler) ClearData(id int) {
+func (p *simpleProfiler) ClearData(id uint16) {
 	p.accum[id] = newSimpleAccum()
 }
 
 // Start timing a function
-func (p *simpleProfiler) StartTimer(id int) {
+func (p *simpleProfiler) StartTimer(id uint16) {
 	p.base.StartTimer(id)
 }
 
 // Stop timing a function
-func (p *simpleProfiler) EndTimer(id int) {
+func (p *simpleProfiler) EndTimer(id uint16) {
 	ms := p.base.EndTimer(id)
 	accum := &p.accum[id]
 	accum.totalTime += ms
@@ -63,23 +63,23 @@ func (p *simpleProfiler) EndTimer(id int) {
 }
 
 // Get the average runtime for a function
-func (p *simpleProfiler) GetAvg(id int) float64 {
+func (p *simpleProfiler) GetAvg(id uint16) float64 {
 	return (p.accum[id].totalTime /
 		float64(p.accum[id].invocations))
 }
 
 // Get the name of a given function
-func (p *simpleProfiler) GetName(id int) string {
+func (p *simpleProfiler) GetName(id uint16) string {
 	return p.base.GetName(id)
 }
 
 // Set the name of a given function
-func (p *simpleProfiler) SetName(id int, name string) {
+func (p *simpleProfiler) SetName(id uint16, name string) {
 	p.base.SetName(id, name)
 }
 
 // Return a string displaying the stats for a given function
-func (p *simpleProfiler) GetSummaryString(id int) string {
+func (p *simpleProfiler) GetSummaryString(id uint16) string {
 	return fmt.Sprintf("Summary for %s: {Avg: %.3f}",
 		p.base.GetName(id),
 		p.GetAvg(id))

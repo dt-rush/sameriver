@@ -14,10 +14,10 @@ import (
 )
 
 type Sprite struct {
-	texture *sdl.Texture
-	frame   uint8
-	visible bool
-	flip    sdl.RendererFlip
+	Texture *sdl.Texture
+	Frame   uint8
+	Visible bool
+	Flip    sdl.RendererFlip
 }
 
 type SpriteComponent struct {
@@ -25,7 +25,7 @@ type SpriteComponent struct {
 	Mutex sync.Mutex
 }
 
-func (c *SpriteComponent) SafeSet(id int, val Sprite) {
+func (c *SpriteComponent) SafeSet(id uint16, val Sprite) {
 	c.Mutex.Lock()
 	c.Data[id] = val
 	c.Mutex.Unlock()
