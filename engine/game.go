@@ -27,8 +27,11 @@ type Game struct {
 	NextScene Scene
 	// the scene to play while the next scene is running Init()
 	LoadingScene Scene
+	// Map of scenes by ints (constants) so scenes can identify each other
+	// without import cycles
+	SceneMap SceneMap
 	// to allow scenes to store data somewhere that other scenes
-	// can access it
+	// can access it (TODO: currently unused - refactor?)
 	GameState map[string]string
 
 	Window    *sdl.Window
@@ -68,6 +71,8 @@ func (g *Game) Init(WINDOW_TITLE string,
 
 	// set the FPS rate
 	g.accum_fps = NewTimeAccumulator(uint16(1000 / FPS))
+
+	g.SceneMap.Map = make(map[int]Scene)
 
 	// set up game state
 	g.GameState = make(map[string]string)

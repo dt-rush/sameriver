@@ -144,16 +144,14 @@ func (m *EntityManager) DespawnEntity(id uint16) {
 	m.EntityComponentBitArrays[id].Reset()
 }
 
+// NOTE: do not call this if you've locked Components.Active for reading, haha
 func (m *EntityManager) Activate (id uint16) {
 	m.Components.Active.SafeSet (id, true)
 	// check if anybody has set a query watch on the specific component mix
 	// of this entity. If so, notify them of activate by sending this id
 	// through the channel
-	Logger.Printf ("activating entity #%d\n", id)
 	for _, watcher := range m.activeWatchers {
-		Logger.Println ("about to test query watcher")
 		if watcher.Query.Test(id, m) {
-			Logger.Println ("query watcher was true")
 			watcher.Channel <- int16(id)
 		}
 	}

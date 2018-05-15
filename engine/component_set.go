@@ -33,7 +33,7 @@ type ComponentSet struct {
 	Logic    *LogicUnit
 	Position *[2]int16
 	Sprite   *Sprite
-	Velocity *[2]int16
+	Velocity *[2]float32
 }
 
 func (s *ComponentSet) ToBitArray() bitarray.BitArray {

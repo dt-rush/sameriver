@@ -26,3 +26,10 @@ func (c *LogicComponent) SafeSet(id uint16, val LogicUnit) {
 	c.Data[id] = val
 	c.Mutex.Unlock()
 }
+
+func (c *LogicComponent) SafeGet(id uint16) LogicUnit {
+	c.Mutex.Lock()
+	val := c.Data[id]
+	c.Mutex.Unlock()
+	return val
+}

@@ -21,3 +21,10 @@ func (c *PositionComponent) SafeSet(id uint16, val [2]int16) {
 	c.Data[id] = val
 	c.Mutex.Unlock()
 }
+
+func (c *PositionComponent) SafeGet(id uint16) [2]int16 {
+	c.Mutex.Lock()
+	val := c.Data[id]
+	c.Mutex.Unlock()
+	return val
+}

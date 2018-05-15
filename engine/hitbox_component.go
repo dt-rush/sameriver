@@ -21,3 +21,10 @@ func (c *HitboxComponent) SafeSet(id uint16, val [2]uint16) {
 	c.Data[id] = val
 	c.Mutex.Unlock()
 }
+
+func (c *HitboxComponent) SafeGet(id uint16) [2]uint16 {
+	c.Mutex.Lock()
+	val := c.Data[id]
+	c.Mutex.Unlock()
+	return val
+}

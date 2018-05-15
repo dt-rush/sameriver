@@ -30,3 +30,10 @@ func (c *SpriteComponent) SafeSet(id uint16, val Sprite) {
 	c.Data[id] = val
 	c.Mutex.Unlock()
 }
+
+func (c *SpriteComponent) SafeGet(id uint16) Sprite {
+	c.Mutex.Lock()
+	val := c.Data[id]
+	c.Mutex.Unlock()
+	return val
+}

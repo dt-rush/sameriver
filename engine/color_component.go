@@ -22,3 +22,10 @@ func (c *ColorComponent) SafeSet(id uint16, val sdl.Color) {
 	c.Data[id] = val
 	c.Mutex.Unlock()
 }
+
+func (c *ColorComponent) SafeGet(id uint16) sdl.Color {
+	c.Mutex.Lock()
+	val := c.Data[id]
+	c.Mutex.Unlock()
+	return val
+}

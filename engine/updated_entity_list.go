@@ -40,14 +40,12 @@ func (l *UpdatedEntityList) start() {
 				return
 			case id := <-l.Watcher.Channel:
 				l.Mutex.Lock()
-				Logger.Printf ("inserting #%d to %s\n", id, l.Name)
 				if id >= 0 {
 					l.insert (uint16(id))
 				} else {
 					l.remove (uint16(-(id+1)))
 				}
 				l.Mutex.Unlock()
-				Logger.Println (l.Entities)
 			default:
 				time.Sleep (100 * time.Millisecond)
 			}

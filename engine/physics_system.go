@@ -38,8 +38,8 @@ func (s *PhysicsSystem) applyPhysics (id uint16, dt_ms uint16) {
 	// read the position and velocity, using dt to compute dx, dy
 	pos := s.entity_manager.Components.Position.Data[id]
 	vel := s.entity_manager.Components.Velocity.Data[id]
-	dx := vel[0] * int16(dt_ms)
-	dy := vel[1] * int16(dt_ms)
+	dx := int16(vel[0] * float32(dt_ms))
+	dy := int16(vel[1] * float32(dt_ms))
 	box := s.entity_manager.Components.Hitbox.Data[id]
 	// prevent from leaving the world in X
 	if pos[0]+dx <
