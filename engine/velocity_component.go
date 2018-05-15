@@ -12,7 +12,7 @@ import (
 )
 
 type VelocityComponent struct {
-	Data       [MAX_ENTITIES][2]float32
+	Data  [MAX_ENTITIES][2]float32
 	Mutex sync.Mutex
 }
 

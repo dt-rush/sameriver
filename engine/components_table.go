@@ -8,8 +8,6 @@
 
 package engine
 
-
-
 type ComponentsTable struct {
 	Active   *ActiveComponent
 	Color    *ColorComponent

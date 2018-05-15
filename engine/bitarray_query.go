@@ -5,16 +5,16 @@ import (
 )
 
 type BitArraySubsetQuery struct {
-	Match   bitarray.BitArray
+	Match bitarray.BitArray
 }
 
-func NewBitArraySubsetQuery (match bitarray.BitArray) BitArraySubsetQuery {
+func NewBitArraySubsetQuery(match bitarray.BitArray) BitArraySubsetQuery {
 	return BitArraySubsetQuery{match}
 }
 
-func (bq BitArraySubsetQuery) Test (
+func (bq BitArraySubsetQuery) Test(
 	id uint16, entity_manager *EntityManager) bool {
-	
-	return bq.Match.Equals (
-		bq.Match.And (entity_manager.EntityComponentBitArrays[id]))
+
+	return bq.Match.Equals(
+		bq.Match.And(entity_manager.EntityComponentBitArrays[id]))
 }

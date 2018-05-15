@@ -145,8 +145,8 @@ func (m *EntityManager) DespawnEntity(id uint16) {
 }
 
 // NOTE: do not call this if you've locked Components.Active for reading, haha
-func (m *EntityManager) Activate (id uint16) {
-	m.Components.Active.SafeSet (id, true)
+func (m *EntityManager) Activate(id uint16) {
+	m.Components.Active.SafeSet(id, true)
 	// check if anybody has set a query watch on the specific component mix
 	// of this entity. If so, notify them of activate by sending this id
 	// through the channel
@@ -157,8 +157,8 @@ func (m *EntityManager) Activate (id uint16) {
 	}
 }
 
-func (m *EntityManager) Deactivate (id uint16) {
-	m.Components.Active.SafeSet (id, false)
+func (m *EntityManager) Deactivate(id uint16) {
+	m.Components.Active.SafeSet(id, false)
 	// check if anybody has set a query watch on the specific component mix
 	// of this entity. If so, notify them of deactivate by sending -(id + 1)
 	// through the channel
@@ -169,14 +169,14 @@ func (m *EntityManager) Deactivate (id uint16) {
 	}
 }
 
-func (m *EntityManager) GetUpdatedActiveList (
+func (m *EntityManager) GetUpdatedActiveList(
 	q Query, name string) *UpdatedEntityList {
 
 	return NewUpdatedEntityList(m.SetActiveWatcher(q), name)
 }
 
-func (m *EntityManager) StopUpdatedActiveList (l UpdatedEntityList) {
-	m.UnsetActiveWatcher (l.Watcher)
+func (m *EntityManager) StopUpdatedActiveList(l UpdatedEntityList) {
+	m.UnsetActiveWatcher(l.Watcher)
 	l.StopUpdateChannel <- true
 }
 
@@ -198,7 +198,7 @@ func (m *EntityManager) SetActiveWatcher(q Query) QueryWatcher {
 	// sends/reads, in fact, we could end up in a deadlock through some
 	// obscure condition we hadn't forseen
 
-	c := make(chan(int16), 8)
+	c := make(chan (int16), 8)
 	watcherID := m.watcherIDGen.Gen()
 	qw := QueryWatcher{q, c, watcherID}
 	m.activeWatchersMutex.Lock()
@@ -241,7 +241,7 @@ func (m *EntityManager) UntagEntity(id uint16, tag string) {
 	m.tagSystemMutex.Lock()
 	defer m.tagSystemMutex.Unlock()
 	// remove the id from the list of entities with the tag
-	last_ix := len (m.EntitiesWithTag[tag]) - 1
+	last_ix := len(m.EntitiesWithTag[tag]) - 1
 	for i := 0; i <= last_ix; i++ {
 		if m.EntitiesWithTag[tag][i] == id {
 			// thanks to https://stackoverflow.com/a/37359662 for this nice
@@ -252,7 +252,7 @@ func (m *EntityManager) UntagEntity(id uint16, tag string) {
 		}
 	}
 	// remove the tag from the list of tags for the entity
-	last_ix = len (m.TagsOfEntity[id]) - 1
+	last_ix = len(m.TagsOfEntity[id]) - 1
 	for i := 0; i <= last_ix; i++ {
 		if m.TagsOfEntity[id][i] == tag {
 			last_ix = len(m.TagsOfEntity[id]) - 1

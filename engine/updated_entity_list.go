@@ -1,11 +1,10 @@
 /*
  *
  * a list of entities which will be updated by another goroutine maybe,
- * which has a mutex that the user can lock when they wish to look at the 
+ * which has a mutex that the user can lock when they wish to look at the
  * current contents
  *
-*/
-
+ */
 
 package engine
 
@@ -15,25 +14,25 @@ import (
 )
 
 type UpdatedEntityList struct {
-	Watcher QueryWatcher
-	Mutex sync.Mutex
-	Entities []uint16
-	StopUpdateChannel chan(bool)
-	Name string
+	Watcher           QueryWatcher
+	Mutex             sync.Mutex
+	Entities          []uint16
+	StopUpdateChannel chan (bool)
+	Name              string
 }
 
-func NewUpdatedEntityList (watcher QueryWatcher, name string) *UpdatedEntityList {
+func NewUpdatedEntityList(watcher QueryWatcher, name string) *UpdatedEntityList {
 	l := UpdatedEntityList{}
 	l.Watcher = watcher
-	l.Entities = make([]uint16,0)
-	l.StopUpdateChannel = make(chan(bool))
+	l.Entities = make([]uint16, 0)
+	l.StopUpdateChannel = make(chan (bool))
 	l.Name = name
 	l.start()
 	return &l
 }
 
 func (l *UpdatedEntityList) start() {
-	go func () {
+	go func() {
 		for {
 			select {
 			case _ = <-l.StopUpdateChannel:
@@ -41,20 +40,20 @@ func (l *UpdatedEntityList) start() {
 			case id := <-l.Watcher.Channel:
 				l.Mutex.Lock()
 				if id >= 0 {
-					l.insert (uint16(id))
+					l.insert(uint16(id))
 				} else {
-					l.remove (uint16(-(id+1)))
+					l.remove(uint16(-(id + 1)))
 				}
 				l.Mutex.Unlock()
 			default:
-				time.Sleep (100 * time.Millisecond)
+				time.Sleep(100 * time.Millisecond)
 			}
 		}
 	}()
 }
 
 func (l *UpdatedEntityList) insert(id uint16) {
-	l.Entities = append (l.Entities, id)
+	l.Entities = append(l.Entities, id)
 }
 
 func (l *UpdatedEntityList) remove(id uint16) {

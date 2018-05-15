@@ -7,8 +7,8 @@
 package engine
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
 
 	"github.com/golang-collections/go-datastructures/bitarray"
 	"github.com/veandco/go-sdl2/sdl"
@@ -70,7 +70,7 @@ func MakeComponentBitArray(components []int) bitarray.BitArray {
 	return b
 }
 
-func ComponentBitArrayToString (b bitarray.BitArray) string {
+func ComponentBitArrayToString(b bitarray.BitArray) string {
 	var buf bytes.Buffer
 	buf.WriteString("[")
 	for i := uint64(0); i < N_COMPONENTS; i++ {

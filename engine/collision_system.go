@@ -6,8 +6,6 @@
 **/
 
 package engine
- 
-
 
 type CollisionSystem struct {
 	// Reference to entity manager to reach components
@@ -38,7 +36,7 @@ func (s *CollisionSystem) Init(
 		MakeComponentBitArray([]int{
 			POSITION_COMPONENT,
 			HITBOX_COMPONENT}))
-	s.collidableEntities = s.entity_manager.GetUpdatedActiveList (query, "collidable")
+	s.collidableEntities = s.entity_manager.GetUpdatedActiveList(query, "collidable")
 	// initialize collision logic data members
 	s.collision_logic_collection = make(map[uint16]CollisionLogic)
 	s.collision_logic_ids = make(map[string]uint16)

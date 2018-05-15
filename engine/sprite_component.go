@@ -21,7 +21,7 @@ type Sprite struct {
 }
 
 type SpriteComponent struct {
-	Data       [MAX_ENTITIES]Sprite
+	Data  [MAX_ENTITIES]Sprite
 	Mutex sync.Mutex
 }
 

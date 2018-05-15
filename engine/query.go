@@ -1,6 +1,5 @@
 package engine
 
-
 // TODO: use to expand entity manager watchers to allow for watching of
 // component values
 type Query interface {
@@ -8,7 +7,7 @@ type Query interface {
 }
 
 type QueryWatcher struct {
-	Query Query
+	Query   Query
 	Channel chan (int16)
-	ID uint16
+	ID      uint16
 }

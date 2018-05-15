@@ -17,7 +17,7 @@ type LogicUnit struct {
 }
 
 type LogicComponent struct {
-	Data       [MAX_ENTITIES]LogicUnit
+	Data  [MAX_ENTITIES]LogicUnit
 	Mutex sync.Mutex
 }
 

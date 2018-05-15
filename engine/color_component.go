@@ -13,7 +13,7 @@ import (
 )
 
 type ColorComponent struct {
-	Data       [MAX_ENTITIES]sdl.Color
+	Data  [MAX_ENTITIES]sdl.Color
 	Mutex sync.Mutex
 }
 

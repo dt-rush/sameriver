@@ -7,13 +7,11 @@
 
 package engine
 
-
 // I have chicken wing sauce on my hands
-
 
 type LogicSystem struct {
 	// Reference to entity manager to reach logic component
-	entity_manager     *EntityManager
+	entity_manager *EntityManager
 	// targetted entities
 	logicEntities *UpdatedEntityList
 }
@@ -21,9 +19,9 @@ type LogicSystem struct {
 func (s *LogicSystem) Init(entity_manager *EntityManager) {
 	s.entity_manager = entity_manager
 	// get a regularly updated list of the entities which have logic component
-	query := NewBitArraySubsetQuery (
+	query := NewBitArraySubsetQuery(
 		MakeComponentBitArray([]int{LOGIC_COMPONENT}))
-	s.logicEntities = s.entity_manager.GetUpdatedActiveList (query, "logic-bearing")
+	s.logicEntities = s.entity_manager.GetUpdatedActiveList(query, "logic-bearing")
 }
 
 func (s *LogicSystem) Update(dt_ms uint16) {

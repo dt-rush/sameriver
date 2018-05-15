@@ -12,7 +12,7 @@ import (
 )
 
 type HitboxComponent struct {
-	Data       [MAX_ENTITIES][2]uint16
+	Data  [MAX_ENTITIES][2]uint16
 	Mutex sync.Mutex
 }
 

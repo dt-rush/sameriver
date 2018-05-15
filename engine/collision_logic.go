@@ -8,4 +8,3 @@ type CollisionLogic struct {
 		id_b uint16,
 		em *EntityManager) GameEvent
 }
-

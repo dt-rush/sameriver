@@ -2,11 +2,11 @@ package engine
 
 import (
 	"fmt"
-	"strings"
 	"io/ioutil"
+	"strings"
 
-	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/img"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 type SpriteManager struct {

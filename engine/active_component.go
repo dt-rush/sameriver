@@ -13,7 +13,7 @@ import (
 )
 
 type ActiveComponent struct {
-	Data       [MAX_ENTITIES]bool
+	Data  [MAX_ENTITIES]bool
 	Mutex sync.Mutex
 }
 

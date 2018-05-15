@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/dt-rush/go-func-profiler/func_profiler"
+
 	"github.com/veandco/go-sdl2/mix"
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
@@ -38,7 +40,7 @@ type Game struct {
 	Renderer  *sdl.Renderer
 	accum_fps TimeAccumulator
 
-	func_profiler        FuncProfiler
+	func_profiler        func_profiler.FuncProfiler
 	gameloop_profiler_id uint16
 }
 
@@ -57,7 +59,8 @@ func (g *Game) Init(WINDOW_TITLE string,
 	Logger.Println("Finished init of SDL systems")
 
 	// set up func profiler
-	g.func_profiler = NewFuncProfiler(FUNC_PROFILER_SIMPLE)
+	g.func_profiler = func_profiler.NewFuncProfiler(
+		func_profiler.FUNC_PROFILER_SIMPLE)
 	g.gameloop_profiler_id = g.func_profiler.RegisterFunc("gameloop")
 
 	// build the window and renderer
