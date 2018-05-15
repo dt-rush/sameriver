@@ -7,26 +7,20 @@
 
 package engine
 
-import (
 
-	// "fmt"
-
-	"github.com/dt-rush/donkeys-qquest/engine"
-	"github.com/dt-rush/donkeys-qquest/engine/component"
-)
 
 type LogicSystem struct {
-	entity_manager     *engine.EntityManager
-	game_event_manager *engine.GameEventManager
-	logic_component    *component.LogicComponent
-	active_component   *component.ActiveComponent
+	entity_manager     *EntityManager
+	game_event_manager *GameEventManager
+	logic_component    *LogicComponent
+	active_component   *ActiveComponent
 }
 
 func (s *LogicSystem) Init(
-	entity_manager *engine.EntityManager,
-	game_event_manager *engine.GameEventManager,
-	logic_component *component.LogicComponent,
-	active_component *component.ActiveComponent,
+	entity_manager *EntityManager,
+	game_event_manager *GameEventManager,
+	logic_component *LogicComponent,
+	active_component *ActiveComponent,
 ) {
 
 	s.entity_manager = entity_manager

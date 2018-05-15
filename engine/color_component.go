@@ -14,11 +14,11 @@ import (
 
 type ColorComponent struct {
 	Data       [MAX_ENTITIES]sdl.Color
-	WriteMutex sync.Mutex
+	Mutex sync.Mutex
 }
 
 func (c *ColorComponent) SafeSet(id int, val sdl.Color) {
-	c.WriteMutex.Lock()
+	c.Mutex.Lock()
 	c.Data[id] = val
-	c.WriteMutex.Unlock()
+	c.Mutex.Unlock()
 }

@@ -6,7 +6,7 @@
   *
 **/
 
-package constants
+package engine
 
 const VERSION = "0.3.0"
 const AUDIO_ON = true

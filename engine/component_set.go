@@ -8,6 +8,7 @@ package engine
 
 import (
 	"github.com/golang-collections/go-datastructures/bitarray"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 const (

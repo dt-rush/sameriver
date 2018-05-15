@@ -31,7 +31,7 @@ type EntityManager struct {
 	entityTableMutex sync.Mutex
 
 	// Component data
-	Components component.ComponentsTable
+	Components ComponentsTable
 
 	// used to allow systems to keep an updated list of entities which have
 	// components they're interested in operating on (eg. physics watches
@@ -84,7 +84,7 @@ func (m *EntityManager) AllocateID() int {
 // returns the ID
 func (m *EntityManager) SpawnEntity(
 	id int,
-	component_set component.ComponentSet) int {
+	component_set ComponentSet) int {
 
 	m.entityTableMutex.Lock()
 	defer m.entityTableMutex.Unlock()
@@ -181,6 +181,15 @@ func Deactivate (id int) {
 	}
 }
 
+func (m *EntityManager) GetUpdatedActiveList (query bitarray.BitArray) UpdatedEntityList {
+	return NewUpdatedEntityList (m.SetActiveWatcher(query))
+}
+
+func (m *EntityManager) StopUpdatedActiveList (l UpdatedEntityList) {
+	m.UnsetActiveWatcher (l.Watcher)
+	m.StopUpdateChannel <- true
+}
+
 // Return a channel which will receive the id of an entity whenever an entity
 // becomes active with a component set matching the query bitarray, and which
 // will receive -(id + 1) whenever an entity is *despawned* with a component set
@@ -211,9 +220,9 @@ func (m *EntityManager) SetActiveWatcher(
 
 func (m *EntityManager) UnsetActiveWatcher(qw QueryWatcher) {
 	// find the index of the QueryWatcher in the list and splice it out
-	for i := 0; i < len(m.activeWatchers); i++ {
+	last_ix = len(m.activeWatchers) - 1
+	for i := 0; i <= last_ix; i++ {
 		if i == qw.ID {
-			last_ix = len(m.activeWatchers) - 1
 			m.activeWatchersMutex.Lock()
 			m.activeWatchers[i] = m.activeWatchers[last_ix]
 			m.activeWatchers = m.activeWatchers[:last_ix]

@@ -13,12 +13,12 @@ import (
 )
 
 type VelocityComponent struct {
-	Data       [MAX_ENTITIES][2]uint16
-	WriteMutex sync.Mutex
+	Data       [MAX_ENTITIES][2]int16
+	Mutex sync.Mutex
 }
 
-func (c *VelocityComponent) SafeSet(id int, val [2]uint16) {
-	c.WriteMutex.Lock()
+func (c *VelocityComponent) SafeSet(id int, val [2]int16) {
+	c.Mutex.Lock()
 	c.Data[id] = val
-	c.WriteMutex.Unlock()
+	c.Mutex.Unlock()
 }

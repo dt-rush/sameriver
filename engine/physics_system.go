@@ -9,25 +9,23 @@ package engine
 
 import (
 	"github.com/dt-rush/donkeys-qquest/constant"
-	"github.com/dt-rush/donkeys-qquest/engine"
-	"github.com/dt-rush/donkeys-qquest/engine/component"
 )
 
 type PhysicsSystem struct {
 	// to filter, lookup entities
-	entity_manager *engine.EntityManager
+	entity_manager *EntityManager
 	// component this will use
-	active_component   *component.ActiveComponent
-	position_component *component.PositionComponent
-	velocity_component *component.VelocityComponent
-	hitbox_component   *component.HitboxComponent
+	active_component   *ActiveComponent
+	position_component *PositionComponent
+	velocity_component *VelocityComponent
+	hitbox_component   *HitboxComponent
 }
 
-func (s *PhysicsSystem) Init(entity_manager *engine.EntityManager,
-	active_component *component.ActiveComponent,
-	position_component *component.PositionComponent,
-	velocity_component *component.VelocityComponent,
-	hitbox_component *component.HitboxComponent) {
+func (s *PhysicsSystem) Init(entity_manager *EntityManager,
+	active_component *ActiveComponent,
+	position_component *PositionComponent,
+	velocity_component *VelocityComponent,
+	hitbox_component *HitboxComponent) {
 
 	s.entity_manager = entity_manager
 	s.active_component = active_component

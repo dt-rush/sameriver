@@ -8,17 +8,16 @@
 package engine
 
 import (
-	"fmt"
 	"sync"
 )
 
-type VelocityComponent struct {
+type HitboxComponent struct {
 	Data       [MAX_ENTITIES][2]uint16
-	WriteMutex sync.Mutex
+	Mutex sync.Mutex
 }
 
-func (c *VelocityComponent) SafeSet(id int, val [2]uint16) {
-	c.WriteMutex.Lock()
+func (c *HitboxComponent) SafeSet(id int, val [2]uint16) {
+	c.Mutex.Lock()
 	c.Data[id] = val
-	c.WriteMutex.Unlock()
+	c.Mutex.Unlock()
 }

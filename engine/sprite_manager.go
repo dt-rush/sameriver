@@ -6,12 +6,12 @@ import (
 )
 
 type SpriteManager struct {
-	SpriteComponent *component.SpriteComponent
+	SpriteComponent *SpriteComponent
 	Textures        map[string]*sdl.Texture
 }
 
 func (c *SpriteManager) Init(
-	sprite_component *component.SpriteComponent,
+	sprite_component *SpriteComponent,
 	renderer *sdl.Renderer) {
 
 	c.sprite_component = sprite_component
@@ -19,8 +19,8 @@ func (c *SpriteManager) Init(
 	c.LoadFiles()
 }
 
-func (c *SpriteManager) NewSprite(name string) component.Sprite {
-	return component.Sprite{
+func (c *SpriteManager) NewSprite(name string) Sprite {
+	return Sprite{
 		c.Textures[name], // texture
 		0,                // frame
 		true,             // visible

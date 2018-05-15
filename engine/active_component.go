@@ -14,11 +14,11 @@ import (
 
 type ActiveComponent struct {
 	Data       [MAX_ENTITIES]bool
-	WriteMutex sync.Mutex
+	Mutex sync.Mutex
 }
 
 func (c *ActiveComponent) SafeSet(id int, val bool) {
-	c.WriteMutex.Lock()
+	c.Mutex.Lock()
 	c.Data[id] = val
-	c.WriteMutex.Unlock()
+	c.Mutex.Unlock()
 }

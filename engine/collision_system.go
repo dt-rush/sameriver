@@ -7,9 +7,11 @@
 
 package engine
 
+
 import (
-	"github.com/dt-rush/donkeys-qquest/engine"
+	"sync"
 )
+
 
 type CollisionLogic struct {
 
@@ -17,59 +19,64 @@ type CollisionLogic struct {
 
 	Selector func(i int,
 		j int,
-		em *engine.EntityManager) bool
+		em *EntityManager) bool
 
 	EventGenerator func(i int,
 		j int,
-		em *engine.EntityManager) engine.GameEvent
+		em *EntityManager) GameEvent
 }
 
 type CollisionSystem struct {
 
 	// To filter, lookup entities
-	entity_manager *engine.EntityManager
-	// query watcher to see spawn/despawn events and update targetted entities
-	spawnWatcher QueryWatcher
+	entity_manager *EntityManager
+	position_component *PositionComponent
+	hitbox_component *HitboxComponent
+	// query watcher to see activate/deactivate events from entity_manager and
+	// update targetted entities list
+	activeWatcher QueryWatcher
 	// targetted entities
-	CollidableEntities []int
+	collidableEntities UpdatedEntityList
 	// How the collision system communicates collision events
-	game_event_manager *engine.GameEventManager
+	game_event_manager *GameEventManager
 	// How the collision system gets populated with specific
 	// collision detection logics
 	collision_logic_collection    map[int]CollisionLogic
 	collision_logic_ids           map[string]int
 	collision_logic_active_states map[int]bool
 	// to generate IDs for collision logic
-	id_generator engine.IDGenerator
+	id_generator IDGenerator
 }
 
 func (s *CollisionSystem) Init(
-	entity_manager *engine.EntityManager,
-	game_event_manager *engine.GameEventManager) {
+	entity_manager *EntityManager,
+	game_event_manager *GameEventManager) {
 
+	// take down references to entity and game event managers
 	s.entity_manager = entity_manager
 	s.game_event_manager = game_event_manager
-	s.setSpawnWatcher()
-
+	// take down reference to components needed
+	s.position_component = s.entity_manager.Components.Position
+	s.hitbox_component = s.entity_manager.Components.Hitbox
+	// get a regularly updated list of the entities which are collidable
+	// (position and hitbox)
+	query := MakeComponentQuery([]int{
+		POSITION_COMPONENT,
+		HITBOX_COMPONENT})
+	s.collidableEntities = s.entity_manager.GetUpdatedActiveList (query)
+	// initialize collision logic data members
 	s.collision_logic_collection = make(map[int]CollisionLogic)
 	s.collision_logic_ids = make(map[string]int)
 	s.collision_logic_active_states = make(map[int]bool)
-	s.CollidableEntities = make([]int)
-}
-
-func (s *CollisionSystem) setSpawnWatcher() {
-	query := engine.MakeComponentQuery(
-		engine.POSITION_COMPONENT,
-		engine.HITBOX_COMPONENT)
 }
 
 func (s *CollisionSystem) AddCollisionLogic(name string, logic CollisionLogic) int {
 
 	id := s.id_generator.Gen()
-	engine.Logger.Printf("about to add collision logic %s", name)
+	Logger.Printf("about to add collision logic %s", name)
 	s.collision_logic_collection[id] = logic
 	s.collision_logic_ids[name] = id
-	engine.Logger.Printf("added collision logic %s", name)
+	Logger.Printf("added collision logic %s", name)
 	return id
 }
 
@@ -78,11 +85,14 @@ func (s *CollisionSystem) SetCollisionLogicActiveState(id int, active bool) {
 }
 
 func (s *CollisionSystem) TestCollision(i int, j int) bool {
+	// NOTE: this is called by Update, so it's covered by the mutex on the
+	// components
+
 	// grab component data
-	box := s.hitbox_component.Get(i)
-	other_box := s.hitbox_component.Get(j)
-	center := s.position_component.Get(i)
-	other_center := s.position_component.Get(j)
+	box := s.hitbox_component.Data[i]
+	other_box := s.hitbox_component.Data[j]
+	center := s.position_component.Data[i]
+	other_center := s.position_component.Data[j]
 	// find the distance between the X and Y centers
 	// NOTE: "abs" is for absolute value
 	dxabs := center[0] - other_center[0]
@@ -95,24 +105,27 @@ func (s *CollisionSystem) TestCollision(i int, j int) bool {
 	}
 	// if the sum of the widths is greater than twice the x distance,
 	// collision has occurred (same for y)
-	return (dxabs*2 < (box[0]+other_box[0]) &&
-		dyabs*2 < (box[1]+other_box[1]))
+	return (dxabs*2 < int16(box[0]+other_box[0]) &&
+		dyabs*2 < int16(box[1]+other_box[1]))
 }
 
 func (s *CollisionSystem) Update(dt_ms int) {
 
-	for i := 0; i < len(c.CollidableEntities); i++ {
+	s.position_component.Mutex.Lock()
+	s.hitbox_component.Mutex.Lock()
+	s.collidableEntities.Mutex.Lock()
+	defer s.position_component.Mutex.Unlock()
+	defer s.hitbox_component.Mutex.Unlock()
+	defer s.collidableEntities.Mutex.Unlock()
+
+	entities := s.collidableEntities.Entities
+	for i := 0; i < len(entities); i++ {
 		entity_i := entities[i]
-		if !s.EntityIsCollidable(entity_i) {
-			continue
-		}
+
 		// compare entity at i to all subsequent entities
 		// (this way, all entity pairs will be compared once)
 		for j := i + 1; j < len(entities); j++ {
 			entity_j := entities[j]
-			if !s.EntityIsCollidable(entity_j) {
-				continue
-			}
 
 			for collision_logic_id, collision_logic := range s.collision_logic_collection {
 				// if this collision logic is active,

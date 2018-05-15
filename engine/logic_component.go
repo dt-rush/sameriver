@@ -18,11 +18,11 @@ type LogicUnit struct {
 
 type LogicComponent struct {
 	Data       [MAX_ENTITIES]LogicUnit
-	WriteMutex sync.Mutex
+	Mutex sync.Mutex
 }
 
 func (c *LogicUnit) SafeSet(id int, val LogicUnit) {
-	c.WriteMutex.Lock()
+	c.Mutex.Lock()
 	c.Data[id] = val
-	c.WriteMutex.Unlock()
+	c.Mutex.Unlock()
 }
