@@ -87,7 +87,7 @@ func (m *EntityManager) SpawnEntity(
 	id uint16,
 	component_set ComponentSet) {
 
-	Logger.Printf ("[Entity manager] Spawning: %d\n", id)
+	Logger.Printf("[Entity manager] Spawning: %d\n", id)
 
 	m.entityTableMutex.Lock()
 	defer m.entityTableMutex.Unlock()
@@ -148,7 +148,7 @@ func (m *EntityManager) DespawnEntity(id uint16) {
 
 // NOTE: do not call this if you've locked Components.Active for reading, haha
 func (m *EntityManager) Activate(id uint16) {
-	Logger.Printf ("[Entity manager] Activating: %d\n", id)
+	Logger.Printf("[Entity manager] Activating: %d\n", id)
 	m.Components.Active.SafeSet(id, true)
 	// check if anybody has set a query watch on the specific component mix
 	// of this entity. If so, notify them of activate by sending this id
@@ -161,7 +161,7 @@ func (m *EntityManager) Activate(id uint16) {
 }
 
 func (m *EntityManager) Deactivate(id uint16) {
-	Logger.Printf ("[Entity manager] Deactivating: %d\n", id)
+	Logger.Printf("[Entity manager] Deactivating: %d\n", id)
 	m.Components.Active.SafeSet(id, false)
 	// check if anybody has set a query watch on the specific component mix
 	// of this entity. If so, notify them of deactivate by sending -(id + 1)
@@ -227,7 +227,7 @@ func (m *EntityManager) UnsetActiveWatcher(qw QueryWatcher) {
 
 // apply the given tag to the given entity
 func (m *EntityManager) TagEntity(id uint16, tag string) {
-	Logger.Printf ("[Entity manager] Tagging %d with: %s\n", id, tag)
+	Logger.Printf("[Entity manager] Tagging %d with: %s\n", id, tag)
 	m.tagSystemMutex.Lock()
 	defer m.tagSystemMutex.Unlock()
 	_, t_of_e_exists := m.TagsOfEntity[id]

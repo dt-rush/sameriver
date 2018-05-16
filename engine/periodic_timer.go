@@ -8,7 +8,7 @@
 package engine
 
 // private struct
-type TimeAccumulator struct {
+type PeriodicTimer struct {
 	// how much time has accumulated so far
 	accum uint16
 	// the periodicity of the time accumulator (used by both Tick() and
@@ -16,9 +16,9 @@ type TimeAccumulator struct {
 	period uint16
 }
 
-// Create a TimeAccumulator object with a given period
-func NewTimeAccumulator(period uint16) TimeAccumulator {
-	t := TimeAccumulator{}
+// Create a PeriodicTimer object with a given period
+func NewPeriodicTimer(period uint16) PeriodicTimer {
+	t := PeriodicTimer{}
 	t.accum = 0
 	t.period = period
 	return t
@@ -30,7 +30,7 @@ func NewTimeAccumulator(period uint16) TimeAccumulator {
 // greater than the period (an odd situation, but important to note). `dt`
 // could be 100, and period could be 7, and we would still get a single true
 // value, even though really 14 complete periods had elapsed.
-func (t *TimeAccumulator) Tick(dt uint16) bool {
+func (t *PeriodicTimer) Tick(dt uint16) bool {
 	t.accum += dt
 	for t.accum >= t.period {
 		t.accum %= t.period
@@ -41,6 +41,6 @@ func (t *TimeAccumulator) Tick(dt uint16) bool {
 
 // Give the percent complete of the timer out of its period, given the
 // current state of the accumulator
-func (t *TimeAccumulator) Completion() float64 {
+func (t *PeriodicTimer) Completion() float64 {
 	return float64(t.accum) / float64(t.period)
 }

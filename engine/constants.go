@@ -14,4 +14,5 @@ const DEBUG = true
 const DEBUG_GAME_EVENTS = true
 const DEBUG_GOROUTINES = true
 
+const FPS = 60
 const MAX_ENTITIES = 1024

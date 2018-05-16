@@ -12,14 +12,16 @@ import (
 )
 
 type Scene interface {
-	Init(game *Game) chan bool
-	Run()
+	Name() string
+
+	Init(game *Game)
+	StartLogic()
+	StopLogic()
+
 	Update(dt_ms uint16)
 	Draw(window *sdl.Window, renderer *sdl.Renderer)
 	HandleKeyboardState(keyboard_state []uint8)
 	HandleKeyboardEvent(keyboard_event *sdl.KeyboardEvent)
-	IsRunning() bool
-	Stop()
-	Name() string
+
 	Destroy()
 }
