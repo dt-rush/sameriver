@@ -207,7 +207,6 @@ func (g *Game) runGameLoopOnScene(scene Scene) {
 	g.initGameLoopProfiler(scene)
 	defer g.logGameLoopEnded(scene)
 	defer g.clearGameLoopProfiler()
-	defer g.destroyScene(scene)
 
 	// Actual gameloop code:
 	fps_timer := NewPeriodicTimer(uint16(1000 / FPS))
@@ -245,6 +244,9 @@ func (g *Game) runGameLoopOnScene(scene Scene) {
 		}
 		// everyone deserves some rest now and then
 		sdl.Delay(16)
+	}
+	if scene.IsTransient() {
+		scene.Destroy()
 	}
 }
 

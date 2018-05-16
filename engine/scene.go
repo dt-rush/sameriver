@@ -23,5 +23,6 @@ type Scene interface {
 	HandleKeyboardState(keyboard_state []uint8)
 	HandleKeyboardEvent(keyboard_event *sdl.KeyboardEvent)
 
+	IsTransient() bool
 	Destroy()
 }

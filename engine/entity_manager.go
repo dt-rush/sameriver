@@ -149,26 +149,34 @@ func (m *EntityManager) DespawnEntity(id uint16) {
 // NOTE: do not call this if you've locked Components.Active for reading, haha
 func (m *EntityManager) Activate(id uint16) {
 	Logger.Printf("[Entity manager] Activating: %d\n", id)
-	m.Components.Active.SafeSet(id, true)
-	// check if anybody has set a query watch on the specific component mix
-	// of this entity. If so, notify them of activate by sending this id
-	// through the channel
-	for _, watcher := range m.activeWatchers {
-		if watcher.Query.Test(id, m) {
-			watcher.Channel <- int16(id)
+	// Activate is idempotent - only enter if not active
+	if !m.Components.Active.SafeGet(id) {
+		// Set active = true
+		m.Components.Active.SafeSet(id, true)
+		// check if anybody has set a query watch on this entity.
+		// If so, notify them of activate by sending this id
+		// through the channel
+		for _, watcher := range m.activeWatchers {
+			if watcher.Query.Test(id, m) {
+				watcher.Channel <- int16(id)
+			}
 		}
 	}
 }
 
 func (m *EntityManager) Deactivate(id uint16) {
 	Logger.Printf("[Entity manager] Deactivating: %d\n", id)
-	m.Components.Active.SafeSet(id, false)
-	// check if anybody has set a query watch on the specific component mix
-	// of this entity. If so, notify them of deactivate by sending -(id + 1)
-	// through the channel
-	for _, watcher := range m.activeWatchers {
-		if watcher.Query.Test(id, m) {
-			watcher.Channel <- -(int16(id + 1))
+	// Deactivate is idempotent - only enter if active
+	if m.Components.Active.SafeGet(id) {
+		// Set active = false
+		m.Components.Active.SafeSet(id, false)
+		// check if anybody has set a query watch on this entity.
+		// If so, notify them of activate by sending -(id + 1)
+		// through the channel
+		for _, watcher := range m.activeWatchers {
+			if watcher.Query.Test(id, m) {
+				watcher.Channel <- -(int16(id + 1))
+			}
 		}
 	}
 }
