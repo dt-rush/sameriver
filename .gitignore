@@ -16,3 +16,5 @@ bin/*
 # ignore vim .swp and .swo files
 *.swp
 *.swo
+
+# ignore the quest.log file created by test_run.sh

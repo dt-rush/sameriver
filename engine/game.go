@@ -23,11 +23,13 @@ type Game struct {
 	// a channel (buffer size 1) through which appears (as if by magic)
 	// the next scene
 	NextSceneChan chan (Scene)
-	// a channel (blocking) through which a signal can be sent (true or false
+	// a channel through which a signal can be sent (true or false
 	// doesn't matter) to end the currently running scene.
-	EndSceneChan chan (bool)
+	currentSceneEndGameLoopChan chan (bool)
+	// channel to end the loading scene
+	endLoadingSceneGameLoopChan chan (bool)
 	// the scene to play while the next scene is running Init()
-	LoadingScene Scene
+	loadingScene Scene
 	// Map of scenes by ints (constants) so scenes can identify each other
 	// without import cycles
 	SceneMap SceneMap
@@ -52,6 +54,8 @@ func (g *Game) Init(WINDOW_TITLE string,
 	g.setupFuncProfiler()
 	// initialize the scene map
 	g.SceneMap.Map = make(map[int]Scene)
+	// initialized the next scene channel
+	g.NextSceneChan = make(chan (Scene), 1)
 	// set up game state
 	g.GameState = make(map[string]string)
 }
@@ -104,9 +108,15 @@ func (g *Game) Destroy() {
 	g.Renderer.Destroy()
 }
 
-func (g *Game) End() {
+func (g *Game) AsyncEnd() {
 	Logger.Println("[Game] in Game.End()")
-	g.EndSceneChan <- true
+	go func() {
+		g.currentSceneEndGameLoopChan <- true
+	}()
+}
+
+func (g *Game) SetLoadingScene(scene Scene) {
+	g.loadingScene = scene
 }
 
 func (g *Game) handleKeyboard(scene Scene) {
@@ -119,13 +129,13 @@ func (g *Game) handleKeyboard(scene Scene) {
 		case *sdl.QuitEvent:
 			Logger.Printf("[Game] sdl.QuitEvent received: %v", t)
 			// notice we use a nonblocking goroutine
-			g.End()
+			g.AsyncEnd()
 			return
 		case *sdl.KeyboardEvent:
 			keyboard_event := event.(*sdl.KeyboardEvent)
 			// if escape, exit immediately, else pass to the scene
 			if keyboard_event.Keysym.Sym == sdl.K_ESCAPE {
-				g.End()
+				g.AsyncEnd()
 			} else {
 				scene.HandleKeyboardEvent(keyboard_event)
 			}
@@ -136,41 +146,19 @@ func (g *Game) handleKeyboard(scene Scene) {
 	scene.HandleKeyboardState(keyboard_state)
 }
 
-func (g *Game) RunLoadingScene() chan bool {
-	loading_scene_stopped_signal_chan := make(chan bool)
-	go func() {
-		g.RunScene(g.LoadingScene)
-		loading_scene_stopped_signal_chan <- true
-	}()
-	return loading_scene_stopped_signal_chan
-}
-
 func (g *Game) blankScreen() {
 	g.Renderer.SetDrawColor(0, 0, 0, 255)
 	g.Renderer.Clear()
 }
 
-func (g *Game) RunScene(scene Scene) {
-	if DEBUG_GOROUTINES {
-		Logger.Printf("[Game] Before running %s, NumGoroutine = %d",
-			scene.Name(),
-			runtime.NumGoroutine())
-	}
-
-	scene.StartLogic()
-	g.runGameLoopOnScene(scene)
-	scene.StopLogic()
-
-	if DEBUG_GOROUTINES {
-		Logger.Printf("[Game] After running %s, NumGoroutine = %d",
-			scene.Name(),
-			runtime.NumGoroutine())
-	}
+func (g *Game) destroyScene(scene Scene) {
+	Logger.Printf("[Game] destroying scene: %s\n", scene.Name())
+	go scene.Destroy()
 }
 
 func (g *Game) logGameLoopStarted(scene Scene) {
 	// print log message to notify scene starting
-	Logger.Printf("[Game] \\\\\\  /// scene %s starting to run",
+	Logger.Printf("[Game] started: %s ▷",
 		scene.Name())
 }
 
@@ -182,7 +170,7 @@ func (g *Game) initGameLoopProfiler(scene Scene) {
 
 func (g *Game) logGameLoopEnded(scene Scene) {
 	// Scene has ended. Print a summary
-	Logger.Printf("[Game] //// \\\\\\\\ %s stopped running.",
+	Logger.Printf("[Game] ended: %s ■",
 		scene.Name())
 	Logger.Print(g.func_profiler.GetSummaryString(g.gameloop_profiler_id))
 }
@@ -192,33 +180,57 @@ func (g *Game) clearGameLoopProfiler() {
 	g.func_profiler.ClearData(g.gameloop_profiler_id)
 }
 
-func (g *Game) destroyScene(scene Scene) {
-	// destroy resources used by the scene
-	// (but don't trash the laoding scene which is reused)
-	if scene != g.LoadingScene {
-		Logger.Printf("[Game] Destroying resources used by %s", scene.Name())
-		go scene.Destroy()
+func (g *Game) RunScene(scene Scene, endGameLoopChan chan (bool)) {
+	if DEBUG_GOROUTINES {
+		Logger.Printf("[Game] Before running %s, NumGoroutine = %d",
+			scene.Name(),
+			runtime.NumGoroutine())
+	}
+
+	scene.StartLogic()
+	g.runGameLoopOnScene(scene, endGameLoopChan)
+	scene.StopLogic()
+	if scene.IsTransient() {
+		g.destroyScene(scene)
+	}
+
+	if DEBUG_GOROUTINES {
+		Logger.Printf("[Game] After running %s, NumGoroutine = %d",
+			scene.Name(),
+			runtime.NumGoroutine())
 	}
 }
 
-func (g *Game) runGameLoopOnScene(scene Scene) {
+func (g *Game) AsyncRunLoadingScene() chan bool {
+	g.endLoadingSceneGameLoopChan = make(chan (bool), 1)
+	g.loadingScene.Init(g, g.endLoadingSceneGameLoopChan)
+	loading_scene_stopped_signal_chan := make(chan (bool))
+	go func() {
+		g.RunScene(g.loadingScene, g.endLoadingSceneGameLoopChan)
+		loading_scene_stopped_signal_chan <- true
+	}()
+	return loading_scene_stopped_signal_chan
+}
+
+func (g *Game) runGameLoopOnScene(scene Scene, endGameLoopChan chan (bool)) {
 
 	g.logGameLoopStarted(scene)
 	g.initGameLoopProfiler(scene)
-	defer g.logGameLoopEnded(scene)
 	defer g.clearGameLoopProfiler()
+	defer g.logGameLoopEnded(scene)
 
 	// Actual gameloop code:
 	fps_timer := NewPeriodicTimer(uint16(1000 / FPS))
 	t0 := time.Now().UnixNano()
 	// gameloop
 	for {
-		select {
-		// if someone requested we end the scene, oblige them
-		case <-g.EndSceneChan:
+		// break the game loop when the end game loop channel gets a signal
+		if len(endGameLoopChan) > 0 {
+			Logger.Printf("[Game] len (endGameLoopChan) > 0 for %s\n",
+				scene.Name())
 			break
-		// else, run an iteration of the game loop
-		default:
+		} else {
+			// else, run an iteration of the game loop
 			// start the profiling timer for the gameloop
 			g.func_profiler.StartTimer(g.gameloop_profiler_id)
 			// calculate loop dt
@@ -245,22 +257,29 @@ func (g *Game) runGameLoopOnScene(scene Scene) {
 		// everyone deserves some rest now and then
 		sdl.Delay(16)
 	}
-	if scene.IsTransient() {
-		scene.Destroy()
-	}
 }
 
 func (g *Game) Run() {
+
+sceneloop:
 	for {
 		select {
 		case scene := <-g.NextSceneChan:
-			loadingSceneStoppedChan := g.RunLoadingScene()
-			scene.Init(g)
-			g.EndSceneChan <- true // end the loading scene
+			Logger.Printf("[Game] wanting to run %s\n", scene.Name())
+			loadingSceneStoppedChan := g.AsyncRunLoadingScene()
+			g.currentSceneEndGameLoopChan = make(chan (bool), 1)
+			scene.Init(g, g.currentSceneEndGameLoopChan)
+			Logger.Printf("[Game] %s.Init() finished\n", scene.Name())
+			g.endLoadingSceneGameLoopChan <- true
+			Logger.Printf("[Game] sent signal to stop loading scene\n")
 			<-loadingSceneStoppedChan
-			g.RunScene(scene)
+			Logger.Printf("[Game] got loading scene stopped signal\n")
+			Logger.Printf("[Game] calling g.RunScene (%s)\n",
+				scene.Name())
+			g.RunScene(scene, g.currentSceneEndGameLoopChan)
 		default:
 			Logger.Println("[Game] Last scene finished with no next scene. Game ending.")
+			break sceneloop
 		}
 	}
 }

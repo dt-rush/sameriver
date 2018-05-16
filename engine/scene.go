@@ -14,7 +14,7 @@ import (
 type Scene interface {
 	Name() string
 
-	Init(game *Game)
+	Init(game *Game, endGameLoopChan chan (bool))
 	StartLogic()
 	StopLogic()
 

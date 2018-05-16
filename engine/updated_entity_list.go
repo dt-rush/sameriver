@@ -1,10 +1,10 @@
 /*
- *
+*
  * a list of entities which will be updated by another goroutine maybe,
  * which has a mutex that the user can lock when they wish to look at the
  * current contents
  *
- */
+*/
 
 package engine
 
@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 )
+
+const VERBOSE = false
 
 type UpdatedEntityList struct {
 	Watcher           QueryWatcher
@@ -33,18 +35,23 @@ func NewUpdatedEntityList(watcher QueryWatcher, name string) *UpdatedEntityList 
 
 func (l *UpdatedEntityList) start() {
 	go func() {
+	updateloop:
 		for {
 			select {
 			case _ = <-l.StopUpdateChannel:
-				return
+				break updateloop
 			case id := <-l.Watcher.Channel:
 				l.Mutex.Lock()
 				if id >= 0 {
-					Logger.Printf("[Updated entity list] %s got insert:%d\n", l.Name, id)
+					if VERBOSE {
+						Logger.Printf("[Updated entity list] %s got insert:%d\n", l.Name, id)
+					}
 					l.insert(uint16(id))
 				} else {
 					id = -(id + 1)
-					Logger.Printf("[Updated entity list] %s got remove:%d\n", l.Name, id)
+					if VERBOSE {
+						Logger.Printf("[Updated entity list] %s got remove:%d\n", l.Name, id)
+					}
 					l.remove(uint16(id))
 				}
 				l.Mutex.Unlock()

@@ -20,10 +20,9 @@ type EntityManager struct {
 	EntityComponentBitArrays [MAX_ENTITIES]bitarray.BitArray
 	// how many entities there are
 	NumEntities int
-	// the highest index a registered entity resides at
-	HighestID uint16
-	// stack of available entity ID's < n_entities (when Deallocate is called
-	// for an ID, we add to this stack)
+	// list of IDs which have been allocated
+	allocatedIDs []uint16
+	// list of available entity ID's which have previously been deallocated
 	availableIDs []uint16
 	// to avoid race conditions involving the modification of the above
 	// when multiple goroutines may want to spawn or despawn entities
@@ -61,23 +60,65 @@ func (m *EntityManager) Init() {
 
 // get the ID for a new entity
 func (m *EntityManager) AllocateID() uint16 {
+	// lock the entity table while we operate on it
 	m.entityTableMutex.Lock()
 	defer m.entityTableMutex.Unlock()
 	// if there is a deallocated entity somewhere in the table before the
 	// highest ID, return that ID to the caller
 	n_avail := len(m.availableIDs)
+	var id uint16
 	if n_avail > 0 {
-		id := m.availableIDs[n_avail-1]
+		// there is an ID available for a previously deallocated entity.
+		// pop it from the list and continue with that as the ID
+		id = m.availableIDs[n_avail-1]
 		m.availableIDs = m.availableIDs[:n_avail-1]
-		return id
 	} else {
-		// every slot in the table before the highest ID is filled.
-		// Increment the highest ID (by setting it = to the number of entities,
-		// which will be, given that the table is full up to this point,
-		// highest_id + 1) and return it
-		m.HighestID = uint16(m.NumEntities)
-		m.NumEntities += 1
-		return m.HighestID
+		// every slot in the table before the highest ID is filled
+		m.NumEntities++
+		id = uint16(m.NumEntities - 1)
+	}
+	// add the ID to the list of allocated IDs
+	m.allocatedIDs = append(m.allocatedIDs, id)
+	return id
+}
+
+func (m *EntityManager) Despawn(id uint16) {
+	// Deactivate the entity to ensure that all updated entity lists are
+	// notified
+	m.Deactivate(id)
+	// Lock the entity table while we operate on it
+	m.entityTableMutex.Lock()
+	defer m.entityTableMutex.Unlock()
+	// add the ID to the list of available IDs
+	m.availableIDs = append(m.availableIDs, id)
+	// remove the ID from the list of allocated IDs
+	last_ix := len(m.allocatedIDs) - 1
+	for i := 0; i <= last_ix; i++ {
+		if m.allocatedIDs[i] == id {
+			m.allocatedIDs[i] = m.allocatedIDs[last_ix]
+			m.allocatedIDs = m.allocatedIDs[:last_ix]
+			break
+		}
+	}
+	// clear the tags for entity
+	tags_to_clear := m.TagsOfEntity[id]
+	for _, tag_to_clear := range tags_to_clear {
+		m.UntagEntity(id, tag_to_clear)
+	}
+	delete(m.TagsOfEntity, id)
+	// unset the bitarray for the entity
+	m.EntityComponentBitArrays[id].Reset()
+}
+
+func (m *EntityManager) DespawnAll() {
+	Logger.Println("[Entity manager] Deallocating all...")
+	Logger.Printf("[Entity manager] Currently allocated: %v\n", m.allocatedIDs)
+	// iterate all IDs which could have been allocated
+	for i := 0; i < m.NumEntities; i++ {
+		// we can call this safely on each ID, even those unallocated,
+		// since it's idempotent - it will exit early if the entity is already
+		// deactivated
+		m.Despawn(uint16(i))
 	}
 }
 
@@ -124,26 +165,6 @@ func (m *EntityManager) SpawnEntity(
 	if component_set.Velocity != nil {
 		m.Components.Velocity.SafeSet(id, *(component_set.Velocity))
 	}
-}
-
-// forget an entity existed (don't clear the data stored in any component
-// tables though (these will simply be overwritten later)
-func (m *EntityManager) DespawnEntity(id uint16) {
-	m.entityTableMutex.Lock()
-	defer m.entityTableMutex.Unlock()
-	// set entity inactive
-	m.Deactivate(id)
-	// add the ID to the pool of now-available ID's
-	m.availableIDs = append(m.availableIDs, id)
-	// remove tag metadata for this entity
-	tags_to_clear := m.TagsOfEntity[id]
-	for _, tag_to_clear := range tags_to_clear {
-		m.UntagEntity(id, tag_to_clear)
-	}
-	delete(m.TagsOfEntity, id)
-
-	// unset the bitarray for the entity
-	m.EntityComponentBitArrays[id].Reset()
 }
 
 // NOTE: do not call this if you've locked Components.Active for reading, haha
