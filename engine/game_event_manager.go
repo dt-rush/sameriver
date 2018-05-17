@@ -1,13 +1,9 @@
 /**
   *
-  *
+  * Pub-sub hub for game events
   *
   *
 **/
-
-// Game event manager is a bunch of channels used for
-// systems to interact outside of reading
-// and writing to components, using pub-sub pattern
 
 package engine
 
@@ -15,41 +11,46 @@ import (
 	"sync"
 )
 
-//
-// TODO: refactor so that for each event, we iterate only those
-// subscribers registered for the event type, and then we send
-// only on those channels which match the query
-//
-
 type GameEventManager struct {
-	eventQueryWatchers []GameEventQueryWatcher
-	subscribeMutex     sync.Mutex
+	// subscribers is a list of lists of GameEventQueryWatchers
+	// where the inner lists are indexed by the GameEventType (type aliased
+	// to int). So you could have a list of queries on CollisionEvents, etc.
+	subscribers    [N_GAME_EVENT_TYPES][]GameEventQueryWatcher
+	subscribeMutex sync.Mutex
 }
 
 func (m *GameEventManager) Init() {
 	// nothing for now
 }
 
+// Subscribe to listen for game events defined by a query
 func (m *GameEventManager) Subscribe(
 	q GameEventQuery, name string) GameEventChannel {
 
+	// Lock the subscriber slice while we modify it
 	m.subscribeMutex.Lock()
 	defer m.subscribeMutex.Unlock()
+	// Create a channel to return to the user
 	c := NewGameEventChannel()
+	// Add a query watcher to the subscriber slice
 	qw := GameEventQueryWatcher{q, c}
-	m.eventQueryWatchers = append(m.eventQueryWatchers, qw)
+	m.subscribers[q.Type] = append(m.subscribers[q.Type], qw)
+	// return the GameEventChannel to the caller
 	return c
 }
 
+// Publish a game event for anyone listening
 func (m *GameEventManager) Publish(e GameEvent) {
 	if DEBUG_GAME_EVENTS {
-		Logger.Printf("[Game event manager] ᛤ: %s\n",
+		Logger.Printf("[Game event manager] ⚹: %s\n",
 			e)
 	}
-	// send e to all streams listening for GameEvent
-	for qw := range m.eventQueryWatchers {
+
+	// send e to all matching watchers
+	for _, qw := range m.subscribers[e.Type] {
 		if len(qw.Channel.C) == GAME_EVENT_CHANNEL_CAPACITY {
-			Logger.Printf("[Game event manager] ⚠  event channel #%d for %s is full - discarding event\n", qw.Name)
+			Logger.Printf("[Game event manager] ⚠  event channel #%d "+
+				"for %s is full - discarding event\n", qw.Name)
 		} else {
 			qw.Channel.PushToChannel(e)
 		}

@@ -6,42 +6,27 @@ type GameEventQueryWatcher struct {
 	Name    string
 }
 
-type GameEventQuery interface {
-	Test(e GameEvent) bool
+type GameEventQuery struct {
+	Type      GameEventType
+	Predicate func(e GameEvent) bool
 }
 
-type simpleGameEventQuery struct {
-	// the class of event
-	class int
+func (q GameEventQuery) Test(e GameEvent) bool {
+	return q.Type == e.Type && q.Predicate(e)
 }
 
-func (q simpleGameEventQuery) Test(e GameEvent) bool {
-	return q.class == e.class
+// Construct a new GameEventQuery which only asks about
+// the Type of the event
+func NewSimpleGameEventQuery(Type GameEventType) GameEventQuery {
+
+	return &GameEventQuery{Type}
 }
 
-type predicateGameEventQuery struct {
-	// the class of event
-	class int
-	// a function which predicates the game event more
-	// specifically than its class
-	predicate func(e GameEvent) bool
-}
-
-func (q predicateGameEventQuery) Test(e GameEvent) bool {
-	return q.class == e.class && q.predicate(e)
-}
-
-// Construct a new game event query which only asks about
-// the class of the event
-func NewSimpleGameEventQuery(class int) GameEventQuery {
-
-	return &simpleGameEventQuery{class}
-}
-
-// Construct a new game event query which asks about class and
+// Construct a new GameEventQuery which asks about Type and
 // a user-given predicate
 func NewPredicateGameEventQuery(
-	class int, predicate func(e GameEvent) bool) GameEventQuery {
+	Type GameEventType,
+	predicate func(e GameEvent) bool) GameEventQuery {
 
-	return &predicateGameEventQuery{class, predicate}
+	return &predicateGameEventQuery{Type, predicate}
 }
