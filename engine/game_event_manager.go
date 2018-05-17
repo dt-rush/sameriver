@@ -15,20 +15,20 @@ import (
 	"sync"
 )
 
-type GameEvent struct {
-	Code int
-	Name string
-}
+//
+// TODO: refactor so that for each event, we iterate only those
+// subscribers registered for the event type, and then we send
+// only on those channels which match the query
+//
 
-func (e GameEvent) String() string {
-	return e.Name
-}
+
 
 type GameEventManager struct {
+	// chann
 	channels    [](chan GameEvent)
 	subscribers map[int]([](chan GameEvent))
 
-	subscribe_mutex *sync.Mutex
+	subscribe_mutex sync.Mutex
 }
 
 func (m *GameEventManager) Init() {
@@ -38,21 +38,28 @@ func (m *GameEventManager) Init() {
 	m.channels = make([](chan GameEvent), capacity*capacity)
 	m.subscribers = make(map[int]([](chan GameEvent)), capacity)
 
-	m.subscribe_mutex = &sync.Mutex{}
+	m.subscribe_mutex = sync.Mutex{}
 }
 
 func (m *GameEventManager) Subscribe(e GameEvent) chan GameEvent {
 	m.subscribe_mutex.Lock()
 	// create subscribers array if DNE
 	_, ok := m.subscribers[e.Code]
-	if !ok {
+	if ! ok {
 		m.subscribers[e.Code] = make([](chan GameEvent), 0)
 	}
-	ch := make(chan GameEvent)
+	ch := make(chan(GameEvent), CHANNEL_CAPACITY)
 	m.subscribers[e.Code] = append(m.subscribers[e.Code], ch)
 	m.channels = append(m.channels, ch)
 	m.subscribe_mutex.Unlock()
 	return ch
+}
+
+func (m *GameEventManager) DrainChannel (c chan(GameEvent)) {
+	n := len (c)
+	for i := 0; i < n; i++ {
+		<-c
+	}
 }
 
 func (m *GameEventManager) Publish(e GameEvent) {
@@ -61,10 +68,12 @@ func (m *GameEventManager) Publish(e GameEvent) {
 			e)
 	}
 	// send e to all streams listening for GameEvent
-	for _, ch := range m.subscribers[e.Code] {
-		go func(ch chan GameEvent, e GameEvent) {
+	for id, ch := range m.subscribers[e.Code] {
+		if len(ch) == CHANNEL_CAPACITY {
+			Logger.Printf("[Game event manager] ⚠  event channel #%d for %s is full - discarding event\n", id, e)
+		} else {
 			ch <- e
-		}(ch, e)
+		}
 	}
 }
 

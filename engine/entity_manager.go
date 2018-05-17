@@ -34,7 +34,7 @@ type EntityManager struct {
 	// used to allow systems to keep an updated list of entities which have
 	// components they're interested in operating on (eg. physics watches
 	// for entities with position, velocity, and hitbox)
-	activeWatchers []QueryWatcher
+	activeWatchers []EntityQueryWatcher
 	// to generate ID's for the active watchers
 	watcherIDGen IDGenerator
 	// to avoid race conditions
@@ -203,7 +203,7 @@ func (m *EntityManager) Deactivate(id uint16) {
 }
 
 func (m *EntityManager) GetUpdatedActiveList(
-	q Query, name string) *UpdatedEntityList {
+	q EntityQuery, name string) *UpdatedEntityList {
 
 	return NewUpdatedEntityList(m.SetActiveWatcher(q), name)
 }
@@ -217,7 +217,7 @@ func (m *EntityManager) StopUpdatedActiveList(l UpdatedEntityList) {
 /// becomes active with a component set matching the query bitarray, and which
 // will receive -(id + 1) whenever an entity is *despawned* with a component
 // set matching the query bitarray
-func (m *EntityManager) SetActiveWatcher(q Query) QueryWatcher {
+func (m *EntityManager) SetActiveWatcher(q EntityQuery) EntityQueryWatcher {
 
 	// TODO: this seems as if we're just hoping that the capacity won't exceed
 	// 8 for any reason, which it could if we spawn a lot of entities and the
@@ -233,15 +233,15 @@ func (m *EntityManager) SetActiveWatcher(q Query) QueryWatcher {
 
 	c := make(chan (int16), 8)
 	watcherID := m.watcherIDGen.Gen()
-	qw := QueryWatcher{q, c, watcherID}
+	qw := EntityQueryWatcher{q, c, watcherID}
 	m.activeWatchersMutex.Lock()
 	m.activeWatchers = append(m.activeWatchers, qw)
 	m.activeWatchersMutex.Unlock()
 	return qw
 }
 
-func (m *EntityManager) UnsetActiveWatcher(qw QueryWatcher) {
-	// find the index of the QueryWatcher in the list and splice it out
+func (m *EntityManager) UnsetActiveWatcher(qw EntityQueryWatcher) {
+	// find the index of the EntityQueryWatcher in the list and splice it out
 	last_ix := len(m.activeWatchers) - 1
 	for i := uint16(0); i <= uint16(last_ix); i++ {
 		if m.activeWatchers[i].ID == qw.ID {
