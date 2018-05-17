@@ -9,5 +9,5 @@ type EntityQuery interface {
 type EntityQueryWatcher struct {
 	Query   EntityQuery
 	Channel chan (int16)
-	ID      uint16
+	Name    string
 }

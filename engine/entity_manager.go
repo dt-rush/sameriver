@@ -24,8 +24,7 @@ type EntityManager struct {
 	allocatedIDs []uint16
 	// list of available entity ID's which have previously been deallocated
 	availableIDs []uint16
-	// to avoid race conditions involving the modification of the above
-	// when multiple goroutines may want to spawn or despawn entities
+	// to protedct modification of the above data
 	entityTableMutex sync.Mutex
 
 	// Component data
@@ -35,9 +34,7 @@ type EntityManager struct {
 	// components they're interested in operating on (eg. physics watches
 	// for entities with position, velocity, and hitbox)
 	activeWatchers []EntityQueryWatcher
-	// to generate ID's for the active watchers
-	watcherIDGen IDGenerator
-	// to avoid race conditions
+	// to protect modifying the above slice
 	activeWatchersMutex sync.Mutex
 
 	// data members to support the entity tagging system, which allows us to
@@ -179,6 +176,12 @@ func (m *EntityManager) Activate(id uint16) {
 		// through the channel
 		for _, watcher := range m.activeWatchers {
 			if watcher.Query.Test(id, m) {
+				// warn if the channel is full (we will block here if so)
+				// NOTE: this can be very bad indeed, since now whatever
+				// called Activate is blocking
+				if len(watcher.Channel) == ACTIVE_ENTITY_WATCHER_CHANNEL_CAPACITY {
+					Logger.Printf("[Entity manager] ⚠⚠⚠  active watcher channel %s is full, causing block in Activate()\n", watcher.Name)
+				}
 				watcher.Channel <- int16(id)
 			}
 		}
@@ -196,6 +199,9 @@ func (m *EntityManager) Deactivate(id uint16) {
 		// through the channel
 		for _, watcher := range m.activeWatchers {
 			if watcher.Query.Test(id, m) {
+				if len(watcher.Channel) == ACTIVE_ENTITY_WATCHER_CHANNEL_CAPACITY {
+					Logger.Printf("[Entity manager] ⚠  active watcher channel %s is full - blocking in Deactivate()\n", watcher.Name)
+				}
 				watcher.Channel <- -(int16(id + 1))
 			}
 		}
@@ -205,7 +211,7 @@ func (m *EntityManager) Deactivate(id uint16) {
 func (m *EntityManager) GetUpdatedActiveList(
 	q EntityQuery, name string) *UpdatedEntityList {
 
-	return NewUpdatedEntityList(m.SetActiveWatcher(q), name)
+	return NewUpdatedEntityList(m.SetActiveWatcher(q, name), name)
 }
 
 func (m *EntityManager) StopUpdatedActiveList(l UpdatedEntityList) {
@@ -217,23 +223,11 @@ func (m *EntityManager) StopUpdatedActiveList(l UpdatedEntityList) {
 /// becomes active with a component set matching the query bitarray, and which
 // will receive -(id + 1) whenever an entity is *despawned* with a component
 // set matching the query bitarray
-func (m *EntityManager) SetActiveWatcher(q EntityQuery) EntityQueryWatcher {
+func (m *EntityManager) SetActiveWatcher(
+	q EntityQuery, name string) EntityQueryWatcher {
 
-	// TODO: this seems as if we're just hoping that the capacity won't exceed
-	// 8 for any reason, which it could if we spawn a lot of entities and the
-	// channel readers aren't fast enough. At the least we should have
-	// a system of wrapping channels with a given capacity such that if they
-	// near their capacity at any point, we print a clear warning to the
-	// console.
-	// Rationale: if we try to push to a channel whose buffer is full, we'll
-	// block. And that can be quite bad in some circumstances. Without a nice
-	// and thorough analysis of all the dependent flows of channel
-	// sends/reads, in fact, we could end up in a deadlock through some
-	// obscure condition we hadn't forseen
-
-	c := make(chan (int16), 8)
-	watcherID := m.watcherIDGen.Gen()
-	qw := EntityQueryWatcher{q, c, watcherID}
+	c := make(chan (int16), ACTIVE_ENTITY_WATCHER_CHANNEL_CAPACITY)
+	qw := EntityQueryWatcher{q, c, name}
 	m.activeWatchersMutex.Lock()
 	m.activeWatchers = append(m.activeWatchers, qw)
 	m.activeWatchersMutex.Unlock()
@@ -244,7 +238,9 @@ func (m *EntityManager) UnsetActiveWatcher(qw EntityQueryWatcher) {
 	// find the index of the EntityQueryWatcher in the list and splice it out
 	last_ix := len(m.activeWatchers) - 1
 	for i := uint16(0); i <= uint16(last_ix); i++ {
-		if m.activeWatchers[i].ID == qw.ID {
+		// channel equality is watcher equality, since watchers are created
+		// at the same time as their channel (1:1 mapping)
+		if m.activeWatchers[i].Channel == qw.Channel {
 			m.activeWatchersMutex.Lock()
 			m.activeWatchers[i] = m.activeWatchers[last_ix]
 			m.activeWatchers = m.activeWatchers[:last_ix]
