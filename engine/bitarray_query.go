@@ -16,7 +16,9 @@ func NewBitArraySubsetQuery(q bitarray.BitArray) BitArraySubsetQuery {
 
 // determine if q = q&b
 // that is, if every set bit of q is set in b
-func (bq BitArraySubsetQuery) Test(b bitarray.BitArray) bool {
-	q := bq.Match
-	return q.Equals(q.And(b))
+func (bq BitArraySubsetQuery) Test(
+	id uint16, entity_manager *EntityManager) bool {
+
+	b := entity_manager.EntityComponentBitArray(id)
+	return bq.q.Equals(bq.q.And(b))
 }

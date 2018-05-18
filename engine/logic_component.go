@@ -12,7 +12,7 @@ import (
 )
 
 type LogicUnit struct {
-	Logic func(dt uint16)
+	Logic func(id uint16, dt uint16)
 	Name  string
 }
 

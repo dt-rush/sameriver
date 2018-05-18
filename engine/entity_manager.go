@@ -65,11 +65,11 @@ func (m *EntityManager) Init() {
 
 // get the ID for a new entity
 func (m *EntityManager) allocateID() uint16 {
-	m.entityTableMutex.Lock()
-	defer m.entityTableMutex.Unlock()
+	m.entityTable.mutex.Lock()
+	defer m.entityTable.mutex.Unlock()
 
 	// Increment the entity count
-	m.entityTable.NumEntities++
+	m.entityTable.numEntities++
 	// if there is a deallocated entity somewhere in the table before the
 	// highest ID, return that ID to the caller
 	n_avail := len(m.entityTable.availableIDs)
@@ -81,7 +81,7 @@ func (m *EntityManager) allocateID() uint16 {
 		m.entityTable.availableIDs = m.entityTable.availableIDs[:n_avail-1]
 	} else {
 		// every slot in the table before the highest ID is filled
-		id = uint16(m.entityTable.NumEntities - 1)
+		id = uint16(m.entityTable.numEntities - 1)
 	}
 	// add the ID to the list of allocated IDs
 	m.entityTable.allocatedIDs = append(m.entityTable.allocatedIDs, id)
@@ -93,7 +93,7 @@ func (m *EntityManager) Despawn(id uint16) {
 	defer m.entityTable.mutex.Unlock()
 
 	// decrement the entity count
-	m.entityTable.NumEntities--
+	m.entityTable.numEntities--
 	// add the ID to the list of available IDs
 	m.entityTable.availableIDs = append(m.entityTable.availableIDs, id)
 	// remove the ID from the list of allocated IDs
@@ -115,7 +115,7 @@ func (m *EntityManager) DespawnAll() {
 	Logger.Printf("[Entity manager] Currently spawned: %v\n",
 		m.entityTable.allocatedIDs)
 	// iterate all IDs which could have been allocated
-	for i := 0; i < m.entityTable.NumEntities; i++ {
+	for i := 0; i < m.entityTable.numEntities; i++ {
 		// we can call this safely on each ID, even those unallocated,
 		// since it's idempotent - it will exit early if the entity is already
 		// deactivated
@@ -127,7 +127,7 @@ func (m *EntityManager) DespawnAll() {
 // returns the ID
 func (m *EntityManager) SpawnEntity(
 	component_set ComponentSet,
-	tags []string) {
+	tags []string) uint16 {
 
 	// get an ID for the entity (locks and then unlocks the entityTable)
 	id := m.allocateID()
@@ -139,7 +139,7 @@ func (m *EntityManager) SpawnEntity(
 	Logger.Printf("[Entity manager] Spawning: %d\n", id)
 
 	// set the bitarray for this entity
-	m.EntityComponentBitArrays[id] = component_set.ToBitArray()
+	m.entityTable.componentBitArrays[id] = component_set.ToBitArray()
 
 	// copy the data into the component storage for each component
 	// (note: we dereference the pointers, this is a real copy, so it's good
@@ -170,24 +170,30 @@ func (m *EntityManager) SpawnEntity(
 	if component_set.Velocity != nil {
 		m.Components.Velocity.SafeSet(id, *(component_set.Velocity))
 	}
+
+	return id
 }
 
+// Returns the component bit array for an entity
 func (m *EntityManager) EntityComponentBitArray(id uint16) bitarray.BitArray {
-	m.entityTable.RLock()
-	defer m.entityTable.RUnlock()
-	return m.entityTable.EntityComponentBitArrays[id]
+	m.entityTable.mutex.RLock()
+	defer m.entityTable.mutex.RUnlock()
+	return m.entityTable.componentBitArrays[id]
 }
 
+// sets an entity active and notifies all watchers
 func (m *EntityManager) Activate(id uint16) {
 	Logger.Printf("[Entity manager] Activating: %d\n", id)
 	m.setActiveState(id, true)
 }
 
+// sets an entity inactive and notifies all watchers
 func (m *EntityManager) Deactivate(id uint16) {
 	Logger.Printf("[Entity manager] Deactivating: %d\n", id)
 	m.setActiveState(id, false)
 }
 
+// sets the active state on an entity and notifies all watchers
 func (m *EntityManager) setActiveState(id uint16, state bool) {
 	// Only set (and notify) if not already in given state
 	if m.Components.Active.SafeGet(id) != state {
@@ -196,7 +202,8 @@ func (m *EntityManager) setActiveState(id uint16, state bool) {
 	}
 }
 
-// Send a signal to all registered watchers that the entity has become active
+// Send a signal to all registered watchers that an entity has a certain
+// active state, either true or false
 func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 	if !active {
 		id = -(id + 1)
@@ -217,12 +224,15 @@ func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 	}
 }
 
+// Get a list of entities which will be updated whenever an entity becomes
+// active / inactive
 func (m *EntityManager) GetUpdatedActiveList(
 	q EntityQuery, name string) *UpdatedEntityList {
 
 	return NewUpdatedEntityList(m.SetActiveWatcher(q, name), name)
 }
 
+// Stops
 func (m *EntityManager) StopUpdatedActiveList(l UpdatedEntityList) {
 	m.UnsetActiveWatcher(l.Watcher)
 	l.StopUpdateChannel <- true
@@ -252,8 +262,8 @@ func (m *EntityManager) UnsetActiveWatcher(qw EntityQueryWatcher) {
 
 // apply the given tag to the given entity
 func (m *EntityManager) TagEntity(id uint16, tag string) {
-	m.tagSystemMutex.Lock()
-	defer m.tagSystemMutex.Unlock()
+	m.tagTable.mutex.Lock()
+	defer m.tagTable.mutex.Unlock()
 
 	Logger.Printf("[Entity manager] Tagging %d with: %s\n", id, tag)
 	_, t_of_e_exists := m.tagTable.tagsOfEntity[id]
@@ -270,14 +280,35 @@ func (m *EntityManager) TagEntity(id uint16, tag string) {
 
 // remove a tag from an entity
 func (m *EntityManager) UntagEntity(id uint16, tag string) {
-	m.tagSystemMutex.Lock()
-	defer m.tagSystemMutex.Unlock()
+	m.tagTable.mutex.Lock()
+	defer m.tagTable.mutex.Unlock()
 
 	Logger.Printf("[Entity manager] Removing tag %s from %d\n", tag, id)
+	// NOTE: I'm aware the below code looks like some gross PHP stuff and
+	// might be hard to read. Basically we do the following:
+	//
+	// last_ix = len(L) - 1
+	// when i == index of element to remove,
+	// L[i] = L[last_ix]
+	// L = L[:last_ix]
 	// remove the id from the list of entities with the tag
-	removeUint16FromSlice(id, &m.tagTable.entitiesWithTag[tag])
+	last_ix := len(m.tagTable.entitiesWithTag[tag]) - 1
+	for i, idInList := range m.tagTable.entitiesWithTag[tag] {
+		if idInList == id {
+			m.tagTable.entitiesWithTag[tag][i] = m.tagTable.entitiesWithTag[tag][last_ix]
+			m.tagTable.entitiesWithTag[tag] = m.tagTable.entitiesWithTag[tag][:last_ix]
+			break
+		}
+	}
 	// remove the tag from the list of tags for the entity
-	removeStringFromSlice(tag, &m.tagTable.tagsOfEntity[id])
+	last_ix = len(m.tagTable.tagsOfEntity[id]) - 1
+	for i := 0; i <= last_ix; i++ {
+		if m.tagTable.tagsOfEntity[id][i] == tag {
+			m.tagTable.tagsOfEntity[id][i] = m.tagTable.tagsOfEntity[id][last_ix]
+			m.tagTable.tagsOfEntity[id] = m.tagTable.tagsOfEntity[id][:last_ix]
+			break
+		}
+	}
 }
 
 // Tag each of the entities in the provided array of ID's with the given tag
@@ -298,8 +329,10 @@ func (m *EntityManager) EntityHasTag(id uint16, tag string) bool {
 }
 
 // Gets the first entity with the given tag. Warns to console if the entity is
-// not unique, and returns -1 if there is no such tagged entity
-func (m *EntityManager) GetUniqueTaggedEntity(tag string) uint16 {
+// not unique, and returns -1 if there is no such tagged entity. The return
+// type is int32 to make sure that we can properly handle the largest int16
+// id without conflicting with the uint16 representation of -1
+func (m *EntityManager) GetUniqueTaggedEntity(tag string) int32 {
 	m.tagTable.mutex.RLock()
 	defer m.tagTable.mutex.RUnlock()
 
@@ -313,12 +346,12 @@ func (m *EntityManager) GetUniqueTaggedEntity(tag string) uint16 {
 				"Returning entitiesWithTag[0].",
 				tag)
 		}
-		return entities[0]
+		return int32(entities[0])
 	}
 }
 
 // Boolean check of whether a given entity has a given component
 func (m *EntityManager) EntityHasComponent(id uint16, COMPONENT int) bool {
-	b, _ := m.EntityComponentBitArrays[id].GetBit(uint64(COMPONENT))
+	b, _ := m.entityTable.componentBitArrays[id].GetBit(uint64(COMPONENT))
 	return b
 }

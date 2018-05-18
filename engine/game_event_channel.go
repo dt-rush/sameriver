@@ -35,10 +35,10 @@ func (c *GameEventChannel) Deactivate() {
 	c.activeLock.Unlock()
 }
 
-func (c *GameEventChannel) IsActive(e GameEvent) {
+func (c *GameEventChannel) IsActive() bool {
 	c.activeLock.RLock()
 	defer c.activeLock.RLock()
-	return active
+	return c.active
 }
 
 func (c *GameEventChannel) Send(e GameEvent) {

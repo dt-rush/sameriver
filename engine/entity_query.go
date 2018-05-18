@@ -1,7 +1,7 @@
 package engine
 
-// TODO: use to expand entity manager watchers to allow for watching of
-// component values
+// TODO: implement this interface in a struct which allows generic predication
+// on entities (their component values and anything else)
 type EntityQuery interface {
 	Test(id uint16, entity_manager *EntityManager) bool
 }

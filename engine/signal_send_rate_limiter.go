@@ -1,5 +1,10 @@
 package engine
 
+import (
+	"sync"
+	"time"
+)
+
 type SignalSendRateLimiter struct {
 	mutex sync.Mutex
 	guard sync.Once
@@ -7,7 +12,7 @@ type SignalSendRateLimiter struct {
 	delay time.Duration
 }
 
-func (r *SignalRateLimiter) Do(signal bool) {
+func (r *SignalSendRateLimiter) Do(signal bool) {
 	r.mutex.Lock()
 	r.guard.Do(func() {
 		r.out <- signal

@@ -32,6 +32,6 @@ func (s *LogicSystem) Update(dt_ms uint16) {
 	defer s.logicEntities.Mutex.Unlock()
 
 	for _, id := range s.logicEntities.Entities {
-		s.entity_manager.Components.Logic.Data[id].Logic(dt_ms)
+		s.entity_manager.Components.Logic.Data[id].Logic(id, dt_ms)
 	}
 }

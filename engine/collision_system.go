@@ -14,13 +14,6 @@ type CollisionSystem struct {
 	collidableEntities *UpdatedEntityList
 	// How the collision system communicates collision events
 	game_event_manager *GameEventManager
-	// How the collision system gets populated with specific
-	// collision detection logics
-	collision_logic_collection    map[uint16]CollisionLogic
-	collision_logic_ids           map[string]uint16
-	collision_logic_active_states map[uint16]bool
-	// to generate IDs for collision logic
-	id_generator IDGenerator
 }
 
 func (s *CollisionSystem) Init(
@@ -36,25 +29,8 @@ func (s *CollisionSystem) Init(
 		MakeComponentBitArray([]int{
 			POSITION_COMPONENT,
 			HITBOX_COMPONENT}))
-	s.collidableEntities = s.entity_manager.GetUpdatedActiveList(query, "collidable")
-	// initialize collision logic data members
-	s.collision_logic_collection = make(map[uint16]CollisionLogic)
-	s.collision_logic_ids = make(map[string]uint16)
-	s.collision_logic_active_states = make(map[uint16]bool)
-}
-
-func (s *CollisionSystem) AddCollisionLogic(name string, logic CollisionLogic) uint16 {
-
-	id := s.id_generator.Gen()
-	Logger.Printf("[Collision system] about to add collision logic %s", name)
-	s.collision_logic_collection[id] = logic
-	s.collision_logic_ids[name] = id
-	Logger.Printf("[Collision system] added collision logic %s", name)
-	return id
-}
-
-func (s *CollisionSystem) SetCollisionLogicActiveState(id uint16, active bool) {
-	s.collision_logic_active_states[id] = active
+	s.collidableEntities = s.entity_manager.GetUpdatedActiveList(
+		query, "collidable")
 }
 
 // Test collision between two functions
@@ -94,23 +70,39 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 	defer s.collidableEntities.Mutex.Unlock()
 
 	entities := s.collidableEntities.Entities
+	// The way we determine the key to the rate limiters map is a little
+	// funky. We first start by comparing entities in a handshake pattern,
+	// where we compare 0 with every index after 0, 1, with every index
+	// after 1, etc. We then take the ID's at these indexes and put them
+	// in a sorted order. The lesser one will be, as a uint16, shifted 16
+	// and OR'd with the greater. These are the map keys for a rate limiter
+	// corresponding uniquely to the collision between the two ID's.
+	// The rate limiter 
+
+	// TODO: make this make sense lol
+	// idea: maybe a MAX_ENTITIES x MAX_ENTITIES square array, and when
+	// an entity is deactivated, reset the timers on its row/ column?
+	// do we even *need* a rate limiter? we want to check collision as often
+	// as possible to be accurate, that is, we want to approach the rate
+	// of the physics loop (how far can an entity move in each
+	// physics loop? this determines how likely a miss is depending on the
+	// rate we choose for checking collisions), *but*, we don't want to
+	// *spawn events* at that same rate. we want to say, great, we caught a
+	// collision, now acting on it will likely take some time, so let's cool
+	// off for a bit on this collision, maybe 100ms? 200?
+	for ix, id := range entities {
+		for jx := ix + 1; jx < uint16(len(entities)); jx++ {
+			jd := entities[jx]
+			if id < jd
+
 	for i := uint16(0); i < uint16(len(entities)); i++ {
 
 		// compare entity at i to all subsequent entities
 		// (this way, all entity pairs will be compared once)
 		for j := i + 1; j < uint16(len(entities)); j++ {
-
-			for collision_logic_id, collision_logic := range s.collision_logic_collection {
-				// if this collision logic is active,
-				// and the entities i and j match the selector,
-				// and there is a collision,
-				//    then emit an event according to the eventgenerator
-				if s.collision_logic_active_states[collision_logic_id] &&
-					collision_logic.Selector(i, j, s.entity_manager) &&
-					s.TestCollision(i, j) {
-					event_generated := collision_logic.EventGenerator(i, j, s.entity_manager)
-					s.game_event_manager.Publish(event_generated)
-				}
+			if s.TestCollision(i, j) {
+				
+				s.game_event_manager.Publish(event_generated)
 			}
 		}
 	}

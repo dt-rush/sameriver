@@ -1,5 +1,9 @@
 package engine
 
+import (
+	"fmt"
+)
+
 type GameEventType int
 
 type GameEvent struct {

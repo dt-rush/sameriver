@@ -23,7 +23,9 @@ type UpdatedEntityList struct {
 	Name              string
 }
 
-func NewUpdatedEntityList(watcher QueryWatcher, name string) *UpdatedEntityList {
+func NewUpdatedEntityList(
+	watcher EntityQueryWatcher, name string) *UpdatedEntityList {
+
 	l := UpdatedEntityList{}
 	l.Watcher = watcher
 	l.Entities = make([]uint16, 0)
@@ -44,13 +46,15 @@ func (l *UpdatedEntityList) start() {
 				l.Mutex.Lock()
 				if id >= 0 {
 					if VERBOSE {
-						Logger.Printf("[Updated entity list] %s got insert:%d\n", l.Name, id)
+						Logger.Printf("[Updated entity list] %s got "+
+							"insert:%d\n", l.Name, id)
 					}
 					l.insert(uint16(id))
 				} else {
 					id = -(id + 1)
 					if VERBOSE {
-						Logger.Printf("[Updated entity list] %s got remove:%d\n", l.Name, id)
+						Logger.Printf("[Updated entity list] %s got "+
+							"remove:%d\n", l.Name, id)
 					}
 					l.remove(uint16(id))
 				}

@@ -13,7 +13,7 @@ func (q GameEventQuery) Test(e GameEvent) bool {
 // the Type of the event
 func NewSimpleGameEventQuery(Type GameEventType) GameEventQuery {
 
-	return &GameEventQuery{Type}
+	return GameEventQuery{Type, nil}
 }
 
 // Construct a new GameEventQuery which asks about Type and
@@ -22,5 +22,5 @@ func NewPredicateGameEventQuery(
 	Type GameEventType,
 	predicate func(e GameEvent) bool) GameEventQuery {
 
-	return &predicateGameEventQuery{Type, predicate}
+	return GameEventQuery{Type, predicate}
 }

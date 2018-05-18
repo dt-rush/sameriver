@@ -46,11 +46,10 @@ func (m *GameEventManager) Subscribe(
 	m.subscribeMutex.Lock()
 	defer m.subscribeMutex.Unlock()
 
-	gameEventDebug("[Game event manager] Subscribe: %s on channel %v\n",
-		name, c)
-
 	// Create a channel to return to the user
 	c := NewGameEventChannel(q, name)
+	gameEventDebug("[Game event manager] Subscribe: %s on channel %v\n",
+		name, c)
 	// Add the channel to the subscriber list for its type
 	m.subscriberLists[q.Type] = append(m.subscriberLists[q.Type], c)
 	// return the channel to the caller
@@ -64,7 +63,7 @@ func (m *GameEventManager) Unsubscribe(c GameEventChannel) {
 
 	// remove the query watcher from the subscriber list associated with
 	// the given channel's
-	removeGameEventChannelFromSlice(c, &m.subscriberLists[c.Type])
+	removeGameEventChannelFromSlice(c, &m.subscriberLists[c.Query.Type])
 }
 
 // Publish a game event for anyone listening
