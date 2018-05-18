@@ -14,18 +14,18 @@ import (
 
 type ActiveComponent struct {
 	Data  [MAX_ENTITIES]bool
-	Mutex sync.Mutex
+	Mutex sync.RWMutex
 }
 
 func (c *ActiveComponent) SafeSet(id uint16, val bool) {
 	c.Mutex.Lock()
+	defer c.Mutex.Unlock()
 	c.Data[id] = val
-	c.Mutex.Unlock()
 }
 
 func (c *ActiveComponent) SafeGet(id uint16) bool {
-	c.Mutex.Lock()
+	c.Mutex.RLock()
+	defer c.Mutex.RUnlock()
 	val := c.Data[id]
-	c.Mutex.Unlock()
 	return val
 }

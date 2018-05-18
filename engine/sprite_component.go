@@ -22,18 +22,18 @@ type Sprite struct {
 
 type SpriteComponent struct {
 	Data  [MAX_ENTITIES]Sprite
-	Mutex sync.Mutex
+	Mutex sync.RWMutex
 }
 
 func (c *SpriteComponent) SafeSet(id uint16, val Sprite) {
 	c.Mutex.Lock()
+	defer c.Mutex.Unlock()
 	c.Data[id] = val
-	c.Mutex.Unlock()
 }
 
 func (c *SpriteComponent) SafeGet(id uint16) Sprite {
-	c.Mutex.Lock()
+	c.Mutex.RLock()
+	defer c.Mutex.RUnlock()
 	val := c.Data[id]
-	c.Mutex.Unlock()
 	return val
 }

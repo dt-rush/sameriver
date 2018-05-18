@@ -21,7 +21,8 @@ func (s *LogicSystem) Init(entity_manager *EntityManager) {
 	// get a regularly updated list of the entities which have logic component
 	query := NewBitArraySubsetQuery(
 		MakeComponentBitArray([]int{LOGIC_COMPONENT}))
-	s.logicEntities = s.entity_manager.GetUpdatedActiveList(query, "logic-bearing")
+	s.logicEntities = s.entity_manager.GetUpdatedActiveList(query,
+		"logic-bearing")
 }
 
 func (s *LogicSystem) Update(dt_ms uint16) {

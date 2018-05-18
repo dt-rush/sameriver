@@ -1,11 +1,5 @@
 package engine
 
-type GameEventQueryWatcher struct {
-	Query   GameEventQuery
-	Channel GameEventChannel
-	Name    string
-}
-
 type GameEventQuery struct {
 	Type      GameEventType
 	Predicate func(e GameEvent) bool

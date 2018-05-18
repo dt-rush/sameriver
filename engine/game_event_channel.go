@@ -5,16 +5,22 @@ import (
 )
 
 type GameEventChannel struct {
-	active      bool
-	activeLock  sync.RWMutex
-	C           chan (GameEvent)
-	channelLock sync.Mutex
+	active          bool
+	activeLock      sync.RWMutex
+	C               chan (GameEvent)
+	channelSendLock sync.Mutex
+	Query           GameEventQuery
+	Name            string
 }
 
-func NewGameEventChannel() {
+func NewGameEventChannel(
+	q GameEventQuery, name string) GameEventChannel {
+
 	return GameEventChannel{
 		active: true,
-		C:      make(chan (GameEvent), GAME_EVENT_CHANNEL_CAPACITY)}
+		C:      make(chan (GameEvent), GAME_EVENT_CHANNEL_CAPACITY),
+		Query:  q,
+		Name:   name}
 }
 
 func (c *GameEventChannel) Activate() {
@@ -29,15 +35,21 @@ func (c *GameEventChannel) Deactivate() {
 	c.activeLock.Unlock()
 }
 
-func (c *GameEventChannel) PushToChannel(e GameEvent) {
-	c.channelLock.Lock()
-	defer c.channelLock.Lock()
+func (c *GameEventChannel) IsActive(e GameEvent) {
+	c.activeLock.RLock()
+	defer c.activeLock.RLock()
+	return active
+}
+
+func (c *GameEventChannel) Send(e GameEvent) {
+	c.channelSendLock.Lock()
+	defer c.channelSendLock.Lock()
 	c.C <- e
 }
 
 func (c *GameEventChannel) DrainChannel() {
-	c.channelLock.Lock()
-	defer c.channelLock.Lock()
+	c.channelSendLock.Lock()
+	defer c.channelSendLock.Lock()
 	n := len(c.C)
 	for i := 0; i < n; i++ {
 		<-c.C

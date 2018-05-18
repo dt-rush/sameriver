@@ -8,9 +8,8 @@
 
 package engine
 
-const VERSION = "0.3.0"
+const VERSION = "0.3.2"
 const AUDIO_ON = true
-const DEBUG = true
 const DEBUG_GAME_EVENTS = true
 const DEBUG_GOROUTINES = true
 

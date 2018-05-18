@@ -13,5 +13,5 @@ import (
 
 var Logger = log.New(
 	os.Stdout,
-	"[DEBUG] ",
+	"",
 	log.Lmicroseconds)

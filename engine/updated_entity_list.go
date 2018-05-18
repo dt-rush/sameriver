@@ -16,7 +16,7 @@ import (
 const VERBOSE = false
 
 type UpdatedEntityList struct {
-	Watcher           QueryWatcher
+	Watcher           EntityQueryWatcher
 	Mutex             sync.Mutex
 	Entities          []uint16
 	StopUpdateChannel chan (bool)
@@ -67,12 +67,5 @@ func (l *UpdatedEntityList) insert(id uint16) {
 }
 
 func (l *UpdatedEntityList) remove(id uint16) {
-	last_ix := len(l.Entities) - 1
-	for i := uint16(0); i <= uint16(last_ix); i++ {
-		if l.Entities[i] == id {
-			l.Entities[i] = l.Entities[last_ix]
-			l.Entities = l.Entities[:last_ix]
-			break
-		}
-	}
+	removeUint16FromSlice(id, &l.Entities)
 }

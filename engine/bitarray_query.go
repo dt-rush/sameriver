@@ -4,17 +4,19 @@ import (
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
+// Query for whether the bitarray (Match) is a subset of the target
+// BitArray
 type BitArraySubsetQuery struct {
-	Match bitarray.BitArray
+	q bitarray.BitArray
 }
 
-func NewBitArraySubsetQuery(match bitarray.BitArray) BitArraySubsetQuery {
-	return BitArraySubsetQuery{match}
+func NewBitArraySubsetQuery(q bitarray.BitArray) BitArraySubsetQuery {
+	return BitArraySubsetQuery{q}
 }
 
-func (bq BitArraySubsetQuery) Test(
-	id uint16, entity_manager *EntityManager) bool {
-
-	return bq.Match.Equals(
-		bq.Match.And(entity_manager.EntityComponentBitArrays[id]))
+// determine if q = q&b
+// that is, if every set bit of q is set in b
+func (bq BitArraySubsetQuery) Test(b bitarray.BitArray) bool {
+	q := bq.Match
+	return q.Equals(q.And(b))
 }
