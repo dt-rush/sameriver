@@ -85,10 +85,18 @@ func main() {
 		"i * N + j",
 		"squareIndexes")
 
-	// run the test shifted (high) indexes
+	// run the test with shifted (high) indexes
 	profile(func(i uint16, j uint16) uint32 {
 		return uint32(i)<<16 | uint32(j)
 	},
 		"i << 16 | j",
 		"shiftedIndexes")
+
+	// run the test with triangle indexes
+	triangle := func(n uint16) uint16 { return n * (n + 1) / 2 }
+	profile(func(i uint16, j uint16) uint32 {
+		return uint32(triangle(N-1-i) - triangle(N-1-(i+1)) + j)
+	},
+		"triangle(N-1-i) - triangle(N-1-(i+1)) + j",
+		"triangleIndexes")
 }

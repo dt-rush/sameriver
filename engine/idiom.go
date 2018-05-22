@@ -40,12 +40,12 @@ func removeStringFromSlice(x string, slice *[]string) {
 	}
 }
 
-func removeEntityQueryWatcherFromSlice(
-	x EntityQueryWatcher, slice *[]EntityQueryWatcher) {
+func removeEntityQueryWatcherFromSliceByID(
+	ID uint16, slice *[]EntityQueryWatcher) {
 
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {
-		if v == x {
+		if v.ID == ID {
 			(*slice)[i] = (*slice)[last_ix]
 			// set the last element (which we will then cut off the end)
 			// to the zero value, so that we don't leave any pointer members

@@ -1,6 +1,5 @@
 /* This was written to compare the time involved in computing unique indexes
- * given two uint16's via various methods. The results seemed to show that
- * triangular indexing is about 15% more costly than bitshift or square indexing
+ * given two uint16's via various methods.
  */
 
 package main
@@ -42,6 +41,27 @@ func computeABunchOfIndexes(index IndexFunc, name string) int64 {
 	return (t1 - t0) / 1e6
 }
 
+// save the i part of the ix function in the i part of the loop
+func computeABunchOfIndexesTriangleSpecial(index IndexFunc, name string) int64 {
+
+	t0 := time.Now().UnixNano()
+
+	for i := 0; i < N; i++ {
+		ixoffset := -i*((i-1)/2-N) - (2*i + 1)
+		for j := i + 1; j < N; j++ {
+			ix := ixoffset + j
+			// once in a while report a representative index to the console
+			if rand.Intn(1e8) == 0 {
+				fmt.Printf("representative index for %s(%d,%d): %d\n",
+					name, i, j, ix)
+			}
+		}
+	}
+
+	t1 := time.Now().UnixNano()
+	return (t1 - t0) / 1e6
+}
+
 // the number of times to run each call to computeABunchOfIndexes() in profile()
 const N_TIMES = 8
 
@@ -50,6 +70,7 @@ const N_TIMES = 8
 func profile(
 	indexFunc IndexFunc,
 	indexFuncStr string,
+	computeABunchOfIndexes func(IndexFunc, string) int64,
 	name string) {
 
 	durations := [N_TIMES]int64{}
@@ -76,20 +97,31 @@ func main() {
 		return uint32(i*N + j)
 	},
 		"i * N + j",
+		computeABunchOfIndexes,
 		"squareIndexes")
 
-	// run the test with high indexes
+	// run the test with shifted indexes
 	profile(func(i uint16, j uint16) uint32 {
 		return uint32(i)<<16 | uint32(j)
 	},
 		"i << 16 | j",
+		computeABunchOfIndexes,
 		"shiftedIndexes")
 
 	// run the test with triangle indexes
 	triangle := func(n uint16) uint16 { return n * (n + 1) / 2 }
 	profile(func(i uint16, j uint16) uint32 {
-		return uint32(triangle(N-1-i) - triangle(N-1-(i+1)) + j)
+		return uint32((triangle(N) - triangle(N-i)) + j - 1 - (2*i + 1))
 	},
-		"triangle(N-1-i) - triangle(N-1-(i+1)) + j",
+		"(triangle(N) - triangle(N-i)) + j - 1 - (2*i + 1)",
+		computeABunchOfIndexes,
 		"triangleIndexes")
+
+	// run the test with triangle indexes, simplified by algebra
+	profile(func(i uint16, j uint16) uint32 {
+		return uint32(N - 2 - i + j)
+	},
+		"-i*((i-1)/2-N) + j - (2*i + 1)",
+		computeABunchOfIndexesTriangleSpecial,
+		"triangleSimplifiedIndexes")
 }

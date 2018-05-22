@@ -1,5 +1,4 @@
 /**
-  *
   * Manages the spawning and querying of entities
   *
 **/
@@ -12,6 +11,7 @@ import (
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
+// used by the EntityManager to hold info about the allocated entities
 type EntityTable struct {
 	// guards all state
 	mutex sync.RWMutex
@@ -25,8 +25,11 @@ type EntityTable struct {
 	allocatedIDs []uint16
 	// list of available entity ID's which have previously been deallocated
 	availableIDs []uint16
+	// the gen of an ID is how many times an entity has been spawned on that ID
+	gen [MAX_ENTITIES]uint8
 }
 
+// used by the EntityManager to tag entities
 type TagTable struct {
 	// guards all state
 	mutex sync.RWMutex
@@ -38,6 +41,7 @@ type TagTable struct {
 	tagsOfEntity map[uint16]([]string)
 }
 
+// created a singleton, containing the component, entity, and tag data
 type EntityManager struct {
 	// Entity table stores component bitarrays, a list of allocated IDs,
 	// and a list of available IDs from previous deallocations
@@ -50,9 +54,9 @@ type EntityManager struct {
 	// used to allow systems to keep an updated list of entities which have
 	// components they're interested in operating on (eg. physics watches
 	// for entities with position, velocity, and hitbox)
-	activeWatchers []EntityQueryWatcher
+	activeEntityWatchers []EntityQueryWatcher
 	// to protect modifying the above slice
-	activeWatchersMutex sync.RWMutex
+	activeEntityWatchersMutex sync.RWMutex
 }
 
 func (m *EntityManager) Init() {
@@ -63,11 +67,17 @@ func (m *EntityManager) Init() {
 	m.tagTable.tagsOfEntity = make(map[uint16]([]string))
 }
 
-// get the ID for a new entity
-func (m *EntityManager) allocateID() uint16 {
-	m.entityTable.mutex.Lock()
-	defer m.entityTable.mutex.Unlock()
-
+// get the ID for a new entity. Only called by SpawnEntity, which locks
+// the entityTable, so it's safe that this method operates on that data.
+// Returns int32 so that we can return -1 in case we have run out of space
+// to spawn entities
+func (m *EntityManager) allocateID() int32 {
+	// if maximum entity count reached, fail with message
+	if m.entityTable.numEntities == MAX_ENTITIES {
+		Logger.Printf("Reached max entity count: %d. Will not allocate ID.\n",
+			MAX_ENTITIES)
+		return -1
+	}
 	// Increment the entity count
 	m.entityTable.numEntities++
 	// if there is a deallocated entity somewhere in the table before the
@@ -85,7 +95,7 @@ func (m *EntityManager) allocateID() uint16 {
 	}
 	// add the ID to the list of allocated IDs
 	m.entityTable.allocatedIDs = append(m.entityTable.allocatedIDs, id)
-	return id
+	return int32(id)
 }
 
 func (m *EntityManager) Despawn(id uint16) {
@@ -129,18 +139,22 @@ func (m *EntityManager) SpawnEntity(
 	component_set ComponentSet,
 	tags []string) uint16 {
 
-	// get an ID for the entity (locks and then unlocks the entityTable)
-	id := m.allocateID()
-
 	// lock the entityTable
 	m.entityTable.mutex.Lock()
 	defer m.entityTable.mutex.Unlock()
-
-	Logger.Printf("[Entity manager] Spawning: %d\n", id)
-
+	// print a debug message
+	entityManagerDebug("[Entity manager] Spawning: %d\n", id)
+	// get an ID for the entity
+	allocateIDResponse := m.allocateID()
+	if allocateIDResponse == -1 {
+		Logger.Printf("Ran out of entity space. Will not spawn entity with "+
+			"tags: %v\n", tags)
+	}
+	id := uint16(allocateIDResponse)
+	// Increment the gen for the ID
+	m.entityTable.gen[id]++
 	// set the bitarray for this entity
 	m.entityTable.componentBitArrays[id] = component_set.ToBitArray()
-
 	// copy the data into the component storage for each component
 	// (note: we dereference the pointers, this is a real copy, so it's good
 	// that component values are either small pieces of data like [2]uint16
@@ -149,28 +163,32 @@ func (m *EntityManager) SpawnEntity(
 	// because really if a system operating on the component data
 	// expects to work on the data, it should be maintaining a list of
 	// entities with the required components using an UpdatedEntityList
-
 	m.Components.Active.SafeSet(id, false)
-
+	// color
 	if component_set.Color != nil {
 		m.Components.Color.SafeSet(id, *(component_set.Color))
 	}
+	// hitbox
 	if component_set.Hitbox != nil {
 		m.Components.Hitbox.SafeSet(id, *(component_set.Hitbox))
 	}
+	// logic
 	if component_set.Logic != nil {
 		m.Components.Logic.SafeSet(id, *(component_set.Logic))
 	}
+	// position
 	if component_set.Position != nil {
 		m.Components.Position.SafeSet(id, *(component_set.Position))
 	}
+	// sprite
 	if component_set.Sprite != nil {
 		m.Components.Sprite.SafeSet(id, *(component_set.Sprite))
 	}
+	// velocity
 	if component_set.Velocity != nil {
 		m.Components.Velocity.SafeSet(id, *(component_set.Velocity))
 	}
-
+	// return ID
 	return id
 }
 
@@ -205,21 +223,24 @@ func (m *EntityManager) setActiveState(id uint16, state bool) {
 // Send a signal to all registered watchers that an entity has a certain
 // active state, either true or false
 func (m *EntityManager) notifyActiveState(id uint16, active bool) {
-	if !active {
-		id = -(id + 1)
-	}
-	for _, watcher := range m.activeWatchers {
+
+	for _, watcher := range m.activeEntityWatchers {
 		if !watcher.Query.Test(id, m) {
 			// warn if the channel is full (we will block here if so)
 			// NOTE: this can be very bad indeed, since now whatever
 			// called Activate is blocking
-			if len(watcher.Channel) == ACTIVE_ENTITY_WATCHER_CHANNEL_CAPACITY {
+			if len(watcher.Channel) == ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY {
 				Logger.Printf("[Entity manager] ⚠  active watcher channel "+
 					"%s is full, causing block in goroutine for "+
 					"NotifyActiveState(%d, %v)\n",
 					watcher.Name, id, active)
 			}
-			watcher.Channel <- int16(id)
+			// send the ID signal, or -(ID + 1), if active == false
+			idSignal := int32(id)
+			if !active {
+				idSignal = -(idSignal + 1)
+			}
+			watcher.Channel <- idSignal
 		}
 	}
 }
@@ -229,35 +250,43 @@ func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 func (m *EntityManager) GetUpdatedActiveList(
 	q EntityQuery, name string) *UpdatedEntityList {
 
-	return NewUpdatedEntityList(m.SetActiveWatcher(q, name), name)
+	queryWatcher := m.GetActiveEntityQueryWatcher(q, name)
+	return NewUpdatedEntityList(
+		queryWatcher.Channel,
+		queryWatcher.ID,
+		name)
 }
 
-// Stops
-func (m *EntityManager) StopUpdatedActiveList(l UpdatedEntityList) {
-	m.UnsetActiveWatcher(l.Watcher)
-	l.StopUpdateChannel <- true
+// Stops the channel-watching update-loop goroutine for the entity list
+// and deletes the active watcher created for it
+func (m *EntityManager) DeleteUpdatedActiveList(l UpdatedEntityList) {
+	//
+	m.DeleteActiveWatcher(l.ID)
+	l.stopUpdateLoopChannel <- true
 }
 
 // Return a channel which will receive the id of an entity whenever an entity
 /// becomes active with a component set matching the query bitarray, and which
 // will receive -(id + 1) whenever an entity is *despawned* with a component
 // set matching the query bitarray
-func (m *EntityManager) SetActiveWatcher(
+func (m *EntityManager) GetActiveEntityQueryWatcher(
 	q EntityQuery, name string) EntityQueryWatcher {
 
-	c := make(chan (int16), ACTIVE_ENTITY_WATCHER_CHANNEL_CAPACITY)
-	qw := EntityQueryWatcher{q, c, name}
-	m.activeWatchersMutex.Lock()
-	m.activeWatchers = append(m.activeWatchers, qw)
-	m.activeWatchersMutex.Unlock()
+	// create the query watcher
+	qw := NewEntityQueryWatcher(q, name, IDGEN())
+	// add it to the list of activeEntity watchers
+	m.activeEntityWatchersMutex.Lock()
+	m.activeEntityWatchers = append(m.activeEntityWatchers, qw)
+	m.activeEntityWatchersMutex.Unlock()
+	// return to the caller
 	return qw
 }
 
-func (m *EntityManager) UnsetActiveWatcher(qw EntityQueryWatcher) {
-	m.activeWatchersMutex.Lock()
-	defer m.activeWatchersMutex.Unlock()
+func (m *EntityManager) DeleteActiveWatcher(ID uint16) {
+	m.activeEntityWatchersMutex.Lock()
+	defer m.activeEntityWatchersMutex.Unlock()
 	// remove the EntityQueryWatcher from the list of active watchers
-	removeEntityQueryWatcherFromSlice(qw, &m.activeWatchers)
+	removeEntityQueryWatcherFromSliceByID(ID, &m.activeEntityWatchers)
 }
 
 // apply the given tag to the given entity

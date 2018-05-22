@@ -13,7 +13,7 @@ import (
 
 func gameEventDebug(s string, params ...interface{}) {
 	switch {
-	case DEBUG_GAME_EVENTS:
+	case !DEBUG_GAME_EVENTS:
 		return
 	case len(params) == 0:
 		Logger.Printf(s)

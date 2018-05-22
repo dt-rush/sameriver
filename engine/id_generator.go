@@ -16,3 +16,6 @@ func (g *IDGenerator) Gen() uint16 {
 	g.x += 1
 	return id
 }
+
+var IDGEN_OBJ = IDGenerator{}
+var IDGEN = IDGEN_OBJ.Gen

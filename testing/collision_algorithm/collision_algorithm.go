@@ -4,21 +4,36 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
-type RateLimiter struct {
-	once  sync.Once
-	mutex sync.RWMutex
-	delay time.Duration
+type ResettableRateLimiter struct {
+	once         sync.Once
+	mutex        sync.RWMutex
+	delay        time.Duration
+	resetCounter uint32
 }
 
-func (r *RateLimiter) Invoke(f func()) {
+func (r *ResettableRateLimiter) Do(f func()) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
+	r.once.Do(func() {
+		f()
+		go func() {
+			resetCounterBeforeSleep := atomic.LoadUint32(&r.resetCounter)
+			time.Sleep(r.delay)
+			if atomic.LoadUint32(&r.resetCounter) == resetCounterBeforeSleep {
+				r.Reset()
+			}
+		}()
+	})
+}
 
-	f()
-	time.Sleep(r.delay)
+func (r *ResettableRateLimiter) Reset() {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	atomic.AddUint32(&r.resetCounter, 1)
 	r.once = sync.Once{}
 }
 
@@ -79,6 +94,7 @@ func (l *EntityList) Add() {
 	if len(l.availableIDs) > 0 {
 		last_ix := len(l.availableIDs) - 1
 		id := l.availableIDs[last_ix]
+		l.entities = append(l.entities, id)
 		l.availableIDs = l.availableIDs[last_ix:]
 	}
 }
@@ -95,48 +111,77 @@ func (l *EntityList) Remove() {
 	l.entities = l.entities[last_ix:]
 }
 
-func listModifier(l *EntityList, stop chan (bool)) {
+func listModifier(l *EntityList) {
 
 	boolgen := NewBoolgen()
 
-	insert := func() {
-		l.entities = append(l.entities, uint16(rand.Intn(MAX_ENTITIES)))
-	}
-
-	remove := func() {
-
-	}
-
-modifyloop:
 	for {
-		select {
-		case <-stop:
-			break modifyloop
-		default:
-			if boolgen.Bool() {
-				l.Add()
-			} else {
-				l.Remove()
-			}
-			time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
+		if boolgen.Bool() {
+			l.Add()
+		} else {
+			l.Remove()
 		}
+		time.Sleep(time.Duration(rand.Intn(3000)) * time.Millisecond)
 	}
+}
+
+// Defines a kind of trianglular 2D array which allows you to store a
+// ResettableRateLimiter at the intersection of each entity ID and each other
+// entity ID, assuming they are indexed [i][j] where i < j
+//
+// For example, the table would look like the following if we had
+// MAX_ENTITIES = 5, where r is a rate limiter
+//
+//         j
+//
+//     0 1 2 3 4
+//    0  r r r r
+//    1    r r r
+// i  2      r r
+//    3        r
+//    4
+//
+type CollisionRateLimiterArray struct {
+	backingArray []ResettableRateLimiter
+	Arr          [][]ResettableRateLimiter
+}
+
+// Construct a new CollisionRateLimiterArray
+func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
+	a := CollisionRateLimiterArray{
+		backingArray: make([]ResettableRateLimiter,
+			MAX_ENTITIES*(MAX_ENTITIES+1)/2),
+		Arr: make([][]ResettableRateLimiter,
+			MAX_ENTITIES),
+	}
+	offset := 0
+	for i := 0; i < MAX_ENTITIES; i++ {
+		sliceSize := MAX_ENTITIES - i
+		a.Arr[i] = a.backingArray[offset : offset+sliceSize]
+		offset += sliceSize
+	}
+	return a
+}
+
+// resets all rate limiters for the given entity
+func (c *CollisionRateLimiterArray) ResetAll(id uint16) {
 }
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	m := make(map[uint32]RateLimiter)
+
 	t0 := time.Now().UnixNano()
-	fmt.Println("Allocating ID's...")
+
 	// make entities
-	e := NewEntityList()
-	for i := uint16(0); i < rand.Intn(MAX_ENTITIES); i++ {
-		e.insertRandom()
+	e := NewEntityList(MAX_ENTITIES)
+	for i := 0; i < rand.Intn(MAX_ENTITIES); i++ {
+		e.Add()
 	}
 	// spawn a thread to randomly add and remove entities from the entitylist
-	go func() {
+	go listModifier(&e)
 
-	}()
+	backingArray := [*(N + 1) / 2]ResettableRateLimiter{}
+
 	// TODO: start a loop every 16 ms that chcks all entity collisions
 	// TODO: keep entities watched array sorted, so in-order traversal is
 	// guaranteed. We can shift the lower value <<15 and or it to get a big
