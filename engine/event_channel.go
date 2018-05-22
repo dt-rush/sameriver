@@ -4,50 +4,50 @@ import (
 	"sync"
 )
 
-type GameEventChannel struct {
+type EventChannel struct {
 	active          bool
 	activeLock      sync.RWMutex
-	C               chan (GameEvent)
+	C               chan (Event)
 	channelSendLock sync.Mutex
-	Query           GameEventQuery
+	Query           EventQuery
 	Name            string
 }
 
-func NewGameEventChannel(
-	q GameEventQuery, name string) GameEventChannel {
+func NewEventChannel(
+	q EventQuery, name string) EventChannel {
 
-	return GameEventChannel{
+	return EventChannel{
 		active: true,
-		C:      make(chan (GameEvent), GAME_EVENT_CHANNEL_CAPACITY),
+		C:      make(chan (Event), EVENT_CHANNEL_CAPACITY),
 		Query:  q,
 		Name:   name}
 }
 
-func (c *GameEventChannel) Activate() {
+func (c *EventChannel) Activate() {
 	c.activeLock.Lock()
 	c.active = true
 	c.activeLock.Unlock()
 }
 
-func (c *GameEventChannel) Deactivate() {
+func (c *EventChannel) Deactivate() {
 	c.activeLock.Lock()
 	c.active = false
 	c.activeLock.Unlock()
 }
 
-func (c *GameEventChannel) IsActive() bool {
+func (c *EventChannel) IsActive() bool {
 	c.activeLock.RLock()
 	defer c.activeLock.RLock()
 	return c.active
 }
 
-func (c *GameEventChannel) Send(e GameEvent) {
+func (c *EventChannel) Send(e Event) {
 	c.channelSendLock.Lock()
 	defer c.channelSendLock.Lock()
 	c.C <- e
 }
 
-func (c *GameEventChannel) DrainChannel() {
+func (c *EventChannel) DrainChannel() {
 	c.channelSendLock.Lock()
 	defer c.channelSendLock.Lock()
 	n := len(c.C)

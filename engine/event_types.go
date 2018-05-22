@@ -4,15 +4,15 @@ import (
 	"fmt"
 )
 
-type GameEventType int
+type EventType int
 
-type GameEvent struct {
-	Type        GameEventType
+type Event struct {
+	Type        EventType
 	Description string
 	Data        interface{}
 }
 
-func (e GameEvent) String() string {
+func (e Event) String() string {
 	return fmt.Sprintf("%d:%s", e.Type, e.Description)
 }
 

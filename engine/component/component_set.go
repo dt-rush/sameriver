@@ -4,7 +4,7 @@
  *
  */
 
-package engine
+package component
 
 import (
 	"bytes"

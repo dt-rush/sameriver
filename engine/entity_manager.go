@@ -9,7 +9,38 @@ import (
 	"sync"
 
 	"github.com/golang-collections/go-datastructures/bitarray"
+
+	"github.com/dt-rush/donkeys-qquest/engine/component"
 )
+
+// Used for goroutines to request that an entity be spawned/despawned,
+// activated/deactivated
+type EntityStateSetRequest struct {
+	// the entity to apply the state change to
+	entity EntityToken
+	// the new active state
+	active bool
+	// the new spawn state
+	spawn bool
+	// the component values for the entity (will be unset if spawn is false)
+	components ComponentSet
+	// a channel on which to send "true" if the request went through
+	// (the EntityToken's gen matched and at least one of spawn/bool was a
+	// *change* relative to the state of the entity when the request was
+	// processed) - if nil, we simply don't send a response
+	responseChan chan bool
+}
+
+// Used for goroutines to request modifications to entity components
+type EntityComponentSetRequest struct {
+	// the entity to apply the component change to
+	entity EntityToken
+	// the component values for the entity
+	components ComponentSet
+	// a channel on which to send "true" if the request went through
+	// (the EntityToken's gen matched) - if nil, we simply don't send a response
+	responseChan chan bool
+}
 
 // used by the EntityManager to hold info about the allocated entities
 type EntityTable struct {
@@ -41,15 +72,18 @@ type TagTable struct {
 	tagsOfEntity map[uint16]([]string)
 }
 
-// created a singleton, containing the component, entity, and tag data
+// created by game scene as a singleton, containing the component, entity,
+// and tag data
 type EntityManager struct {
 	// Entity table stores component bitarrays, a list of allocated IDs,
 	// and a list of available IDs from previous deallocations
 	entityTable EntityTable
 	// Component data
-	Components ComponentsTable
+	Components component.ComponentsTable
 	// Tag table stores data for entity tagging system
 	tagTable TagTable
+	// Channel for logic goroutines to send requests to modify entity components
+	ModificationChannel chan EntityModification
 
 	// used to allow systems to keep an updated list of entities which have
 	// components they're interested in operating on (eg. physics watches
@@ -200,13 +234,13 @@ func (m *EntityManager) EntityComponentBitArray(id uint16) bitarray.BitArray {
 }
 
 // sets an entity active and notifies all watchers
-func (m *EntityManager) Activate(id uint16) {
+func (m *EntityManager) activate(id uint16) {
 	Logger.Printf("[Entity manager] Activating: %d\n", id)
 	m.setActiveState(id, true)
 }
 
 // sets an entity inactive and notifies all watchers
-func (m *EntityManager) Deactivate(id uint16) {
+func (m *EntityManager) deactivate(id uint16) {
 	Logger.Printf("[Entity manager] Deactivating: %d\n", id)
 	m.setActiveState(id, false)
 }
@@ -282,7 +316,7 @@ func (m *EntityManager) GetActiveEntityQueryWatcher(
 	return qw
 }
 
-func (m *EntityManager) DeleteActiveWatcher(ID uint16) {
+func (m *EntityManager) DeleteActiveEntityQueryWatcher(ID uint16) {
 	m.activeEntityWatchersMutex.Lock()
 	defer m.activeEntityWatchersMutex.Unlock()
 	// remove the EntityQueryWatcher from the list of active watchers

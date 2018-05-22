@@ -22,32 +22,32 @@ func gameEventDebug(s string, params ...interface{}) {
 	}
 }
 
-type GameEventManager struct {
-	// subscriberLists is a list of lists of GameEventChannels
-	// where the inner lists are indexed by the GameEventType (type aliased
+type EventManager struct {
+	// subscriberLists is a list of lists of EventChannels
+	// where the inner lists are indexed by the EventType (type aliased
 	// to int). So you could have a list of queries on CollisionEvents, etc.
-	// Each GameEventQuery's Predicate will be tested against the events
+	// Each EventQuery's Predicate will be tested against the events
 	// that are published for the matching type (and thus the predicates
 	// can safely assert the type of the Data member of the event)
-	subscriberLists [N_GAME_EVENT_TYPES][]GameEventChannel
+	subscriberLists [N_GAME_EVENT_TYPES][]EventChannel
 	// Mutex to protect the modification of the above
 	subscribeMutex sync.Mutex
 }
 
-func (m *GameEventManager) Init() {
+func (m *EventManager) Init() {
 	// nothing for now
 }
 
 // Subscribe to listen for game events defined by a query
-func (m *GameEventManager) Subscribe(
-	q GameEventQuery, name string) GameEventChannel {
+func (m *EventManager) Subscribe(
+	q EventQuery, name string) EventChannel {
 
 	// Lock the subscriber slice while we modify it
 	m.subscribeMutex.Lock()
 	defer m.subscribeMutex.Unlock()
 
 	// Create a channel to return to the user
-	c := NewGameEventChannel(q, name)
+	c := NewEventChannel(q, name)
 	gameEventDebug("[Game event manager] Subscribe: %s on channel %v\n",
 		name, c)
 	// Add the channel to the subscriber list for its type
@@ -57,17 +57,17 @@ func (m *GameEventManager) Subscribe(
 }
 
 // Remove a subscriber
-func (m *GameEventManager) Unsubscribe(c GameEventChannel) {
+func (m *EventManager) Unsubscribe(c EventChannel) {
 
 	gameEventDebug("[Game event manager] Unsubscribe on channel %v\n", c)
 
 	// remove the query watcher from the subscriber list associated with
 	// the given channel's
-	removeGameEventChannelFromSlice(c, &m.subscriberLists[c.Query.Type])
+	removeEventChannelFromSlice(c, &m.subscriberLists[c.Query.Type])
 }
 
 // Publish a game event for anyone listening
-func (m *GameEventManager) Publish(e GameEvent) {
+func (m *EventManager) Publish(e Event) {
 
 	gameEventDebug("[Game event manager] ⚹: %s\n", e.Description)
 
