@@ -13,18 +13,6 @@ import (
 	"time"
 )
 
-// Print debug messages if constant flag is set
-func updatedEntityListDebug(s string, params ...interface{}) {
-	switch {
-	case !DEBUG_UPDATED_ENTITY_LISTS:
-		return
-	case len(params) == 0:
-		Logger.Printf(s)
-	default:
-		Logger.Printf(s, params)
-	}
-}
-
 // A list of entities which is can be regularly updated by one goroutine
 // while another reads and uses it
 type UpdatedEntityList struct {
@@ -95,12 +83,12 @@ func (l *UpdatedEntityList) actOnIDSignal(idEncoded int32) {
 
 	if idEncoded >= 0 {
 		id := uint16(idEncoded)
-		updatedEntityListDebug("[Updated entity list] %s got "+
+		updatedEntityListDebug("%s got "+
 			"insert:%d\n", l.Name, idEncoded)
 		l.insert(id)
 	} else {
 		id := uint16(-(idEncoded + 1))
-		updatedEntityListDebug("[Updated entity list] %s got "+
+		updatedEntityListDebug("%s got "+
 			"remove:%d\n", l.Name, id)
 		l.remove(id)
 	}

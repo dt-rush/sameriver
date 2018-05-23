@@ -85,16 +85,16 @@ type CollisionSystem struct {
 	// the uint32 in this array at [i] gets set to 1 when an entity has been
 	// deactivated (is checked by the event-sender loop)
 	// How the collision system communicates collision events
-	gameEventManager *GameEventManager
+	eventManager *EventManager
 }
 
 func (s *CollisionSystem) Init(
 	em *EntityManager,
-	gameEventManager *GameEventManager) {
+	eventManager *EventManager) {
 
-	// take down references to em and gameEventManager
+	// take down references to em and eventManager
 	s.em = em
-	s.gameEventManager = gameEventManager
+	s.eventManager = eventManager
 	// get a regularly updated list of the entities which are collidable
 	// (position and hitbox)
 	query := NewBitArraySubsetQuery(
@@ -162,14 +162,14 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 			// only proceed if we can hold both entities for modification,
 			// since we need to be able to move them away from their common center
 			// if overlapping
-			if !s.holdTwoEntities(i, j) {
+			if !s.em.holdTwoEntities(i, j) {
 				continue
 			}
 			// check the collision
 			if s.TestCollision(i, j) {
 				// if colliding, send the message (rate-limited)
 				s.rateLimiterArray.GetRateLimiter(i, j).Do(func() {
-					s.gameEventManager.Publish(GameEvent{
+					s.eventManager.Publish(Event{
 						Type:        EVENT_TYPE_COLLISION,
 						Description: fmt.Sprintf("collision(%d,%d)", i, j),
 						Data: CollisionEventData{

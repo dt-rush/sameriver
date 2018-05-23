@@ -5,7 +5,7 @@
   *
 **/
 
-package component
+package engine
 
 import (
 	"sync"

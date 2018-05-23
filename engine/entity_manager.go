@@ -7,10 +7,10 @@ package engine
 
 import (
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/golang-collections/go-datastructures/bitarray"
-
-	"github.com/dt-rush/donkeys-qquest/engine/component"
 )
 
 // Used to represent an entity with an ID at a point in time. Despawning the
@@ -20,7 +20,7 @@ import (
 // quite readily depending on timing of event processing
 type EntityToken struct {
 	id  uint16
-	gen uint8
+	gen uint32
 }
 
 // Used by goroutines which have requested to modify an entity to communicate
@@ -30,7 +30,7 @@ type EntityModificationType int
 
 const (
 	ENTITY_STATE_MODIFICATION     = iota
-	ENTITY_COMPONENT_MODIFICAITON = iota
+	ENTITY_COMPONENT_MODIFICATION = iota
 )
 
 type EntityModification struct {
@@ -54,7 +54,7 @@ type EntityStateModification struct {
 	// the entity to apply the state change to
 	entity EntityToken
 	// the requested state
-	state EntityState
+	State EntityState
 }
 
 // Used for goroutines to request modifications to entity components
@@ -62,14 +62,13 @@ type EntityComponentModification struct {
 	// the entity to apply the component change to
 	entity EntityToken
 	// the component values for the entity
-	components ComponentSet
+	Components ComponentSet
 }
 
 // Used to spawn entities
 type EntitySpawnRequest struct {
 	Components ComponentSet
 	Tags       []string
-	Logic      LogicUnit
 }
 
 // used by the EntityManager to hold info about the allocated entities
@@ -85,9 +84,9 @@ type EntityTable struct {
 	// bitarray used to keep track of which entities have which components
 	// (indexes are IDs, bitarrays have bit set if entity has the
 	// component corresponding to that index)
-	componentBitArray [MAX_ENTITIES]bitarray.BitArray
+	componentBitArrays [MAX_ENTITIES]bitarray.BitArray
 	// the gen of an ID is how many times an entity has been spawned on that ID
-	gen [MAX_ENTITIES]uint8
+	gens [MAX_ENTITIES]uint32
 	// locks so that goroutines can operate atomically on individual entities
 	// (eg. imagine two squirrels coming upon a nut and trying to eat it. One
 	// must win!). Also used by systems like PhysicsSystem to avoid modifying
@@ -95,7 +94,7 @@ type EntityTable struct {
 	// of not holding entities for modification longer than, say, one update
 	// cycle (at 60fps, around 16 ms). In fact, one update cycle is a hell of
 	// a long time. It should be less than a millisecond or two.
-	heldForModificationLock [MAX_ENTITIES]uint32
+	heldForModificationLocks [MAX_ENTITIES]uint32
 }
 
 // used by the EntityManager to tag entities
@@ -119,16 +118,16 @@ type EntityManager struct {
 	// Tag table stores data for entity tagging system
 	tagTable TagTable
 	// Component data
-	Components component.ComponentsTable
+	Components ComponentsTable
 
 	// Channel for logic goroutines to send requests to modify entity
 	// active/spawn state (internal only, accessed implicitly via the
 	// AtomicEntityModify() method)
-	stateSetChannel chan EntitySetRequest
+	stateModificationChannel chan EntityStateModification
 	// Channel for logic goroutines to send requests to modify entity
 	// components (internal only, accessed implicitly via the
 	// AtomicEntityModify() method)
-	componentSetChannel chan EntityComponentModification
+	componentModificationChannel chan EntityComponentModification
 	// set atomically when DespawnAll() is called, to short-circuit any
 	// processing of the prior two channels. We simply despawn all entities
 	// if this is 1
@@ -149,11 +148,11 @@ func (m *EntityManager) Init() {
 	m.Components = AllocateComponentsMemoryBlock()
 	// allocate the state and component modification channels with the buffer
 	// size defined in constants
-	m.StateSetChannel = make(chan EntityStateModification,
+	m.stateModificationChannel = make(chan EntityStateModification,
 		ENTITY_MODIFICATION_CHANNEL_CAPACITY)
-	m.ComponentSetChannel = make(chan EntityComponentModification,
+	m.componentModificationChannel = make(chan EntityComponentModification,
 		ENTITY_MODIFICATION_CHANNEL_CAPACITY)
-	m.SpawnChannel = make(chan EntitySpawnRequest,
+	m.spawnChannel = make(chan EntitySpawnRequest,
 		MAX_ENTITIES)
 	// allocate tag system data members
 	m.tagTable.entitiesWithTag = make(map[string]([]uint16))
@@ -167,12 +166,12 @@ func (m *EntityManager) Update() {
 	m.actOnDespawnAllFlag()
 	// Second, process the spawn/despawn, activate/deactivate requests queued in
 	// the buffered channel
-	m.processStateModifications()
+	m.processStateModificationChannel()
 	// Third, process the component modifications queued in the buffered channel
-	m.processComponentModifications()
+	m.processComponentModificationChannel()
 	// Finally, process any requests to spawn new entities queued in the
 	// buffered channel
-	m.processSpawnRequests()
+	m.processSpawnChannel()
 }
 
 // react to the despawnall flag
@@ -192,86 +191,88 @@ func (m *EntityManager) actOnDespawnAllFlag() {
 		// drain the modification and spawn channels (NOTE: by this point,
 		// all logic goroutines should have been terminated, so nothing new
 		// should be coming to these channels)
-		for _ := range m.stateSetChannel {
+		for len(m.stateModificationChannel) > 0 {
 			// we're draining the channel, so do nothing
+			_ = <-m.stateModificationChannel
 		}
-		for _ := range m.componentSetChannel {
+		for len(m.componentModificationChannel) > 0 {
 			// we're draining the channel, so do nothing
+			_ = <-m.componentModificationChannel
 		}
-		for _ := range m.spawnChannel {
+		for len(m.spawnChannel) > 0 {
 			// we're draining the channel, so do nothing
+			_ = <-m.spawnChannel
 		}
-		return true
-	} else {
-		return false
 	}
 }
 
-// Process the EntityStateModifications on StateSetChannel
-func (m *EntityManager) processStateSetChannel() {
+// Process the EntityStateModifications on stateModificationChannel
+func (m *EntityManager) processStateModificationChannel() {
 	// get the current number of requests in the channel and only process
 	// them. More may continue to pile up. They'll get processed next time.
-	n := len(m.StateSetChannel)
+	n := len(m.stateModificationChannel)
 	for i := 0; i < n; i++ {
 		// get the request from the channel
-		r := <-m.StateSetChannel
+		r := <-m.stateModificationChannel
 		// if gen doesn't match, this request is invalid
 		// (TODO: We don't really need this check. If AtomicEntityModify is
 		// being respected, we won't ever receive a modification for an entity
 		// unless its gen matches, since a despawn event is itself a
 		// modification which will change the gen, resulting in a failure to
 		// acquire the entity in AtomicEntityModify)
-		if r.entity.gen != r.entityTable.gen[r.entity.id] {
+		if r.entity.gen != m.entityTable.gens[r.entity.id] {
 			continue
 		}
 		// process the event
-		switch r.state {
+		switch r.State {
 		case ENTITY_ACTIVATE:
-			m.activate(r.id)
+			m.activate(r.entity.id)
 		case ENTITY_DEACTIVATE:
-			m.deactivate(r.id)
+			m.deactivate(r.entity.id)
 		case ENTITY_DESPAWN:
-			m.despawn(r.id)
+			m.despawn(r.entity.id)
 		}
 		// now that we've applied the modification, release the lock on the
 		// ID
-		atomic.StoreUint32(&m.entityTable.heldForModificationLock[r.id], 0)
+		atomic.StoreUint32(
+			&m.entityTable.heldForModificationLocks[r.entity.id], 0)
 	}
 }
 
 // process the requests to set entity components
-func (m *EntityManager) processComponentSetChannel() {
+func (m *EntityManager) processComponentModificationChannel() {
 	// get the current number of requests in the channel and only process
 	// them. More may continue to pile up. They'll get processed next time.
-	n := len(m.StateSetChannel)
+	n := len(m.componentModificationChannel)
 	for i := 0; i < n; i++ {
 		// get the request from the channel
-		r := <-m.StateSetChannel
+		r := <-m.componentModificationChannel
 		// if gen doesn't match, this request is invalid
 		// (TODO: We don't really need this check. If AtomicEntityModify is
 		// being respected, we won't ever receive a modification for an entity
 		// unless its gen matches, since a despawn event is itself a
 		// modification which will change the gen, resulting in a failure to
 		// acquire the entity in AtomicEntityModify)
-		if r.entity.gen != r.entityTable.gen[r.entity.id] {
+		if r.entity.gen != m.entityTable.gens[r.entity.id] {
 			continue
 		}
 		// take the component data and set it, on the ID
-		m.Components.ApplyComponentSet(r.id, r.components)
+		m.Components.ApplyComponentSet(r.entity.id, r.Components)
 		// now that we've applied the modification, release the lock on the
 		// ID
-		atomic.StoreUint32(&m.entityTable.heldForModificationLock[r.id], 0)
+		atomic.StoreUint32(
+			&m.entityTable.heldForModificationLocks[r.entity.id], 0)
 	}
 }
 
 // process the spawn requests in the channel buffer
-func (m *EntityManager) processSpawnRequests() {
+func (m *EntityManager) processSpawnChannel() {
 	// get the current number of requests in the channel and only process
 	// them. More may continue to pile up. They'll get processed next time.
-	n := len(m.StateSetChannel)
+	n := len(m.spawnChannel)
 	for i := 0; i < n; i++ {
 		// get the request from the channel
-		r := <-m.SpawnChannel
+		r := <-m.spawnChannel
 		m.spawn(r)
 	}
 }
@@ -307,6 +308,11 @@ func (m *EntityManager) allocateID() int32 {
 	return int32(id)
 }
 
+// used by goroutines to request the spawning of an entity
+func (m *EntityManager) RequestSpawn(r EntitySpawnRequest) {
+	m.spawnChannel <- r
+}
+
 // given a list of components, spawn an entity with the default values
 // returns the ID
 func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
@@ -314,8 +320,7 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 	// lock the entityTable
 	m.entityTable.mutex.Lock()
 	defer m.entityTable.mutex.Unlock()
-	// print a debug message
-	entityManagerDebug("[Entity manager] Spawning: %d\n", id)
+
 	// get an ID for the entity
 	allocateIDResponse := m.allocateID()
 	if allocateIDResponse == -1 {
@@ -323,8 +328,10 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 			"tags: %v\n", r.Tags)
 	}
 	id := uint16(allocateIDResponse)
+	// print a debug message
+	entityManagerDebug("[Entity manager] Spawning: %d\n", id)
 	// set the bitarray for this entity
-	m.entityTable.componentBitArray[id] = r.Components.ToBitArray()
+	m.entityTable.componentBitArrays[id] = r.Components.ToBitArray()
 	// copy the data into the component storage for each component
 	// (note: we dereference the pointers, this is a real copy, so it's good
 	// that component values are either small pieces of data like [2]uint16
@@ -338,6 +345,13 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 	// apply the tags
 	for _, tag := range r.Tags {
 		m.TagEntity(id, tag)
+	}
+	// start the logic goroutine if supplied
+	if r.Components.Logic != nil {
+		logicDebug("Starting logic for %d...", id)
+		go r.Components.Logic.LogicFunc(id,
+			r.Components.Logic.StopChannel,
+			m)
 	}
 	// return ID
 	return id
@@ -355,7 +369,7 @@ func (m *EntityManager) despawn(id uint16) {
 	removeUint16FromSlice(id, &m.entityTable.allocatedIDs)
 	// Deactivate the entity to ensure that all updated entity lists are
 	// notified
-	m.Deactivate(id)
+	m.deactivate(id)
 	// clear the entity from lists of tagged entities it's in
 	tags_to_clear := m.tagTable.tagsOfEntity[id]
 	for _, tag_to_clear := range tags_to_clear {
@@ -365,14 +379,14 @@ func (m *EntityManager) despawn(id uint16) {
 	delete(m.tagTable.tagsOfEntity, id)
 	// Increment the gen for the ID
 	// NOTE: it's important that we increment gen before resetting the
-	// heldForModificationLock, since any goroutines waiting for the
+	// heldForModificationLocks, since any goroutines waiting for the
 	// lock to be 0 so they can claim it in AtomicEntityModify() will then
 	// immediately want to check if the gen of the entity still matches.
-	atomic.AddUint32(&m.entityTable.gen[id], 1)
+	atomic.AddUint32(&m.entityTable.gens[id], 1)
 	// Clear the modificationLock for the entity (any goroutine either trying
 	// to set it to 1 with an old gen or holding it for modification with
 	// an old gen will fail
-	atomic.StoreUint32(&m.heldForModificationLock[id], 0)
+	atomic.StoreUint32(&m.entityTable.heldForModificationLocks[id], 0)
 }
 
 // setting the flag will cause the entities to all get despawned next time
@@ -443,7 +457,7 @@ func (m *EntityManager) GetUpdatedActiveList(
 // and deletes the active watcher created for it
 func (m *EntityManager) DeleteUpdatedActiveList(l UpdatedEntityList) {
 	//
-	m.DeleteActiveWatcher(l.ID)
+	m.DeleteActiveEntityQueryWatcher(l.ID)
 	l.stopUpdateLoopChannel <- true
 }
 
@@ -475,11 +489,11 @@ func (m *EntityManager) DeleteActiveEntityQueryWatcher(ID uint16) {
 // returns
 func (m *EntityManager) AtomicEntityModify(
 	e EntityToken,
-	f func(e *EntityComponentModification)) {
+	f func(e *EntityModification)) bool {
 
-	// wait to obtain heldForModificationLock
-	for !atomic.CompareAndSwap(
-		&m.entityTable.heldForModificationLock[e.id], 0, 1) {
+	// wait to obtain heldForModificationLocks
+	for !atomic.CompareAndSwapUint32(
+		&m.entityTable.heldForModificationLocks[e.id], 0, 1) {
 		// if we didn't manage to grab the lock, sleep for a good 8 frames
 		// (128 ms, hardly a problem) so that even if there are several
 		// goroutines currently sleeping in this loop, they won't starve the
@@ -492,7 +506,7 @@ func (m *EntityManager) AtomicEntityModify(
 		time.Sleep(4 * FRAME_SLEEP)
 	}
 	// if the gen has changed by the time the lock was released, return false
-	if atomic.LoadUint32(&m.entityTable.gen[e.id]) != e.gen {
+	if atomic.LoadUint32(&m.entityTable.gens[e.id]) != e.gen {
 		return false
 	}
 	// create a modification object whose address we will pass to f
@@ -503,9 +517,9 @@ func (m *EntityManager) AtomicEntityModify(
 	// channel after type asserting its contained modification
 	switch mod.Type {
 	case ENTITY_STATE_MODIFICATION:
-		m.stateSetChannel <- mod.Data.(EntityStateModification)
+		m.stateModificationChannel <- mod.Data.(EntityStateModification)
 	case ENTITY_COMPONENT_MODIFICATION:
-		m.componentSetChannel <- mod.Data.(EntityComponentModification)
+		m.componentModificationChannel <- mod.Data.(EntityComponentModification)
 	}
 	// let the caller know their modification went through
 	return true
@@ -515,20 +529,37 @@ func (m *EntityManager) AtomicEntityModify(
 func (m *EntityManager) holdTwoEntities(i uint16, j uint16) bool {
 	// attempt to hold i
 	if atomic.CompareAndSwapUint32(
-		&m.entityTable.heldForModificationLock[i], 0, 1) {
+		&m.entityTable.heldForModificationLocks[i], 0, 1) {
 		// attempt to hold j
 		if atomic.CompareAndSwapUint32(
-			&m.entityTable.heldForModificationLock[j], 0, 1) {
+			&m.entityTable.heldForModificationLocks[j], 0, 1) {
 			// if we're here, we have held both i and j. return true
 			return true
 		}
 		// if we're here, we have held i but failed to hold j. let go of i
 		// and return false
-		atomic.StoreUint32(&m.entityTable.heldForModificationLock[i], 0)
+		atomic.StoreUint32(&m.entityTable.heldForModificationLocks[i], 0)
 		return false
 	}
 	// if we're here, we failed to hold i
 	return false
+}
+
+// used by collision system to release two entities for modification
+func (m *EntityManager) releaseTwoEntities(i uint16, j uint16) {
+	atomic.StoreUint32(&m.entityTable.heldForModificationLocks[i], 0)
+	atomic.StoreUint32(&m.entityTable.heldForModificationLocks[j], 0)
+}
+
+// used by physics system to hold an entity for modification
+func (m *EntityManager) holdEntity(i uint16) bool {
+	return atomic.CompareAndSwapUint32(
+		&m.entityTable.heldForModificationLocks[i], 0, 1)
+}
+
+// used by physics system to release an entity held for modification
+func (m *EntityManager) releaseEntity(i uint16) {
+	atomic.StoreUint32(&m.entityTable.heldForModificationLocks[i], 0)
 }
 
 // apply the given tag to the given entity
@@ -623,7 +654,7 @@ func (m *EntityManager) GetUniqueTaggedEntity(tag string) int32 {
 
 // Boolean check of whether a given entity has a given component
 func (m *EntityManager) EntityHasComponent(id uint16, COMPONENT int) bool {
-	b, _ := m.entityTable.componentBitArray[id].GetBit(uint64(COMPONENT))
+	b, _ := m.entityTable.componentBitArrays[id].GetBit(uint64(COMPONENT))
 	return b
 }
 
@@ -631,5 +662,5 @@ func (m *EntityManager) EntityHasComponent(id uint16, COMPONENT int) bool {
 func (m *EntityManager) EntityComponentBitArray(id uint16) bitarray.BitArray {
 	m.entityTable.mutex.RLock()
 	defer m.entityTable.mutex.RUnlock()
-	return m.entityTable.componentBitArray[id]
+	return m.entityTable.componentBitArrays[id]
 }

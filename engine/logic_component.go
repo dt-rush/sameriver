@@ -5,7 +5,7 @@
   *
 **/
 
-package component
+package engine
 
 import (
 	"sync"
@@ -31,15 +31,15 @@ type LogicFunc func(
 	em *EntityManager)
 
 type LogicUnit struct {
-	Logic       LogicFunc
+	LogicFunc   LogicFunc
 	Name        string
 	StopChannel chan bool
 }
 
 // Create a new LogicUnit instance
-func NewLogicUnit(Logic LogicFunc, Name string) LogicUnit {
+func NewLogicUnit(LogicFunc LogicFunc, Name string) LogicUnit {
 	return LogicUnit{
-		Logic,
+		LogicFunc,
 		Name,
 		make(chan bool, 1)}
 }

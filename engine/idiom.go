@@ -57,8 +57,8 @@ func removeEntityQueryWatcherFromSliceByID(
 	}
 }
 
-func removeGameEventChannelFromSlice(
-	x GameEventChannel, slice *[]GameEventChannel) {
+func removeEventChannelFromSlice(
+	x EventChannel, slice *[]EventChannel) {
 
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {
@@ -66,7 +66,7 @@ func removeGameEventChannelFromSlice(
 			(*slice)[i] = (*slice)[last_ix]
 			// set the last element to the zero value (for same reasons
 			// as above)
-			(*slice)[last_ix] = GameEventChannel{}
+			(*slice)[last_ix] = EventChannel{}
 			*slice = (*slice)[:last_ix]
 			break
 		}

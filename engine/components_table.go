@@ -6,7 +6,7 @@
  *
  */
 
-package component
+package engine
 
 type ComponentsTable struct {
 	Active   *ActiveComponent

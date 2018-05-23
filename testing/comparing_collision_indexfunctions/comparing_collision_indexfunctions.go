@@ -119,7 +119,7 @@ func main() {
 
 	// run the test with triangle indexes, simplified by algebra
 	profile(func(i uint16, j uint16) uint32 {
-		return uint32(N - 2 - i + j)
+		return uint32(-i*((i-1)/2-N) + j - (2*i + 1))
 	},
 		"-i*((i-1)/2-N) + j - (2*i + 1)",
 		computeABunchOfIndexesTriangleSpecial,

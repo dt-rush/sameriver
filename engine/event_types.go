@@ -21,7 +21,7 @@ func (e Event) String() string {
 // in order to unwrap the data inside, and to allow the game event manager
 // to work properly
 // TODO: assert this is correct during build
-const N_GAME_EVENT_TYPES = 2
+const N_EVENT_TYPES = 2
 const (
 	EVENT_TYPE_COLLISION     = iota
 	EVENT_TYPE_SPAWN_REQUEST = iota

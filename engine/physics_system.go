@@ -80,10 +80,9 @@ func (s *PhysicsSystem) Update(dt_ms uint16) {
 		// apply the physics only if this entity is not held for modification
 		// (atomic operations are cheap, so this isn't a bad thing to
 		// do for each entity during each Update())
-		if atomic.CompareAndSwapUint32(
-			&s.em.entityTable.heldForModificationLock[id], 0, 1) {
+		if s.em.holdEntity(id) {
 			s.applyPhysics(id, dt_ms)
-			atomic.StoreUint32(&s.em.entityTable.heldForModificationLock[id], 0)
+			s.em.releaseEntity(id)
 		}
 	}
 }
