@@ -17,9 +17,10 @@ const AUDIO_ON = true
 
 const DEBUG_ENTITY_MANAGER = true
 const DEBUG_EVENTS = true
-const DEBUG_UPDATED_ENTITY_LISTS = false
+const DEBUG_UPDATED_ENTITY_LISTS = true
 const DEBUG_GOROUTINES = true
 const DEBUG_LOGIC = true
+const DEBUG_ENTITY_MANAGER_UPDATE_TIMING = true
 
 const FPS = 60
 const FRAME_SLEEP = (1000 / FPS) * time.Millisecond

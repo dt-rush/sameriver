@@ -8,9 +8,16 @@ import (
 	"github.com/dt-rush/donkeys-qquest/engine"
 )
 
-const PROFILE_EM_UPDATE = false
+const PROFILE_EM_UPDATE = true
 const N_CROWS = 10
 const N_BEETLES = 20
+const VERBOSE = false
+
+func verboseLog(s string, params ...interface{}) {
+	if VERBOSE {
+		fmt.Printf(s, params)
+	}
+}
 
 func spawnCrows(em *engine.EntityManager) {
 	for i := 0; i < N_CROWS; i++ {
@@ -45,26 +52,26 @@ logicloop:
 	for {
 		select {
 		case <-StopChannel:
-			fmt.Printf("crow %d logic ending", crowID)
+			verboseLog("crow %d logic ending", crowID)
 			break logicloop
 		default:
 			time.Sleep(
 				time.Duration(rand.Intn(200)) * time.Millisecond)
 			// the crow CAW's periodically
-			fmt.Printf("Crow %d says, CAW!\n", crowID)
+			verboseLog("Crow %d says, CAW!\n", crowID)
 			// the crow examines the list of beetles and tries to eat one
 			// 10% of the time
 			beetleList.Mutex.Lock()
 			if len(beetleList.Entities) > 0 {
-				fmt.Printf("Crow %d notices a tasty beetle\n", crowID)
+				verboseLog("Crow %d notices a tasty beetle\n", crowID)
 				if rand.Intn(10) == 0 {
-					fmt.Printf("Crow %d decides to eat the beetle it sees.\n",
+					verboseLog("Crow %d decides to eat the beetle it sees.\n",
 						crowID)
 					beetleID := beetleList.Entities[0]
 					em.AtomicEntityModify(
 						beetleID, func(e *engine.EntityModification) {
 
-							fmt.Printf("Crow %d ate a delicious beetle.\n",
+							verboseLog("Crow %d ate a delicious beetle.\n",
 								crowID)
 							e.Type = engine.ENTITY_STATE_MODIFICATION
 							e.Modification = engine.ENTITY_DESPAWN
@@ -104,12 +111,11 @@ logicloop:
 	for {
 		select {
 		case <-StopChannel:
-			fmt.Printf("beetle %d logic ending", beetleID)
 			break logicloop
 		default:
 			time.Sleep(
 				time.Duration(rand.Intn(200)) * time.Millisecond)
-			fmt.Printf("beetle %d says, beep!\n", beetleID)
+			verboseLog("beetle %d says, beep!\n", beetleID)
 			time.Sleep(
 				time.Duration(rand.Intn(3000)) * time.Millisecond)
 		}

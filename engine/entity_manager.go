@@ -6,6 +6,8 @@
 package engine
 
 import (
+	"bytes"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -138,6 +140,9 @@ type EntityManager struct {
 	// Channel for spawn entity requests
 	spawnChannel chan EntitySpawnRequest
 
+	// locked during the entirety of Update()
+	UpdateMutex sync.Mutex
+
 	// used to allow systems to keep an updated list of entities which have
 	// components they're interested in operating on (eg. physics watches
 	// for entities with position, velocity, and hitbox)
@@ -164,17 +169,45 @@ func (m *EntityManager) Init() {
 
 // called once per scene Update() for scenes holding an entity manager
 func (m *EntityManager) Update() {
+	m.UpdateMutex.Lock()
+	defer m.UpdateMutex.Unlock()
 	// First, act on the despawn all flag, despawning all entities if
 	// it's set.
+	var t0 time.Time
+	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
+		t0 = time.Now()
+	}
 	m.actOnDespawnAllFlag()
+	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
+		fmt.Printf("despawnall: %d ms\n", time.Since(t0).Nanoseconds()/1e6)
+	}
 	// Second, process the spawn/despawn, activate/deactivate requests queued in
 	// the buffered channel
+	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
+		t0 = time.Now()
+	}
 	m.processStateModificationChannel()
+	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
+		fmt.Printf("statemod: %d ms\n", time.Since(t0).Nanoseconds()/1e6)
+	}
 	// Third, process the component modifications queued in the buffered channel
+	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
+		t0 = time.Now()
+	}
 	m.processComponentModificationChannel()
+	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
+		fmt.Printf("componentmod: %d ms\n", time.Since(t0).Nanoseconds()/1e6)
+	}
 	// Finally, process any requests to spawn new entities queued in the
 	// buffered channel
+	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
+		t0 = time.Now()
+	}
 	m.processSpawnChannel()
+	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
+		fmt.Printf("spawn: %d ms\n", time.Since(t0).Nanoseconds()/1e6)
+	}
+
 }
 
 // react to the despawnall flag
@@ -214,6 +247,7 @@ func (m *EntityManager) processStateModificationChannel() {
 	// get the current number of requests in the channel and only process
 	// them. More may continue to pile up. They'll get processed next time.
 	n := len(m.stateModificationChannel)
+	entityManagerDebug("%d state modifications to process...", n)
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		r := <-m.stateModificationChannel
@@ -229,10 +263,13 @@ func (m *EntityManager) processStateModificationChannel() {
 		// process the event
 		switch r.State {
 		case ENTITY_ACTIVATE:
+			entityManagerDebug("processing activate()")
 			m.activate(r.entity.id)
 		case ENTITY_DEACTIVATE:
+			entityManagerDebug("processing deactivate()")
 			m.deactivate(r.entity.id)
 		case ENTITY_DESPAWN:
+			entityManagerDebug("processing despawn()")
 			m.despawn(r.entity.id)
 		}
 		// now that we've applied the modification, release the lock on the
@@ -357,7 +394,7 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 			m)
 	}
 	// notify entity is active
-	m.notifyActiveState(id, true)
+	go m.notifyActiveState(id, true)
 	// return ID
 	return id
 }
@@ -381,7 +418,9 @@ func (m *EntityManager) despawn(id uint16) {
 		m.UntagEntity(id, tag_to_clear)
 	}
 	// remove the taglist for this entity
+	m.tagTable.mutex.Lock()
 	delete(m.tagTable.tagsOfEntity, id)
+	m.tagTable.mutex.Unlock()
 	// stop the entity's logic
 	m.Components.Logic.SafeGet(id).StopChannel <- true
 	// Increment the gen for the ID
@@ -425,7 +464,7 @@ func (m *EntityManager) setActiveState(id uint16, state bool) {
 	// Only set (and notify) if not already in given state
 	if m.Components.Active.SafeGet(id) != state {
 		m.Components.Active.SafeSet(id, state)
-		m.notifyActiveState(id, state)
+		go m.notifyActiveState(id, state)
 	}
 }
 
@@ -433,6 +472,8 @@ func (m *EntityManager) setActiveState(id uint16, state bool) {
 // active state, either true or false
 func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 
+	m.activeEntityWatchersMutex.Lock()
+	defer m.activeEntityWatchersMutex.Unlock()
 	for _, watcher := range m.activeEntityWatchers {
 		if watcher.Query.Test(id, m) {
 			// warn if the channel is full (we will block here if so)
@@ -620,7 +661,6 @@ func (m *EntityManager) UntagEntity(id uint16, tag string) {
 	m.tagTable.mutex.Lock()
 	defer m.tagTable.mutex.Unlock()
 
-	entityManagerDebug("Removing tag %s from %d\n", tag, id)
 	// NOTE: I'm aware the below code looks like some gross PHP stuff and
 	// might be hard to read. Basically we do the following:
 	//
@@ -650,6 +690,9 @@ func (m *EntityManager) UntagEntity(id uint16, tag string) {
 
 // Tag each of the entities in the provided array of ID's with the given tag
 func (m *EntityManager) TagEntities(ids []uint16, tag string) {
+	m.tagTable.mutex.Lock()
+	defer m.tagTable.mutex.Unlock()
+
 	for _, id := range ids {
 		m.TagEntity(id, tag)
 	}
@@ -657,6 +700,9 @@ func (m *EntityManager) TagEntities(ids []uint16, tag string) {
 
 // Boolean check of whether a given entity has a given tag
 func (m *EntityManager) EntityHasTag(id uint16, tag string) bool {
+	m.tagTable.mutex.RLock()
+	defer m.tagTable.mutex.RUnlock()
+
 	for _, entity_tag := range m.tagTable.tagsOfEntity[id] {
 		if entity_tag == tag {
 			return true
@@ -697,5 +743,25 @@ func (m *EntityManager) EntityHasComponent(id uint16, COMPONENT int) bool {
 func (m *EntityManager) EntityComponentBitArray(id uint16) bitarray.BitArray {
 	m.entityTable.mutex.RLock()
 	defer m.entityTable.mutex.RUnlock()
+
 	return m.entityTable.componentBitArrays[id]
+}
+
+// Somewhat expensive conversion of entire entity list to string
+func (m *EntityManager) String() string {
+	m.UpdateMutex.Lock()
+	m.tagTable.mutex.RLock()
+	defer m.tagTable.mutex.RUnlock()
+	defer m.UpdateMutex.Unlock()
+
+	var buffer bytes.Buffer
+	buffer.WriteString("[\n")
+	for _, id := range m.entityTable.allocatedIDs {
+		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",
+			id, m.tagTable.tagsOfEntity[id])
+		buffer.WriteString(entityRepresentation)
+		buffer.WriteString(",\n")
+	}
+	buffer.WriteString("]")
+	return buffer.String()
 }
