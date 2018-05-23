@@ -216,6 +216,11 @@ func (m *EntityManager) processStateSetChannel() {
 		// get the request from the channel
 		r := <-m.StateSetChannel
 		// if gen doesn't match, this request is invalid
+		// (TODO: We don't really need this check. If AtomicEntityModify is
+		// being respected, we won't ever receive a modification for an entity
+		// unless its gen matches, since a despawn event is itself a
+		// modification which will change the gen, resulting in a failure to
+		// acquire the entity in AtomicEntityModify)
 		if r.entity.gen != r.entityTable.gen[r.entity.id] {
 			continue
 		}
@@ -243,6 +248,11 @@ func (m *EntityManager) processComponentSetChannel() {
 		// get the request from the channel
 		r := <-m.StateSetChannel
 		// if gen doesn't match, this request is invalid
+		// (TODO: We don't really need this check. If AtomicEntityModify is
+		// being respected, we won't ever receive a modification for an entity
+		// unless its gen matches, since a despawn event is itself a
+		// modification which will change the gen, resulting in a failure to
+		// acquire the entity in AtomicEntityModify)
 		if r.entity.gen != r.entityTable.gen[r.entity.id] {
 			continue
 		}
