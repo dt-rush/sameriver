@@ -13,14 +13,14 @@ import (
 
 type PhysicsSystem struct {
 	// to filter, lookup entities
-	entity_manager *EntityManager
+	em *EntityManager
 	// targetted entities
 	physicsEntities *UpdatedEntityList
 }
 
-func (s *PhysicsSystem) Init(entity_manager *EntityManager) {
+func (s *PhysicsSystem) Init(em *EntityManager) {
 	// take down a reference to entity manager
-	s.entity_manager = entity_manager
+	s.em = em
 	// get a regularly updated list of the entities which have physics
 	// (position, velocity and hitbox)
 	query := NewBitArraySubsetQuery(
@@ -28,7 +28,7 @@ func (s *PhysicsSystem) Init(entity_manager *EntityManager) {
 			POSITION_COMPONENT,
 			VELOCITY_COMPONENT,
 			HITBOX_COMPONENT}))
-	s.physicsEntities = s.entity_manager.GetUpdatedActiveList(query, "physical")
+	s.physicsEntities = s.em.GetUpdatedActiveList(query, "physical")
 }
 
 // apply velocity to position of entities
@@ -36,11 +36,11 @@ func (s *PhysicsSystem) Init(entity_manager *EntityManager) {
 // components
 func (s *PhysicsSystem) applyPhysics(id uint16, dt_ms uint16) {
 	// read the position and velocity, using dt to compute dx, dy
-	pos := s.entity_manager.Components.Position.Data[id]
-	vel := s.entity_manager.Components.Velocity.Data[id]
+	pos := s.em.Components.Position.Data[id]
+	vel := s.em.Components.Velocity.Data[id]
 	dx := int16(vel[0] * float32(dt_ms/4))
 	dy := int16(vel[1] * float32(dt_ms/4))
-	box := s.entity_manager.Components.Hitbox.Data[id]
+	box := s.em.Components.Hitbox.Data[id]
 	// prevent from leaving the world in X
 	if pos[0]+dx <
 		int16(box[0]/2) {
@@ -62,21 +62,28 @@ func (s *PhysicsSystem) applyPhysics(id uint16, dt_ms uint16) {
 		pos[1] += dy
 	}
 	// set the new position which has been computed
-	s.entity_manager.Components.Position.Data[id] = pos
+	s.em.Components.Position.Data[id] = pos
 }
 
 func (s *PhysicsSystem) Update(dt_ms uint16) {
 
-	s.entity_manager.Components.Position.Mutex.Lock()
-	s.entity_manager.Components.Velocity.Mutex.Lock()
-	s.entity_manager.Components.Hitbox.Mutex.Lock()
+	s.em.Components.Position.Mutex.Lock()
+	s.em.Components.Velocity.Mutex.Lock()
+	s.em.Components.Hitbox.Mutex.Lock()
 	s.physicsEntities.Mutex.Lock()
-	defer s.entity_manager.Components.Position.Mutex.Unlock()
-	defer s.entity_manager.Components.Velocity.Mutex.Unlock()
-	defer s.entity_manager.Components.Hitbox.Mutex.Unlock()
+	defer s.em.Components.Position.Mutex.Unlock()
+	defer s.em.Components.Velocity.Mutex.Unlock()
+	defer s.em.Components.Hitbox.Mutex.Unlock()
 	defer s.physicsEntities.Mutex.Unlock()
 
 	for _, id := range s.physicsEntities.Entities {
-		s.applyPhysics(id, dt_ms)
+		// apply the physics only if this entity is not held for modification
+		// (atomic operations are cheap, so this isn't a bad thing to
+		// do for each entity during each Update())
+		if atomic.CompareAndSwapUint32(
+			&s.em.entityTable.heldForModificationLock[id], 0, 1) {
+			s.applyPhysics(id, dt_ms)
+			atomic.StoreUint32(&s.em.entityTable.heldForModificationLock[id], 0)
+		}
 	}
 }

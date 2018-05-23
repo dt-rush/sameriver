@@ -16,6 +16,7 @@ const DEBUG_UPDATED_ENTITY_LISTS = false
 const DEBUG_GOROUTINES = true
 
 const FPS = 60
+const FRAME_SLEEP = (1000 / FPS) * time.Millisecond
 const MAX_ENTITIES = 1024
 
 const COLLISION_RATELIMIT_TIMEOUT_MS = 500

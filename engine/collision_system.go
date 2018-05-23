@@ -156,9 +156,18 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 	// handshake pattern
 	for ix := uint16(0); ix < uint16(len(entities)); ix++ {
 		for jx := ix + 1; jx < uint16(len(entities)); jx++ {
+			// get the entity ID's
 			i := entities[ix]
 			j := entities[jx]
+			// only proceed if we can hold both entities for modification,
+			// since we need to be able to move them away from their common center
+			// if overlapping
+			if !s.holdTwoEntities(i, j) {
+				continue
+			}
+			// check the collision
 			if s.TestCollision(i, j) {
+				// if colliding, send the message (rate-limited)
 				s.rateLimiterArray.GetRateLimiter(i, j).Do(func() {
 					s.gameEventManager.Publish(GameEvent{
 						Type:        EVENT_TYPE_COLLISION,
@@ -167,6 +176,7 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 							EntityA: i,
 							EntityB: j}})
 				})
+				// TODO: move both entities away from their common center
 			}
 		}
 	}
