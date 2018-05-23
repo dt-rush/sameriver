@@ -13,33 +13,63 @@ import (
 	"github.com/dt-rush/donkeys-qquest/engine/component"
 )
 
-// Used for goroutines to request that an entity be spawned/despawned,
-// activated/deactivated
-type EntityStateSetRequest struct {
+// Used to represent an entity with an ID at a point in time. Despawning the
+// entity at a given ID will increment gen (gen ("generation") data is stored
+// in EntityTable). The token storing *gen* prevents goroutines from
+// requesting modifications on a new entity in edge cases which may occur
+// quite readily depending on timing of event processing
+type EntityToken struct {
+	id  uint16
+	gen uint8
+}
+
+// Used by goroutines which have requested to modify an entity to communicate
+// their desired modification, whether an entity state change or a change
+// to component values
+type EntityModificationType int
+
+const (
+	ENTITY_STATE_MODIFICATION     = iota
+	ENTITY_COMPONENT_MODIFICAITON = iota
+)
+
+type EntityModification struct {
+	// Type is used to allow the type-assertion of Modification to be either
+	// an instance of EntityStateModification or EntitiComponentModification
+	Type         EntityModificationType
+	Modification interface{}
+}
+
+// Used for goroutines to request that an entity be activated, deactivated, or
+// despawned
+type EntityState int
+
+const (
+	ENTITY_ACTIVATE   = iota
+	ENTITY_DEACTIVATE = iota
+	ENTITY_DESPAWN    = iota
+)
+
+type EntityStateModification struct {
 	// the entity to apply the state change to
 	entity EntityToken
-	// the new active state
-	active bool
-	// the new spawn state
-	spawn bool
-	// the component values for the entity (will be unset if spawn is false)
-	components ComponentSet
-	// a channel on which to send "true" if the request went through
-	// (the EntityToken's gen matched and at least one of spawn/bool was a
-	// *change* relative to the state of the entity when the request was
-	// processed) - if nil, we simply don't send a response
-	responseChan chan bool
+	// the requested state
+	state EntityState
 }
 
 // Used for goroutines to request modifications to entity components
-type EntityComponentSetRequest struct {
+type EntityComponentModification struct {
 	// the entity to apply the component change to
 	entity EntityToken
 	// the component values for the entity
 	components ComponentSet
-	// a channel on which to send "true" if the request went through
-	// (the EntityToken's gen matched) - if nil, we simply don't send a response
-	responseChan chan bool
+}
+
+// Used to spawn entities
+type EntitySpawnRequest struct {
+	Components ComponentSet
+	Tags       []string
+	Logic      LogicUnit
 }
 
 // used by the EntityManager to hold info about the allocated entities
@@ -58,6 +88,10 @@ type EntityTable struct {
 	availableIDs []uint16
 	// the gen of an ID is how many times an entity has been spawned on that ID
 	gen [MAX_ENTITIES]uint8
+	// locks so that goroutines can operate atomically on individual entities
+	// (eg. imagine two squirrels coming upon a nut and trying to eat it. One
+	// must win!)
+	entityLocks [MAX_ENTITIES]sync.Mutex
 }
 
 // used by the EntityManager to tag entities
@@ -78,12 +112,25 @@ type EntityManager struct {
 	// Entity table stores component bitarrays, a list of allocated IDs,
 	// and a list of available IDs from previous deallocations
 	entityTable EntityTable
-	// Component data
-	Components component.ComponentsTable
 	// Tag table stores data for entity tagging system
 	tagTable TagTable
-	// Channel for logic goroutines to send requests to modify entity components
-	ModificationChannel chan EntityModification
+	// Component data
+	Components component.ComponentsTable
+
+	// Channel for logic goroutines to send requests to modify entity
+	// active/spawn state (internal only, accessed implicitly via the
+	// AtomicEntityModify() method)
+	stateSetChannel chan EntitySetRequest
+	// Channel for logic goroutines to send requests to modify entity
+	// components (internal only, accessed implicitly via the
+	// AtomicEntityModify() method)
+	componentSetChannel chan EntityComponentModification
+	// set atomically when DespawnAll() is called, to short-circuit any
+	// processing of the prior two channels. We simply despawn all entities
+	// if this is 1
+	despawnAllFlag uint32
+	// Channel for spawn entity requests
+	spawnChannel chan EntitySpawnRequest
 
 	// used to allow systems to keep an updated list of entities which have
 	// components they're interested in operating on (eg. physics watches
@@ -96,9 +143,117 @@ type EntityManager struct {
 func (m *EntityManager) Init() {
 	// allocate component data
 	m.Components = AllocateComponentsMemoryBlock()
+	// allocate the state and component modification channels with the buffer
+	// size defined in constants
+	m.StateSetChannel = make(chan EntityStateModification,
+		ENTITY_MODIFICATION_CHANNEL_CAPACITY)
+	m.ComponentSetChannel = make(chan EntityComponentModification,
+		ENTITY_MODIFICATION_CHANNEL_CAPACITY)
+	m.SpawnChannel = make(chan EntitySpawnRequest,
+		MAX_ENTITIES)
 	// allocate tag system data members
 	m.tagTable.entitiesWithTag = make(map[string]([]uint16))
 	m.tagTable.tagsOfEntity = make(map[uint16]([]string))
+}
+
+// called once per scene Update() for scenes holding an entity manager
+func (m *EntityManager) Update() {
+	// First, act on the despawn all flag, despawning all entities if
+	// it's set.
+	m.actOnDespawnAllFlag()
+	// Second, process the spawn/despawn, activate/deactivate requests queued in
+	// the buffered channel
+	m.processStateModifications()
+	// Third, process the component modifications queued in the buffered channel
+	m.processComponentModifications()
+	// Finally, process any requests to spawn new entities queued in the
+	// buffered channel
+	m.processSpawnRequests()
+}
+
+// react to the despawnall flag
+func (m *EntityManager) actOnDespawnAllFlag() {
+	// if the flag is 1, set to 0 and proceed to despawn all
+	if atomic.CompareAndSwapUint32(&m.despawnAllFlag, 1, 0) {
+		Logger.Println("[Entity manager] Despawning all...")
+		Logger.Printf("[Entity manager] Currently spawned: %v\n",
+			m.entityTable.allocatedIDs)
+		// iterate all IDs which could have been allocated and despawn them
+		for i := 0; i < m.entityTable.numEntities; i++ {
+			// we can call this safely on each ID, even those unallocated,
+			// since it's idempotent with respect to unspawned entities
+			// (it will exit early if the entity is already despawned)
+			m.despawn(uint16(i))
+		}
+		// drain the modification and spawn channels (NOTE: by this point,
+		// all logic goroutines should have been terminated, so nothing new
+		// should be coming to these channels)
+		for _ := range m.stateSetChannel {
+			// we're draining the channel, so do nothing
+		}
+		for _ := range m.componentSetChannel {
+			// we're draining the channel, so do nothing
+		}
+		for _ := range m.spawnChannel {
+			// we're draining the channel, so do nothing
+		}
+		return true
+	} else {
+		return false
+	}
+}
+
+// Process the EntityStateModifications on StateSetChannel
+func (m *EntityManager) processStateSetChannel() {
+	// get the current number of requests in the channel and only process
+	// them. More may continue to pile up. They'll get processed next time.
+	n := len(m.StateSetChannel)
+	for i := 0; i < n; i++ {
+		// get the request from the channel
+		r := <-m.StateSetChannel
+		// if gen doesn't match, this request is invalid
+		if r.entity.gen != r.entityTable.gen[r.entity.id] {
+			continue
+		}
+		// process the event
+		switch r.state {
+		case ENTITY_ACTIVATE:
+			m.activate(r.id)
+		case ENTITY_DEACTIVATE:
+			m.deactivate(r.id)
+		case ENTITY_DESPAWN:
+			m.despawn(r.id)
+		}
+	}
+}
+
+// process the requests to set entity components
+func (m *EntityManager) processComponentSetChannel() {
+	// get the current number of requests in the channel and only process
+	// them. More may continue to pile up. They'll get processed next time.
+	n := len(m.StateSetChannel)
+	for i := 0; i < n; i++ {
+		// get the request from the channel
+		r := <-m.StateSetChannel
+		// if gen doesn't match, this request is invalid
+		if r.entity.gen != r.entityTable.gen[r.entity.id] {
+			continue
+		}
+		// take the component data and set it, on the ID
+		m.Components.ApplyComponentSet(r.id, r.components)
+	}
+}
+
+// process the spawn requests in the channel buffer
+func (m *EntityManager) processSpawnRequests() {
+	// get the current number of requests in the channel and only process
+	// them. More may continue to pile up. They'll get processed next time.
+	n := len(m.StateSetChannel)
+	for i := 0; i < n; i++ {
+		// get the request from the channel
+		r := <-m.SpawnChannel
+		m.spawn(r)
+	}
 }
 
 // get the ID for a new entity. Only called by SpawnEntity, which locks
@@ -132,7 +287,43 @@ func (m *EntityManager) allocateID() int32 {
 	return int32(id)
 }
 
-func (m *EntityManager) Despawn(id uint16) {
+// given a list of components, spawn an entity with the default values
+// returns the ID
+func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
+
+	// lock the entityTable
+	m.entityTable.mutex.Lock()
+	defer m.entityTable.mutex.Unlock()
+	// print a debug message
+	entityManagerDebug("[Entity manager] Spawning: %d\n", id)
+	// get an ID for the entity
+	allocateIDResponse := m.allocateID()
+	if allocateIDResponse == -1 {
+		Logger.Printf("Ran out of entity space. Will not spawn entity with "+
+			"tags: %v\n", r.Tags)
+	}
+	id := uint16(allocateIDResponse)
+	// set the bitarray for this entity
+	m.entityTable.componentBitArrays[id] = r.Components.ToBitArray()
+	// copy the data into the component storage for each component
+	// (note: we dereference the pointers, this is a real copy, so it's good
+	// that component values are either small pieces of data like [2]uint16
+	// or a pointer to a func, etc.).
+	// We don't "zero" the values of components not in the entity's set,
+	// because if a system operating on the component data
+	// expects to work on the data, it should be maintaining a list of
+	// entities with the required components using an UpdatedEntityList
+	m.Components.Active.SafeSet(id, false)
+	m.Components.ApplyComponentSet(id, r.Components)
+	// apply the tags
+	for _, tag := range r.Tags {
+		m.TagEntity(id, tag)
+	}
+	// return ID
+	return id
+}
+
+func (m *EntityManager) despawn(id uint16) {
 	m.entityTable.mutex.Lock()
 	defer m.entityTable.mutex.Unlock()
 
@@ -152,85 +343,14 @@ func (m *EntityManager) Despawn(id uint16) {
 	}
 	// remove the taglist for this entity
 	delete(m.tagTable.tagsOfEntity, id)
-}
-
-func (m *EntityManager) DespawnAll() {
-	Logger.Println("[Entity manager] Despawning all...")
-	Logger.Printf("[Entity manager] Currently spawned: %v\n",
-		m.entityTable.allocatedIDs)
-	// iterate all IDs which could have been allocated
-	for i := 0; i < m.entityTable.numEntities; i++ {
-		// we can call this safely on each ID, even those unallocated,
-		// since it's idempotent - it will exit early if the entity is already
-		// deactivated
-		m.Despawn(uint16(i))
-	}
-}
-
-// given a list of components, spawn an entity with the default values
-// returns the ID
-func (m *EntityManager) SpawnEntity(
-	component_set ComponentSet,
-	tags []string) uint16 {
-
-	// lock the entityTable
-	m.entityTable.mutex.Lock()
-	defer m.entityTable.mutex.Unlock()
-	// print a debug message
-	entityManagerDebug("[Entity manager] Spawning: %d\n", id)
-	// get an ID for the entity
-	allocateIDResponse := m.allocateID()
-	if allocateIDResponse == -1 {
-		Logger.Printf("Ran out of entity space. Will not spawn entity with "+
-			"tags: %v\n", tags)
-	}
-	id := uint16(allocateIDResponse)
 	// Increment the gen for the ID
 	m.entityTable.gen[id]++
-	// set the bitarray for this entity
-	m.entityTable.componentBitArrays[id] = component_set.ToBitArray()
-	// copy the data into the component storage for each component
-	// (note: we dereference the pointers, this is a real copy, so it's good
-	// that component values are either small pieces of data like [2]uint16
-	// or a pointer to a func, etc.).
-	// We don't "zero" the values of components not in the entity's set,
-	// because really if a system operating on the component data
-	// expects to work on the data, it should be maintaining a list of
-	// entities with the required components using an UpdatedEntityList
-	m.Components.Active.SafeSet(id, false)
-	// color
-	if component_set.Color != nil {
-		m.Components.Color.SafeSet(id, *(component_set.Color))
-	}
-	// hitbox
-	if component_set.Hitbox != nil {
-		m.Components.Hitbox.SafeSet(id, *(component_set.Hitbox))
-	}
-	// logic
-	if component_set.Logic != nil {
-		m.Components.Logic.SafeSet(id, *(component_set.Logic))
-	}
-	// position
-	if component_set.Position != nil {
-		m.Components.Position.SafeSet(id, *(component_set.Position))
-	}
-	// sprite
-	if component_set.Sprite != nil {
-		m.Components.Sprite.SafeSet(id, *(component_set.Sprite))
-	}
-	// velocity
-	if component_set.Velocity != nil {
-		m.Components.Velocity.SafeSet(id, *(component_set.Velocity))
-	}
-	// return ID
-	return id
 }
 
-// Returns the component bit array for an entity
-func (m *EntityManager) EntityComponentBitArray(id uint16) bitarray.BitArray {
-	m.entityTable.mutex.RLock()
-	defer m.entityTable.mutex.RUnlock()
-	return m.entityTable.componentBitArrays[id]
+// setting the flag will cause the entities to all get despawned next time
+// processEntityModificationRequests() is called
+func (m *EntityManager) DespawnAll() {
+	atomic.StoreUint32(&m.despawnAllFlag, 1)
 }
 
 // sets an entity active and notifies all watchers
@@ -417,4 +537,11 @@ func (m *EntityManager) GetUniqueTaggedEntity(tag string) int32 {
 func (m *EntityManager) EntityHasComponent(id uint16, COMPONENT int) bool {
 	b, _ := m.entityTable.componentBitArrays[id].GetBit(uint64(COMPONENT))
 	return b
+}
+
+// Returns the component bit array for an entity
+func (m *EntityManager) EntityComponentBitArray(id uint16) bitarray.BitArray {
+	m.entityTable.mutex.RLock()
+	defer m.entityTable.mutex.RUnlock()
+	return m.entityTable.componentBitArrays[id]
 }

@@ -29,3 +29,30 @@ func AllocateComponentsMemoryBlock() ComponentsTable {
 	c.Velocity = &VelocityComponent{}
 	return c
 }
+
+func (t *ComponentsTable) ApplyComponentSet(id uint16, c ComponentSet) {
+	// color
+	if c.Color != nil {
+		t.Color.SafeSet(id, *(c.Color))
+	}
+	// hitbox
+	if c.Hitbox != nil {
+		t.Hitbox.SafeSet(id, *(c.Hitbox))
+	}
+	// logic
+	if c.Logic != nil {
+		t.Logic.SafeSet(id, *(c.Logic))
+	}
+	// position
+	if c.Position != nil {
+		t.Position.SafeSet(id, *(c.Position))
+	}
+	// sprite
+	if c.Sprite != nil {
+		t.Sprite.SafeSet(id, *(c.Sprite))
+	}
+	// velocity
+	if c.Velocity != nil {
+		t.Velocity.SafeSet(id, *(c.Velocity))
+	}
+}
