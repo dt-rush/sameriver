@@ -40,6 +40,17 @@ func removeStringFromSlice(x string, slice *[]string) {
 	}
 }
 
+func removeEntityTokenFromSlice(x uint16, slice *[]uint16) {
+	last_ix := len(*slice) - 1
+	for i, v := range *slice {
+		if v == x {
+			(*slice)[i] = (*slice)[last_ix]
+			*slice = (*slice)[:last_ix]
+			break
+		}
+	}
+}
+
 func removeEntityQueryWatcherFromSliceByID(
 	ID uint16, slice *[]EntityQueryWatcher) {
 

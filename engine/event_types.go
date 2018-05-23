@@ -23,8 +23,8 @@ func (e Event) String() string {
 // TODO: assert this is correct during build
 const N_EVENT_TYPES = 2
 const (
-	EVENT_TYPE_COLLISION     = iota
-	EVENT_TYPE_SPAWN_REQUEST = iota
+	EVENT_TYPE_COLLISION     = EventType(iota)
+	EVENT_TYPE_SPAWN_REQUEST = EventType(iota)
 )
 
 type CollisionEventData struct {

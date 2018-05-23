@@ -4,6 +4,8 @@ import (
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
+// TODO: rename to clearly explain that this is an EntityQuery
+
 // Query for whether the bitarray (Match) is a subset of the target
 // BitArray
 type BitArraySubsetQuery struct {

@@ -29,15 +29,18 @@ type EntityToken struct {
 type EntityModificationType int
 
 const (
-	ENTITY_STATE_MODIFICATION     = iota
-	ENTITY_COMPONENT_MODIFICATION = iota
+	ENTITY_STATE_MODIFICATION     = EntityModificationType(iota)
+	ENTITY_COMPONENT_MODIFICATION = EntityModificationType(iota)
 )
 
 type EntityModification struct {
+	// the EntityToken is filled by the Manager, not visible to the
+	// caller
+	entity EntityToken
 	// Type is used to allow the type-assertion of Modification to be either
-	// an instance of EntityStateModification or EntitiComponentModification
-	Type EntityModificationType
-	Data interface{}
+	// an instance of EntityState or ComponentSet
+	Type         EntityModificationType
+	Modification interface{}
 }
 
 // Used for goroutines to request that an entity be activated, deactivated, or
@@ -45,12 +48,12 @@ type EntityModification struct {
 type EntityState int
 
 const (
-	ENTITY_ACTIVATE   = iota
-	ENTITY_DEACTIVATE = iota
-	ENTITY_DESPAWN    = iota
+	ENTITY_ACTIVATE   = EntityState(iota)
+	ENTITY_DEACTIVATE = EntityState(iota)
+	ENTITY_DESPAWN    = EntityState(iota)
 )
 
-type EntityStateModification struct {
+type entityStateModification struct {
 	// the entity to apply the state change to
 	entity EntityToken
 	// the requested state
@@ -58,7 +61,7 @@ type EntityStateModification struct {
 }
 
 // Used for goroutines to request modifications to entity components
-type EntityComponentModification struct {
+type entityComponentModification struct {
 	// the entity to apply the component change to
 	entity EntityToken
 	// the component values for the entity
@@ -123,11 +126,11 @@ type EntityManager struct {
 	// Channel for logic goroutines to send requests to modify entity
 	// active/spawn state (internal only, accessed implicitly via the
 	// AtomicEntityModify() method)
-	stateModificationChannel chan EntityStateModification
+	stateModificationChannel chan entityStateModification
 	// Channel for logic goroutines to send requests to modify entity
 	// components (internal only, accessed implicitly via the
 	// AtomicEntityModify() method)
-	componentModificationChannel chan EntityComponentModification
+	componentModificationChannel chan entityComponentModification
 	// set atomically when DespawnAll() is called, to short-circuit any
 	// processing of the prior two channels. We simply despawn all entities
 	// if this is 1
@@ -148,9 +151,9 @@ func (m *EntityManager) Init() {
 	m.Components = AllocateComponentsMemoryBlock()
 	// allocate the state and component modification channels with the buffer
 	// size defined in constants
-	m.stateModificationChannel = make(chan EntityStateModification,
+	m.stateModificationChannel = make(chan entityStateModification,
 		ENTITY_MODIFICATION_CHANNEL_CAPACITY)
-	m.componentModificationChannel = make(chan EntityComponentModification,
+	m.componentModificationChannel = make(chan entityComponentModification,
 		ENTITY_MODIFICATION_CHANNEL_CAPACITY)
 	m.spawnChannel = make(chan EntitySpawnRequest,
 		MAX_ENTITIES)
@@ -179,7 +182,7 @@ func (m *EntityManager) actOnDespawnAllFlag() {
 	// if the flag is 1, set to 0 and proceed to despawn all
 	if atomic.CompareAndSwapUint32(&m.despawnAllFlag, 1, 0) {
 		Logger.Println("[Entity manager] Despawning all...")
-		Logger.Printf("[Entity manager] Currently spawned: %v\n",
+		entityManagerDebug("Currently spawned: %v\n",
 			m.entityTable.allocatedIDs)
 		// iterate all IDs which could have been allocated and despawn them
 		for i := 0; i < m.entityTable.numEntities; i++ {
@@ -206,7 +209,7 @@ func (m *EntityManager) actOnDespawnAllFlag() {
 	}
 }
 
-// Process the EntityStateModifications on stateModificationChannel
+// Process the entityStateModifications on stateModificationChannel
 func (m *EntityManager) processStateModificationChannel() {
 	// get the current number of requests in the channel and only process
 	// them. More may continue to pile up. They'll get processed next time.
@@ -340,7 +343,7 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 	// because if a system operating on the component data
 	// expects to work on the data, it should be maintaining a list of
 	// entities with the required components using an UpdatedEntityList
-	m.Components.Active.SafeSet(id, false)
+	m.Components.Active.SafeSet(id, true)
 	m.Components.ApplyComponentSet(id, r.Components)
 	// apply the tags
 	for _, tag := range r.Tags {
@@ -353,6 +356,8 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 			r.Components.Logic.StopChannel,
 			m)
 	}
+	// notify entity is active
+	m.notifyActiveState(id, true)
 	// return ID
 	return id
 }
@@ -369,7 +374,7 @@ func (m *EntityManager) despawn(id uint16) {
 	removeUint16FromSlice(id, &m.entityTable.allocatedIDs)
 	// Deactivate the entity to ensure that all updated entity lists are
 	// notified
-	m.deactivate(id)
+	m.setActiveState(id, false)
 	// clear the entity from lists of tagged entities it's in
 	tags_to_clear := m.tagTable.tagsOfEntity[id]
 	for _, tag_to_clear := range tags_to_clear {
@@ -377,6 +382,8 @@ func (m *EntityManager) despawn(id uint16) {
 	}
 	// remove the taglist for this entity
 	delete(m.tagTable.tagsOfEntity, id)
+	// stop the entity's logic
+	m.Components.Logic.SafeGet(id).StopChannel <- true
 	// Increment the gen for the ID
 	// NOTE: it's important that we increment gen before resetting the
 	// heldForModificationLocks, since any goroutines waiting for the
@@ -397,22 +404,28 @@ func (m *EntityManager) DespawnAll() {
 
 // sets an entity active and notifies all watchers
 func (m *EntityManager) activate(id uint16) {
-	Logger.Printf("[Entity manager] Activating: %d\n", id)
+	m.entityTable.mutex.Lock()
+	defer m.entityTable.mutex.Unlock()
+	entityManagerDebug("Activating: %d\n", id)
 	m.setActiveState(id, true)
 }
 
 // sets an entity inactive and notifies all watchers
 func (m *EntityManager) deactivate(id uint16) {
-	Logger.Printf("[Entity manager] Deactivating: %d\n", id)
+	m.entityTable.mutex.Lock()
+	defer m.entityTable.mutex.Unlock()
+	entityManagerDebug("Deactivating: %d\n", id)
 	m.setActiveState(id, false)
 }
 
 // sets the active state on an entity and notifies all watchers
 func (m *EntityManager) setActiveState(id uint16, state bool) {
+	// TODO: this pattern seems weird. Active should not be a component,
+	// but metadata. Refactor it
 	// Only set (and notify) if not already in given state
 	if m.Components.Active.SafeGet(id) != state {
 		m.Components.Active.SafeSet(id, state)
-		go m.notifyActiveState(id, state)
+		m.notifyActiveState(id, state)
 	}
 }
 
@@ -421,14 +434,14 @@ func (m *EntityManager) setActiveState(id uint16, state bool) {
 func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 
 	for _, watcher := range m.activeEntityWatchers {
-		if !watcher.Query.Test(id, m) {
+		if watcher.Query.Test(id, m) {
 			// warn if the channel is full (we will block here if so)
 			// NOTE: this can be very bad indeed, since now whatever
 			// called Activate is blocking
 			if len(watcher.Channel) == ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY {
-				Logger.Printf("[Entity manager] ⚠  active watcher channel "+
-					"%s is full, causing block in goroutine for "+
-					"NotifyActiveState(%d, %v)\n",
+				entityManagerDebug("⚠  active entity "+
+					" watcher channel %s is full, causing block in goroutine "+
+					" for NotifyActiveState(%d, %v)\n",
 					watcher.Name, id, active)
 			}
 			// send the ID signal, or -(ID + 1), if active == false
@@ -443,20 +456,34 @@ func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 
 // Get a list of entities which will be updated whenever an entity becomes
 // active / inactive
-func (m *EntityManager) GetUpdatedActiveList(
+func (m *EntityManager) GetUpdatedActiveEntityList(
 	q EntityQuery, name string) *UpdatedEntityList {
 
+	// get a new UpdatedEntityList
 	queryWatcher := m.GetActiveEntityQueryWatcher(q, name)
-	return NewUpdatedEntityList(
+	list := NewUpdatedEntityList(
 		queryWatcher.Channel,
 		queryWatcher.ID,
 		name)
+	// lock the entity table (to prevent any new activate/deactive events)
+	// and iterate all entities, adding those which currently match the query
+	// to the new UpdatedEntityList's Entities list.
+	m.entityTable.mutex.Lock()
+	for _, id := range m.entityTable.allocatedIDs {
+		if q.Test(id, m) {
+			updatedEntityListDebug("sending signal %d in "+
+				"GetUpdatedActiveEntityList", id)
+			list.EntityChannel <- int32(id)
+		}
+	}
+	// unlock the entity table and return our list
+	m.entityTable.mutex.Unlock()
+	return list
 }
 
 // Stops the channel-watching update-loop goroutine for the entity list
 // and deletes the active watcher created for it
-func (m *EntityManager) DeleteUpdatedActiveList(l UpdatedEntityList) {
-	//
+func (m *EntityManager) DeleteUpdatedActiveEntityList(l UpdatedEntityList) {
 	m.DeleteActiveEntityQueryWatcher(l.ID)
 	l.stopUpdateLoopChannel <- true
 }
@@ -485,15 +512,18 @@ func (m *EntityManager) DeleteActiveEntityQueryWatcher(ID uint16) {
 	removeEntityQueryWatcherFromSliceByID(ID, &m.activeEntityWatchers)
 }
 
-// hold an entity for modification, queueing the modification when the function
+// hold an entity for modification, queueing the modification when
+// the function
 // returns
 func (m *EntityManager) AtomicEntityModify(
-	e EntityToken,
+	id uint16,
 	f func(e *EntityModification)) bool {
+
+	genRequested := atomic.LoadUint32(&m.entityTable.gens[id])
 
 	// wait to obtain heldForModificationLocks
 	for !atomic.CompareAndSwapUint32(
-		&m.entityTable.heldForModificationLocks[e.id], 0, 1) {
+		&m.entityTable.heldForModificationLocks[id], 0, 1) {
 		// if we didn't manage to grab the lock, sleep for a good 8 frames
 		// (128 ms, hardly a problem) so that even if there are several
 		// goroutines currently sleeping in this loop, they won't starve the
@@ -506,20 +536,25 @@ func (m *EntityManager) AtomicEntityModify(
 		time.Sleep(4 * FRAME_SLEEP)
 	}
 	// if the gen has changed by the time the lock was released, return false
-	if atomic.LoadUint32(&m.entityTable.gens[e.id]) != e.gen {
+	if atomic.LoadUint32(&m.entityTable.gens[id]) != genRequested {
 		return false
 	}
-	// create a modification object whose address we will pass to f
-	mod := EntityModification{}
+	// create a modification object whose address we will pass to f.
+	// we add an entity token to it (which the caller cannot remove or write)
+	mod := EntityModification{entity: EntityToken{id, genRequested}}
 	// invoke the function, passing it a pointer to the modification object
 	f(&mod)
 	// determine the type of the modification and pass it to the appropriate
 	// channel after type asserting its contained modification
 	switch mod.Type {
 	case ENTITY_STATE_MODIFICATION:
-		m.stateModificationChannel <- mod.Data.(EntityStateModification)
+		m.stateModificationChannel <- entityStateModification{
+			entity: mod.entity,
+			State:  mod.Modification.(EntityState)}
 	case ENTITY_COMPONENT_MODIFICATION:
-		m.componentModificationChannel <- mod.Data.(EntityComponentModification)
+		m.componentModificationChannel <- entityComponentModification{
+			entity:     mod.entity,
+			Components: mod.Modification.(ComponentSet)}
 	}
 	// let the caller know their modification went through
 	return true
@@ -567,7 +602,7 @@ func (m *EntityManager) TagEntity(id uint16, tag string) {
 	m.tagTable.mutex.Lock()
 	defer m.tagTable.mutex.Unlock()
 
-	Logger.Printf("[Entity manager] Tagging %d with: %s\n", id, tag)
+	entityManagerDebug("Tagging %d with: %s\n", id, tag)
 	_, t_of_e_exists := m.tagTable.tagsOfEntity[id]
 	_, e_with_t_exists := m.tagTable.entitiesWithTag[tag]
 	if !t_of_e_exists {
@@ -585,7 +620,7 @@ func (m *EntityManager) UntagEntity(id uint16, tag string) {
 	m.tagTable.mutex.Lock()
 	defer m.tagTable.mutex.Unlock()
 
-	Logger.Printf("[Entity manager] Removing tag %s from %d\n", tag, id)
+	entityManagerDebug("Removing tag %s from %d\n", tag, id)
 	// NOTE: I'm aware the below code looks like some gross PHP stuff and
 	// might be hard to read. Basically we do the following:
 	//

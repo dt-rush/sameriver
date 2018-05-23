@@ -15,7 +15,7 @@ func genDebugFunction(moduleName string, flag bool) DebugFunction {
 		case len(params) == 0:
 			Logger.Printf(prefix + s)
 		default:
-			Logger.Printf(prefix+s, params)
+			Logger.Printf(prefix+s, params...)
 		}
 	}
 }

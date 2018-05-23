@@ -24,7 +24,8 @@ import (
 // - send EntityComponentModification messages to the ComponentSetChannel
 // - atomically modify an entity using em.AtomicEntityModify()
 //
-// entity state (activate/deactivate/despawn),
+// The StopChannel is not buffered, since we need to be sure when the
+// logic has ended.
 type LogicFunc func(
 	entityID uint16,
 	StopChannel chan bool,
@@ -41,7 +42,7 @@ func NewLogicUnit(LogicFunc LogicFunc, Name string) LogicUnit {
 	return LogicUnit{
 		LogicFunc,
 		Name,
-		make(chan bool, 1)}
+		make(chan bool)}
 }
 
 type LogicComponent struct {

@@ -101,7 +101,7 @@ func (s *CollisionSystem) Init(
 		MakeComponentBitArray([]int{
 			POSITION_COMPONENT,
 			HITBOX_COMPONENT}))
-	s.collidableEntities = s.em.GetUpdatedActiveList(query, "collidable")
+	s.collidableEntities = s.em.GetUpdatedActiveEntityList(query, "collidable")
 	// add a callback to the updated entity list of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
 	// in the collision rate limiter array

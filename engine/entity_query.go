@@ -3,7 +3,15 @@ package engine
 // TODO: implement this interface in a struct which allows generic predication
 // on entities (their component values and anything else)
 type EntityQuery interface {
-	Test(id uint16, entity_manager *EntityManager) bool
+	Test(id uint16, em *EntityManager) bool
+}
+
+type GenericEntityQuery struct {
+	TestFunc func(id uint16, em *EntityManager) bool
+}
+
+func (q GenericEntityQuery) Test(id uint16, em *EntityManager) bool {
+	return q.TestFunc(id, em)
 }
 
 type EntityQueryWatcher struct {

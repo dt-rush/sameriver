@@ -16,7 +16,7 @@ import (
 // A list of entities which is can be regularly updated by one goroutine
 // while another reads and uses it
 type UpdatedEntityList struct {
-	// the entities in the list
+	// the entities in the list (tagged with gen)
 	Entities []uint16
 	// used to protect the Entities slice when adding or removing an entity
 	Mutex sync.RWMutex
@@ -83,13 +83,11 @@ func (l *UpdatedEntityList) actOnIDSignal(idEncoded int32) {
 
 	if idEncoded >= 0 {
 		id := uint16(idEncoded)
-		updatedEntityListDebug("%s got "+
-			"insert:%d\n", l.Name, idEncoded)
+		updatedEntityListDebug("%s got insert:%d", l.Name, idEncoded)
 		l.insert(id)
 	} else {
 		id := uint16(-(idEncoded + 1))
-		updatedEntityListDebug("%s got "+
-			"remove:%d\n", l.Name, id)
+		updatedEntityListDebug("%s got remove:%d", l.Name, id)
 		l.remove(id)
 	}
 }

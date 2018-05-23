@@ -28,7 +28,7 @@ func (s *PhysicsSystem) Init(em *EntityManager) {
 			POSITION_COMPONENT,
 			VELOCITY_COMPONENT,
 			HITBOX_COMPONENT}))
-	s.physicsEntities = s.em.GetUpdatedActiveList(query, "physical")
+	s.physicsEntities = s.em.GetUpdatedActiveEntityList(query, "physical")
 }
 
 // apply velocity to position of entities
