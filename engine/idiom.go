@@ -29,6 +29,21 @@ func removeUint16FromSlice(slice *[]uint16, x uint16) {
 	}
 }
 
+func removeIndexFromUint16Slice(slice *[]uint16, index int) {
+	last_ix := len(*slice) - 1
+	(*slice)[index] = (*slice)[last_ix]
+	*slice = (*slice)[:last_ix]
+}
+
+func indexOfUint16InSlice(slice *[]uint16, x uint16) int {
+	for i, v := range *slice {
+		if v == x {
+			return i
+		}
+	}
+	return -1
+}
+
 func removeStringFromSlice(slice *[]string, x string) {
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {

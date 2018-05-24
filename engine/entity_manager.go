@@ -262,15 +262,6 @@ func (m *EntityManager) processStateModificationChannel() {
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		r := <-m.stateModificationChannel
-		// if gen doesn't match, this request is invalid
-		// (TODO: We don't really need this check. If AtomicEntityModify is
-		// being respected, we won't ever receive a modification for an entity
-		// unless its gen matches, since a despawn event is itself a
-		// modification which will change the gen, resulting in a failure to
-		// acquire the entity in AtomicEntityModify)
-		if r.entity.gen != m.entityTable.gens[r.entity.ID] {
-			continue
-		}
 		var t0 time.Time
 		if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
 			t0 = time.Now()
@@ -307,15 +298,6 @@ func (m *EntityManager) processComponentModificationChannel() {
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		r := <-m.componentModificationChannel
-		// if gen doesn't match, this request is invalid
-		// (TODO: We don't really need this check. If AtomicEntityModify is
-		// being respected, we won't ever receive a modification for an entity
-		// unless its gen matches, since a despawn event is itself a
-		// modification which will change the gen, resulting in a failure to
-		// acquire the entity in AtomicEntityModify)
-		if r.entity.gen != m.entityTable.gens[r.entity.ID] {
-			continue
-		}
 		// take the component data and set it, on the ID
 		m.Components.ApplyComponentSet(uint16(r.entity.ID), r.Components)
 		// now that we've applied the modification, release the lock on the
@@ -537,7 +519,32 @@ func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 func (m *EntityManager) GetUpdatedActiveEntityList(
 	q EntityQuery, name string) *UpdatedEntityList {
 
-	// TODO: explain this algorithm better
+	// The basic idea of how we're going to build this list is as follows:
+	//
+	// Wait until Update() has recently finished.
+	// Lock the entityTable, but only long enough to grab a snapshot of
+	// 		allocatedIDs
+	// Register an active query watcher with the query of the list we want to
+	// 		build.
+	// Create a temporary EntityToken channel, tempChannel, which we will
+	// 		attach to the UpdatedEntityList we're building.
+	// Enter a loop while the snapshot of allocatedIDs still has IDs to process
+	//		In the loop we select from the active query watcher's channel, and
+	//			if we get a remove signal, we try to remove that ID from
+	//				whatever remains of the snapshot we're processing. If the
+	//				ID isn't in the snapshot, we must have already inserted it
+	//				so we forward the remove signal to the list
+	//			if we get an add signal, we send the signal to the tempChannel
+	//				attached to the list
+	//		if we didn't select an insert/remove signal from the active query
+	//			watcher, we pop an element from the snapshot of ID's and test
+	//			the query against that entity. If it matches, we send an insert
+	//			event to the channel.
+	// When we've processed all the snapshot ID's, we stop the list (which
+	// stops its update loop, listening on its channel), connect the proper
+	// channel, that of the active query watcher, and then start the list.
+	// the list has now checked every entity against its query and is current
+	// with all events. We return it.
 
 	// sleep until Update() has just finished
 	for !atomic.CompareAndSwapUint32(&m.UpdateDone, 1, 0) {
@@ -564,10 +571,10 @@ func (m *EntityManager) GetUpdatedActiveEntityList(
 	// activate/deactivate signals
 	for len(allocatedIDsSnapshot) > 0 {
 		select {
-		// prioritize processing new events (TODO: explain why)
+		// prioritize processing new events
 		case entitySignal := <-queryWatcher.Channel:
-			updatedEntityListDebug("got signal on queryWatcher Channel while "+
-				"trying to build UpdatedActiveEntityList %s", name)
+			updatedEntityListDebug("got signal on queryWatcher Channel "+
+				"while trying to build UpdatedActiveEntityList %s", name)
 			if entitySignal.ID < 0 {
 				idToRemove := uint16(-(entitySignal.ID + 1))
 				updatedEntityListDebug("removing ID %d from snapshot list "+
@@ -575,7 +582,18 @@ func (m *EntityManager) GetUpdatedActiveEntityList(
 					idToRemove, name)
 				// remove from snapshot if yet to process. remove
 				// from list otherwise
-				removeUint16FromSlice(&allocatedIDsSnapshot, idToRemove)
+				indexOfIdToRemoveInSnapshot := indexOfUint16InSlice(
+					&allocatedIDsSnapshot, idToRemove)
+				if indexOfIdToRemoveInSnapshot != -1 {
+					removeIndexFromUint16Slice(
+						&allocatedIDsSnapshot, indexOfIdToRemoveInSnapshot)
+				} else {
+					// if the ID has already been removed from the snapshot,
+					// we added it to the list (since getting a remove signal
+					// on the query means it matches the query), so send the
+					// remove signal to the list
+					list.EntityChannel <- entitySignal
+				}
 			} else {
 				// signal was an activate event. send to list
 				updatedEntityListDebug("sending signal %d in "+
