@@ -445,8 +445,12 @@ func (m *EntityManager) despawn(id uint16) {
 			time.Since(t0).Nanoseconds()/1e6)
 	}
 	// stop the entity's logic
+	// NOTE: we don't need to worry about reading the component value
+	// directly since until the entityLock is released in
+	// processStateModificationChannel(), nothing else can write to
+	// Logic.Data[id] for this id
 	go func() {
-		m.Components.Logic.SafeGet(id).StopChannel <- true
+		m.Components.Logic.Data[id].StopChannel <- true
 	}()
 }
 
