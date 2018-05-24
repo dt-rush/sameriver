@@ -162,13 +162,15 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 			// only proceed if we can hold both entities for modification,
 			// since we need to be able to move them away from their common center
 			// if overlapping
-			if !s.em.holdTwoEntities(i, j) {
+			if !s.em.holdTwoEntities(uint16(i.ID), uint16(j.ID)) {
 				continue
 			}
 			// check the collision
-			if s.TestCollision(i, j) {
+			if s.TestCollision(uint16(i.ID), uint16(j.ID)) {
 				// if colliding, send the message (rate-limited)
-				s.rateLimiterArray.GetRateLimiter(i, j).Do(func() {
+				s.rateLimiterArray.GetRateLimiter(
+					uint16(i.ID),
+					uint16(j.ID)).Do(func() {
 					s.eventManager.Publish(Event{
 						Type:        EVENT_TYPE_COLLISION,
 						Description: fmt.Sprintf("collision(%d,%d)", i, j),

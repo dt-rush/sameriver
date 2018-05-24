@@ -76,13 +76,13 @@ func (s *PhysicsSystem) Update(dt_ms uint16) {
 	defer s.em.Components.Hitbox.Mutex.Unlock()
 	defer s.physicsEntities.Mutex.Unlock()
 
-	for _, id := range s.physicsEntities.Entities {
+	for _, e := range s.physicsEntities.Entities {
 		// apply the physics only if this entity is not held for modification
 		// (atomic operations are cheap, so this isn't a bad thing to
 		// do for each entity during each Update())
-		if s.em.holdEntity(id) {
-			s.applyPhysics(id, dt_ms)
-			s.em.releaseEntity(id)
+		if s.em.holdEntity(uint16(e.ID)) {
+			s.applyPhysics(uint16(e.ID), dt_ms)
+			s.em.releaseEntity(uint16(e.ID))
 		}
 	}
 }

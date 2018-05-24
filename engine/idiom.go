@@ -18,7 +18,7 @@ package engine
 // little splice idiom when we don't care about slice order (saves
 // a copy operation if we wanted to shift the slice to fill the gap)
 
-func removeUint16FromSlice(x uint16, slice *[]uint16) {
+func removeUint16FromSlice(slice *[]uint16, x uint16) {
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {
 		if v == x {
@@ -29,7 +29,7 @@ func removeUint16FromSlice(x uint16, slice *[]uint16) {
 	}
 }
 
-func removeStringFromSlice(x string, slice *[]string) {
+func removeStringFromSlice(slice *[]string, x string) {
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {
 		if v == x {
@@ -40,10 +40,10 @@ func removeStringFromSlice(x string, slice *[]string) {
 	}
 }
 
-func removeEntityTokenFromSlice(x uint16, slice *[]uint16) {
+func removeEntityTokenFromSlice(slice *[]EntityToken, x EntityToken) {
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {
-		if v == x {
+		if v.ID == x.ID {
 			(*slice)[i] = (*slice)[last_ix]
 			*slice = (*slice)[:last_ix]
 			break
@@ -52,7 +52,7 @@ func removeEntityTokenFromSlice(x uint16, slice *[]uint16) {
 }
 
 func removeEntityQueryWatcherFromSliceByID(
-	ID uint16, slice *[]EntityQueryWatcher) {
+	slice *[]EntityQueryWatcher, ID uint16) {
 
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {
@@ -69,7 +69,7 @@ func removeEntityQueryWatcherFromSliceByID(
 }
 
 func removeEventChannelFromSlice(
-	x EventChannel, slice *[]EventChannel) {
+	slice *[]EventChannel, x EventChannel) {
 
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {

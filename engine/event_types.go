@@ -28,8 +28,8 @@ const (
 )
 
 type CollisionEventData struct {
-	EntityA uint16
-	EntityB uint16
+	EntityA EntityToken
+	EntityB EntityToken
 }
 
 type SpawnRequestData struct {

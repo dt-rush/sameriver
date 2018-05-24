@@ -20,7 +20,7 @@ type EntityQueryWatcher struct {
 	// A channel along which entity ID's will be sent, with the possibility
 	// that those IDs are negative, with -(ID + 1) corresponding to ID
 	// being deactivated
-	Channel chan (int32)
+	Channel chan EntityToken
 	Name    string
 	// the ID of this watcher (used for memory management)
 	ID uint16
@@ -33,7 +33,7 @@ func NewEntityQueryWatcher(
 
 	return EntityQueryWatcher{
 		q,
-		make(chan (int32), ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY),
+		make(chan EntityToken, ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY),
 		name,
 		ID}
 }

@@ -17,11 +17,11 @@ import (
 // while another reads and uses it
 type UpdatedEntityList struct {
 	// the entities in the list (tagged with gen)
-	Entities []uint16
+	Entities []EntityToken
 	// used to protect the Entities slice when adding or removing an entity
 	Mutex sync.RWMutex
 	// the channel along which updates to the list will come
-	EntityChannel chan int32
+	EntityChannel chan EntityToken
 	// used to stop the update loop's goroutine in
 	// the case that they're done with the list (by calling Stop())
 	stopUpdateLoopChannel chan bool
@@ -39,11 +39,13 @@ type UpdatedEntityList struct {
 // create a new UpdatedEntityList by giving it a channel on which it will
 // receive entity IDs
 func NewUpdatedEntityList(
-	EntityChannel chan int32, ID uint16, Name string) *UpdatedEntityList {
+	EntityChannel chan EntityToken,
+	ID uint16,
+	Name string) *UpdatedEntityList {
 
 	l := UpdatedEntityList{}
 	l.EntityChannel = EntityChannel
-	l.Entities = make([]uint16, 0)
+	l.Entities = make([]EntityToken, 0)
 	l.stopUpdateLoopChannel = make(chan (bool))
 	l.Name = Name
 	l.start()
@@ -60,7 +62,8 @@ func (l *UpdatedEntityList) start() {
 			case _ = <-l.stopUpdateLoopChannel:
 				break updateloop
 			case id := <-l.EntityChannel:
-				l.actOnIDSignal(id)
+				updatedEntityListDebug("%s received signal", l.Name)
+				l.actOnEntitySignal(id)
 			default:
 				time.Sleep(100 * time.Millisecond)
 			}
@@ -73,40 +76,42 @@ func (l *UpdatedEntityList) Stop() {
 }
 
 // acts on an ID signal, which is either an ID to insert or -(ID + 1) to remove
-func (l *UpdatedEntityList) actOnIDSignal(idEncoded int32) {
+func (l *UpdatedEntityList) actOnEntitySignal(e EntityToken) {
 	l.Mutex.Lock()
 	defer l.Mutex.Unlock()
+
+	idEncoded := e.ID
 
 	for _, callback := range l.callbacks {
 		go callback(idEncoded)
 	}
 
 	if idEncoded >= 0 {
-		id := uint16(idEncoded)
 		updatedEntityListDebug("%s got insert:%d", l.Name, idEncoded)
-		l.insert(id)
+		l.insert(e)
 	} else {
-		id := uint16(-(idEncoded + 1))
-		updatedEntityListDebug("%s got remove:%d", l.Name, id)
-		l.remove(id)
+		// decode ID for removal
+		e.ID = -(idEncoded + 1)
+		updatedEntityListDebug("%s got remove:%d", l.Name, e.ID)
+		l.remove(e)
 	}
 }
 
 // inserts an entity into the list (private so only called by the update loop)
-func (l *UpdatedEntityList) insert(id uint16) {
+func (l *UpdatedEntityList) insert(e EntityToken) {
 	if l.Sorted {
-		SortedUint16SliceInsert(&l.Entities, id)
+		SortedEntityTokenSliceInsert(&l.Entities, e)
 	} else {
-		l.Entities = append(l.Entities, id)
+		l.Entities = append(l.Entities, e)
 	}
 }
 
 // removes an entity from the list (private so only called by the update loop)
-func (l *UpdatedEntityList) remove(id uint16) {
+func (l *UpdatedEntityList) remove(e EntityToken) {
 	if l.Sorted {
-		SortedUint16SliceRemove(&l.Entities, id)
+		SortedEntityTokenSliceRemove(&l.Entities, e)
 	} else {
-		removeUint16FromSlice(id, &l.Entities)
+		removeEntityTokenFromSlice(&l.Entities, e)
 	}
 }
 

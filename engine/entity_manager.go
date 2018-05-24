@@ -18,10 +18,11 @@ import (
 // Used to represent an entity with an ID at a point in time. Despawning the
 // entity at a given ID will increment gen (gen ("generation") data is stored
 // in EntityTable). The token storing *gen* prevents goroutines from
-// requesting modifications on a new entity in edge cases which may occur
-// quite readily depending on timing of event processing
+// requesting modifications on an entity after it has been despawened, or
+// once a new entity has been spawned with its ID, which may happen quite
+// readily otherwise
 type EntityToken struct {
-	id  uint16
+	ID  int32
 	gen uint32
 }
 
@@ -258,7 +259,6 @@ func (m *EntityManager) processStateModificationChannel() {
 	// get the current number of requests in the channel and only process
 	// them. More may continue to pile up. They'll get processed next time.
 	n := len(m.stateModificationChannel)
-	entityManagerDebug("%d state modifications to process...", n)
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		r := <-m.stateModificationChannel
@@ -268,7 +268,7 @@ func (m *EntityManager) processStateModificationChannel() {
 		// unless its gen matches, since a despawn event is itself a
 		// modification which will change the gen, resulting in a failure to
 		// acquire the entity in AtomicEntityModify)
-		if r.entity.gen != m.entityTable.gens[r.entity.id] {
+		if r.entity.gen != m.entityTable.gens[r.entity.ID] {
 			continue
 		}
 		var t0 time.Time
@@ -279,13 +279,13 @@ func (m *EntityManager) processStateModificationChannel() {
 		switch r.State {
 		case ENTITY_ACTIVATE:
 			entityManagerDebug("processing activate()")
-			m.activate(r.entity.id)
+			m.activate(uint16(r.entity.ID))
 		case ENTITY_DEACTIVATE:
 			entityManagerDebug("processing deactivate()")
-			m.deactivate(r.entity.id)
+			m.deactivate(uint16(r.entity.ID))
 		case ENTITY_DESPAWN:
 			entityManagerDebug("processing despawn()")
-			m.despawn(r.entity.id)
+			m.despawn(uint16(r.entity.ID))
 		}
 		if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
 			fmt.Printf("processing took: %d ms\n",
@@ -295,7 +295,7 @@ func (m *EntityManager) processStateModificationChannel() {
 		// now that we've applied the modification, release the lock on the
 		// ID
 		atomic.StoreUint32(
-			&m.entityTable.heldForModificationLocks[r.entity.id], 0)
+			&m.entityTable.heldForModificationLocks[r.entity.ID], 0)
 	}
 }
 
@@ -313,15 +313,15 @@ func (m *EntityManager) processComponentModificationChannel() {
 		// unless its gen matches, since a despawn event is itself a
 		// modification which will change the gen, resulting in a failure to
 		// acquire the entity in AtomicEntityModify)
-		if r.entity.gen != m.entityTable.gens[r.entity.id] {
+		if r.entity.gen != m.entityTable.gens[r.entity.ID] {
 			continue
 		}
 		// take the component data and set it, on the ID
-		m.Components.ApplyComponentSet(r.entity.id, r.Components)
+		m.Components.ApplyComponentSet(uint16(r.entity.ID), r.Components)
 		// now that we've applied the modification, release the lock on the
 		// ID
 		atomic.StoreUint32(
-			&m.entityTable.heldForModificationLocks[r.entity.id], 0)
+			&m.entityTable.heldForModificationLocks[r.entity.ID], 0)
 	}
 }
 
@@ -423,21 +423,27 @@ func (m *EntityManager) despawn(id uint16) {
 
 	t0 := time.Now()
 	m.entityTable.mutex.Lock()
-	defer m.entityTable.mutex.Unlock()
-	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
+	if DEBUG_DESPAWN {
 		fmt.Printf("acquiring entityTable lock in despawn took: %d ms\n",
 			time.Since(t0).Nanoseconds()/1e6)
 	}
-
 	// decrement the entity count
 	m.entityTable.numEntities--
 	// add the ID to the list of available IDs
 	m.entityTable.availableIDs = append(m.entityTable.availableIDs, id)
 	// remove the ID from the list of allocated IDs
-	removeUint16FromSlice(id, &m.entityTable.allocatedIDs)
+	removeUint16FromSlice(&m.entityTable.allocatedIDs, id)
+	// Increment the gen for the ID
+	// NOTE: it's important that we increment gen before resetting the
+	// heldForModificationLocks, since any goroutines waiting for the
+	// lock to be 0 so they can claim it in AtomicEntityModify() will then
+	// immediately want to check if the gen of the entity still matches.
+	atomic.AddUint32(&m.entityTable.gens[id], 1)
+	m.entityTable.mutex.Unlock()
+
 	// Deactivate the entity to ensure that all updated entity lists are
 	// notified
-	go m.setActiveState(id, false)
+	m.setActiveState(id, false)
 	// clear the entity from lists of tagged entities it's in
 	t0 = time.Now()
 	tags_to_clear := m.tagTable.tagsOfEntity[id]
@@ -456,16 +462,11 @@ func (m *EntityManager) despawn(id uint16) {
 	go func() {
 		m.Components.Logic.SafeGet(id).StopChannel <- true
 	}()
-	// Increment the gen for the ID
-	// NOTE: it's important that we increment gen before resetting the
-	// heldForModificationLocks, since any goroutines waiting for the
-	// lock to be 0 so they can claim it in AtomicEntityModify() will then
-	// immediately want to check if the gen of the entity still matches.
-	atomic.AddUint32(&m.entityTable.gens[id], 1)
 	// Clear the modificationLock for the entity (any goroutine either trying
 	// to set it to 1 with an old gen or holding it for modification with
 	// an old gen will fail
 	atomic.StoreUint32(&m.entityTable.heldForModificationLocks[id], 0)
+	entityManagerDebug("despawn() terminating")
 }
 
 // setting the flag will cause the entities to all get despawned next time
@@ -497,7 +498,7 @@ func (m *EntityManager) setActiveState(id uint16, state bool) {
 	// Only set (and notify) if not already in given state
 	if m.Components.Active.SafeGet(id) != state {
 		m.Components.Active.SafeSet(id, state)
-		go m.notifyActiveState(id, state)
+		m.notifyActiveState(id, state)
 	}
 }
 
@@ -514,7 +515,7 @@ func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 			// called Activate is blocking
 			if len(watcher.Channel) == ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY {
 				entityManagerDebug("⚠  active entity "+
-					" watcher channel %s is full, causing block in goroutine "+
+					" watcher channel %s is full, causing block in "+
 					" for NotifyActiveState(%d, %v)\n",
 					watcher.Name, id, active)
 			}
@@ -523,7 +524,10 @@ func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 			if !active {
 				idSignal = -(idSignal + 1)
 			}
-			watcher.Channel <- idSignal
+			e := EntityToken{
+				idSignal,
+				atomic.LoadUint32(&m.entityTable.gens[id])}
+			watcher.Channel <- e
 		}
 	}
 }
@@ -542,7 +546,7 @@ func (m *EntityManager) GetUpdatedActiveEntityList(
 	// register a query watcher for the query given
 	queryWatcher := m.GetActiveEntityQueryWatcher(q, name)
 	// make a channel to temporarily act as the input channel to the list
-	tempChannel := make(chan int32, ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY)
+	tempChannel := make(chan EntityToken)
 	// build the list with the tempChannel to which we'll send entities
 	list := NewUpdatedEntityList(
 		tempChannel,
@@ -552,32 +556,46 @@ func (m *EntityManager) GetUpdatedActiveEntityList(
 	// the allocated IDs
 	m.entityTable.mutex.RLock()
 	allocatedIDsSnapshot := make([]uint16, len(m.entityTable.allocatedIDs))
-	copy(m.entityTable.allocatedIDs, allocatedIDsSnapshot)
+	copy(allocatedIDsSnapshot, m.entityTable.allocatedIDs)
 	m.entityTable.mutex.RUnlock()
+	updatedEntityListDebug("ID snapshot in trying to build "+
+		"UpdatedActiveEntityList %s: %v", name, allocatedIDsSnapshot)
 	// our aim is to check each snapshotID while still keeping up with
 	// activate/deactivate signals
 	for len(allocatedIDsSnapshot) > 0 {
 		select {
 		// prioritize processing new events (TODO: explain why)
-		case idSignal := <-queryWatcher.Channel:
-			if idSignal < 0 {
-				idToRemove := uint16(-(idSignal + 1))
+		case entitySignal := <-queryWatcher.Channel:
+			updatedEntityListDebug("got signal on queryWatcher Channel while "+
+				"trying to build UpdatedActiveEntityList %s", name)
+			if entitySignal.ID < 0 {
+				idToRemove := uint16(-(entitySignal.ID + 1))
+				updatedEntityListDebug("removing ID %d from snapshot list "+
+					"in trying to build UpdatedActiveEntitylist %s",
+					idToRemove, name)
 				// remove from snapshot if yet to process. remove
 				// from list otherwise
-				removeUint16FromSlice(idToRemove, &allocatedIDsSnapshot)
+				removeUint16FromSlice(&allocatedIDsSnapshot, idToRemove)
 			} else {
 				// signal was an activate event. send to list
 				updatedEntityListDebug("sending signal %d in "+
-					"GetUpdatedActiveEntityList", idSignal)
+					"GetUpdatedActiveEntityList for %s",
+					entitySignal.ID, name)
+				list.EntityChannel <- entitySignal
 			}
 		default:
 			// pop an allocatedID and test it
-			id := allocatedIDsSnapshot[0]
-			allocatedIDsSnapshot = allocatedIDsSnapshot[1:]
+			last_ix := len(allocatedIDsSnapshot) - 1
+			id := allocatedIDsSnapshot[last_ix]
+			updatedEntityListDebug("popped id %d from allocated IDs snapshot "+
+				"while trying to build UpdatedActiveEntityList %s", id, name)
+			allocatedIDsSnapshot = allocatedIDsSnapshot[:last_ix]
 			if q.Test(id, m) {
 				updatedEntityListDebug("sending signal %d in "+
-					"GetUpdatedActiveEntityList", id)
-				list.EntityChannel <- int32(id)
+					"GetUpdatedActiveEntityList for %s", id, name)
+				list.EntityChannel <- EntityToken{
+					int32(id),
+					atomic.LoadUint32(&m.entityTable.gens[id])}
 			}
 		}
 	}
@@ -617,17 +635,18 @@ func (m *EntityManager) DeleteActiveEntityQueryWatcher(ID uint16) {
 	m.activeEntityWatchersMutex.Lock()
 	defer m.activeEntityWatchersMutex.Unlock()
 	// remove the EntityQueryWatcher from the list of active watchers
-	removeEntityQueryWatcherFromSliceByID(ID, &m.activeEntityWatchers)
+	removeEntityQueryWatcherFromSliceByID(&m.activeEntityWatchers, ID)
 }
 
 // hold an entity for modification, queueing the modification when
 // the function
 // returns
 func (m *EntityManager) AtomicEntityModify(
-	id uint16,
+	e EntityToken,
 	f func(e *EntityModification)) bool {
 
-	genRequested := atomic.LoadUint32(&m.entityTable.gens[id])
+	id := e.ID
+	genRequested := e.gen
 
 	// wait to obtain heldForModificationLocks
 	for !atomic.CompareAndSwapUint32(

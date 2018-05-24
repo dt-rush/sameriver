@@ -21,6 +21,7 @@ const DEBUG_UPDATED_ENTITY_LISTS = true
 const DEBUG_GOROUTINES = true
 const DEBUG_LOGIC = true
 const DEBUG_ENTITY_MANAGER_UPDATE_TIMING = true
+const DEBUG_DESPAWN = true
 
 const FPS = 60
 const FRAME_SLEEP = (1000 / FPS) * time.Millisecond

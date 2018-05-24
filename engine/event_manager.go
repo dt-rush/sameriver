@@ -52,7 +52,7 @@ func (m *EventManager) Unsubscribe(c EventChannel) {
 
 	// remove the query watcher from the subscriber list associated with
 	// the given channel's
-	removeEventChannelFromSlice(c, &m.subscriberLists[c.Query.Type])
+	removeEventChannelFromSlice(&m.subscriberLists[c.Query.Type], c)
 }
 
 // Publish a game event for anyone listening
