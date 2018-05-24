@@ -1,6 +1,0 @@
-this test (see the attached log.txt) shows that EntityManager.Update() will fail
-when where are too many active watchers. This is why a set of common lists and
-the grouping of spawned entities under an entity class is important for
-performance. (also an interesting idea, define queries as strings and determine
-query equality at time of requestin a list. return the existing list if the
-query already exists)
