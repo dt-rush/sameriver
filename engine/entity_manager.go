@@ -129,6 +129,7 @@ type EntityManager struct {
 	// Channel for logic goroutines to send requests to modify entity
 	// active/spawn state (internal only, accessed implicitly via the
 	// AtomicEntityModify() method)
+
 	stateModificationChannel chan entityStateModification
 	// Channel for logic goroutines to send requests to modify entity
 	// components (internal only, accessed implicitly via the
@@ -226,15 +227,14 @@ func (m *EntityManager) Update() {
 func (m *EntityManager) actOnDespawnAllFlag() {
 	// if the flag is 1, set to 0 and proceed to despawn all
 	if atomic.CompareAndSwapUint32(&m.despawnAllFlag, 1, 0) {
-		Logger.Println("[Entity manager] Despawning all...")
-		entityManagerDebug("Currently spawned: %v\n",
-			m.entityTable.allocatedIDs)
+		entityManagerDebug("waiting for entityTable mutex in" +
+			"actOnDespawnAllFlag...")
+		m.entityTable.mutex.Lock()
+		defer m.entityTable.mutex.Lock()
+		entityManagerDebug("Despawning all...")
 		// iterate all IDs which could have been allocated and despawn them
-		for i := 0; i < m.entityTable.numEntities; i++ {
-			// we can call this safely on each ID, even those unallocated,
-			// since it's idempotent with respect to unspawned entities
-			// (it will exit early if the entity is already despawned)
-			m.despawn(uint16(i))
+		for len(m.entityTable.allocatedIDs) > 0 {
+			m.despawn(m.entityTable.allocatedIDs[0])
 		}
 		// drain the modification and spawn channels (NOTE: by this point,
 		// all logic goroutines should have been terminated, so nothing new
@@ -444,11 +444,6 @@ func (m *EntityManager) despawn(id uint16) {
 	go func() {
 		m.Components.Logic.SafeGet(id).StopChannel <- true
 	}()
-	// Clear the modificationLock for the entity (any goroutine either trying
-	// to set it to 1 with an old gen or holding it for modification with
-	// an old gen will fail
-	atomic.StoreUint32(&m.entityTable.heldForModificationLocks[id], 0)
-	entityManagerDebug("despawn() terminating")
 }
 
 // setting the flag will cause the entities to all get despawned next time
@@ -666,18 +661,20 @@ func (m *EntityManager) AtomicEntityModify(
 	id := e.ID
 	genRequested := e.gen
 
-	// wait to obtain heldForModificationLocks
+	// wait to obtain heldForModificationLock
 	for !atomic.CompareAndSwapUint32(
 		&m.entityTable.heldForModificationLocks[id], 0, 1) {
 		// if we didn't manage to grab the lock, sleep for a good 8 frames
 		// (128 ms, hardly a problem) so that even if there are several
 		// goroutines currently sleeping in this loop, they won't starve the
 		// physics/collision update which needs to sometimes hold this flag
-		// as well. If we only wanted goroutines to atomically access
-		// entities, it wouldn't matter how long we sleep, but since we want
-		// to really atomically modify the state of the entity *across* the
+		// as well. If we only wanted logic goroutines to use this lock to
+		// atomically access entities, it wouldn't matter how long we sleep,
+		// but since we want to use the flag to lock modification across *all*
 		// goroutines *including* the priveleged goroutine of the GameScene
-		// Update(), we need to make sure not to starve physics and collision
+		// Update(), which should not block for very often at all,
+		// we need to make sure not to starve physics and collision of their
+		// ability to access the lock
 		time.Sleep(4 * FRAME_SLEEP)
 	}
 	// if the gen has changed by the time the lock was released, return false
@@ -702,6 +699,8 @@ func (m *EntityManager) AtomicEntityModify(
 			Components: mod.Modification.(ComponentSet)}
 	}
 	// let the caller know their modification went through
+	// NOTE: we don't unlock the entity for modification.
+	// That's done in Update()
 	return true
 }
 
