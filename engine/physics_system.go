@@ -67,13 +67,13 @@ func (s *PhysicsSystem) applyPhysics(id uint16, dt_ms uint16) {
 
 func (s *PhysicsSystem) Update(dt_ms uint16) {
 
-	s.em.Components.Position.Mutex.Lock()
-	s.em.Components.Velocity.Mutex.Lock()
-	s.em.Components.Hitbox.Mutex.Lock()
+	s.em.Components.Position.mutex.Lock()
+	s.em.Components.Velocity.mutex.Lock()
+	s.em.Components.Hitbox.mutex.Lock()
 	s.physicsEntities.Mutex.Lock()
-	defer s.em.Components.Position.Mutex.Unlock()
-	defer s.em.Components.Velocity.Mutex.Unlock()
-	defer s.em.Components.Hitbox.Mutex.Unlock()
+	defer s.em.Components.Position.mutex.Unlock()
+	defer s.em.Components.Velocity.mutex.Unlock()
+	defer s.em.Components.Hitbox.mutex.Unlock()
 	defer s.physicsEntities.Mutex.Unlock()
 
 	for _, e := range s.physicsEntities.Entities {

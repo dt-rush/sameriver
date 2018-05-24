@@ -100,7 +100,7 @@ type EntityTable struct {
 	// of not holding entities for modification longer than, say, one update
 	// cycle (at 60fps, around 16 ms). In fact, one update cycle is a hell of
 	// a long time. It should be less than a millisecond or two.
-	heldForModificationLocks [MAX_ENTITIES]uint32
+	locks [MAX_ENTITIES]uint32
 }
 
 // used by the EntityManager to tag entities
@@ -129,7 +129,6 @@ type EntityManager struct {
 	// Channel for logic goroutines to send requests to modify entity
 	// active/spawn state (internal only, accessed implicitly via the
 	// AtomicEntityModify() method)
-
 	stateModificationChannel chan entityStateModification
 	// Channel for logic goroutines to send requests to modify entity
 	// components (internal only, accessed implicitly via the
@@ -149,9 +148,10 @@ type EntityManager struct {
 	// holding the lock before Update wants to run again, being interrupted
 	// by our holding onto the lock
 	UpdateDone uint32
-	// UpdateLock is used so that String() can grab the whole entity table
+	// updateMutex is used so that String() can grab the whole entity table
 	// (massively interrupting Update()) and stringify it, safely at any rate
-	UpdateLock sync.Mutex
+	// (this is not used often, or ever, unless you call String())
+	updateMutex sync.Mutex
 
 	// used to allow systems to keep an updated list of entities which have
 	// components they're interested in operating on (eg. physics watches
@@ -164,6 +164,7 @@ type EntityManager struct {
 func (m *EntityManager) Init() {
 	// allocate component data
 	m.Components = AllocateComponentsMemoryBlock()
+	m.Components.LinkEntityLocks(&m.entityTable.locks)
 	// allocate the state and component modification channels with the buffer
 	// size defined in constants
 	m.stateModificationChannel = make(chan entityStateModification,
@@ -286,7 +287,7 @@ func (m *EntityManager) processStateModificationChannel() {
 		// now that we've applied the modification, release the lock on the
 		// ID
 		atomic.StoreUint32(
-			&m.entityTable.heldForModificationLocks[r.entity.ID], 0)
+			&m.entityTable.locks[r.entity.ID], 0)
 	}
 }
 
@@ -303,7 +304,7 @@ func (m *EntityManager) processComponentModificationChannel() {
 		// now that we've applied the modification, release the lock on the
 		// ID
 		atomic.StoreUint32(
-			&m.entityTable.heldForModificationLocks[r.entity.ID], 0)
+			&m.entityTable.locks[r.entity.ID], 0)
 	}
 }
 
@@ -382,7 +383,10 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 	// because if a system operating on the component data
 	// expects to work on the data, it should be maintaining a list of
 	// entities with the required components using an UpdatedEntityList
-	m.Components.Active.SafeSet(id, true)
+	// NOTE: we can directly set the Active component value since no other
+	// goroutine could be also writing to this entity, due to the
+	// AtomicEntityModify pattern
+	m.Components.Active.Data[id] = true
 	m.Components.ApplyComponentSet(id, r.Components)
 	// apply the tags
 	for _, tag := range r.Tags {
@@ -417,7 +421,7 @@ func (m *EntityManager) despawn(id uint16) {
 	removeUint16FromSlice(&m.entityTable.allocatedIDs, id)
 	// Increment the gen for the ID
 	// NOTE: it's important that we increment gen before resetting the
-	// heldForModificationLocks, since any goroutines waiting for the
+	// locks, since any goroutines waiting for the
 	// lock to be 0 so they can claim it in AtomicEntityModify() will then
 	// immediately want to check if the gen of the entity still matches.
 	atomic.AddUint32(&m.entityTable.gens[id], 1)
@@ -470,11 +474,14 @@ func (m *EntityManager) deactivate(id uint16) {
 
 // sets the active state on an entity and notifies all watchers
 func (m *EntityManager) setActiveState(id uint16, state bool) {
-	// TODO: this pattern seems weird. Active should not be a component,
-	// but metadata. Refactor it
-	// Only set (and notify) if not already in given state
-	if m.Components.Active.SafeGet(id) != state {
-		m.Components.Active.SafeSet(id, state)
+	// NOTE: we can access the active value directly since this is called
+	// exclusively when the entityLock is set (will be reset at the end of
+	// the loop iteration in processStateModificationChannel which called
+	// this function via one of activate, deactivate, or despawn)
+	if m.Components.Active.Data[id] != state {
+		// setActiveState is only called when the entity is locked, so we're
+		// good to write directly to the component
+		m.Components.Active.Data[id] = state
 		m.notifyActiveState(id, state)
 	}
 }
@@ -587,14 +594,14 @@ func (m *EntityManager) GetUpdatedActiveEntityList(
 					// we added it to the list (since getting a remove signal
 					// on the query means it matches the query), so send the
 					// remove signal to the list
-					list.EntityChannel <- entitySignal
+					list.InputChannel <- entitySignal
 				}
 			} else {
 				// signal was an activate event. send to list
 				updatedEntityListDebug("sending signal %d in "+
 					"GetUpdatedActiveEntityList for %s",
 					entitySignal.ID, name)
-				list.EntityChannel <- entitySignal
+				list.InputChannel <- entitySignal
 			}
 		default:
 			// pop an allocatedID and test it
@@ -606,7 +613,7 @@ func (m *EntityManager) GetUpdatedActiveEntityList(
 			if q.Test(id, m) {
 				updatedEntityListDebug("sending signal %d in "+
 					"GetUpdatedActiveEntityList for %s", id, name)
-				list.EntityChannel <- EntityToken{
+				list.InputChannel <- EntityToken{
 					int32(id),
 					atomic.LoadUint32(&m.entityTable.gens[id])}
 			}
@@ -615,7 +622,7 @@ func (m *EntityManager) GetUpdatedActiveEntityList(
 	// we've finished catching up the snapshot ID's with the current event
 	// stream. Set the channel properly on the list and return it
 	list.Stop()
-	list.EntityChannel = queryWatcher.Channel
+	list.InputChannel = queryWatcher.Channel
 	list.start()
 	return list
 }
@@ -661,9 +668,8 @@ func (m *EntityManager) AtomicEntityModify(
 	id := e.ID
 	genRequested := e.gen
 
-	// wait to obtain heldForModificationLock
-	for !atomic.CompareAndSwapUint32(
-		&m.entityTable.heldForModificationLocks[id], 0, 1) {
+	// wait to obtain entity lock
+	for !atomic.CompareAndSwapUint32(&m.entityTable.locks[id], 0, 1) {
 		// if we didn't manage to grab the lock, sleep for a good 8 frames
 		// (128 ms, hardly a problem) so that even if there are several
 		// goroutines currently sleeping in this loop, they won't starve the
@@ -677,15 +683,27 @@ func (m *EntityManager) AtomicEntityModify(
 		// ability to access the lock
 		time.Sleep(4 * FRAME_SLEEP)
 	}
+	genAfterAcquiringLock := atomic.LoadUint32(&m.entityTable.gens[id])
+	atomicEntityModifyDebug("entityLock for %d acquired", id)
 	// if the gen has changed by the time the lock was released, return false
-	if atomic.LoadUint32(&m.entityTable.gens[id]) != genRequested {
+	if genAfterAcquiringLock != genRequested {
+		atomicEntityModifyDebug("after acquiring lock for %d, requested gen "+
+			"%d did not match current gen %d. Atomic modify will not "+
+			"proceed. Releasing lock and returning false",
+			id, genRequested, genAfterAcquiringLock)
+		atomic.StoreUint32(&m.entityTable.gens[id], 0)
 		return false
+	} else {
+		atomicEntityModifyDebug("gen for %d matches request, atomic "+
+			"entity modify begins",
+			id)
 	}
 	// create a modification object whose address we will pass to f.
 	// we add an entity token to it (which the caller cannot remove or write)
 	mod := EntityModification{entity: EntityToken{id, genRequested}}
 	// invoke the function, passing it a pointer to the modification object
 	f(&mod)
+	atomicEntityModifyDebug("modification for %d: %s", id, mod)
 	// determine the type of the modification and pass it to the appropriate
 	// channel after type asserting its contained modification
 	switch mod.Type {
@@ -708,16 +726,16 @@ func (m *EntityManager) AtomicEntityModify(
 func (m *EntityManager) holdTwoEntities(i uint16, j uint16) bool {
 	// attempt to hold i
 	if atomic.CompareAndSwapUint32(
-		&m.entityTable.heldForModificationLocks[i], 0, 1) {
+		&m.entityTable.locks[i], 0, 1) {
 		// attempt to hold j
 		if atomic.CompareAndSwapUint32(
-			&m.entityTable.heldForModificationLocks[j], 0, 1) {
+			&m.entityTable.locks[j], 0, 1) {
 			// if we're here, we have held both i and j. return true
 			return true
 		}
 		// if we're here, we have held i but failed to hold j. let go of i
 		// and return false
-		atomic.StoreUint32(&m.entityTable.heldForModificationLocks[i], 0)
+		atomic.StoreUint32(&m.entityTable.locks[i], 0)
 		return false
 	}
 	// if we're here, we failed to hold i
@@ -726,19 +744,19 @@ func (m *EntityManager) holdTwoEntities(i uint16, j uint16) bool {
 
 // used by collision system to release two entities for modification
 func (m *EntityManager) releaseTwoEntities(i uint16, j uint16) {
-	atomic.StoreUint32(&m.entityTable.heldForModificationLocks[i], 0)
-	atomic.StoreUint32(&m.entityTable.heldForModificationLocks[j], 0)
+	atomic.StoreUint32(&m.entityTable.locks[i], 0)
+	atomic.StoreUint32(&m.entityTable.locks[j], 0)
 }
 
 // used by physics system to hold an entity for modification
 func (m *EntityManager) holdEntity(i uint16) bool {
 	return atomic.CompareAndSwapUint32(
-		&m.entityTable.heldForModificationLocks[i], 0, 1)
+		&m.entityTable.locks[i], 0, 1)
 }
 
 // used by physics system to release an entity held for modification
 func (m *EntityManager) releaseEntity(i uint16) {
-	atomic.StoreUint32(&m.entityTable.heldForModificationLocks[i], 0)
+	atomic.StoreUint32(&m.entityTable.locks[i], 0)
 }
 
 // apply the given tag to the given entity
@@ -852,10 +870,10 @@ func (m *EntityManager) EntityComponentBitArray(id uint16) bitarray.BitArray {
 
 // Somewhat expensive conversion of entire entity list to string
 func (m *EntityManager) String() string {
-	m.UpdateLock.Lock()
+	m.updateMutex.Lock()
 	m.tagTable.mutex.RLock()
 	defer m.tagTable.mutex.RUnlock()
-	defer m.UpdateLock.Unlock()
+	defer m.updateMutex.Unlock()
 
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")

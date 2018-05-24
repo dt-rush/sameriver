@@ -30,29 +30,42 @@ func AllocateComponentsMemoryBlock() ComponentsTable {
 	return c
 }
 
+func (t *ComponentsTable) LinkEntityLocks(entityLocks *[MAX_ENTITIES]uint32) {
+	t.Active.entityLocks = entityLocks
+	t.Color.entityLocks = entityLocks
+	t.Hitbox.entityLocks = entityLocks
+	t.Logic.entityLocks = entityLocks
+	t.Position.entityLocks = entityLocks
+	t.Sprite.entityLocks = entityLocks
+	t.Velocity.entityLocks = entityLocks
+}
+
+// NOTE: this must be called in a context in which the entity lock is preventing
+// any reads or writes to the entity, or the gods will have mighty revenge on
+// you for your hubris
 func (t *ComponentsTable) ApplyComponentSet(id uint16, c ComponentSet) {
 	// color
 	if c.Color != nil {
-		t.Color.SafeSet(id, *(c.Color))
+		t.Color.Data[id] = *c.Color
 	}
 	// hitbox
 	if c.Hitbox != nil {
-		t.Hitbox.SafeSet(id, *(c.Hitbox))
+		t.Hitbox.Data[id] = *c.Hitbox
 	}
 	// logic
 	if c.Logic != nil {
-		t.Logic.SafeSet(id, *(c.Logic))
+		t.Logic.Data[id] = *c.Logic
 	}
 	// position
 	if c.Position != nil {
-		t.Position.SafeSet(id, *(c.Position))
+		t.Position.Data[id] = *c.Position
 	}
 	// sprite
 	if c.Sprite != nil {
-		t.Sprite.SafeSet(id, *(c.Sprite))
+		t.Sprite.Data[id] = *c.Sprite
 	}
 	// velocity
 	if c.Velocity != nil {
-		t.Velocity.SafeSet(id, *(c.Velocity))
+		t.Velocity.Data[id] = *c.Velocity
 	}
 }

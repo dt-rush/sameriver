@@ -14,6 +14,10 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+//
+// NOTE: if you wish to add a new component, you'll need to modify this file,
+// and components_table.go
+//
 const (
 	ACTIVE_COMPONENT   = iota
 	COLOR_COMPONENT    = iota

@@ -141,11 +141,11 @@ func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
 
 func (s *CollisionSystem) Update(dt_ms uint16) {
 
-	s.em.Components.Position.Mutex.Lock()
-	s.em.Components.Hitbox.Mutex.Lock()
+	s.em.Components.Position.mutex.Lock()
+	s.em.Components.Hitbox.mutex.RLock()
 	s.collidableEntities.Mutex.Lock()
-	defer s.em.Components.Position.Mutex.Unlock()
-	defer s.em.Components.Hitbox.Mutex.Unlock()
+	defer s.em.Components.Position.mutex.Unlock()
+	defer s.em.Components.Hitbox.mutex.RUnlock()
 	defer s.collidableEntities.Mutex.Unlock()
 
 	entities := s.collidableEntities.Entities

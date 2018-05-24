@@ -30,3 +30,5 @@ var logicDebug = genDebugFunction(
 	"Logic", DEBUG_LOGIC)
 var goroutinesDebug = genDebugFunction(
 	"Logic", DEBUG_GOROUTINES)
+var atomicEntityModifyDebug = genDebugFunction(
+	"AtomicModify", DEBUG_ATOMIC_MODIFY)

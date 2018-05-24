@@ -9,6 +9,8 @@ package engine
 
 import (
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 // Each LogicFunc will started as a goroutine, supplied with the ID of the
@@ -46,19 +48,30 @@ func NewLogicUnit(LogicFunc LogicFunc, Name string) LogicUnit {
 }
 
 type LogicComponent struct {
-	Data  [MAX_ENTITIES]LogicUnit
-	Mutex sync.RWMutex
+	Data [MAX_ENTITIES]LogicUnit
+	// component-wide mutex is write-locked by any system which operates on
+	// this component in bulk, read-locked by calls to SafeGet()
+	mutex sync.RWMutex
+	// entityLocks is a pointer to the entityLocks array in the EntityManager
+	// which holds these components through ComponentsTable
+	entityLocks *[MAX_ENTITIES]uint32
 }
 
-func (c *LogicComponent) SafeSet(id uint16, val LogicUnit) {
-	c.Mutex.Lock()
-	defer c.Mutex.Unlock()
-	c.Data[id] = val
-}
-
+// get the value for an entity from the component in a safe manner
 func (c *LogicComponent) SafeGet(id uint16) LogicUnit {
-	c.Mutex.RLock()
-	defer c.Mutex.RUnlock()
+	// NOTE: holding the entity lock and the component mutex is not really
+	// that bad since the total duration is the time it takes to read a single
+	// value
+
+	// wait for the entity to not be held for modification
+	for !atomic.CompareAndSwapUint32(&c.entityLocks[id], 0, 1) {
+		time.Sleep(FRAME_SLEEP)
+	}
+	// read-lock the component
+	c.mutex.RLock()
 	val := c.Data[id]
+	// release the mutex and entity lock
+	c.mutex.RUnlock()
+	atomic.StoreUint32(&c.entityLocks[id], 0)
 	return val
 }

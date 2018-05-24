@@ -9,6 +9,8 @@
 package engine
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -21,7 +23,7 @@ type UpdatedEntityList struct {
 	// used to protect the Entities slice when adding or removing an entity
 	Mutex sync.RWMutex
 	// the channel along which updates to the list will come
-	EntityChannel chan EntityToken
+	InputChannel chan EntityToken
 	// used to stop the update loop's goroutine in
 	// the case that they're done with the list (by calling Stop())
 	stopUpdateLoopChannel chan bool
@@ -39,17 +41,35 @@ type UpdatedEntityList struct {
 // create a new UpdatedEntityList by giving it a channel on which it will
 // receive entity IDs
 func NewUpdatedEntityList(
-	EntityChannel chan EntityToken,
+	InputChannel chan EntityToken,
 	ID uint16,
 	Name string) *UpdatedEntityList {
 
 	l := UpdatedEntityList{}
-	l.EntityChannel = EntityChannel
+	l.InputChannel = InputChannel
 	l.Entities = make([]EntityToken, 0)
 	l.stopUpdateLoopChannel = make(chan (bool))
 	l.Name = Name
 	l.start()
 	return &l
+}
+
+// get the length of the list
+func (l *UpdatedEntityList) Length() int {
+	l.Mutex.RLock()
+	l.Mutex.RUnlock()
+	return len(l.Entities)
+}
+
+// get the first element of the list
+func (l *UpdatedEntityList) GetFirst() (EntityToken, error) {
+	l.Mutex.RLock()
+	l.Mutex.RUnlock()
+	if len(l.Entities) > 0 {
+		return l.Entities[0], nil
+	} else {
+		return EntityToken{ID: -1}, errors.New("no first entity found")
+	}
 }
 
 // called during the creation of a list. Starts a goroutine which listens
@@ -61,7 +81,7 @@ func (l *UpdatedEntityList) start() {
 			select {
 			case _ = <-l.stopUpdateLoopChannel:
 				break updateloop
-			case id := <-l.EntityChannel:
+			case id := <-l.InputChannel:
 				updatedEntityListDebug("%s received signal", l.Name)
 				l.actOnEntitySignal(id)
 			default:
@@ -121,4 +141,11 @@ func (l *UpdatedEntityList) addCallback(callback func(idEncoded int32)) {
 	defer l.Mutex.Unlock()
 
 	l.callbacks = append(l.callbacks, callback)
+}
+
+// For printing the list
+func (l *UpdatedEntityList) String() string {
+	l.Mutex.Lock()
+	defer l.Mutex.Unlock()
+	return fmt.Sprintf("%s", l.Entities)
 }

@@ -19,6 +19,11 @@ func verboseLog(s string, params ...interface{}) {
 	}
 }
 
+type CrowEntityClass struct {
+	crows   engine.UpdatedEntityList
+	beetles engine.UpdatedEntityList
+}
+
 func spawnCrows(em *engine.EntityManager) {
 	for i := 0; i < N_CROWS; i++ {
 		spawnCrow(em)
@@ -61,10 +66,10 @@ logicloop:
 			verboseLog("Crow %d says, CAW!\n", crowID)
 			// the crow examines the list of beetles and tries to eat one
 			// 50% of the time
-			fmt.Printf("Crow %d sees %d beetles\n",
-				crowID, beetleList.Length())
-			beetle, err := beetleList.GetFirst()
-			if err == nil {
+			beetleList.Mutex.Lock()
+			fmt.Printf("%s: %v\n", beetleList.Name, beetleList.Entities)
+			if len(beetleList.Entities) > 0 {
+				beetle := beetleList.Entities[0]
 				verboseLog("Crow %d notices a tasty beetle: Beetle %d\n",
 					crowID, beetle.ID)
 				if rand.Intn(2) == 0 {
@@ -85,6 +90,7 @@ logicloop:
 					}
 				}
 			}
+			beetleList.Mutex.Unlock()
 			time.Sleep(
 				time.Duration(rand.Intn(3000)) * time.Millisecond)
 		}
