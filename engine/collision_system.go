@@ -97,7 +97,7 @@ func (s *CollisionSystem) Init(
 	s.eventManager = eventManager
 	// get a regularly updated list of the entities which are collidable
 	// (position and hitbox)
-	query := NewBitArraySubsetQuery(
+	query := NewEntityComponentBitArrayQuery(
 		MakeComponentBitArray([]int{
 			POSITION_COMPONENT,
 			HITBOX_COMPONENT}))

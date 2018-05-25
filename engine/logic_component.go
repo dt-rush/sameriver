@@ -13,9 +13,9 @@ import (
 	"time"
 )
 
-// Each LogicFunc will started as a goroutine, supplied with the ID of the
-// entity it's attached to, a channel on which a stop signal may arrive, and
-// a reference to the EntityManager
+// Each LogicFunc will started as a goroutine, supplied with the EntityToken of
+// the entity it's attached to, a channel on which a stop signal may arrive,
+// and a reference to the EntityManager
 //
 // Through the EntityManager, the goroutine will be able to:
 //
@@ -29,7 +29,7 @@ import (
 // The StopChannel is not buffered, since we need to be sure when the
 // logic has ended.
 type LogicFunc func(
-	entityID uint16,
+	entity EntityToken,
 	StopChannel chan bool,
 	em *EntityManager)
 
@@ -40,7 +40,7 @@ type LogicUnit struct {
 }
 
 // Create a new LogicUnit instance
-func NewLogicUnit(LogicFunc LogicFunc, Name string) LogicUnit {
+func NewLogicUnit(Name string, LogicFunc LogicFunc) LogicUnit {
 	return LogicUnit{
 		LogicFunc,
 		Name,

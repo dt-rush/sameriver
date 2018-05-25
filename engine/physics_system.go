@@ -23,7 +23,7 @@ func (s *PhysicsSystem) Init(em *EntityManager) {
 	s.em = em
 	// get a regularly updated list of the entities which have physics
 	// (position, velocity and hitbox)
-	query := NewBitArraySubsetQuery(
+	query := NewEntityComponentBitArrayQuery(
 		MakeComponentBitArray([]int{
 			POSITION_COMPONENT,
 			VELOCITY_COMPONENT,

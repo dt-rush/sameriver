@@ -32,3 +32,5 @@ var goroutinesDebug = genDebugFunction(
 	"Logic", DEBUG_GOROUTINES)
 var atomicEntityModifyDebug = genDebugFunction(
 	"AtomicModify", DEBUG_ATOMIC_MODIFY)
+var entityClassDebug = genDebugFunction(
+	"EntityClass", DEBUG_ENTITY_CLASS)

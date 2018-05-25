@@ -1,6 +1,0 @@
-This script shows a bunch of crow entities which compete to eat beetles. They
-use AtomicEntityModify, and never eat the same beetle as a result.
-
-There is still an improvment to make in that they duplicate a ton of work by 
-not using an entity class pattern to watch a single list of beetles, either
-stored by the entity class or even on the entity manager itself
