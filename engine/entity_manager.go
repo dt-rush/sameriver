@@ -141,13 +141,14 @@ type EntityManager struct {
 	// Channel for spawn entity requests
 	spawnChannel chan EntitySpawnRequest
 
-	// a flag signifying that Update() has just finished, set atomically
+	// a flag signifying that Update() is running, set atomically
 	// used so that we can start work needing to lock the enitity table
 	// as soon as Update finishes (Update runs in sync and can't be blocked,
 	// this give us the best chance of being able to do some work while
 	// holding the lock before Update wants to run again, being interrupted
-	// by our holding onto the lock
-	UpdateDone uint32
+	// by our holding onto the lock (even though this only takes a short
+	// time, if you read the comments for GetUpdatedActiveEntityList)
+	UpdateRunning uint32
 	// updateMutex is used so that String() can grab the whole entity table
 	// (massively interrupting Update()) and stringify it, safely at any rate
 	// (this is not used often, or ever, unless you call String())
@@ -181,7 +182,7 @@ func (m *EntityManager) Init() {
 // called once per scene Update() for scenes holding an entity manager
 func (m *EntityManager) Update() {
 
-	atomic.StoreUint32(&m.UpdateDone, 0)
+	atomic.StoreUint32(&m.UpdateRunning, 1)
 	// First, act on the despawn all flag, despawning all entities if
 	// it's set.
 	var t0 time.Time
@@ -218,10 +219,10 @@ func (m *EntityManager) Update() {
 	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
 		fmt.Printf("spawn: %d ms\n", time.Since(t0).Nanoseconds()/1e6)
 	}
-	// set the UpdateDone flag, so that GetActiveUpdatedActiveEntityList
+	// set the UpdateRunning flag, so that GetActiveUpdatedActiveEntityList
 	// won't conflict with Update() when it wants to lock the entity table
 	// for reading
-	atomic.StoreUint32(&m.UpdateDone, 1)
+	atomic.StoreUint32(&m.UpdateRunning, 0)
 }
 
 // react to the despawnall flag
@@ -395,7 +396,12 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 	// start the logic goroutine if supplied
 	if r.Components.Logic != nil {
 		logicDebug("Starting logic for %d...", id)
-		go r.Components.Logic.LogicFunc(id,
+		// NOTE: we can read entityTable.gens directly here because we have
+		// the entityTable locked
+		go r.Components.Logic.LogicFunc(
+			EntityToken{
+				int32(id),
+				m.entityTable.gens[id]},
 			r.Components.Logic.StopChannel,
 			m)
 	}
@@ -553,7 +559,7 @@ func (m *EntityManager) GetUpdatedActiveEntityList(
 	// with all events. We return it.
 
 	// sleep until Update() has just finished
-	for !atomic.CompareAndSwapUint32(&m.UpdateDone, 1, 0) {
+	for atomic.LoadUint32(&m.UpdateRunning) != 0 {
 		time.Sleep(FRAME_SLEEP / 6)
 	}
 	// register a query watcher for the query given
@@ -625,9 +631,13 @@ func (m *EntityManager) GetUpdatedActiveEntityList(
 	}
 	// we've finished catching up the snapshot ID's with the current event
 	// stream. Set the channel properly on the list and return it
+	updatedEntityListDebug("finished reviewing existing entities in "+
+		"building of list %s. About to Stop(), set channel, start()",
+		list.Name)
 	list.Stop()
 	list.InputChannel = queryWatcher.Channel
 	list.start()
+	updatedEntityListDebug("finished building list %s", list.Name)
 	return list
 }
 
