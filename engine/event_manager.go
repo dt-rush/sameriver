@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-type EventManager struct {
+type EventBus struct {
 	// subscriberLists is a list of lists of EventChannels
 	// where the inner lists are indexed by the EventType (type aliased
 	// to int). So you could have a list of queries on CollisionEvents, etc.
@@ -23,12 +23,12 @@ type EventManager struct {
 	subscribeMutex sync.Mutex
 }
 
-func (m *EventManager) Init() {
+func (m *EventBus) Init() {
 	// nothing for now
 }
 
 // Subscribe to listen for game events defined by a query
-func (m *EventManager) Subscribe(
+func (m *EventBus) Subscribe(
 	q EventQuery, name string) EventChannel {
 
 	// Lock the subscriber slice while we modify it
@@ -46,7 +46,7 @@ func (m *EventManager) Subscribe(
 }
 
 // Remove a subscriber
-func (m *EventManager) Unsubscribe(c EventChannel) {
+func (m *EventBus) Unsubscribe(c EventChannel) {
 
 	eventDebug("Unsubscribe on channel %v\n", c)
 
@@ -56,7 +56,7 @@ func (m *EventManager) Unsubscribe(c EventChannel) {
 }
 
 // Publish a game event for anyone listening
-func (m *EventManager) Publish(e Event) {
+func (m *EventBus) Publish(e Event) {
 
 	eventDebug("⚹: %s\n", e.Description)
 

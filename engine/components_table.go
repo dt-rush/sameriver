@@ -11,6 +11,7 @@ package engine
 type ComponentsTable struct {
 	Active   *ActiveComponent
 	Color    *ColorComponent
+	Health   *HealthComponent
 	Hitbox   *HitboxComponent
 	Logic    *LogicComponent
 	Position *PositionComponent
@@ -22,6 +23,7 @@ func AllocateComponentsMemoryBlock() ComponentsTable {
 	c := ComponentsTable{}
 	c.Active = &ActiveComponent{}
 	c.Color = &ColorComponent{}
+	c.Health = &HealthComponent{}
 	c.Hitbox = &HitboxComponent{}
 	c.Logic = &LogicComponent{}
 	c.Position = &PositionComponent{}
@@ -33,6 +35,7 @@ func AllocateComponentsMemoryBlock() ComponentsTable {
 func (t *ComponentsTable) LinkEntityLocks(entityLocks *[MAX_ENTITIES]uint32) {
 	t.Active.entityLocks = entityLocks
 	t.Color.entityLocks = entityLocks
+	t.Health.entityLocks = entityLocks
 	t.Hitbox.entityLocks = entityLocks
 	t.Logic.entityLocks = entityLocks
 	t.Position.entityLocks = entityLocks
@@ -47,6 +50,10 @@ func (t *ComponentsTable) ApplyComponentSet(id uint16, c ComponentSet) {
 	// color
 	if c.Color != nil {
 		t.Color.Data[id] = *c.Color
+	}
+	// health
+	if c.Health != nil {
+		t.Health.Data[id] = *c.Health
 	}
 	// hitbox
 	if c.Hitbox != nil {

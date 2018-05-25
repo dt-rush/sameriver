@@ -23,14 +23,16 @@ func genDebugFunction(moduleName string, flag bool) DebugFunction {
 var entityManagerDebug = genDebugFunction(
 	"EntityManager", DEBUG_ENTITY_MANAGER)
 var eventDebug = genDebugFunction(
-	"EventManager", DEBUG_EVENTS)
+	"Events", DEBUG_EVENTS)
 var updatedEntityListDebug = genDebugFunction(
 	"UpdatedEntityList", DEBUG_UPDATED_ENTITY_LISTS)
-var logicDebug = genDebugFunction(
-	"Logic", DEBUG_LOGIC)
+var entityLogicDebug = genDebugFunction(
+	"EntityLogic", DEBUG_ENTITY_LOGIC)
 var goroutinesDebug = genDebugFunction(
-	"Logic", DEBUG_GOROUTINES)
+	"Goroutines", DEBUG_GOROUTINES)
 var atomicEntityModifyDebug = genDebugFunction(
 	"AtomicModify", DEBUG_ATOMIC_MODIFY)
 var entityClassDebug = genDebugFunction(
 	"EntityClass", DEBUG_ENTITY_CLASS)
+var worldLogicDebug = genDebugFunction(
+	"WorldLogic", DEBUG_WORLD_LOGIC)
