@@ -82,19 +82,17 @@ type CollisionSystem struct {
 	// often, as it will put a load on anything reading these events
 	// (used by the event-checker loop)
 	rateLimiterArray CollisionRateLimiterArray
-	// the uint32 in this array at [i] gets set to 1 when an entity has been
-	// deactivated (is checked by the event-sender loop)
 	// How the collision system communicates collision events
-	eventManager *EventManager
+	ev *EventBus
 }
 
 func (s *CollisionSystem) Init(
 	em *EntityManager,
-	eventManager *EventManager) {
+	ev *EventBus) {
 
-	// take down references to em and eventManager
+	// take down references to em and ev
 	s.em = em
-	s.eventManager = eventManager
+	s.ev = ev
 	// get a regularly updated list of the entities which are collidable
 	// (position and hitbox)
 	query := NewEntityComponentBitArrayQuery(
@@ -162,7 +160,7 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 			// only proceed if we can hold both entities for modification,
 			// since we need to be able to move them away from their common center
 			// if overlapping
-			if !s.em.holdTwoEntities(uint16(i.ID), uint16(j.ID)) {
+			if !s.em.attemptLockTwoEntities(uint16(i.ID), uint16(j.ID)) {
 				continue
 			}
 			// check the collision
@@ -171,7 +169,7 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 				s.rateLimiterArray.GetRateLimiter(
 					uint16(i.ID),
 					uint16(j.ID)).Do(func() {
-					s.eventManager.Publish(Event{
+					s.ev.Publish(Event{
 						Type:        EVENT_TYPE_COLLISION,
 						Description: fmt.Sprintf("collision(%d,%d)", i, j),
 						Data: CollisionEventData{

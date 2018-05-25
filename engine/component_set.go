@@ -21,6 +21,7 @@ import (
 const (
 	ACTIVE_COMPONENT   = iota
 	COLOR_COMPONENT    = iota
+	HEALTH_COMPONENT   = iota
 	HITBOX_COMPONENT   = iota
 	LOGIC_COMPONENT    = iota
 	POSITION_COMPONENT = iota
@@ -33,6 +34,7 @@ const N_COMPONENTS = 7
 type ComponentSet struct {
 	Active   *bool
 	Color    *sdl.Color
+	Health   *uint8
 	Hitbox   *[2]uint16
 	Logic    *LogicUnit
 	Position *[2]int16
@@ -47,6 +49,9 @@ func (s *ComponentSet) ToBitArray() bitarray.BitArray {
 	}
 	if s.Color != nil {
 		b.SetBit(uint64(COLOR_COMPONENT))
+	}
+	if s.Health != nil {
+		b.SetBit(uint64(HEALTH_COMPONENT))
 	}
 	if s.Hitbox != nil {
 		b.SetBit(uint64(HITBOX_COMPONENT))

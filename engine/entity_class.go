@@ -44,7 +44,7 @@ type Behavior struct {
 }
 
 func (c *EntityClass) GenerateLogicFunc(
-	behaviors []Behavior) LogicFunc {
+	behaviors []Behavior) EntityLogicFunc {
 
 	return func(entity EntityToken,
 		StopChannel chan bool,
