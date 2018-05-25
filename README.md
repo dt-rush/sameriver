@@ -20,7 +20,7 @@ See the [wiki](https://github.com/dt-rush/donkeys-qquest/wiki) for diagrams.
 
 The engine is built on an "entity-component-system" architecture, in which:
 
-**Components** are collections of a certain type of data indexed by the ID's of entities. For example, a position component is at bottom a `map[int]\([2]float64\)`
+**Components** are collections of a certain type of data indexed by the ID's of entities. For example, a position component is at bottom a `map[int]([2]int16)`
 
 **Entities** are merely the set of components which their ID's index, and are essentially passed around in the system *as identical with* their ID's.
 
