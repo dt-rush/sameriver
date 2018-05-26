@@ -78,7 +78,7 @@ var CrowEatBeetleBehavior = engine.Behavior{
 					crow.ID, beetle.ID)
 				didEat := em.AtomicEntitiesModify(
 					[]engine.EntityToken{beetle, crow},
-					func() {
+					func(entities []engine.EntityToken) {
 						// eating a beetle despawns it
 						fmt.Println("about to despawn beetle")
 						em.Despawn(beetle)

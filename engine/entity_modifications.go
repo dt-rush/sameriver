@@ -1,5 +1,5 @@
 /*
- * Functions which can be passed to AtomicEntityModify
+ * Functions which can be passed to AtomicEntityModify or AtomicEntitiesModify
  *
  */
 

@@ -500,7 +500,7 @@ func (m *EntityManager) AtomicEntityModify(
 // return. Return value is whether the entities were locked and f was run
 func (m *EntityManager) AtomicEntitiesModify(
 	entities []EntityToken,
-	f func()) bool {
+	f func([]EntityToken)) bool {
 
 	var time = time.Now().UnixNano()
 
@@ -509,7 +509,7 @@ func (m *EntityManager) AtomicEntitiesModify(
 		return false
 	}
 	atomicEntityModifyDebug("[%d] lock succeeded, trying to run f()", time)
-	f()
+	f(entities)
 	atomicEntityModifyDebug("[%d] f() completed, relesing entities", time)
 	m.releaseEntities(entities)
 	return true
