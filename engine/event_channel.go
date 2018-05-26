@@ -2,43 +2,36 @@ package engine
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 type EventChannel struct {
-	active          bool
-	activeLock      sync.RWMutex
+	active          uint32
 	C               chan (Event)
 	channelSendLock sync.Mutex
 	Query           EventQuery
 	Name            string
 }
 
-func NewEventChannel(
-	q EventQuery, name string) EventChannel {
+func NewEventChannel(name string, q EventQuery) EventChannel {
 
 	return EventChannel{
-		active: true,
+		active: 1,
 		C:      make(chan (Event), EVENT_CHANNEL_CAPACITY),
 		Query:  q,
 		Name:   name}
 }
 
 func (c *EventChannel) Activate() {
-	c.activeLock.Lock()
-	c.active = true
-	c.activeLock.Unlock()
+	atomic.StoreUint32(&c.active, 1)
 }
 
 func (c *EventChannel) Deactivate() {
-	c.activeLock.Lock()
-	c.active = false
-	c.activeLock.Unlock()
+	atomic.StoreUint32(&c.active, 0)
 }
 
 func (c *EventChannel) IsActive() bool {
-	c.activeLock.RLock()
-	defer c.activeLock.RLock()
-	return c.active
+	return atomic.LoadUint32(&c.active) == 1
 }
 
 func (c *EventChannel) Send(e Event) {

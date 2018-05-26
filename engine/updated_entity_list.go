@@ -35,7 +35,7 @@ type UpdatedEntityList struct {
 	Sorted bool
 	// a slice of funcs who want to be called *before* the entity gets
 	// added/removed (that is, before the mutex unlocks)
-	callbacks []func(int32)
+	callbacks []func(EntityToken)
 }
 
 // create a new UpdatedEntityList by giving it a channel on which it will
@@ -100,18 +100,17 @@ func (l *UpdatedEntityList) actOnEntitySignal(e EntityToken) {
 	l.Mutex.Lock()
 	defer l.Mutex.Unlock()
 
-	idEncoded := e.ID
-
+	encodedID := e.ID
+	// callbacks list want to be notified of each signal we get
 	for _, callback := range l.callbacks {
-		go callback(idEncoded)
+		go callback(e)
 	}
-
-	if idEncoded >= 0 {
-		updatedEntityListDebug("%s got insert:%d", l.Name, idEncoded)
+	if encodedID >= 0 {
+		updatedEntityListDebug("%s got insert:%d", l.Name, encodedID)
 		l.insert(e)
 	} else {
 		// decode ID for removal
-		e.ID = -(idEncoded + 1)
+		e.ID = -(encodedID + 1)
 		updatedEntityListDebug("%s got remove:%d", l.Name, e.ID)
 		l.remove(e)
 	}
@@ -136,7 +135,7 @@ func (l *UpdatedEntityList) remove(e EntityToken) {
 }
 
 // add a callback to the callbacks slice
-func (l *UpdatedEntityList) addCallback(callback func(idEncoded int32)) {
+func (l *UpdatedEntityList) addCallback(callback func(e EntityToken)) {
 	l.Mutex.Lock()
 	defer l.Mutex.Unlock()
 

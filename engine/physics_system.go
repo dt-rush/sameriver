@@ -80,9 +80,9 @@ func (s *PhysicsSystem) Update(dt_ms uint16) {
 		// apply the physics only if this entity isn't already locked
 		// (atomic operations are cheap, so this isn't a bad thing to
 		// do for each entity during each Update())
-		if s.em.attemptLockEntity(uint16(e.ID)) {
+		if s.em.attemptLockEntityOnce(e) {
 			s.applyPhysics(uint16(e.ID), dt_ms)
-			s.em.releaseEntity(uint16(e.ID))
+			s.em.releaseEntity(e)
 		}
 	}
 }

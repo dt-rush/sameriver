@@ -100,19 +100,22 @@ func (s *CollisionSystem) Init(
 			POSITION_COMPONENT,
 			HITBOX_COMPONENT}))
 	s.collidableEntities = s.em.GetUpdatedActiveEntityList(query, "collidable")
-	// add a callback to the updated entity list of collidable entities
+	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
-	// in the collision rate limiter array
-	s.collidableEntities.addCallback(func(encodedID int32) {
+	// in the collision rate limiter array (to guard against an entity
+	// despawning, a new entity spawning with its ID, and failing a collision
+	// test (rare prehaps, but an edge case we nonetheless want to avoid)
+	s.collidableEntities.addCallback(func(e EntityToken) {
+		encodedID := e.ID
 		if encodedID < 0 {
 			s.rateLimiterArray.ResetAll(uint16(-(encodedID + 1)))
 		}
 	})
 }
 
-// Test collision between two functions
-// NOTE: this is called by Update, so it's covered by the mutex on the
-// components
+// Test collision between two entities
+// NOTE: this is called by CollisionSystem.Update(), so it's covered by the
+// mutex on position and hitbox
 func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
 	// grab component data
 	position_component := s.em.Components.Position
@@ -158,9 +161,9 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 			i := entities[ix]
 			j := entities[jx]
 			// only proceed if we can hold both entities for modification,
-			// since we need to be able to move them away from their common center
-			// if overlapping
-			if !s.em.attemptLockTwoEntities(uint16(i.ID), uint16(j.ID)) {
+			// since we need to be able to move them away from their common
+			// center if overlapping
+			if !s.em.attemptLockTwoEntitiesOnce(i, j) {
 				continue
 			}
 			// check the collision

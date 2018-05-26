@@ -11,67 +11,80 @@ import (
 	"sync"
 )
 
-type EventBus struct {
+type SubscriberList struct {
 	// subscriberLists is a list of lists of EventChannels
-	// where the inner lists are indexed by the EventType (type aliased
+	// where the outer list is indexed by the EventType (type aliased
 	// to int). So you could have a list of queries on CollisionEvents, etc.
 	// Each EventQuery's Predicate will be tested against the events
 	// that are published for the matching type (and thus the predicates
 	// can safely assert the type of the Data member of the event)
-	subscriberLists [N_EVENT_TYPES][]EventChannel
+	channels [N_EVENT_TYPES][]EventChannel
 	// Mutex to protect the modification of the above
-	subscribeMutex sync.Mutex
+	mutex sync.RWMutex
 }
 
-func (m *EventBus) Init() {
+type EventBus struct {
+	subscriberList SubscriberList
+}
+
+func (ev *EventBus) Init() {
 	// nothing for now
 }
 
 // Subscribe to listen for game events defined by a query
-func (m *EventBus) Subscribe(
+func (ev *EventBus) Subscribe(
 	q EventQuery, name string) EventChannel {
 
 	// Lock the subscriber slice while we modify it
-	m.subscribeMutex.Lock()
-	defer m.subscribeMutex.Unlock()
+	ev.subscriberList.mutex.Lock()
+	defer ev.subscriberList.mutex.Unlock()
 
 	// Create a channel to return to the user
-	c := NewEventChannel(q, name)
+	c := NewEventChannel(name, q)
 	eventDebug("Subscribe: %s on channel %v\n",
 		name, c)
 	// Add the channel to the subscriber list for its type
-	m.subscriberLists[q.Type] = append(m.subscriberLists[q.Type], c)
+	ev.subscriberList.channels[q.Type] = append(
+		ev.subscriberList.channels[q.Type], c)
 	// return the channel to the caller
 	return c
 }
 
 // Remove a subscriber
-func (m *EventBus) Unsubscribe(c EventChannel) {
-
+func (ev *EventBus) Unsubscribe(c EventChannel) {
+	ev.subscriberList.mutex.Lock()
+	defer ev.subscriberList.mutex.Unlock()
 	eventDebug("Unsubscribe on channel %v\n", c)
-
-	// remove the query watcher from the subscriber list associated with
-	// the given channel's
-	removeEventChannelFromSlice(&m.subscriberLists[c.Query.Type], c)
+	removeEventChannelFromSlice(&ev.subscriberList.channels[c.Query.Type], c)
 }
 
 // Publish a game event for anyone listening
-func (m *EventBus) Publish(e Event) {
-
-	eventDebug("⚹: %s\n", e.Description)
-
+func (ev *EventBus) Publish(e Event) {
 	// send e to all matching watchers
-	for _, c := range m.subscriberLists[e.Type] {
-		if len(c.C) == EVENT_CHANNEL_CAPACITY {
-			Logger.Printf("⚠ event channel #%d "+
-				"for %s is full - discarding event\n", c.Name)
-		} else if c.IsActive() {
-			eventDebug("sending %s on %s",
-				e.Description, c.Name)
-			c.Send(e)
-		} else {
-			Logger.Printf("%s channel inactive, "+
-				"not sending event %s\n", c.Name, e.Description)
+	go func() {
+		ev.subscriberList.mutex.RLock()
+		defer ev.subscriberList.mutex.RUnlock()
+		eventDebug("⚹: %s\n", e.Description)
+
+		for _, c := range ev.subscriberList.channels[e.Type] {
+			if !c.IsActive() {
+				eventDebug("%s channel inactive, "+
+					"not sending event %s\n", c.Name, e.Description)
+			}
+			go func(c EventChannel) {
+				// notify if the channel buffer is filled (we're in a
+				// goroutine, so it's all good, but probably indicates
+				// either the channel receiver is not right, or there's a
+				// problem with the rate of events sent over the channel)
+				if len(c.C) == EVENT_CHANNEL_CAPACITY {
+					eventDebug("⚠ event channel #%d for %s is full\n", c.Name)
+				}
+				if c.Query.Test(e) {
+					eventDebug("sending %s on %s",
+						e.Description, c.Name)
+					c.Send(e)
+				}
+			}(c)
 		}
-	}
+	}()
 }
