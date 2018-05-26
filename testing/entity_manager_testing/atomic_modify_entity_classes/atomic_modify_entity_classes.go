@@ -78,29 +78,19 @@ var CrowEatBeetleBehavior = engine.Behavior{
 					crow.ID, beetle.ID)
 				didEat := em.AtomicEntitiesModify(
 					[]engine.EntityToken{beetle, crow},
-					func(mods engine.EntityModificationMap) {
+					func() {
 						// eating a beetle despawns it
-						mods[beetle] = engine.EntityModification{
-							Type:         engine.ENTITY_STATE_MODIFICATION,
-							Modification: engine.ENTITY_DESPAWN}
+						fmt.Println("about to despawn beetle")
+						em.Despawn(beetle)
+						fmt.Println("despawned beetle")
 						// eating a beetle increases the crow's health
-						health := em.Components.Health.Data[crow.ID]
-						if health+5 <= 255 {
-							health += 5
-						} else {
-							health = 255
-						}
-						mods[crow] = engine.EntityModification{
-							Type: engine.ENTITY_COMPONENT_MODIFICATION,
-							Modification: engine.ComponentSet{
-								Health: &health}}
+						em.ModifyHealth(5)(crow)
 					})
 				if didEat {
 					verboseLog("Crow %d ate the delicious Beetle %d.\n",
 						crow.ID, beetle.ID)
 				} else {
-					verboseLog("Crow %d couldn't eat Beetle %d, it was "+
-						"gone by the time it got to it!\n",
+					verboseLog("Crow %d couldn't eat Beetle %d!\n",
 						crow.ID, beetle.ID)
 				}
 			}

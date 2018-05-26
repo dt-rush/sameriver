@@ -1,29 +1,28 @@
 /*
- * Functions which can be passed to AtomicEntityModify or AtomicEntitiesModify
+ * Functions which can be passed to AtomicEntityModify
  *
  */
 
 package engine
 
-import (
-	"fmt"
-	"time"
-)
+import ()
 
 // user-facing despawn function which locks the EntityTable for a single
 // despawn
 func (m *EntityManager) Despawn(e EntityToken) {
+	m.despawnInternal(e)
+}
 
-	t0 := time.Now()
-	m.entityTable.mutex.Lock()
-	defer m.entityTable.mutex.Unlock()
-	// check gen after mutex acquired, if it's different, this entity was
-	// already despawned. mission accomplished! (this can happen if DespawnAll
-	// is called, completes, and then we acquire the mutex)
-
-	if DEBUG_DESPAWN {
-		fmt.Printf("acquiring entityTable lock in despawn took: %d ms\n",
-			time.Since(t0).Nanoseconds()/1e6)
+// a function which generates an entity modification to augment the health
+// of an entity
+func (m *EntityManager) ModifyHealth(change int) func(EntityToken) {
+	return func(e EntityToken) {
+		healthNow := int(m.Components.Health.Data[e.ID]) + change
+		if healthNow > 255 {
+			healthNow = 255
+		} else if healthNow < 0 {
+			healthNow = 0
+		}
+		m.Components.Health.Data[e.ID] = uint8(healthNow)
 	}
-	m.despawnInternal(uint16(e.ID))
 }

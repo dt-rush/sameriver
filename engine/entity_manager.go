@@ -26,10 +26,6 @@ type EntityManager struct {
 	// Component data
 	Components ComponentsTable
 
-	// set atomically when DespawnAll() is called, to short-circuit any
-	// processing of the prior two channels. We simply despawn all entities
-	// if this is 1
-	despawnAllFlag uint32
 	// Channel for spawn entity requests
 	spawnChannel chan EntitySpawnRequest
 
@@ -40,7 +36,9 @@ type EntityManager struct {
 	// holding the lock before Update wants to run again, being interrupted
 	// by our holding onto the lock (even though this only takes a short
 	// time, if you read the comments for GetUpdatedActiveEntityList)
-	UpdateRunning uint32
+	updateRunning uint32
+	// a fag signifying that we are currently despawning all entities
+	despawningAll uint32
 	// updateMutex is used so that String() can grab the whole entity table
 	// (massively interrupting Update()) and stringify it, safely at any rate
 	// (this is not used often, or ever, unless you call String())
@@ -69,7 +67,7 @@ func (m *EntityManager) Init() {
 // called once per scene Update() for scenes holding an entity manager
 func (m *EntityManager) Update() {
 
-	atomic.StoreUint32(&m.UpdateRunning, 1)
+	atomic.StoreUint32(&m.updateRunning, 1)
 	// proces any requests to spawn new entities queued in the
 	// buffered channel
 	var t0 time.Time
@@ -77,10 +75,10 @@ func (m *EntityManager) Update() {
 	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
 		fmt.Printf("spawn: %d ms\n", time.Since(t0).Nanoseconds()/1e6)
 	}
-	// Finally, set the UpdateRunning flag, so that
+	// Finally, set the updateRunning flag, so that
 	// GetActiveUpdatedActiveEntityList won't conflict with Update() when
 	// it wants to lock the entity table for reading
-	atomic.StoreUint32(&m.UpdateRunning, 0)
+	atomic.StoreUint32(&m.updateRunning, 0)
 }
 
 // get the ID for a new entity. Only called by SpawnEntity, which locks
@@ -118,11 +116,13 @@ func (m *EntityManager) allocateID() int32 {
 func (m *EntityManager) processSpawnChannel() {
 	// get the current number of requests in the channel and only process
 	// them. More may continue to pile up. They'll get processed next time.
-	n := len(m.spawnChannel)
-	for i := 0; i < n; i++ {
-		// get the request from the channel
-		r := <-m.spawnChannel
-		m.spawn(r)
+	if atomic.LoadUint32(&m.despawningAll) != 1 {
+		n := len(m.spawnChannel)
+		for i := 0; i < n; i++ {
+			// get the request from the channel
+			r := <-m.spawnChannel
+			m.spawn(r)
+		}
 	}
 }
 
@@ -171,7 +171,7 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 	if r.Components.Logic != nil {
 		entityLogicDebug("Starting logic for %d...", id)
 		go r.Components.Logic.f(
-			m.entityTable.getEntityToken(id),
+			m.entityTable.getEntityToken(int32(id)),
 			r.Components.Logic.StopChannel,
 			m)
 	}
@@ -184,11 +184,8 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 // User facing function which is used to drain the state of the
 // entity manager, and will also kill any pending spawn requests
 func (m *EntityManager) DespawnAll() {
-	entityManagerDebug("waiting for entityTable mutex in" +
-		"DespawnAll...")
-	m.entityTable.mutex.Lock()
-	defer m.entityTable.mutex.Lock()
-	entityManagerDebug("Despawning all...")
+	despawnDebug("setting despawningAll flag")
+	atomic.StoreUint32(&m.despawningAll, 1)
 	// iterate all IDs which could have been allocated and despawn them
 	// (each time a despawn goes through, the entityTable.allocatedIDs list
 	// will shrink)
@@ -203,18 +200,32 @@ func (m *EntityManager) DespawnAll() {
 		// from a user which would only be able to proceed after we
 		// released the entityTable lock, and would then exit since gen
 		// had changed
-		m.lockEntity(m.entityTable.getEntityToken(ID))
-		m.despawnInternal(ID)
+		e := m.entityTable.getEntityToken(int32(ID))
+		m.lockEntity(e)
+		m.despawnInternal(e)
+		m.releaseEntity(e)
 	}
 	// drain the spawn channel
 	for len(m.spawnChannel) > 0 {
 		// we're draining the channel, so do nothing
 		_ = <-m.spawnChannel
 	}
+	atomic.StoreUint32(&m.despawningAll, 0)
 }
 
 // internal despawn function which assumes the EntityTable is locked
-func (m *EntityManager) despawnInternal(id uint16) {
+func (m *EntityManager) despawnInternal(e EntityToken) {
+
+	id := uint16(e.ID)
+
+	// lock the Mutex on the EntityTable
+	m.entityTable.mutex.Lock()
+	// if the gen doesn't match, another despawn for this same entity
+	// has already been through here (if a regular Despawn() call and
+	// a DespawnAll() were racing)
+	if !m.entityTable.genValidate(e) {
+		return
+	}
 	// decrement the entity count
 	m.entityTable.numEntities--
 	// add the ID to the list of available IDs
@@ -227,10 +238,14 @@ func (m *EntityManager) despawnInternal(id uint16) {
 	// lock to be 0 so they can claim it in AtomicEntityModify() will then
 	// immediately want to check if the gen of the entity still matches.
 	m.entityTable.incrementGen(id)
+	// release the mutex on the EntityTable
+	m.entityTable.mutex.Unlock()
 
 	// Deactivate the entity to ensure that all updated entity lists are
 	// notified
+	despawnDebug("about to setActiveState...")
 	m.setActiveState(id, false)
+	despawnDebug("finished setActiveState()")
 	// clear the entity from lists of tagged entities it's in
 	t0 := time.Now()
 	tags_to_clear := m.tagTable.tagsOfEntity[id]
@@ -287,10 +302,18 @@ func (m *EntityManager) setActiveState(id uint16, state bool) {
 // active state, either true or false
 func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 
+	var time = time.Now().UnixNano()
+	updatedEntityListDebug("[%d] in notifyActiveState for %d: %v",
+		time, id, active)
+
 	m.activeEntityWatchersMutex.Lock()
 	defer m.activeEntityWatchersMutex.Unlock()
 	for _, watcher := range m.activeEntityWatchers {
+		updatedEntityListDebug("[%d] testing Query %s...",
+			time, watcher.Name)
 		if watcher.Query.Test(id, m) {
+			updatedEntityListDebug("[%d] Query %s matched %d",
+				time, watcher.Name, id)
 			// warn if the channel is full (we will block here if so)
 			// NOTE: this can be very bad indeed, since now whatever
 			// called Activate is blocking
@@ -305,7 +328,7 @@ func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 			if !active {
 				idSignal = -(idSignal + 1)
 			}
-			watcher.Channel <- m.entityTable.getEntityToken(uint16(idSignal))
+			watcher.Channel <- m.entityTable.getEntityToken(idSignal)
 		}
 	}
 }
@@ -343,7 +366,8 @@ func (m *EntityManager) GetUpdatedActiveEntityList(
 	// with all events. We return it.
 
 	// sleep until Update() has just finished
-	for atomic.LoadUint32(&m.UpdateRunning) != 0 {
+	for atomic.LoadUint32(&m.updateRunning) != 0 {
+
 		time.Sleep(FRAME_SLEEP / 6)
 	}
 	// register a query watcher for the query given
@@ -407,7 +431,7 @@ func (m *EntityManager) GetUpdatedActiveEntityList(
 			if q.Test(id, m) {
 				updatedEntityListDebug("sending signal %d in "+
 					"GetUpdatedActiveEntityList for %s", id, name)
-				list.InputChannel <- m.entityTable.getEntityToken(id)
+				list.InputChannel <- m.entityTable.getEntityToken(int32(id))
 			}
 		}
 	}
@@ -476,12 +500,17 @@ func (m *EntityManager) AtomicEntityModify(
 // return. Return value is whether the entities were locked and f was run
 func (m *EntityManager) AtomicEntitiesModify(
 	entities []EntityToken,
-	f func([]EntityToken)) bool {
+	f func()) bool {
 
+	var time = time.Now().UnixNano()
+
+	atomicEntityModifyDebug("[%d] trying to lock %v", time, entities)
 	if !m.lockEntities(entities) {
 		return false
 	}
-	f(entities)
+	atomicEntityModifyDebug("[%d] lock succeeded, trying to run f()", time)
+	f()
+	atomicEntityModifyDebug("[%d] f() completed, relesing entities", time)
 	m.releaseEntities(entities)
 	return true
 }
@@ -515,11 +544,16 @@ func (m *EntityManager) lockEntities(entities []EntityToken) bool {
 	// attempt to lock all entities, keeping track of which ones we have
 	var allValid = true
 	var locked = make([]EntityToken, 0)
+	var time = time.Now().UnixNano()
+	entityLocksDebug("[%d] attempting to lock %d entities: %v",
+		time, len(entities), entities)
 	for _, entity := range entities {
 		if !m.lockEntity(entity) {
+			entityLocksDebug("[%d] locking failed for %d", time, entity.ID)
 			allValid = false
 			break
 		} else {
+			entityLocksDebug("[%d] locking succeeded for %d", time, entity.ID)
 			locked = append(locked, entity)
 		}
 	}
@@ -694,10 +728,7 @@ func (m *EntityManager) EntityHasComponent(id uint16, COMPONENT int) bool {
 }
 
 // Returns the component bit array for an entity
-func (m *EntityManager) EntityComponentBitArray(id uint16) bitarray.BitArray {
-	m.entityTable.mutex.RLock()
-	defer m.entityTable.mutex.RUnlock()
-
+func (m *EntityManager) entityComponentBitArray(id uint16) bitarray.BitArray {
 	return m.entityTable.componentBitArrays[id]
 }
 

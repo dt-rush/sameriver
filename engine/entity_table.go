@@ -36,15 +36,24 @@ type EntityTable struct {
 }
 
 func (t *EntityTable) getGen(id uint16) uint32 {
-	return atomic.LoadUint32(&t.gens[id])
+	return atomic.LoadUint32(&t.gens[uint16(id)])
 }
 
 func (t *EntityTable) incrementGen(id uint16) uint32 {
 	return atomic.AddUint32(&t.gens[id], 1)
 }
 
-func (t *EntityTable) getEntityToken(id uint16) EntityToken {
-	return EntityToken{int32(id), t.getGen(id)}
+func (t *EntityTable) getEntityToken(id int32) EntityToken {
+	// we may want to get an entity token for -(id + 1) in the case
+	// that this token represents a remove signal to an UpdatedEntityList.
+	// handle this by getting the correct gen but leaving ID as negative
+	var gen uint32
+	if id < 0 {
+		gen = t.getGen(uint16(-(id + 1)))
+	} else {
+		gen = t.getGen(uint16(id))
+	}
+	return EntityToken{id, gen}
 }
 
 func (t *EntityTable) genValidate(entity EntityToken) bool {

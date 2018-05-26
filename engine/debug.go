@@ -36,3 +36,7 @@ var entityClassDebug = genDebugFunction(
 	"EntityClass", DEBUG_ENTITY_CLASS)
 var worldLogicDebug = genDebugFunction(
 	"WorldLogic", DEBUG_WORLD_LOGIC)
+var entityLocksDebug = genDebugFunction(
+	"EntityLocks", DEBUG_WORLD_LOGIC)
+var despawnDebug = genDebugFunction(
+	"Despawn", DEBUG_DESPAWN)
