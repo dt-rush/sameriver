@@ -55,7 +55,7 @@ type EntityManager struct {
 func (m *EntityManager) Init() {
 	// allocate component data
 	m.Components = AllocateComponentsMemoryBlock()
-	m.Components.LinkEntityLocks(&m.entityTable.locks)
+	m.Components.LinkEntityManager(m)
 	// allocate space for the spawn buffer
 	m.spawnChannel = make(chan EntitySpawnRequest,
 		MAX_ENTITIES)

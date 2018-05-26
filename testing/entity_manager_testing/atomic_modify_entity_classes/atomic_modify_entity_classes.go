@@ -168,8 +168,10 @@ func main() {
 				fmt.Println("No healthful entities")
 			}
 			for _, entity := range healthfulEntities {
-				fmt.Printf("Entity %d has health %d\n", entity.ID,
-					em.Components.Health.SafeGet(uint16(entity.ID)))
+				health, valid := em.Components.Health.SafeGet(entity)
+				if valid {
+					fmt.Printf("Entity %d has health %d\n", entity.ID, health)
+				}
 			}
 		})
 

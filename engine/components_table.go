@@ -20,59 +20,59 @@ type ComponentsTable struct {
 }
 
 func AllocateComponentsMemoryBlock() ComponentsTable {
-	c := ComponentsTable{}
-	c.Active = &ActiveComponent{}
-	c.Color = &ColorComponent{}
-	c.Health = &HealthComponent{}
-	c.Hitbox = &HitboxComponent{}
-	c.Logic = &LogicComponent{}
-	c.Position = &PositionComponent{}
-	c.Sprite = &SpriteComponent{}
-	c.Velocity = &VelocityComponent{}
-	return c
+	ct := ComponentsTable{}
+	ct.Active = &ActiveComponent{}
+	ct.Color = &ColorComponent{}
+	ct.Health = &HealthComponent{}
+	ct.Hitbox = &HitboxComponent{}
+	ct.Logic = &LogicComponent{}
+	ct.Position = &PositionComponent{}
+	ct.Sprite = &SpriteComponent{}
+	ct.Velocity = &VelocityComponent{}
+	return ct
 }
 
-func (t *ComponentsTable) LinkEntityLocks(entityLocks *[MAX_ENTITIES]uint32) {
-	t.Active.entityLocks = entityLocks
-	t.Color.entityLocks = entityLocks
-	t.Health.entityLocks = entityLocks
-	t.Hitbox.entityLocks = entityLocks
-	t.Logic.entityLocks = entityLocks
-	t.Position.entityLocks = entityLocks
-	t.Sprite.entityLocks = entityLocks
-	t.Velocity.entityLocks = entityLocks
+func (ct *ComponentsTable) LinkEntityManager(em *EntityManager) {
+	ct.Active.em = em
+	ct.Color.em = em
+	ct.Health.em = em
+	ct.Hitbox.em = em
+	ct.Logic.em = em
+	ct.Position.em = em
+	ct.Sprite.em = em
+	ct.Velocity.em = em
 }
 
 // NOTE: this must be called in a context in which the entity lock is preventing
 // any reads or writes to the entity, or the gods will have mighty revenge on
 // you for your hubris
-func (t *ComponentsTable) ApplyComponentSet(id uint16, c ComponentSet) {
+func (ct *ComponentsTable) ApplyComponentSet(id uint16, cs ComponentSet) {
 	// color
-	if c.Color != nil {
-		t.Color.Data[id] = *c.Color
+	if cs.Color != nil {
+		ct.Color.Data[id] = *cs.Color
 	}
 	// health
-	if c.Health != nil {
-		t.Health.Data[id] = *c.Health
+	if cs.Health != nil {
+		ct.Health.Data[id] = *cs.Health
 	}
 	// hitbox
-	if c.Hitbox != nil {
-		t.Hitbox.Data[id] = *c.Hitbox
+	if cs.Hitbox != nil {
+		ct.Hitbox.Data[id] = *cs.Hitbox
 	}
 	// logic
-	if c.Logic != nil {
-		t.Logic.Data[id] = *c.Logic
+	if cs.Logic != nil {
+		ct.Logic.Data[id] = *cs.Logic
 	}
 	// position
-	if c.Position != nil {
-		t.Position.Data[id] = *c.Position
+	if cs.Position != nil {
+		ct.Position.Data[id] = *cs.Position
 	}
 	// sprite
-	if c.Sprite != nil {
-		t.Sprite.Data[id] = *c.Sprite
+	if cs.Sprite != nil {
+		ct.Sprite.Data[id] = *cs.Sprite
 	}
 	// velocity
-	if c.Velocity != nil {
-		t.Velocity.Data[id] = *c.Velocity
+	if cs.Velocity != nil {
+		ct.Velocity.Data[id] = *cs.Velocity
 	}
 }

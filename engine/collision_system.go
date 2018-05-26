@@ -142,11 +142,7 @@ func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
 
 func (s *CollisionSystem) Update(dt_ms uint16) {
 
-	s.em.Components.Position.mutex.Lock()
-	s.em.Components.Hitbox.mutex.RLock()
 	s.collidableEntities.Mutex.Lock()
-	defer s.em.Components.Position.mutex.Unlock()
-	defer s.em.Components.Hitbox.mutex.RUnlock()
 	defer s.collidableEntities.Mutex.Unlock()
 
 	entities := s.collidableEntities.Entities
@@ -181,6 +177,8 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 				})
 				// TODO: move both entities away from their common center
 			}
+			// release the entities now that we're done with them
+			s.em.releaseTwoEntities(i, j)
 		}
 	}
 }
