@@ -1,15 +1,15 @@
 package engine
 
 type LogicUnit struct {
-	f           EntityLogicFunc
 	Name        string
+	f           EntityLogicFunc
 	StopChannel chan bool
 }
 
 // Create a new LogicUnit instance
 func NewLogicUnit(Name string, f EntityLogicFunc) LogicUnit {
 	return LogicUnit{
-		f,
 		Name,
+		f,
 		make(chan bool)}
 }

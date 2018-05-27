@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/dt-rush/donkeys-qquest/engine"
+	"github.com/dt-rush/donkeys-qquest/entity/beetle"
+	"github.com/dt-rush/donkeys-qquest/entity/crow"
 )
 
 const PROFILE_EM_UPDATE = false
@@ -18,123 +20,6 @@ func verboseLog(s string, params ...interface{}) {
 		fmt.Printf(s, params...)
 	}
 }
-
-func spawnCrows(crowClass *engine.EntityClass, em *engine.EntityManager) {
-	for i := 0; i < N_CROWS; i++ {
-		spawnCrow(crowClass, em)
-	}
-}
-
-func spawnCrow(crowClass *engine.EntityClass, em *engine.EntityManager) {
-
-	logic := engine.NewLogicUnit(
-		"crow logic",
-		crowClass.GenerateLogicFunc(
-			[]engine.Behavior{CrowSpeakBehavior, CrowEatBeetleBehavior}))
-
-	position := [2]int16{0, 0}
-
-	health := uint8(128)
-
-	spawnRequest := engine.EntitySpawnRequest{
-		Components: engine.ComponentSet{
-			Health:   &health,
-			Logic:    &logic,
-			Position: &position,
-		},
-		Tags: []string{"bird", "crow"}}
-	em.RequestSpawn(spawnRequest)
-}
-
-var CrowSpeakBehavior = engine.Behavior{
-	Sleep: 1000 * time.Millisecond,
-	Func: func(crow engine.EntityToken,
-		crowclass *engine.EntityClass,
-		em *engine.EntityManager) {
-
-		// the crow CAW's periodically
-		verboseLog("Crow %d says, CAW!\n", crow.ID)
-		time.Sleep(time.Duration(rand.Intn(200)) * time.Millisecond)
-	}}
-
-var CrowEatBeetleBehavior = engine.Behavior{
-	Sleep: 500 * time.Millisecond,
-	Func: func(crow engine.EntityToken,
-		crowClass *engine.EntityClass,
-		em *engine.EntityManager) {
-
-		time.Sleep(
-			time.Duration(rand.Intn(200)) * time.Millisecond)
-		// the crow examines the list of beetles and tries to eat one
-		// 50% of the time
-		fmt.Printf("Crow %d sees %d beetles\n",
-			crow.ID, crowClass.Lists["beetle"].Length())
-		beetle, err := crowClass.Lists["beetle"].GetFirst()
-		if err == nil {
-			verboseLog("Crow %d notices a tasty beetle: Beetle %d\n",
-				crow.ID, beetle.ID)
-			if rand.Intn(2) == 0 {
-				verboseLog("Crow %d decides to eat the Beetle %d.\n",
-					crow.ID, beetle.ID)
-				didEat := em.AtomicEntitiesModify(
-					[]engine.EntityToken{beetle, crow},
-					func(entities []engine.EntityToken) {
-						// eating a beetle despawns it
-						fmt.Println("about to despawn beetle")
-						em.Despawn(beetle)
-						fmt.Println("despawned beetle")
-						// eating a beetle increases the crow's health
-						em.ModifyHealth(5)(crow)
-					})
-				if didEat {
-					verboseLog("Crow %d ate the delicious Beetle %d.\n",
-						crow.ID, beetle.ID)
-				} else {
-					verboseLog("Crow %d couldn't eat Beetle %d!\n",
-						crow.ID, beetle.ID)
-				}
-			}
-		}
-		time.Sleep(
-			time.Duration(rand.Intn(1000)) * time.Millisecond)
-	}}
-
-func spawnBeetles(beetleClass *engine.EntityClass, em *engine.EntityManager) {
-	for i := 0; i < N_BEETLES; i++ {
-		spawnBeetle(beetleClass, em)
-	}
-}
-
-func spawnBeetle(beetleClass *engine.EntityClass, em *engine.EntityManager) {
-
-	logic := engine.NewLogicUnit(
-		"beetle logic",
-		beetleClass.GenerateLogicFunc(
-			[]engine.Behavior{BeetleSpeakBehavior}))
-
-	position := [2]int16{0, 0}
-
-	health := uint8(2)
-
-	spawnRequest := engine.EntitySpawnRequest{
-		Components: engine.ComponentSet{
-			Health:   &health,
-			Logic:    &logic,
-			Position: &position,
-		},
-		Tags: []string{"insect", "beetle"}}
-	em.RequestSpawn(spawnRequest)
-}
-
-var BeetleSpeakBehavior = engine.Behavior{
-	Sleep: 500 * time.Millisecond,
-	Func: func(beetle engine.EntityToken,
-		beetleClass *engine.EntityClass,
-		em *engine.EntityManager) {
-
-		verboseLog("beetle %d says, beep!\n", beetle.ID)
-		time.Sleep(time.Duration(rand.Intn(3000)) * time.Millisecond)
-	}}
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
@@ -175,24 +60,13 @@ func main() {
 			}
 		})
 
-	var crowClass = engine.NewEntityClass(
-		&em,
-		"crow",
-		[]engine.GenericEntityQuery{
-			engine.GenericEntityQueryForTag("crow"),
-			engine.GenericEntityQueryForTag("beetle"),
-		})
+	Crows := crow.RegisterCrows(&em)
+	Beetles := beetle.RegisterBeetles(&em)
 
-	var beetleClass = engine.NewEntityClass(
-		&em,
-		"beetle",
-		[]engine.GenericEntityQuery{
-			engine.GenericEntityQueryForTag("beetle"),
-			engine.GenericEntityQueryForTag("crow"),
-		})
-
-	spawnCrows(&crowClass, &em)
-	spawnBeetles(&beetleClass, &em)
+	em.RequestSpawn(Crows.SpawnRequest([2]int16{0, 0}))
+	em.RequestSpawn(Beetles.SpawnRequest([2]int16{30, 30}))
+	em.RequestSpawn(Beetles.SpawnRequest([2]int16{0, 30}))
+	em.RequestSpawn(Beetles.SpawnRequest([2]int16{30, 0}))
 
 	for {
 		var t0 time.Time

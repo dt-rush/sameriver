@@ -7,6 +7,7 @@ package engine
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -23,10 +24,14 @@ type EntityManager struct {
 	entityTable EntityTable
 	// Tag table stores data for entity tagging system
 	tagTable TagTable
+	// EntitClassTable stores references to entity classes, which can be
+	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
+	entityClassTable entityClassTable
 	// Component data
 	Components ComponentsTable
 
-	// Channel for spawn entity requests
+	// Channel for spawn entity requests which we don't need to get the
+	// entity returned from (processed as a batch each Update())
 	spawnChannel chan EntitySpawnRequest
 
 	// a flag signifying that Update() is running, set atomically
@@ -59,9 +64,11 @@ func (m *EntityManager) Init() {
 	// allocate space for the spawn buffer
 	m.spawnChannel = make(chan EntitySpawnRequest,
 		MAX_ENTITIES)
-	// allocate tag system data members
+	// allocate tagTable data members
 	m.tagTable.entitiesWithTag = make(map[string]([]uint16))
 	m.tagTable.tagsOfEntity = make(map[uint16]([]string))
+	// allocate entityClassTable data members
+	m.entityClassTable.classes = make(map[string]*EntityClass)
 }
 
 // called once per scene Update() for scenes holding an entity manager
@@ -121,7 +128,7 @@ func (m *EntityManager) processSpawnChannel() {
 		for i := 0; i < n; i++ {
 			// get the request from the channel
 			r := <-m.spawnChannel
-			m.spawn(r)
+			m.Spawn(r)
 		}
 	}
 }
@@ -132,8 +139,9 @@ func (m *EntityManager) RequestSpawn(r EntitySpawnRequest) {
 }
 
 // given a list of components, spawn an entity with the default values
-// returns the ID
-func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
+// returns the EntityToken (used to spawn an entity for which we *want* the
+// token back)
+func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 
 	// lock the entityTable
 	m.entityTable.mutex.Lock()
@@ -142,15 +150,19 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 	// get an ID for the entity
 	allocateIDResponse := m.allocateID()
 	if allocateIDResponse == -1 {
-		Logger.Printf("Ran out of entity space. Will not spawn entity with "+
-			"tags: %v\n", r.Tags)
+		errorMsg := fmt.Sprintf("Ran out of entity space. Will not spawn "+
+			"entity with tags: %v\n", r.Tags)
+		entityManagerDebug(errorMsg)
+		return EntityToken{-1, 0}, errors.New("ran out of entity space,")
 	}
 	id := uint16(allocateIDResponse)
+	// get token
+	entity := m.entityTable.getEntityToken(int32(id))
 	// print a debug message
-	entityManagerDebug("[Entity manager] Spawning: %d\n", id)
+	entityManagerDebug("[Entity manager] Spawning: %v\n", entity)
 	// set the bitarray for this entity
 	m.entityTable.componentBitArrays[id] = r.Components.ToBitArray()
-	// copy the data into the component storage for each component
+	// copy the data inNto the component storage for each component
 	// (note: we dereference the pointers, this is a real copy, so it's good
 	// that component values are either small pieces of data like [2]uint16
 	// or a pointer to a func, etc.).
@@ -171,14 +183,14 @@ func (m *EntityManager) spawn(r EntitySpawnRequest) uint16 {
 	if r.Components.Logic != nil {
 		entityLogicDebug("Starting logic for %d...", id)
 		go r.Components.Logic.f(
-			m.entityTable.getEntityToken(int32(id)),
+			entity,
 			r.Components.Logic.StopChannel,
 			m)
 	}
 	// notify entity is active
 	go m.notifyActiveState(id, true)
-	// return ID
-	return id
+	// return EntityToken
+	return entity, nil
 }
 
 // User facing function which is used to drain the state of the
@@ -697,6 +709,33 @@ func (m *EntityManager) EntityHasTag(id uint16, tag string) bool {
 		}
 	}
 	return false
+}
+
+// Register an entity class (subsequently retrievable)
+func (m *EntityManager) RegisterEntityClass(
+	classDef EntityClassDef) *EntityClass {
+	// create the object from the EntityClassDef
+	// (Lists is here only allocated)
+	class := EntityClass{
+		Name: classDef.Name,
+		Lists: make(map[string](*UpdatedEntityList),
+			len(classDef.ListQueries))}
+	// used EntityClassclassDef.ListQueries to build
+	// EntityClass.Lists
+	for _, q := range classDef.ListQueries {
+		entityClassDebug("trying to build list %s for "+
+			"class %s", q.Name, classDef.Name)
+		class.Lists[q.Name] = m.GetUpdatedActiveEntityList(
+			q, fmt.Sprintf("class(%s):%s", classDef.Name, q.Name))
+	}
+	// add the class to the EntityClassTable and return
+	m.entityClassTable.addEntityClass(&class)
+	return &class
+}
+
+// Get an entity class by name
+func (m *EntityManager) GetEntityClass(name string) *EntityClass {
+	return m.entityClassTable.getClass(name)
 }
 
 // Gets the first entity with the given tag. Warns to console if the entity is
