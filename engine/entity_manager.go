@@ -156,7 +156,7 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	// if the spawn request has a unique tag, return error if tag already
 	// has an entity
 	if r.UniqueTag != "" &&
-		m.tagTable.EntitiesWithTag(r.UniqueTag).Length() != 0 {
+		m.EntitiesWithTag(r.UniqueTag).Length() != 0 {
 		return fail(fmt.Sprintf("requested to spawn unique entity for %s, "+
 			"but %s already exists", r.UniqueTag))
 	}

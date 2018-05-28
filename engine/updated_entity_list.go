@@ -117,6 +117,7 @@ func (l *UpdatedEntityList) popBacklog() {
 	if len(l.backlog) == 0 {
 		l.processingBacklog = false
 		l.backlogTester = nil
+		return
 	}
 
 	last_ix := len(l.backlog) - 1

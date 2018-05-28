@@ -66,6 +66,8 @@ func LogicUnitFromBehaviors(
 							}(&behaviors[i])
 						}
 					}
+					// we need to sleep here in order to avoid burning the CPU!
+					time.Sleep(5 * FRAME_SLEEP)
 				}
 			}
 

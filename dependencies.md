@@ -31,3 +31,4 @@ pacman:
 * github.com/veandco/go-sdl2/img
 * github.com/veandco/go-sdl2/ttf
 * github.com/golang-collections/go-datastructures/bitarray
+* go.uber.org/atomic
