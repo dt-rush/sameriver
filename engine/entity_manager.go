@@ -139,7 +139,7 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	// AtomicEntityModify pattern
 	spawnDebug("applying component set for %v...", entity)
 	m.Components.Active.Data[entity.ID] = true
-	m.Components.ApplyComponentSet(entity.ID, r.Components)
+	m.ApplyComponentSetAtomic(r.Components)(entity)
 	// apply the tags
 	spawnDebug("applying tags for %v...", entity)
 	for _, tag := range r.Tags {
@@ -151,7 +151,7 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	}
 	// start the logic goroutine if supplied
 	if r.Components.Logic != nil {
-		entityLogicDebug("Starting logic for %d...", entity.ID)
+		spawnDebug("Starting logic for %d...", entity.ID)
 		go r.Components.Logic.f(
 			entity,
 			r.Components.Logic.StopChannel,
@@ -223,10 +223,10 @@ func (m *EntityManager) despawnInternal(entity EntityToken) {
 	// immediately want to check if the gen of the entity still matches.
 	m.entityTable.incrementGen(entity.ID)
 
-	// Deactivate the entity to ensure that all updated entity lists are
-	// notified
+	// Deactivate and notify
 	despawnDebug("setting %v inactive...", entity)
 	m.Components.Active.Data[entity.ID] = false
+	m.activeEntityLists.notifyActiveState(entity, false)
 	t0 := time.Now()
 	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
 		fmt.Printf("removing tags took: %d ms\n",
@@ -282,7 +282,7 @@ func (m *EntityManager) AtomicEntitiesModify(
 	}
 	atomicEntityModifyDebug("[%d] lock succeeded, trying to run f()", time)
 	f()
-	atomicEntityModifyDebug("[%d] f() completed, relesing entities", time)
+	atomicEntityModifyDebug("[%d] f() completed, releasing entities", time)
 	m.releaseEntities(entities)
 	return true
 }
@@ -306,15 +306,17 @@ func (m *EntityManager) UniqueTaggedEntity(tag string) (EntityToken, error) {
 
 	list := m.EntitiesWithTag(tag)
 	if list.Length() == 0 {
-		tagsDebug("tried to fetch unique entity %s, but did not exist", tag)
-		return ENTITY_TOKEN_NIL, errors.New("no such entity")
+		errorMsg := fmt.Sprintf("tried to fetch unique entity %s, but did "+
+			"not exist", tag)
+		tagsDebug(errorMsg)
+		return ENTITY_TOKEN_NIL, errors.New(errorMsg)
 	}
 	if list.Length() > 1 {
 		tagsDebug("⚠ more than one entity tagged with %s, but "+
 			"GetUniqueTaggedEntity was called. This is a logic error. "+
 			"Returning the first entity.", tag)
 	}
-	return list.First()
+	return list.FirstEntity()
 }
 
 func (m *EntityManager) EntitiesWithTag(
@@ -342,8 +344,8 @@ func (m *EntityManager) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
 	for _, entity := range m.entityTable.currentEntities {
-		tags, valid := m.Components.TagList.SafeGet(entity)
-		if !valid {
+		tags, err := m.Components.TagList.SafeGet(entity)
+		if err != nil {
 			continue // entity was despawned
 		}
 		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",

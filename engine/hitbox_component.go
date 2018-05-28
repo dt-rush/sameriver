@@ -7,6 +7,11 @@
 
 package engine
 
+import (
+	"errors"
+	"fmt"
+)
+
 type HitBoxComponent struct {
 	// TODO: consider making hitbox [2]uint8 - nothing really needs to be
 	// bigger than 255...
@@ -14,11 +19,11 @@ type HitBoxComponent struct {
 	em   *EntityManager
 }
 
-func (c *HitBoxComponent) SafeGet(e EntityToken) ([2]uint16, bool) {
+func (c *HitBoxComponent) SafeGet(e EntityToken) ([2]uint16, error) {
 	if !c.em.lockEntity(e) {
-		return [2]uint16{}, false
+		return [2]uint16{}, errors.New(fmt.Sprintf("%v no longer exists", e))
 	}
 	val := c.Data[e.ID]
 	c.em.releaseEntity(e)
-	return val, true
+	return val, nil
 }

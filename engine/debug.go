@@ -28,8 +28,6 @@ var eventsDebug = DebugFunction(
 	"Events", DEBUG_EVENTS)
 var updatedEntityListDebug = DebugFunction(
 	"UpdatedEntityList", DEBUG_UPDATED_ENTITY_LISTS)
-var entityLogicDebug = DebugFunction(
-	"EntityLogic", DEBUG_ENTITY_LOGIC)
 var goroutinesDebug = DebugFunction(
 	"Goroutines", DEBUG_GOROUTINES)
 var atomicEntityModifyDebug = DebugFunction(

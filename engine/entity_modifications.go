@@ -69,16 +69,51 @@ func (m *EntityManager) TagEntitiesAtomic(tag string) func([]EntityToken) {
 	}
 }
 
+// Apply a given component set to the entity
+func (em *EntityManager) ApplyComponentSetAtomic(
+	cs ComponentSet) func(EntityToken) {
+
+	return func(entity EntityToken) {
+		if cs.Color != nil {
+			em.Components.Color.Data[entity.ID] = *cs.Color
+		}
+		if cs.Health != nil {
+			em.Components.Health.Data[entity.ID] = *cs.Health
+		}
+		if cs.HitBox != nil {
+			em.Components.HitBox.Data[entity.ID] = *cs.HitBox
+		}
+		if cs.Logic != nil {
+			em.Components.Logic.Data[entity.ID] = *cs.Logic
+		}
+		if cs.Mind != nil {
+			em.Components.Mind.Data[entity.ID] = *cs.Mind
+		}
+		if cs.Position != nil {
+			em.Components.Position.Data[entity.ID] = *cs.Position
+		}
+		if cs.Sprite != nil {
+			em.Components.Sprite.Data[entity.ID] = *cs.Sprite
+		}
+		if cs.TagList != nil {
+			em.Components.TagList.Data[entity.ID] = *cs.TagList
+		}
+		if cs.Velocity != nil {
+			em.Components.Velocity.Data[entity.ID] = *cs.Velocity
+		}
+	}
+}
+
 // a function which generates an entity modification to augment the health
 // of an entity
-func (m *EntityManager) IncrementHealthAtomic(change int) func(EntityToken) {
+func (m *EntityManager) IncrementHealthAtomic(change uint8) func(EntityToken) {
 	return func(e EntityToken) {
-		healthNow := int(m.Components.Health.Data[e.ID]) + change
+		healthNow := m.Components.Health.Data[e.ID] + change
 		if healthNow > 255 {
 			healthNow = 255
 		} else if healthNow < 0 {
 			healthNow = 0
 		}
-		m.Components.Health.Data[e.ID] = uint8(healthNow)
+		m.Components.Health.Data[e.ID] = healthNow
 	}
 }

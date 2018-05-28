@@ -24,6 +24,7 @@ const (
 	HEALTH_COMPONENT   = iota
 	HITBOX_COMPONENT   = iota
 	LOGIC_COMPONENT    = iota
+	MIND_COMPONENT     = iota
 	POSITION_COMPONENT = iota
 	SPRITE_COMPONENT   = iota
 	TAGLIST_COMPONENT  = iota
@@ -38,6 +39,7 @@ type ComponentSet struct {
 	Health   *uint8
 	HitBox   *[2]uint16
 	Logic    *LogicUnit
+	Mind     *Mind
 	Position *[2]int16
 	Sprite   *Sprite
 	TagList  *TagList
@@ -60,6 +62,9 @@ func (s *ComponentSet) ToBitArray() bitarray.BitArray {
 	}
 	if s.Logic != nil {
 		b.SetBit(uint64(LOGIC_COMPONENT))
+	}
+	if s.Mind != nil {
+		b.SetBit(uint64(MIND_COMPONENT))
 	}
 	if s.Position != nil {
 		b.SetBit(uint64(POSITION_COMPONENT))

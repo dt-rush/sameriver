@@ -11,6 +11,7 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -67,14 +68,24 @@ func (l *UpdatedEntityList) Length() int {
 }
 
 // get the first element of the list
-func (l *UpdatedEntityList) First() (EntityToken, error) {
+func (l *UpdatedEntityList) FirstEntity() (EntityToken, error) {
 	l.Mutex.RLock()
 	defer l.Mutex.RUnlock()
-	if len(l.Entities) > 0 {
-		return l.Entities[0], nil
-	} else {
-		return EntityToken{ID: -1}, errors.New("no first entity found")
+	if len(l.Entities) == 0 {
+		return ENTITY_TOKEN_NIL, errors.New("list is empty, no first element")
 	}
+	return l.Entities[0], nil
+}
+
+// get a random element of the list
+func (l *UpdatedEntityList) RandomEntity() (EntityToken, error) {
+	l.Mutex.RLock()
+	defer l.Mutex.RUnlock()
+	if len(l.Entities) == 0 {
+		return ENTITY_TOKEN_NIL,
+			errors.New("list is empty, can't get random element")
+	}
+	return l.Entities[rand.Intn(len(l.Entities))], nil
 }
 
 // called during the creation of a list. Starts a goroutine which listens

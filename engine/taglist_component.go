@@ -7,16 +7,21 @@
 
 package engine
 
+import (
+	"errors"
+	"fmt"
+)
+
 type TagListComponent struct {
 	Data [MAX_ENTITIES]TagList
 	em   *EntityManager
 }
 
-func (c *TagListComponent) SafeGet(e EntityToken) (TagList, bool) {
+func (c *TagListComponent) SafeGet(e EntityToken) (TagList, error) {
 	if !c.em.lockEntity(e) {
-		return TagList{}, false
+		return TagList{}, errors.New(fmt.Sprintf("%v no longer exists", e))
 	}
-	val := c.Data[e.ID]
+	returnCopy := c.Data[e.ID].Copy()
 	c.em.releaseEntity(e)
-	return val, true
+	return returnCopy, nil
 }

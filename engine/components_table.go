@@ -14,6 +14,7 @@ type ComponentsTable struct {
 	Health   *HealthComponent
 	HitBox   *HitBoxComponent
 	Logic    *LogicComponent
+	Mind     *MindComponent
 	Position *PositionComponent
 	Sprite   *SpriteComponent
 	TagList  *TagListComponent
@@ -31,6 +32,7 @@ func (ct *ComponentsTable) allocate() {
 	ct.Health = &HealthComponent{}
 	ct.HitBox = &HitBoxComponent{}
 	ct.Logic = &LogicComponent{}
+	ct.Mind = &MindComponent{}
 	ct.Position = &PositionComponent{}
 	ct.Sprite = &SpriteComponent{}
 	ct.TagList = &TagListComponent{}
@@ -45,46 +47,9 @@ func (ct *ComponentsTable) linkEntityManager(
 	ct.Health.em = em
 	ct.HitBox.em = em
 	ct.Logic.em = em
+	ct.Mind.em = em
 	ct.Position.em = em
 	ct.Sprite.em = em
 	ct.TagList.em = em
 	ct.Velocity.em = em
-}
-
-// NOTE: this must be called in a context in which the entity lock is preventing
-// any reads or writes to the entity, or the gods will have mighty revenge on
-// you for your hubris
-func (ct *ComponentsTable) ApplyComponentSet(id int, cs ComponentSet) {
-	// color
-	if cs.Color != nil {
-		ct.Color.Data[id] = *cs.Color
-	}
-	// health
-	if cs.Health != nil {
-		ct.Health.Data[id] = *cs.Health
-	}
-	// hitbox
-	if cs.HitBox != nil {
-		ct.HitBox.Data[id] = *cs.HitBox
-	}
-	// logic
-	if cs.Logic != nil {
-		ct.Logic.Data[id] = *cs.Logic
-	}
-	// position
-	if cs.Position != nil {
-		ct.Position.Data[id] = *cs.Position
-	}
-	// sprite
-	if cs.Sprite != nil {
-		ct.Sprite.Data[id] = *cs.Sprite
-	}
-	// taglist
-	if cs.TagList != nil {
-		ct.TagList.Data[id] = *cs.TagList
-	}
-	// velocity
-	if cs.Velocity != nil {
-		ct.Velocity.Data[id] = *cs.Velocity
-	}
 }

@@ -20,3 +20,9 @@ func (l *TagList) Add(tag string) {
 func (l *TagList) Remove(tag string) {
 	removeStringFromSlice(&l.tags, tag)
 }
+
+func (l *TagList) Copy() TagList {
+	tagsCopy := make([]string, len(l.tags))
+	copy(tagsCopy, l.tags)
+	return TagList{tagsCopy}
+}

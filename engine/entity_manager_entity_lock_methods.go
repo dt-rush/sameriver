@@ -16,18 +16,18 @@ func (m *EntityManager) lockEntity(entity EntityToken) bool {
 	// (in between when the caller acquired the EntityToken and now, the
 	// entity may have despawned)
 	if !m.entityTable.genValidate(entity) {
-		entityManagerDebug("LOCKED-GENMISMATCH entity %v", entity)
+		entityLocksDebug("LOCKED-GENMISMATCH entity %v", entity)
 		m.releaseEntity(entity)
 		return false
 	}
-	entityManagerDebug("LOCKED entity %v", entity)
+	entityLocksDebug("LOCKED entity %v", entity)
 	return true
 }
 
 // used by physics system to release an entity locked for modification
 func (m *EntityManager) releaseEntity(entity EntityToken) {
 	m.entityTable.locks[entity.ID].Store(0)
-	entityManagerDebug("RELEASED entity %v", entity)
+	entityLocksDebug("RELEASED entity %v", entity)
 }
 
 // lock multiple entities (with return value true only if gen matches for
