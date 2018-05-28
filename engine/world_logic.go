@@ -36,13 +36,11 @@ func (wl *WorldLogicManager) Init(
 	wl.lists = make(map[string]*UpdatedEntityList)
 }
 
-func (wl *WorldLogicManager) AddList(
-	name string, query EntityQuery) {
+func (wl *WorldLogicManager) AddList(query EntityQuery) {
 
 	wl.mutex.Lock()
 	defer wl.mutex.Unlock()
-	wl.lists[name] = wl.em.GetUpdatedActiveEntityList(
-		name, query)
+	wl.lists[query.Name] = wl.em.GetUpdatedEntityList(query)
 }
 
 func (wl *WorldLogicManager) GetEntitiesFromList(name string) []EntityToken {

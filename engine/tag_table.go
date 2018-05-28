@@ -6,57 +6,36 @@ import (
 
 // used by the EntityManager to tag entities
 type TagTable struct {
+	em              *EntityManager
 	mutex           sync.RWMutex
-	tagsOfEntity    [MAX_ENTITIES][]string
 	entitiesWithTag map[string]*UpdatedEntityList
 }
 
-func (t *TagTable) Init() {
+func (t *TagTable) Init(em *EntityManager) {
+	t.em = em
 	t.entitiesWithTag = make(map[string]*UpdatedEntityList)
 }
 
-func (t *TagTable) NumEntitiesWithTag(tag string) int {
+func (t *TagTable) GetEntitiesWithTag(tag string) *UpdatedEntityList {
+	t.createTagListIfNeeded(tag)
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
-	if _, exists := t.entitiesWithTag[tag]; !exists {
-		return 0
-	} else {
-		return t.entitiesWithTag[tag].Length()
-	}
-}
-
-func (t *TagTable) tagEntity(tag string, entity EntityToken) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-	tagsDebug("adding tag \"%s\" to %v", tag, entity)
-
-	t.tagsOfEntity[entity.ID] = append(t.tagsOfEntity[entity.ID], tag)
-	t.createTagListIfNeeded(tag)
-	t.entitiesWithTag[tag].actOnEntitySignal(EntitySignal{ENTITY_ADD, entity})
-}
-
-func (t *TagTable) untagEntity(tag string, entity EntityToken) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-	tagsDebug("removing tag \"%s\" from %v", tag, entity)
-
-	t.tagsOfEntity[entity.ID] = []string{}
-	if _, exists := t.entitiesWithTag[tag]; exists {
-		t.entitiesWithTag[tag].actOnEntitySignal(EntitySignal{ENTITY_REMOVE, entity})
-	}
-}
-
-func (t *TagTable) entitiesWithTag(tag string) *UpdatedEntityList {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-
-	t.createTagListIfNeeded(tag)
 	return t.entitiesWithTag[tag]
 }
 
 func (t *TagTable) createTagListIfNeeded(tag string) {
-	if _, exists := t.entitiesWithTag[tag]; !exists {
-		t.entitiesWithTag[tag] = t.em.GetUpdatedActiveEntityList(
-			tag, EntityQueryFromTag(tag))
+	t.mutex.RLock()
+	_, exists := t.entitiesWithTag[tag]
+	t.mutex.RUnlock()
+	if !exists {
+		// NOTE: when we seize the lock below, another routine may have already
+		// come through here since we hit RUnlock and tested the !exists condition.
+		// thankfully GetUpdatedEntityList itself will return the same list if it
+		// was already created, so we'll just write the same list to the map
+		t.mutex.Lock()
+		tagsDebug("creating list for tag \"%s\"", tag)
+		t.entitiesWithTag[tag] =
+			t.em.GetUpdatedEntityList(EntityQueryFromTag(tag))
+		t.mutex.Unlock()
 	}
 }

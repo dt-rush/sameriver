@@ -12,34 +12,42 @@ type ComponentsTable struct {
 	Active   *ActiveComponent
 	Color    *ColorComponent
 	Health   *HealthComponent
-	Hitbox   *HitboxComponent
+	HitBox   *HitBoxComponent
 	Logic    *LogicComponent
 	Position *PositionComponent
 	Sprite   *SpriteComponent
+	TagList  *TagListComponent
 	Velocity *VelocityComponent
 }
 
-func AllocateComponentsMemoryBlock() ComponentsTable {
-	ct := ComponentsTable{}
+func (ct *ComponentsTable) Init(em *EntityManager) {
+	ct.allocate()
+	ct.linkEntityManager(em)
+}
+
+func (ct *ComponentsTable) allocate() {
 	ct.Active = &ActiveComponent{}
 	ct.Color = &ColorComponent{}
 	ct.Health = &HealthComponent{}
-	ct.Hitbox = &HitboxComponent{}
+	ct.HitBox = &HitBoxComponent{}
 	ct.Logic = &LogicComponent{}
 	ct.Position = &PositionComponent{}
 	ct.Sprite = &SpriteComponent{}
+	ct.TagList = &TagListComponent{}
 	ct.Velocity = &VelocityComponent{}
-	return ct
 }
 
-func (ct *ComponentsTable) LinkEntityManager(em *EntityManager) {
+func (ct *ComponentsTable) linkEntityManager(
+	em *EntityManager) {
+
 	ct.Active.em = em
 	ct.Color.em = em
 	ct.Health.em = em
-	ct.Hitbox.em = em
+	ct.HitBox.em = em
 	ct.Logic.em = em
 	ct.Position.em = em
 	ct.Sprite.em = em
+	ct.TagList.em = em
 	ct.Velocity.em = em
 }
 
@@ -56,8 +64,8 @@ func (ct *ComponentsTable) ApplyComponentSet(id int, cs ComponentSet) {
 		ct.Health.Data[id] = *cs.Health
 	}
 	// hitbox
-	if cs.Hitbox != nil {
-		ct.Hitbox.Data[id] = *cs.Hitbox
+	if cs.HitBox != nil {
+		ct.HitBox.Data[id] = *cs.HitBox
 	}
 	// logic
 	if cs.Logic != nil {
@@ -70,6 +78,10 @@ func (ct *ComponentsTable) ApplyComponentSet(id int, cs ComponentSet) {
 	// sprite
 	if cs.Sprite != nil {
 		ct.Sprite.Data[id] = *cs.Sprite
+	}
+	// taglist
+	if cs.TagList != nil {
+		ct.TagList.Data[id] = *cs.TagList
 	}
 	// velocity
 	if cs.Velocity != nil {

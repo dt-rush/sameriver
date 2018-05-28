@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"errors"
+	"fmt"
 	"github.com/golang-collections/go-datastructures/bitarray"
 	"go.uber.org/atomic"
 	"sync"
@@ -90,10 +92,15 @@ func (t *EntityTable) allocateID() (EntityToken, error) {
 		// every slot in the table before the highest ID is filled
 		id = t.numEntities - 1
 	}
-	// add the ID to the list of allocated IDs
+	// return the token
 	entity := EntityToken{id, t.gens[id]}
-	t.currentEntities = append(t.currentEntities, entity)
 	return entity, nil
+}
+
+func (t *EntityTable) addToCurrentEntities(entity EntityToken) {
+	t.IDMutex.Lock()
+	defer t.IDMutex.Unlock()
+	t.currentEntities = append(t.currentEntities, entity)
 }
 
 // lock the ID table after waiting on spawn mutex to be unlocked,
@@ -107,5 +114,3 @@ func (t *EntityTable) snapshotAllocatedEntities() []EntityToken {
 	copy(snapshot, t.currentEntities)
 	return snapshot
 }
-
-

@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go.uber.org/atomic"
 	"sync"
 	"time"
 
@@ -19,43 +18,46 @@ import (
 // created by game scene as a singleton, containing the component, entity,
 // and tag data
 type EntityManager struct {
-    // Component data (can be accessed by users (but only safely inside an
-    // AtomicEntit(y|ies)Modify callback)
+	// Component data (can be accessed by users (but only safely inside an
+	// AtomicEntit(y|ies)Modify callback)
 	Components ComponentsTable
 	// EntityTable stores component bitarrays, a list of allocated EntityTokens,
 	// and a list of available IDs from previous deallocations
 	entityTable EntityTable
 	// TagTable stores data for the entity tagging system
-	tagTable TagTable
+	tags TagTable
 	// EntityClassTable stores references to entity classes, which can be
 	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
 	entityClasses entityClassTable
-    // ActiveEntityListCollection is used by GetUpdatedActiveEntityList to
-    // store EntityQueryWatchers and references to UpdatedEntityLists used
-    // to implement GetUpdatedActiveEntityList
-    activeEntityLists ActiveEntityListCollection
+	// ActiveEntityListCollection is used by GetUpdatedEntityList to
+	// store EntityQueryWatchers and references to UpdatedEntityLists used
+	// to implement GetUpdatedEntityList
+	activeEntityLists ActiveEntityListCollection
 	// Channel for spawn entity requests which we don't need to get the
 	// entity returned from (processed as a batch each Update())
 	spawnChannel chan EntitySpawnRequest
+	// spawnMutex prevents despawn / spawn events from occurring at the same time
+	spawnMutex sync.Mutex
 	// updateMutex is used so that String() can grab the whole entity table
 	// (massively interrupting Update()) and stringify it, safely at any rate
 	// (this is not used often, or ever, unless you call String() - really this
-    // should only be used in developent, in debugging, or in printing state
-    // during a crash
+	// should only be used in developent, in debugging, or in printing state
+	// during a crash
 	updateMutex sync.Mutex
 }
 
 func (m *EntityManager) Init() {
-	// allocate component data
-	m.Components = AllocateComponentsMemoryBlock()
-	m.Components.LinkEntityManager(m)
 	// allocate space for the spawn buffer
 	m.spawnChannel = make(chan EntitySpawnRequest,
 		MAX_ENTITIES)
-	// init entity class table
+	// init ComponentsTable
+	m.Components.Init(m)
+	// init EntityClassTable
 	m.entityClasses.Init()
-	// init tag table
-	m.tagTable.Init()
+	// init TagTable
+	m.tags.Init(m)
+	// init ActiveEntityListCollection
+	m.activeEntityLists.Init(m)
 }
 
 // called once per scene Update() for scenes holding an entity manager
@@ -74,15 +76,16 @@ func (m *EntityManager) Update() {
 func (m *EntityManager) processSpawnChannel() {
 	// get the current number of requests in the channel and only process
 	// them. More may continue to pile up. They'll get processed next time.
-    m.spawnMutex.Lock()
-    defer m.spawnMutex.Unlock()
-    n := len(m.spawnChannel)
-    for i := 0; i < n; i++ {
-        // get the request from the channel
-        r := <-m.spawnChannel
-        spawnDebug("processing request: %v", r)
-        m.Spawn(r)
-    }
+	m.spawnMutex.Lock()
+	defer m.spawnMutex.Unlock()
+
+	n := len(m.spawnChannel)
+	for i := 0; i < n; i++ {
+		// get the request from the channel
+		r := <-m.spawnChannel
+		spawnDebug("processing request: %v", r)
+		m.Spawn(r)
+	}
 }
 
 // used by goroutines to request the spawning of an entity
@@ -119,11 +122,6 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 		spawnDebug(errorMsg)
 		return fail("ran out of entity space")
 	}
-	// lock the entity (this prevents GetUpdatedActiveEntityList's list-building
-	// goroutine from querying the entity if its now-allocated entity is included
-	// in the snapshot of allocated entities)
-	m.lockEntity(entity)
-	defer m.releaseEntity(entity)
 	// print a debug message
 	spawnDebug("Spawning: %v\n", entity)
 	// set the bitarray for this entity
@@ -139,9 +137,11 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	// NOTE: we can directly set the Active component value since no other
 	// goroutine could be also writing to this entity, due to the
 	// AtomicEntityModify pattern
+	spawnDebug("applying component set for %v...", entity)
 	m.Components.Active.Data[entity.ID] = true
 	m.Components.ApplyComponentSet(entity.ID, r.Components)
 	// apply the tags
+	spawnDebug("applying tags for %v...", entity)
 	for _, tag := range r.Tags {
 		m.TagEntityAtomic(tag)(entity)
 	}
@@ -157,8 +157,14 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 			r.Components.Logic.StopChannel,
 			m)
 	}
-	// notify entity is active
-	go m.activeEntityLists.notifyActiveState(entity, true)
+	// set entity active and notify entity is active
+	spawnDebug("setting entity active %v...", entity)
+	m.Components.Active.Data[entity.ID] = true
+	spawnDebug("calling go notifyActiveState for %v...", entity)
+	m.activeEntityLists.notifyActiveState(entity, true)
+	// add the entity to the list of current entities
+	spawnDebug("adding %v to current entities...", entity)
+	m.entityTable.addToCurrentEntities(entity)
 	// return EntityToken
 	return entity, nil
 }
@@ -166,8 +172,8 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 // User facing function which is used to drain the state of the
 // entity manager, and will also kill any pending spawn requests
 func (m *EntityManager) DespawnAll() {
-	despawnDebug("setting despawningAll flag")
-	m.despawningAll.Store(1)
+	m.spawnMutex.Lock()
+	defer m.spawnMutex.Unlock()
 	// iterate all IDs which could have been allocated and despawn them
 	// (each time a despawn goes through, the entityTable.currentEntities list
 	// will shrink)
@@ -191,7 +197,6 @@ func (m *EntityManager) DespawnAll() {
 		// we're draining the channel, so do nothing
 		_ = <-m.spawnChannel
 	}
-	m.despawningAll.Store(0)
 }
 
 // internal despawn function which assumes the EntityTable is locked
@@ -220,18 +225,9 @@ func (m *EntityManager) despawnInternal(entity EntityToken) {
 
 	// Deactivate the entity to ensure that all updated entity lists are
 	// notified
-	despawnDebug("about to setActiveState(%v, false)...", entity)
-	m.setActiveState(entity, false)
-	despawnDebug("finished setActiveState(%v, false)", entity)
-	// remove each tag from this ID in the tag table
-	// (also sends removal signals to the tag lists)
+	despawnDebug("setting %v inactive...", entity)
+	m.Components.Active.Data[entity.ID] = false
 	t0 := time.Now()
-	tags_to_clear := m.tagTable.tagsOfEntity[entity.ID]
-	despawnDebug("about to remove tags for %v...", entity)
-	for _, tag_to_clear := range tags_to_clear {
-		m.UntagEntityAtomic(tag_to_clear)(entity)
-	}
-	despawnDebug("removed tags for %v...", entity)
 	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
 		fmt.Printf("removing tags took: %d ms\n",
 			time.Since(t0).Nanoseconds()/1e6)
@@ -244,35 +240,11 @@ func (m *EntityManager) despawnInternal(entity EntityToken) {
 	}()
 }
 
-// sets an entity active and notifies all watchers
-func (m *EntityManager) activate(entity EntityToken) {
-	entityManagerDebug("Activating: %d\n", entity.ID)
-	m.setActiveState(entity, true)
-}
-
-// sets an entity inactive and notifies all watchers
-func (m *EntityManager) deactivate(entity EntityToken) {
-	entityManagerDebug("Deactivating: %d\n", entity.ID)
-	m.setActiveState(entity, false)
-}
-
-// sets the active state on an entity and notifies all watchers
-func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
-	// NOTE: we can access the active value directly since this is called
-	// exclusively when the entityLock is set (will be reset at the end of
-	// the loop iteration in processStateModificationChannel which called
-	// this function via one of activate, deactivate, or despawn)
-	if m.Components.Active.Data[entity.ID] != state {
-		// setActiveState is only called when the entity is locked, so we're
-		// good to write directly to the component
-		m.Components.Active.Data[entity.ID] = state
-		m.activeEntityLists.notifyActiveState(entity, state)
-	}
-}
-
 // Get a list of entities which will be updated whenever an entity becomes
 // active / inactive
-func (m *EntityManager) GetUpdatedEntityList(q EntityQuery) *UpdatedEntityList {
+func (m *EntityManager) GetUpdatedEntityList(
+	q EntityQuery) *UpdatedEntityList {
+
 	return m.activeEntityLists.GetUpdatedEntityList(q)
 }
 
@@ -288,6 +260,8 @@ func (m *EntityManager) AtomicEntityModify(
 	if !m.lockEntity(entity) {
 		return false
 	}
+	atomicEntityModifyDebug("acquired entity lock in AtomicEntityModify(%v)",
+		entity)
 	f()
 	m.releaseEntity(entity)
 	return true
@@ -313,25 +287,6 @@ func (m *EntityManager) AtomicEntitiesModify(
 	return true
 }
 
-// Boolean check of whether a given entity has a given tag
-func (m *EntityManager) EntityHasTag(entity EntityToken, tag string) bool {
-	tagsDebug("in EntityHasTag(%d, %s), trying to acquire tagTable mutex",
-		entity.ID, tag)
-	m.tagTable.mutex.RLock()
-	tagsDebug("in EntityHasTag(%d, %s) got tagTable mutex",
-		entity.ID, tag)
-	defer tagsDebug("EntityHasTag(%d, %s) released tagTable mutex",
-		entity.ID, tag)
-	defer m.tagTable.mutex.RUnlock()
-
-	for _, entity_tag := range m.tagTable.tagsOfEntity[entity.ID] {
-		if entity_tag == tag {
-			return true
-		}
-	}
-	return false
-}
-
 // Register an entity class (subsequently retrievable)
 func (m *EntityManager) AddEntityClass(class EntityClass) {
 	// add the class to the EntityClassTable and return
@@ -346,8 +301,8 @@ func (m *EntityManager) GetEntityClass(name string) EntityClass {
 // Gets the first entity with the given tag. Warns to console if the entity is
 // not unique. Returns an error if the entity doesn't exist
 func (m *EntityManager) UniqueTaggedEntity(tag string) (EntityToken, error) {
-	m.tagTable.mutex.RLock()
-	defer m.tagTable.mutex.RUnlock()
+	m.tags.mutex.RLock()
+	defer m.tags.mutex.RUnlock()
 
 	list := m.EntitiesWithTag(tag)
 	if list.Length() == 0 {
@@ -365,10 +320,8 @@ func (m *EntityManager) UniqueTaggedEntity(tag string) (EntityToken, error) {
 func (m *EntityManager) EntitiesWithTag(
 	tag string) *UpdatedEntityList {
 
-	return m.tagTable.entitiesWithTag(tag)
+	return m.tags.GetEntitiesWithTag(tag)
 }
-
-
 
 // Boolean check of whether a given entity has a given component
 func (m *EntityManager) EntityHasComponent(id int, COMPONENT int) bool {
@@ -384,15 +337,17 @@ func (m *EntityManager) entityComponentBitArray(id int) bitarray.BitArray {
 // Somewhat expensive conversion of entire entity list to string
 func (m *EntityManager) String() string {
 	m.updateMutex.Lock()
-	m.tagTable.mutex.RLock()
-	defer m.tagTable.mutex.RUnlock()
 	defer m.updateMutex.Unlock()
 
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
 	for _, entity := range m.entityTable.currentEntities {
+		tags, valid := m.Components.TagList.SafeGet(entity)
+		if !valid {
+			continue // entity was despawned
+		}
 		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",
-			entity.ID, m.tagTable.tagsOfEntity[entity.ID])
+			entity.ID, tags)
 		buffer.WriteString(entityRepresentation)
 		buffer.WriteString(",\n")
 	}

@@ -23,12 +23,13 @@ func (s *PhysicsSystem) Init(em *EntityManager) {
 	s.em = em
 	// get a regularly updated list of the entities which have physics
 	// (position, velocity and hitbox)
-	query := NewEntityComponentBitArrayQuery(
+	query := EntityQueryFromComponentBitArray(
+		"physical",
 		MakeComponentBitArray([]int{
 			POSITION_COMPONENT,
 			VELOCITY_COMPONENT,
 			HITBOX_COMPONENT}))
-	s.physicsEntities = s.em.GetUpdatedActiveEntityList("physical", query)
+	s.physicsEntities = s.em.GetUpdatedEntityList(query)
 }
 
 // apply velocity to position of entities
@@ -40,7 +41,7 @@ func (s *PhysicsSystem) applyPhysics(entity EntityToken, dt_ms uint16) {
 	vel := s.em.Components.Velocity.Data[entity.ID]
 	dx := int16(vel[0] * float32(dt_ms/4))
 	dy := int16(vel[1] * float32(dt_ms/4))
-	box := s.em.Components.Hitbox.Data[entity.ID]
+	box := s.em.Components.HitBox.Data[entity.ID]
 	// prevent from leaving the world in X
 	if pos[0]+dx <
 		int16(box[0]/2) {

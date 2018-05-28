@@ -26,6 +26,7 @@ const (
 	LOGIC_COMPONENT    = iota
 	POSITION_COMPONENT = iota
 	SPRITE_COMPONENT   = iota
+	TAGLIST_COMPONENT  = iota
 	VELOCITY_COMPONENT = iota
 )
 
@@ -35,10 +36,11 @@ type ComponentSet struct {
 	Active   *bool
 	Color    *sdl.Color
 	Health   *uint8
-	Hitbox   *[2]uint16
+	HitBox   *[2]uint16
 	Logic    *LogicUnit
 	Position *[2]int16
 	Sprite   *Sprite
+	TagList  *TagList
 	Velocity *[2]float32
 }
 
@@ -53,7 +55,7 @@ func (s *ComponentSet) ToBitArray() bitarray.BitArray {
 	if s.Health != nil {
 		b.SetBit(uint64(HEALTH_COMPONENT))
 	}
-	if s.Hitbox != nil {
+	if s.HitBox != nil {
 		b.SetBit(uint64(HITBOX_COMPONENT))
 	}
 	if s.Logic != nil {
@@ -64,6 +66,9 @@ func (s *ComponentSet) ToBitArray() bitarray.BitArray {
 	}
 	if s.Sprite != nil {
 		b.SetBit(uint64(SPRITE_COMPONENT))
+	}
+	if s.TagList != nil {
+		b.SetBit(uint64(TAGLIST_COMPONENT))
 	}
 	if s.Velocity != nil {
 		b.SetBit(uint64(VELOCITY_COMPONENT))

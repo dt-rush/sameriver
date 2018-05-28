@@ -4,18 +4,18 @@ package engine
 type EntitySignalType int
 
 const (
-	ENTITY_ADD = iota
+	ENTITY_ADD    = iota
 	ENTITY_REMOVE = iota
 )
 
 type EntitySignal struct {
 	signalType EntitySignalType
-	entity Entity
+	entity     EntityToken
 }
 
 type EntityQueryWatcher struct {
-	Name    string
-	ID int
+	Name  string
+	ID    int
 	Query EntityQuery
 	// A channel along which entity signals will be sent
 	Channel chan EntitySignal
@@ -28,5 +28,6 @@ func NewEntityQueryWatcher(q EntityQuery) EntityQueryWatcher {
 	return EntityQueryWatcher{
 		q.Name,
 		IDGEN(),
-		make(chan EntityToken, ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY)}
+		q,
+		make(chan EntitySignal, ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY)}
 }

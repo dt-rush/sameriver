@@ -1,5 +1,9 @@
 package engine
 
+import (
+	"time"
+)
+
 // wait until we can lock an entity and check gen-match after lock. If
 // gen mismatch, release and return false. else return true
 func (m *EntityManager) lockEntity(entity EntityToken) bool {
@@ -12,6 +16,7 @@ func (m *EntityManager) lockEntity(entity EntityToken) bool {
 	// (in between when the caller acquired the EntityToken and now, the
 	// entity may have despawned)
 	if !m.entityTable.genValidate(entity) {
+		entityManagerDebug("LOCKED-GENMISMATCH entity %v", entity)
 		m.releaseEntity(entity)
 		return false
 	}

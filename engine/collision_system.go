@@ -3,7 +3,7 @@
 The collision detection in this sytem works using a method invoked by the
 game every game loop, a goroutine running to read collision events from a
 buffered channel (basically a queue which is easy for a goroutine to read),
-an UpdatedEntityList of entities having Position and Hitbox, and a special
+an UpdatedEntityList of entities having Position and HitBox, and a special
 data structure which holds rate limiters for each possible collision.
 
 Collision detection is called after the entity manager has (de)spawned and
@@ -95,22 +95,25 @@ func (s *CollisionSystem) Init(
 	s.ev = ev
 	// get a regularly updated list of the entities which are collidable
 	// (position and hitbox)
-	query := NewEntityComponentBitArrayQuery(
+	query := EntityQueryFromComponentBitArray(
+		"collidable",
 		MakeComponentBitArray([]int{
 			POSITION_COMPONENT,
 			HITBOX_COMPONENT}))
-	s.collidableEntities = s.em.GetUpdatedActiveEntityList("collidable", query)
+	s.collidableEntities = s.em.GetUpdatedEntityList(query)
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
 	// in the collision rate limiter array (to guard against an entity
 	// despawning, a new entity spawning with its ID, and failing a collision
 	// test (rare prehaps, but an edge case we nonetheless want to avoid)
-	s.collidableEntities.addCallback(func(entity EntityToken) {
-		if entity.ID < 0 {
-			entity.ID = -(entity.ID + 1)
-			s.rateLimiterArray.ResetAll(entity)
-		}
-	})
+	s.collidableEntities.addCallback(
+		func(signal EntitySignal) {
+			entity := signal.entity
+			if entity.ID < 0 {
+				entity.ID = -(entity.ID + 1)
+				s.rateLimiterArray.ResetAll(entity)
+			}
+		})
 }
 
 // Test collision between two entities
@@ -119,7 +122,7 @@ func (s *CollisionSystem) Init(
 func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
 	// grab component data
 	position_component := s.em.Components.Position
-	hitbox_component := s.em.Components.Hitbox
+	hitbox_component := s.em.Components.HitBox
 	box := hitbox_component.Data[i]
 	other_box := hitbox_component.Data[j]
 	center := position_component.Data[i]

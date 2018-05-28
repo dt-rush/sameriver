@@ -1,12 +1,19 @@
 package engine
 
+import (
+	"github.com/golang-collections/go-datastructures/bitarray"
+)
+
 type EntityQuery struct {
 	Name     string
 	TestFunc func(entity EntityToken, em *EntityManager) bool
 }
 
 func (q EntityQuery) Test(entity EntityToken, em *EntityManager) bool {
-	return q.TestFunc(entity, em)
+	em.lockEntity(entity)
+	result := q.TestFunc(entity, em)
+	em.releaseEntity(entity)
+	return result
 }
 
 func EntityQueryFromTag(tag string) EntityQuery {
@@ -14,15 +21,16 @@ func EntityQueryFromTag(tag string) EntityQuery {
 	return EntityQuery{
 		Name: tag,
 		TestFunc: func(entity EntityToken, em *EntityManager) bool {
-			return em.EntityHasTag(entity, tag)
+			return em.Components.TagList.Data[entity.ID].Has(tag)
 		}}
 }
 
 func EntityQueryFromComponentBitArray(
+	name string,
 	q bitarray.BitArray) EntityQuery {
 
 	return EntityQuery{
-		Name: BitArrayToString(q),
+		Name: name,
 		TestFunc: func(entity EntityToken, em *EntityManager) bool {
 			// determine if q = q&b
 			// that is, if every set bit of q is set in b

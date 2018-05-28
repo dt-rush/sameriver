@@ -15,8 +15,6 @@ import (
 	"time"
 )
 
-
-
 // A list of entities which is can be regularly updated by one goroutine
 // while another reads and uses it
 type UpdatedEntityList struct {
@@ -41,7 +39,7 @@ type UpdatedEntityList struct {
 	Sorted bool
 	// a slice of funcs who want to be called *before* the entity gets
 	// added/removed (that is, before the mutex unlocks)
-	callbacks []func(EntityToken)
+	callbacks []func(EntitySignal)
 }
 
 // create a new UpdatedEntityList by giving it a channel on which it will
@@ -89,9 +87,9 @@ func (l *UpdatedEntityList) start() {
 			select {
 			case _ = <-l.stopUpdateLoopChannel:
 				break updateloop
-			case id := <-l.qw.Channel:
+			case signal := <-l.qw.Channel:
 				updatedEntityListDebug("%s received signal", l.qw.Name)
-				l.actOnEntitySignal(id)
+				l.actOnSignal(signal)
 			default:
 				if l.processingBacklog {
 					l.popBacklog()
@@ -103,8 +101,6 @@ func (l *UpdatedEntityList) start() {
 }
 
 func (l *UpdatedEntityList) popBacklog() {
-	l.Mutex.Lock()
-	defer l.Mutex.Unlock()
 
 	if len(l.backlog) == 0 {
 		l.processingBacklog = false
@@ -126,35 +122,33 @@ func (l *UpdatedEntityList) stop() {
 	l.stopUpdateLoopChannel <- true
 }
 
-func (l *UpdatedEntityList) actOnEntitySignal(signal EntitySignal) {
+func (l *UpdatedEntityList) actOnSignal(signal EntitySignal) {
 	l.Mutex.Lock()
 	defer l.Mutex.Unlock()
 
-	defer updatedEntityListDebug("%s now: %v", l.qw.Name, l.Entities)
-
 	// callbacks list want to be notified of each signal we get
 	for _, callback := range l.callbacks {
-		go callback(entitySignal)
+		go callback(signal)
 	}
 	// act on signal
 	switch signal.signalType {
 	case ENTITY_REMOVE:
-		updatedEntityListDebug("%s got remove:%d", l.qw.Name, entitySignal.ID)
-		removeEntityTokenFromSlice(&l.backlog, entitySignal)
-		l.remove(entitySignal)
+		updatedEntityListDebug("%s got remove:%v",
+			l.qw.Name, signal.entity)
+		removeEntityTokenFromSlice(&l.backlog, signal.entity)
+		l.remove(signal.entity)
 	case ENTITY_ADD:
-		updatedEntityListDebug("%s got add:%d", l.qw.Name, entitySignal.ID)
-		removeEntityTokenFromSlice(&l.backlog, entitySignal)
-		l.add(entitySignal)
+		updatedEntityListDebug("%s got add:%v",
+			l.qw.Name, signal.entity)
+		removeEntityTokenFromSlice(&l.backlog, signal.entity)
+		l.add(signal.entity)
 	}
+	updatedEntityListDebug("%s now: %v", l.qw.Name, l.Entities)
 }
 
 // adds an entity into the list (private so only called by the update loop)
 func (l *UpdatedEntityList) add(e EntityToken) {
 	// note: both sorted and regular list add will not double-add an entity
-	// (this deals with certain cases when lists are created at the same time
-	// as tags are being added and entities spawned, some entities being added
-	// to tags as the first entity with that tag. This will most often occur
 	if l.Sorted {
 		SortedEntityTokenSliceInsertIfNotPresent(&l.Entities, e)
 	} else if indexOfEntityTokenInSlice(&l.Entities, e) == -1 {
@@ -172,7 +166,9 @@ func (l *UpdatedEntityList) remove(e EntityToken) {
 }
 
 // add a callback to the callbacks slice
-func (l *UpdatedEntityList) addCallback(callback func(e EntityToken)) {
+func (l *UpdatedEntityList) addCallback(
+	callback func(EntitySignal)) {
+
 	l.Mutex.Lock()
 	defer l.Mutex.Unlock()
 

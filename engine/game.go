@@ -8,11 +8,8 @@
 package engine
 
 import (
-	"fmt"
 	"runtime"
 	"time"
-
-	"github.com/dt-rush/go-func-profiler/func_profiler"
 
 	"github.com/veandco/go-sdl2/mix"
 	"github.com/veandco/go-sdl2/sdl"
@@ -39,9 +36,6 @@ type Game struct {
 	// SDL resources to pass as references to each scene
 	Window   *sdl.Window
 	Renderer *sdl.Renderer
-	// profiling members
-	func_profiler        func_profiler.FuncProfiler
-	gameloop_profiler_id int
 }
 
 func (g *Game) Init(WINDOW_TITLE string,
@@ -50,8 +44,6 @@ func (g *Game) Init(WINDOW_TITLE string,
 
 	// init systems
 	g.InitSDL(WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT)
-	// set up func profiler
-	g.setupFuncProfiler()
 	// initialize the scene map
 	g.SceneMap.Map = make(map[int]Scene)
 	// initialized the next scene channel
@@ -92,12 +84,6 @@ func (g *Game) InitSDL(WINDOW_TITLE string,
 		WINDOW_TITLE,
 		WINDOW_WIDTH,
 		WINDOW_HEIGHT)
-}
-
-func (g *Game) setupFuncProfiler() {
-	g.func_profiler = func_profiler.NewFuncProfiler(
-		func_profiler.FUNC_PROFILER_SIMPLE)
-	g.gameloop_profiler_id = g.func_profiler.RegisterFunc("gameloop")
 }
 
 func (g *Game) Destroy() {
@@ -162,22 +148,10 @@ func (g *Game) logGameLoopStarted(scene Scene) {
 		scene.Name())
 }
 
-func (g *Game) initGameLoopProfiler(scene Scene) {
-	// set profiler name
-	g.func_profiler.SetName(g.gameloop_profiler_id,
-		fmt.Sprintf("%s gameloop", scene.Name()))
-}
-
 func (g *Game) logGameLoopEnded(scene Scene) {
 	// Scene has ended. Print a summary
 	Logger.Printf("[Game] ended: %s ■",
 		scene.Name())
-	Logger.Print(g.func_profiler.GetSummaryString(g.gameloop_profiler_id))
-}
-
-func (g *Game) clearGameLoopProfiler() {
-	// clear the timer for the new scene to start its timing
-	g.func_profiler.ClearData(g.gameloop_profiler_id)
 }
 
 func (g *Game) RunScene(scene Scene, endGameLoopChan chan (bool)) {
@@ -215,8 +189,6 @@ func (g *Game) AsyncRunLoadingScene() chan bool {
 func (g *Game) runGameLoopOnScene(scene Scene, endGameLoopChan chan (bool)) {
 
 	g.logGameLoopStarted(scene)
-	g.initGameLoopProfiler(scene)
-	defer g.clearGameLoopProfiler()
 	defer g.logGameLoopEnded(scene)
 
 	// Actual gameloop code:
@@ -231,8 +203,6 @@ func (g *Game) runGameLoopOnScene(scene Scene, endGameLoopChan chan (bool)) {
 			break
 		} else {
 			// else, run an iteration of the game loop
-			// start the profiling timer for the gameloop
-			g.func_profiler.StartTimer(g.gameloop_profiler_id)
 			// calculate loop dt
 			t1 := time.Now().UnixNano()
 			dt_ms := uint16((t1 - t0) / 1e6)
@@ -249,8 +219,6 @@ func (g *Game) runGameLoopOnScene(scene Scene, endGameLoopChan chan (bool)) {
 				g.handleKeyboard(scene)
 			})
 			scene.Update(dt_ms)
-			// end the profiling timer
-			g.func_profiler.EndTimer(g.gameloop_profiler_id)
 			// set t0 so we can calculate dt next loop iteration
 			t0 = t1
 		}
