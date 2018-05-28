@@ -41,7 +41,7 @@ type Game struct {
 	Renderer *sdl.Renderer
 	// profiling members
 	func_profiler        func_profiler.FuncProfiler
-	gameloop_profiler_id uint16
+	gameloop_profiler_id int
 }
 
 func (g *Game) Init(WINDOW_TITLE string,

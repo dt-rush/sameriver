@@ -8,14 +8,14 @@ import (
 
 // used by the EntityManager to hold info about the allocated entities
 type EntityTable struct {
-	// guards all changes to this table as atomic
-	mutex sync.RWMutex
+	// mutex used to make the allocation / deallocation of an ID atomic
+	IDMutex sync.RWMutex
 	// how many entities there are
 	numEntities int
-	// list of IDs which have been allocated
-	allocatedIDs []uint16
+	// list of Entities which have been allocated
+	currentEntities []EntityToken
 	// list of available entity ID's which have previously been deallocated
-	availableIDs []uint16
+	availableIDs []int
 	// bitarray used to keep track of which entities have which components
 	// (indexes are IDs, bitarrays have bit set if entity has the
 	// component corresponding to that index)
@@ -35,27 +35,27 @@ type EntityTable struct {
 	locks [MAX_ENTITIES]uint32
 }
 
-func (t *EntityTable) getGen(id uint16) uint32 {
-	return atomic.LoadUint32(&t.gens[uint16(id)])
+func (t *EntityTable) incrementGen(id int) {
+	atomic.AddUint32(&t.gens[id], 1)
 }
 
-func (t *EntityTable) incrementGen(id uint16) uint32 {
-	return atomic.AddUint32(&t.gens[id], 1)
+func (t *EntityTable) getGen(id int) uint32 {
+	return atomic.LoadUint32(&t.gens[id])
 }
 
-func (t *EntityTable) getEntityToken(id int32) EntityToken {
+func (t *EntityTable) getEntityToken(id int) EntityToken {
 	// we may want to get an entity token for -(id + 1) in the case
 	// that this token represents a remove signal to an UpdatedEntityList.
 	// handle this by getting the correct gen but leaving ID as negative
 	var gen uint32
 	if id < 0 {
-		gen = t.getGen(uint16(-(id + 1)))
+		gen = t.getGen(-(id + 1))
 	} else {
-		gen = t.getGen(uint16(id))
+		gen = t.getGen(id)
 	}
 	return EntityToken{id, gen}
 }
 
 func (t *EntityTable) genValidate(entity EntityToken) bool {
-	return t.getGen(uint16(entity.ID)) == entity.gen
+	return t.getGen(entity.ID) == entity.gen
 }

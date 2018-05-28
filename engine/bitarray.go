@@ -29,10 +29,10 @@ func NewEntityComponentBitArrayQuery(
 
 	return GenericEntityQuery{
 		Name: BitArrayToString(q),
-		TestFunc: func(id uint16, em *EntityManager) bool {
+		TestFunc: func(entity EntityToken, em *EntityManager) bool {
 			// determine if q = q&b
 			// that is, if every set bit of q is set in b
-			b := em.entityComponentBitArray(id)
+			b := em.entityComponentBitArray(entity.ID)
 			return q.Equals(q.And(b))
 		}}
 }

@@ -99,16 +99,16 @@ func (s *CollisionSystem) Init(
 		MakeComponentBitArray([]int{
 			POSITION_COMPONENT,
 			HITBOX_COMPONENT}))
-	s.collidableEntities = s.em.GetUpdatedActiveEntityList(query, "collidable")
+	s.collidableEntities = s.em.GetUpdatedActiveEntityList("collidable", query)
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
 	// in the collision rate limiter array (to guard against an entity
 	// despawning, a new entity spawning with its ID, and failing a collision
 	// test (rare prehaps, but an edge case we nonetheless want to avoid)
-	s.collidableEntities.addCallback(func(e EntityToken) {
-		encodedID := e.ID
-		if encodedID < 0 {
-			s.rateLimiterArray.ResetAll(uint16(-(encodedID + 1)))
+	s.collidableEntities.addCallback(func(entity EntityToken) {
+		if entity.ID < 0 {
+			entity.ID = -(entity.ID + 1)
+			s.rateLimiterArray.ResetAll(entity)
 		}
 	})
 }

@@ -9,13 +9,13 @@ type EntityQueryWatcher struct {
 	Channel chan EntityToken
 	Name    string
 	// the ID of this watcher (used for memory management)
-	ID uint16
+	ID int
 }
 
 // Construct a new entity query watcher (its channel will be created at the
 // capacity of ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY constant)
 func NewEntityQueryWatcher(
-	q EntityQuery, name string, ID uint16) EntityQueryWatcher {
+	q EntityQuery, name string, ID int) EntityQueryWatcher {
 
 	return EntityQueryWatcher{
 		q,

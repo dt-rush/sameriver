@@ -19,12 +19,12 @@ import (
 // created by game scene as a singleton, containing the component, entity,
 // and tag data
 type EntityManager struct {
-	// Entity table stores component bitarrays, a list of allocated IDs,
+	// EntityTable stores component bitarrays, a list of allocated IDs,
 	// and a list of available IDs from previous deallocations
 	entityTable EntityTable
-	// Tag table stores data for entity tagging system
+	// TagTable stores data for entity tagging system
 	tagTable TagTable
-	// EntitClassTable stores references to entity classes, which can be
+	// EntityClassTable stores references to entity classes, which can be
 	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
 	entityClassTable entityClassTable
 	// Component data
@@ -34,14 +34,6 @@ type EntityManager struct {
 	// entity returned from (processed as a batch each Update())
 	spawnChannel chan EntitySpawnRequest
 
-	// a flag signifying that Update() is running, set atomically
-	// used so that we can start work needing to lock the enitity table
-	// as soon as Update finishes (Update runs in sync and can't be blocked,
-	// this give us the best chance of being able to do some work while
-	// holding the lock before Update wants to run again, being interrupted
-	// by our holding onto the lock (even though this only takes a short
-	// time, if you read the comments for GetUpdatedActiveEntityList)
-	updateRunning uint32
 	// a fag signifying that we are currently despawning all entities
 	despawningAll uint32
 	// updateMutex is used so that String() can grab the whole entity table
@@ -64,17 +56,15 @@ func (m *EntityManager) Init() {
 	// allocate space for the spawn buffer
 	m.spawnChannel = make(chan EntitySpawnRequest,
 		MAX_ENTITIES)
-	// allocate tagTable data members
-	m.tagTable.entitiesWithTag = make(map[string]([]uint16))
-	m.tagTable.tagsOfEntity = make(map[uint16]([]string))
-	// allocate entityClassTable data members
-	m.entityClassTable.classes = make(map[string]*EntityClass)
+	// init entity class table
+	m.entityClassTable.Init()
+	// init tag table
+	m.tagTable.Init()
 }
 
 // called once per scene Update() for scenes holding an entity manager
 func (m *EntityManager) Update() {
 
-	atomic.StoreUint32(&m.updateRunning, 1)
 	// proces any requests to spawn new entities queued in the
 	// buffered channel
 	var t0 time.Time
@@ -82,29 +72,28 @@ func (m *EntityManager) Update() {
 	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
 		fmt.Printf("spawn: %d ms\n", time.Since(t0).Nanoseconds()/1e6)
 	}
-	// Finally, set the updateRunning flag, so that
-	// GetActiveUpdatedActiveEntityList won't conflict with Update() when
-	// it wants to lock the entity table for reading
-	atomic.StoreUint32(&m.updateRunning, 0)
 }
 
 // get the ID for a new entity. Only called by SpawnEntity, which locks
 // the entityTable, so it's safe that this method operates on that data.
 // Returns int32 so that we can return -1 in case we have run out of space
 // to spawn entities
-func (m *EntityManager) allocateID() int32 {
+func (m *EntityManager) allocateID() (EntityToken, error) {
+	m.entityTable.IDMutex.Lock()
+	defer m.entityTable.IDMutex.Unlock()
 	// if maximum entity count reached, fail with message
 	if m.entityTable.numEntities == MAX_ENTITIES {
-		Logger.Printf("Reached max entity count: %d. Will not allocate ID.\n",
-			MAX_ENTITIES)
-		return -1
+		msg := fmt.Sprintf("Reached max entity count: %d. "+
+			"Will not allocate ID.\n", MAX_ENTITIES)
+		Logger.Println(msg)
+		return ENTITY_TOKEN_NIL, errors.New(msg)
 	}
 	// Increment the entity count
 	m.entityTable.numEntities++
 	// if there is a deallocated entity somewhere in the table before the
 	// highest ID, return that ID to the caller
 	n_avail := len(m.entityTable.availableIDs)
-	var id uint16
+	var id int
 	if n_avail > 0 {
 		// there is an ID available for a previously deallocated entity.
 		// pop it from the list and continue with that as the ID
@@ -112,11 +101,24 @@ func (m *EntityManager) allocateID() int32 {
 		m.entityTable.availableIDs = m.entityTable.availableIDs[:n_avail-1]
 	} else {
 		// every slot in the table before the highest ID is filled
-		id = uint16(m.entityTable.numEntities - 1)
+		id = m.entityTable.numEntities - 1
 	}
 	// add the ID to the list of allocated IDs
-	m.entityTable.allocatedIDs = append(m.entityTable.allocatedIDs, id)
-	return int32(id)
+	entity := EntityToken{id, m.entityTable.gens[id]}
+	m.entityTable.currentEntities = append(m.entityTable.currentEntities, entity)
+	return entity, nil
+}
+
+// lock the ID table after waiting on spawn mutex to be unlocked,
+// and grab a copy of the currently allocated IDs
+func (m *EntityManager) snapshotAllocatedEntities() []EntityToken {
+	m.entityTable.IDMutex.RLock()
+	updatedEntityListDebug("got IDMutex in snapshot")
+	defer m.entityTable.IDMutex.RUnlock()
+
+	snapshot := make([]EntityToken, len(m.entityTable.currentEntities))
+	copy(snapshot, m.entityTable.currentEntities)
+	return snapshot
 }
 
 // process the spawn requests in the channel buffer
@@ -128,6 +130,7 @@ func (m *EntityManager) processSpawnChannel() {
 		for i := 0; i < n; i++ {
 			// get the request from the channel
 			r := <-m.spawnChannel
+			spawnDebug("processing request: %v", r)
 			m.Spawn(r)
 		}
 	}
@@ -142,26 +145,40 @@ func (m *EntityManager) RequestSpawn(r EntitySpawnRequest) {
 // returns the EntityToken (used to spawn an entity for which we *want* the
 // token back)
 func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
+	defer functionEndDebug("spawn %v", r)
 
-	// lock the entityTable
-	m.entityTable.mutex.Lock()
-	defer m.entityTable.mutex.Unlock()
+	// used if spawn is impossible for various reasons
+	var fail = func(msg string) (EntityToken, error) {
+		spawnDebug(msg)
+		return ENTITY_TOKEN_NIL, errors.New(msg)
+	}
+
+	// if the spawn request has a unique tag, return error if tag already
+	// has an entity
+	if r.UniqueTag != "" &&
+		m.tagTable.EntitiesWithTag(r.UniqueTag).Length() != 0 {
+		return fail(fmt.Sprintf("requested to spawn unique entity for %s, "+
+			"but %s already exists", r.UniqueTag))
+	}
 
 	// get an ID for the entity
-	allocateIDResponse := m.allocateID()
-	if allocateIDResponse == -1 {
-		errorMsg := fmt.Sprintf("Ran out of entity space. Will not spawn "+
-			"entity with tags: %v\n", r.Tags)
-		entityManagerDebug(errorMsg)
-		return EntityToken{-1, 0}, errors.New("ran out of entity space,")
+	spawnDebug("trying to allocate ID for spawn request with tags %v", r.Tags)
+	entity, err := m.allocateID()
+	if err != nil {
+		errorMsg := fmt.Sprintf("⚠ Error in allocateID(): %s. Will not spawn "+
+			"entity with tags: %v\n", err, r.Tags)
+		spawnDebug(errorMsg)
+		return fail("ran out of entity space")
 	}
-	id := uint16(allocateIDResponse)
-	// get token
-	entity := m.entityTable.getEntityToken(int32(id))
+	// lock the entity (this prevents GetUpdatedActiveEntityList's list-building
+	// goroutine from querying the entity if its now-allocated entity is included
+	// in the snapshot of allocated entities)
+	m.lockEntity(entity)
+	defer m.releaseEntity(entity)
 	// print a debug message
-	entityManagerDebug("[Entity manager] Spawning: %v\n", entity)
+	spawnDebug("Spawning: %v\n", entity)
 	// set the bitarray for this entity
-	m.entityTable.componentBitArrays[id] = r.Components.ToBitArray()
+	m.entityTable.componentBitArrays[entity.ID] = r.Components.ToBitArray()
 	// copy the data inNto the component storage for each component
 	// (note: we dereference the pointers, this is a real copy, so it's good
 	// that component values are either small pieces of data like [2]uint16
@@ -173,22 +190,26 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	// NOTE: we can directly set the Active component value since no other
 	// goroutine could be also writing to this entity, due to the
 	// AtomicEntityModify pattern
-	m.Components.Active.Data[id] = true
-	m.Components.ApplyComponentSet(id, r.Components)
+	m.Components.Active.Data[entity.ID] = true
+	m.Components.ApplyComponentSet(entity.ID, r.Components)
 	// apply the tags
 	for _, tag := range r.Tags {
-		m.TagEntity(id, tag)
+		m.TagEntityAtomic(tag)(entity)
+	}
+	// apply the unique tag if provided
+	if r.UniqueTag != "" {
+		m.TagEntityAtomic(r.UniqueTag)(entity)
 	}
 	// start the logic goroutine if supplied
 	if r.Components.Logic != nil {
-		entityLogicDebug("Starting logic for %d...", id)
+		entityLogicDebug("Starting logic for %d...", entity.ID)
 		go r.Components.Logic.f(
 			entity,
 			r.Components.Logic.StopChannel,
 			m)
 	}
 	// notify entity is active
-	go m.notifyActiveState(id, true)
+	go m.notifyActiveState(entity, true)
 	// return EntityToken
 	return entity, nil
 }
@@ -199,11 +220,10 @@ func (m *EntityManager) DespawnAll() {
 	despawnDebug("setting despawningAll flag")
 	atomic.StoreUint32(&m.despawningAll, 1)
 	// iterate all IDs which could have been allocated and despawn them
-	// (each time a despawn goes through, the entityTable.allocatedIDs list
+	// (each time a despawn goes through, the entityTable.currentEntities list
 	// will shrink)
-	for len(m.entityTable.allocatedIDs) > 0 {
+	for len(m.entityTable.currentEntities) > 0 {
 		// for each allocated ID, build a token based on the current gen
-		ID := m.entityTable.allocatedIDs[0]
 		// lockEntity here will always return true because
 		// the gen will never mismatch, since only a despawnInternal() call
 		// could change that, and that occurs only in two places: here, where
@@ -212,10 +232,10 @@ func (m *EntityManager) DespawnAll() {
 		// from a user which would only be able to proceed after we
 		// released the entityTable lock, and would then exit since gen
 		// had changed
-		e := m.entityTable.getEntityToken(int32(ID))
-		m.lockEntity(e)
-		m.despawnInternal(e)
-		m.releaseEntity(e)
+		entity := m.entityTable.currentEntities[0]
+		m.lockEntity(entity)
+		m.despawnInternal(entity)
+		m.releaseEntity(entity)
 	}
 	// drain the spawn channel
 	for len(m.spawnChannel) > 0 {
@@ -226,48 +246,43 @@ func (m *EntityManager) DespawnAll() {
 }
 
 // internal despawn function which assumes the EntityTable is locked
-func (m *EntityManager) despawnInternal(e EntityToken) {
+func (m *EntityManager) despawnInternal(entity EntityToken) {
+	m.entityTable.IDMutex.Lock()
+	defer m.entityTable.IDMutex.Unlock()
 
-	id := uint16(e.ID)
-
-	// lock the Mutex on the EntityTable
-	m.entityTable.mutex.Lock()
 	// if the gen doesn't match, another despawn for this same entity
 	// has already been through here (if a regular Despawn() call and
 	// a DespawnAll() were racing)
-	if !m.entityTable.genValidate(e) {
+	if !m.entityTable.genValidate(entity) {
 		return
 	}
 	// decrement the entity count
 	m.entityTable.numEntities--
 	// add the ID to the list of available IDs
-	m.entityTable.availableIDs = append(m.entityTable.availableIDs, id)
+	m.entityTable.availableIDs = append(m.entityTable.availableIDs, entity.ID)
 	// remove the ID from the list of allocated IDs
-	removeUint16FromSlice(&m.entityTable.allocatedIDs, id)
+	removeEntityTokenFromSlice(&m.entityTable.currentEntities, entity)
 	// Increment the gen for the ID
 	// NOTE: it's important that we increment gen before resetting the
 	// locks, since any goroutines waiting for the
 	// lock to be 0 so they can claim it in AtomicEntityModify() will then
 	// immediately want to check if the gen of the entity still matches.
-	m.entityTable.incrementGen(id)
-	// release the mutex on the EntityTable
-	m.entityTable.mutex.Unlock()
+	m.entityTable.incrementGen(entity.ID)
 
 	// Deactivate the entity to ensure that all updated entity lists are
 	// notified
-	despawnDebug("about to setActiveState...")
-	m.setActiveState(id, false)
-	despawnDebug("finished setActiveState()")
-	// clear the entity from lists of tagged entities it's in
+	despawnDebug("about to setActiveState(%v, false)...", entity)
+	m.setActiveState(entity, false)
+	despawnDebug("finished setActiveState(%v, false)", entity)
+	// remove each tag from this ID in the tag table
+	// (also sends removal signals to the tag lists)
 	t0 := time.Now()
-	tags_to_clear := m.tagTable.tagsOfEntity[id]
+	tags_to_clear := m.tagTable.tagsOfEntity[entity.ID]
+	despawnDebug("about to remove tags for %v...", entity)
 	for _, tag_to_clear := range tags_to_clear {
-		m.UntagEntity(id, tag_to_clear)
+		m.UntagEntityAtomic(tag_to_clear)(entity)
 	}
-	// remove the taglist for this entity
-	m.tagTable.mutex.Lock()
-	delete(m.tagTable.tagsOfEntity, id)
-	m.tagTable.mutex.Unlock()
+	despawnDebug("removed tags for %v...", entity)
 	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
 		fmt.Printf("removing tags took: %d ms\n",
 			time.Since(t0).Nanoseconds()/1e6)
@@ -276,56 +291,54 @@ func (m *EntityManager) despawnInternal(e EntityToken) {
 	// NOTE: we don't need to worry about reading the component value
 	// directly since this is called exclusively from AtomicEntityModify
 	go func() {
-		m.Components.Logic.Data[id].StopChannel <- true
+		m.Components.Logic.Data[entity.ID].StopChannel <- true
 	}()
 }
 
 // sets an entity active and notifies all watchers
-func (m *EntityManager) activate(id uint16) {
-	m.entityTable.mutex.Lock()
-	defer m.entityTable.mutex.Unlock()
-	entityManagerDebug("Activating: %d\n", id)
-	m.setActiveState(id, true)
+func (m *EntityManager) activate(entity EntityToken) {
+	entityManagerDebug("Activating: %d\n", entity.ID)
+	m.setActiveState(entity, true)
 }
 
 // sets an entity inactive and notifies all watchers
-func (m *EntityManager) deactivate(id uint16) {
-	m.entityTable.mutex.Lock()
-	defer m.entityTable.mutex.Unlock()
-	entityManagerDebug("Deactivating: %d\n", id)
-	m.setActiveState(id, false)
+func (m *EntityManager) deactivate(entity EntityToken) {
+	entityManagerDebug("Deactivating: %d\n", entity.ID)
+	m.setActiveState(entity, false)
 }
 
 // sets the active state on an entity and notifies all watchers
-func (m *EntityManager) setActiveState(id uint16, state bool) {
+func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
 	// NOTE: we can access the active value directly since this is called
 	// exclusively when the entityLock is set (will be reset at the end of
 	// the loop iteration in processStateModificationChannel which called
 	// this function via one of activate, deactivate, or despawn)
-	if m.Components.Active.Data[id] != state {
+	if m.Components.Active.Data[entity.ID] != state {
 		// setActiveState is only called when the entity is locked, so we're
 		// good to write directly to the component
-		m.Components.Active.Data[id] = state
-		m.notifyActiveState(id, state)
+		m.Components.Active.Data[entity.ID] = state
+		m.notifyActiveState(entity, state)
 	}
 }
 
 // Send a signal to all registered watchers that an entity has a certain
 // active state, either true or false
-func (m *EntityManager) notifyActiveState(id uint16, active bool) {
+func (m *EntityManager) notifyActiveState(entity EntityToken, active bool) {
 
 	var time = time.Now().UnixNano()
-	updatedEntityListDebug("[%d] in notifyActiveState for %d: %v",
-		time, id, active)
+	updatedEntityListDebug("notifyActiveState[%d] (%d, %v)",
+		time, entity.ID, active)
 
 	m.activeEntityWatchersMutex.Lock()
 	defer m.activeEntityWatchersMutex.Unlock()
+	defer updatedEntityListDebug("notifyActiveState[%d] unlocked "+
+		"activeEntityWatchersMutex", entity.ID)
 	for _, watcher := range m.activeEntityWatchers {
-		updatedEntityListDebug("[%d] testing Query %s...",
+		updatedEntityListDebug("notifyActiveState[%d] testing Query %s...",
 			time, watcher.Name)
-		if watcher.Query.Test(id, m) {
-			updatedEntityListDebug("[%d] Query %s matched %d",
-				time, watcher.Name, id)
+		if watcher.Query.Test(entity, m) {
+			updatedEntityListDebug("notifyActiveState[%d] Query %s matched %v",
+				time, watcher.Name, entity)
 			// warn if the channel is full (we will block here if so)
 			// NOTE: this can be very bad indeed, since now whatever
 			// called Activate is blocking
@@ -333,14 +346,19 @@ func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 				entityManagerDebug("⚠  active entity "+
 					" watcher channel %s is full, causing block in "+
 					" for NotifyActiveState(%d, %v)\n",
-					watcher.Name, id, active)
+					watcher.Name, entity.ID, active)
 			}
 			// send the ID signal, or -(ID + 1), if active == false
-			idSignal := int32(id)
+			signal := entity
 			if !active {
-				idSignal = -(idSignal + 1)
+				signal.ID = -(signal.ID + 1)
+				updatedEntityListDebug("notifyActiveState[%d] sending "+
+					"remove:%v to %s", time, entity, watcher.Name)
+			} else {
+				updatedEntityListDebug("notifyActiveState[%d] sending "+
+					"insert:%v to %s", time, entity, watcher.Name)
 			}
-			watcher.Channel <- m.entityTable.getEntityToken(idSignal)
+			watcher.Channel <- signal
 		}
 	}
 }
@@ -348,114 +366,26 @@ func (m *EntityManager) notifyActiveState(id uint16, active bool) {
 // Get a list of entities which will be updated whenever an entity becomes
 // active / inactive
 func (m *EntityManager) GetUpdatedActiveEntityList(
-	q EntityQuery, name string) *UpdatedEntityList {
+	name string, q EntityQuery) *UpdatedEntityList {
 
-	// The basic idea of how we're going to build this list is as follows:
-	//
-	// Wait until Update() has recently finished.
-	// Lock the entityTable, but only long enough to grab a snapshot of
-	// 		allocatedIDs
-	// Register an active query watcher with the query of the list we want to
-	// 		build.
-	// Create a temporary EntityToken channel, tempChannel, which we will
-	// 		attach to the UpdatedEntityList we're building.
-	// Enter a loop while the snapshot of allocatedIDs still has IDs to process
-	//		In the loop we select from the active query watcher's channel, and
-	//			if we get a remove signal, we try to remove that ID from
-	//				whatever remains of the snapshot we're processing. If the
-	//				ID isn't in the snapshot, we must have already inserted it
-	//				so we forward the remove signal to the list
-	//			if we get an add signal, we send the signal to the tempChannel
-	//				attached to the list
-	//		if we didn't select an insert/remove signal from the active query
-	//			watcher, we pop an element from the snapshot of ID's and test
-	//			the query against that entity. If it matches, we send an insert
-	//			event to the channel.
-	// When we've processed all the snapshot ID's, we stop the list (which
-	// stops its update loop, listening on its channel), connect the proper
-	// channel, that of the active query watcher, and then start the list.
-	// the list has now checked every entity against its query and is current
-	// with all events. We return it.
-
-	// sleep until Update() has just finished
-	for atomic.LoadUint32(&m.updateRunning) != 0 {
-
-		time.Sleep(FRAME_SLEEP / 6)
-	}
-	// register a query watcher for the query given
-	queryWatcher := m.GetActiveEntityQueryWatcher(q, name)
-	// make a channel to temporarily act as the input channel to the list
-	tempChannel := make(chan EntityToken)
-	// build the list with the tempChannel to which we'll send entities
-	list := NewUpdatedEntityList(
-		tempChannel,
-		queryWatcher.ID,
+	defer functionEndDebug("GetUpdatedActiveEntityList() returning %s list "+
+		"(as yet unbuilt)",
 		name)
-	// lock the entity table as quick as possible and grab a snapshot of
-	// the allocated IDs
-	m.entityTable.mutex.RLock()
-	allocatedIDsSnapshot := make([]uint16, len(m.entityTable.allocatedIDs))
-	copy(allocatedIDsSnapshot, m.entityTable.allocatedIDs)
-	m.entityTable.mutex.RUnlock()
-	updatedEntityListDebug("ID snapshot in trying to build "+
-		"UpdatedActiveEntityList %s: %v", name, allocatedIDsSnapshot)
-	// our aim is to check each snapshotID while still keeping up with
-	// activate/deactivate signals
-	for len(allocatedIDsSnapshot) > 0 {
-		select {
-		// prioritize processing new events
-		case entitySignal := <-queryWatcher.Channel:
-			updatedEntityListDebug("got signal on queryWatcher Channel "+
-				"while trying to build UpdatedActiveEntityList %s", name)
-			if entitySignal.ID < 0 {
-				idToRemove := uint16(-(entitySignal.ID + 1))
-				updatedEntityListDebug("removing ID %d from snapshot list "+
-					"in trying to build UpdatedActiveEntitylist %s",
-					idToRemove, name)
-				// remove from snapshot if yet to process. remove
-				// from list otherwise
-				indexOfIdToRemoveInSnapshot := indexOfUint16InSlice(
-					&allocatedIDsSnapshot, idToRemove)
-				if indexOfIdToRemoveInSnapshot != -1 {
-					removeIndexFromUint16Slice(
-						&allocatedIDsSnapshot, indexOfIdToRemoveInSnapshot)
-				} else {
-					// if the ID has already been removed from the snapshot,
-					// we added it to the list (since getting a remove signal
-					// on the query means it matches the query), so send the
-					// remove signal to the list
-					list.InputChannel <- entitySignal
-				}
-			} else {
-				// signal was an activate event. send to list
-				updatedEntityListDebug("sending signal %d in "+
-					"GetUpdatedActiveEntityList for %s",
-					entitySignal.ID, name)
-				list.InputChannel <- entitySignal
-			}
-		default:
-			// pop an allocatedID and test it
-			last_ix := len(allocatedIDsSnapshot) - 1
-			id := allocatedIDsSnapshot[last_ix]
-			updatedEntityListDebug("popped id %d from allocated IDs snapshot "+
-				"while trying to build UpdatedActiveEntityList %s", id, name)
-			allocatedIDsSnapshot = allocatedIDsSnapshot[:last_ix]
-			if q.Test(id, m) {
-				updatedEntityListDebug("sending signal %d in "+
-					"GetUpdatedActiveEntityList for %s", id, name)
-				list.InputChannel <- m.entityTable.getEntityToken(int32(id))
-			}
-		}
+
+	// register a query watcher for the query given
+	queryWatcher := m.GetActiveEntityQueryWatcher(name, q)
+	// build the list (as yet empty), provide it with a backlog, and start it
+	backlog := m.snapshotAllocatedEntities()
+	backlogTester := func(entity EntityToken) bool {
+		return q.Test(entity, m)
 	}
-	// we've finished catching up the snapshot ID's with the current event
-	// stream. Set the channel properly on the list and return it
-	updatedEntityListDebug("finished reviewing existing entities in "+
-		"building of list %s. About to Stop(), set channel, start()",
-		list.Name)
-	list.Stop()
-	list.InputChannel = queryWatcher.Channel
+	list := NewUpdatedEntityList(
+		name,
+		queryWatcher.ID,
+		queryWatcher.Channel,
+		backlog,
+		backlogTester)
 	list.start()
-	updatedEntityListDebug("finished building list %s", list.Name)
 	return list
 }
 
@@ -471,19 +401,24 @@ func (m *EntityManager) DeleteUpdatedActiveEntityList(l UpdatedEntityList) {
 // will receive -(id + 1) whenever an entity is *despawned* with a component
 // set matching the query bitarray
 func (m *EntityManager) GetActiveEntityQueryWatcher(
-	q EntityQuery, name string) EntityQueryWatcher {
+	name string, q EntityQuery) EntityQueryWatcher {
+
+	entityManagerDebug("about to make active-EntityQueryWatcher for %s", name)
+	defer functionEndDebug("made active-EntityQueryWatcher for %s", name)
 
 	// create the query watcher
 	qw := NewEntityQueryWatcher(q, name, IDGEN())
 	// add it to the list of activeEntity watchers
-	m.activeEntityWatchersMutex.Lock()
-	m.activeEntityWatchers = append(m.activeEntityWatchers, qw)
-	m.activeEntityWatchersMutex.Unlock()
+	go func() {
+		m.activeEntityWatchersMutex.Lock()
+		m.activeEntityWatchers = append(m.activeEntityWatchers, qw)
+		m.activeEntityWatchersMutex.Unlock()
+	}()
 	// return to the caller
 	return qw
 }
 
-func (m *EntityManager) DeleteActiveEntityQueryWatcher(ID uint16) {
+func (m *EntityManager) DeleteActiveEntityQueryWatcher(ID int) {
 	m.activeEntityWatchersMutex.Lock()
 	defer m.activeEntityWatchersMutex.Unlock()
 	// remove the EntityQueryWatcher from the list of active watchers
@@ -494,15 +429,15 @@ func (m *EntityManager) DeleteActiveEntityQueryWatcher(ID uint16) {
 // clear to access the entity components directly, releasing the entity on
 // return. Return value is whether the entity was locked and f was run
 // (remember lockEntity will wait as long as it needs to access the entity,
-// but will fail if, upon locking,
+// but will fail if, upon locking, gen does not match)
 func (m *EntityManager) AtomicEntityModify(
 	entity EntityToken,
-	f func(EntityToken)) bool {
+	f func()) bool {
 
 	if !m.lockEntity(entity) {
 		return false
 	}
-	f(entity)
+	f()
 	m.releaseEntity(entity)
 	return true
 }
@@ -512,7 +447,7 @@ func (m *EntityManager) AtomicEntityModify(
 // return. Return value is whether the entities were locked and f was run
 func (m *EntityManager) AtomicEntitiesModify(
 	entities []EntityToken,
-	f func([]EntityToken)) bool {
+	f func()) bool {
 
 	var time = time.Now().UnixNano()
 
@@ -521,7 +456,7 @@ func (m *EntityManager) AtomicEntitiesModify(
 		return false
 	}
 	atomicEntityModifyDebug("[%d] lock succeeded, trying to run f()", time)
-	f(entities)
+	f()
 	atomicEntityModifyDebug("[%d] f() completed, relesing entities", time)
 	m.releaseEntities(entities)
 	return true
@@ -542,12 +477,14 @@ func (m *EntityManager) lockEntity(entity EntityToken) bool {
 		m.releaseEntity(entity)
 		return false
 	}
+	entityManagerDebug("LOCKED entity %v", entity)
 	return true
 }
 
 // used by physics system to release an entity locked for modification
 func (m *EntityManager) releaseEntity(entity EntityToken) {
 	atomic.StoreUint32(&m.entityTable.locks[entity.ID], 0)
+	entityManagerDebug("RELEASED entity %v", entity)
 }
 
 // lock multiple entities (with return value true only if gen matches for
@@ -638,72 +575,18 @@ func (m *EntityManager) attemptLockTwoEntitiesOnce(
 	return true
 }
 
-// apply the given tag to the given entity
-func (m *EntityManager) TagEntity(id uint16, tag string) {
-	m.tagTable.mutex.Lock()
-	defer m.tagTable.mutex.Unlock()
-
-	entityManagerDebug("Tagging %d with: %s\n", id, tag)
-	_, t_of_e_exists := m.tagTable.tagsOfEntity[id]
-	_, e_with_t_exists := m.tagTable.entitiesWithTag[tag]
-	if !t_of_e_exists {
-		m.tagTable.tagsOfEntity[id] = make([]string, 0)
-	}
-	if !e_with_t_exists {
-		m.tagTable.entitiesWithTag[tag] = make([]uint16, 0)
-	}
-	m.tagTable.tagsOfEntity[id] = append(m.tagTable.tagsOfEntity[id], tag)
-	m.tagTable.entitiesWithTag[tag] = append(m.tagTable.entitiesWithTag[tag], id)
-}
-
-// remove a tag from an entity
-func (m *EntityManager) UntagEntity(id uint16, tag string) {
-	m.tagTable.mutex.Lock()
-	defer m.tagTable.mutex.Unlock()
-
-	// NOTE: I'm aware the below code looks like some gross PHP stuff and
-	// might be hard to read. Basically we do the following:
-	//
-	// last_ix = len(L) - 1
-	// when i == index of element to remove,
-	// L[i] = L[last_ix]
-	// L = L[:last_ix]
-	// remove the id from the list of entities with the tag
-	last_ix := len(m.tagTable.entitiesWithTag[tag]) - 1
-	for i, idInList := range m.tagTable.entitiesWithTag[tag] {
-		if idInList == id {
-			m.tagTable.entitiesWithTag[tag][i] = m.tagTable.entitiesWithTag[tag][last_ix]
-			m.tagTable.entitiesWithTag[tag] = m.tagTable.entitiesWithTag[tag][:last_ix]
-			break
-		}
-	}
-	// remove the tag from the list of tags for the entity
-	last_ix = len(m.tagTable.tagsOfEntity[id]) - 1
-	for i := 0; i <= last_ix; i++ {
-		if m.tagTable.tagsOfEntity[id][i] == tag {
-			m.tagTable.tagsOfEntity[id][i] = m.tagTable.tagsOfEntity[id][last_ix]
-			m.tagTable.tagsOfEntity[id] = m.tagTable.tagsOfEntity[id][:last_ix]
-			break
-		}
-	}
-}
-
-// Tag each of the entities in the provided array of ID's with the given tag
-func (m *EntityManager) TagEntities(ids []uint16, tag string) {
-	m.tagTable.mutex.Lock()
-	defer m.tagTable.mutex.Unlock()
-
-	for _, id := range ids {
-		m.TagEntity(id, tag)
-	}
-}
-
 // Boolean check of whether a given entity has a given tag
-func (m *EntityManager) EntityHasTag(id uint16, tag string) bool {
+func (m *EntityManager) EntityHasTag(entity EntityToken, tag string) bool {
+	tagsDebug("in EntityHasTag(%d, %s), trying to acquire tagTable mutex",
+		entity.ID, tag)
 	m.tagTable.mutex.RLock()
+	tagsDebug("in EntityHasTag(%d, %s) got tagTable mutex",
+		entity.ID, tag)
+	defer tagsDebug("EntityHasTag(%d, %s) released tagTable mutex",
+		entity.ID, tag)
 	defer m.tagTable.mutex.RUnlock()
 
-	for _, entity_tag := range m.tagTable.tagsOfEntity[id] {
+	for _, entity_tag := range m.tagTable.tagsOfEntity[entity.ID] {
 		if entity_tag == tag {
 			return true
 		}
@@ -712,62 +595,60 @@ func (m *EntityManager) EntityHasTag(id uint16, tag string) bool {
 }
 
 // Register an entity class (subsequently retrievable)
-func (m *EntityManager) RegisterEntityClass(
-	classDef EntityClassDef) *EntityClass {
-	// create the object from the EntityClassDef
-	// (Lists is here only allocated)
-	class := EntityClass{
-		Name: classDef.Name,
-		Lists: make(map[string](*UpdatedEntityList),
-			len(classDef.ListQueries))}
-	// used EntityClassclassDef.ListQueries to build
-	// EntityClass.Lists
-	for _, q := range classDef.ListQueries {
-		entityClassDebug("trying to build list %s for "+
-			"class %s", q.Name, classDef.Name)
-		class.Lists[q.Name] = m.GetUpdatedActiveEntityList(
-			q, fmt.Sprintf("class(%s):%s", classDef.Name, q.Name))
-	}
+func (m *EntityManager) RegisterEntityClass(class EntityClass) {
 	// add the class to the EntityClassTable and return
-	m.entityClassTable.addEntityClass(&class)
-	return &class
+	m.entityClassTable.addEntityClass(class)
 }
 
 // Get an entity class by name
-func (m *EntityManager) GetEntityClass(name string) *EntityClass {
+func (m *EntityManager) EntityClass(name string) EntityClass {
 	return m.entityClassTable.getClass(name)
 }
 
 // Gets the first entity with the given tag. Warns to console if the entity is
-// not unique, and returns -1 if there is no such tagged entity. The return
-// type is int32 to make sure that we can properly handle the largest int16
-// id without conflicting with the uint16 representation of -1
-func (m *EntityManager) GetUniqueTaggedEntity(tag string) int32 {
+// not unique. Returns an error if the entity doesn't exist
+func (m *EntityManager) UniqueTaggedEntity(tag string) (EntityToken, error) {
 	m.tagTable.mutex.RLock()
 	defer m.tagTable.mutex.RUnlock()
 
-	entities := m.tagTable.entitiesWithTag[tag]
-	if len(entities) == 0 {
-		return -1
-	} else {
-		if len(entities) > 1 {
-			Logger.Printf("⚠ more than one entity tagged with %s, but "+
-				"GetUniqueTaggedEntity was called. This is a logic error. "+
-				"Returning entitiesWithTag[0].",
-				tag)
-		}
-		return int32(entities[0])
+	list := m.EntitiesWithTag(tag)
+	if list.Length() == 0 {
+		tagsDebug("tried to fetch unique entity %s, but did not exist", tag)
+		return ENTITY_TOKEN_NIL, errors.New("no such entity")
+	}
+	if list.Length() > 1 {
+		tagsDebug("⚠ more than one entity tagged with %s, but "+
+			"GetUniqueTaggedEntity was called. This is a logic error. "+
+			"Returning the first entity.", tag)
+	}
+	return list.First()
+}
+
+func (m *EntityManager) EntitiesWithTag(
+	tag string) *UpdatedEntityList {
+
+	m.tagTable.mutex.Lock()
+	defer m.tagTable.mutex.Unlock()
+
+	m.createTagListIfNeeded(tag)
+	return m.tagTable.entitiesWithTag[tag]
+}
+
+func (m *EntityManager) createTagListIfNeeded(tag string) {
+	if _, exists := m.tagTable.entitiesWithTag[tag]; !exists {
+		m.tagTable.entitiesWithTag[tag] = m.GetUpdatedActiveEntityList(
+			tag, GenericEntityQueryFromTag(tag))
 	}
 }
 
 // Boolean check of whether a given entity has a given component
-func (m *EntityManager) EntityHasComponent(id uint16, COMPONENT int) bool {
+func (m *EntityManager) EntityHasComponent(id int, COMPONENT int) bool {
 	b, _ := m.entityTable.componentBitArrays[id].GetBit(uint64(COMPONENT))
 	return b
 }
 
 // Returns the component bit array for an entity
-func (m *EntityManager) entityComponentBitArray(id uint16) bitarray.BitArray {
+func (m *EntityManager) entityComponentBitArray(id int) bitarray.BitArray {
 	return m.entityTable.componentBitArrays[id]
 }
 
@@ -780,9 +661,9 @@ func (m *EntityManager) String() string {
 
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
-	for _, id := range m.entityTable.allocatedIDs {
+	for _, entity := range m.entityTable.currentEntities {
 		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",
-			id, m.tagTable.tagsOfEntity[id])
+			entity.ID, m.tagTable.tagsOfEntity[entity.ID])
 		buffer.WriteString(entityRepresentation)
 		buffer.WriteString(",\n")
 	}

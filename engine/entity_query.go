@@ -1,22 +1,22 @@
 package engine
 
 type EntityQuery interface {
-	Test(id uint16, em *EntityManager) bool
+	Test(entity EntityToken, em *EntityManager) bool
 }
 
 type GenericEntityQuery struct {
 	Name     string
-	TestFunc func(id uint16, em *EntityManager) bool
+	TestFunc func(entity EntityToken, em *EntityManager) bool
 }
 
-func (q GenericEntityQuery) Test(id uint16, em *EntityManager) bool {
-	return q.TestFunc(id, em)
+func (q GenericEntityQuery) Test(entity EntityToken, em *EntityManager) bool {
+	return q.TestFunc(entity, em)
 }
 
-func GenericEntityQueryForTag(tag string) GenericEntityQuery {
+func GenericEntityQueryFromTag(tag string) GenericEntityQuery {
 	return GenericEntityQuery{
 		Name: tag,
-		TestFunc: func(id uint16, em *EntityManager) bool {
-			return em.EntityHasTag(id, tag)
+		TestFunc: func(entity EntityToken, em *EntityManager) bool {
+			return em.EntityHasTag(entity, tag)
 		}}
 }

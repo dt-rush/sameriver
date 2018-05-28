@@ -24,13 +24,21 @@ type UpdatedEntityList struct {
 	Mutex sync.RWMutex
 	// the channel along which updates to the list will come
 	InputChannel chan EntityToken
+	// a list of ID's the channel has yet to check in being created
+	backlog []EntityToken
+	// a function used to test if an entity belongs in the list
+	// (supplied by EntityManager, it will have a reference to the EntityManager
+	// and will run a query's Test() function against the entity)
+	backlogTester func(entity EntityToken) bool
+	// set to true while we're processing the backlog
+	processingBacklog bool
 	// used to stop the update loop's goroutine in
 	// the case that they're done with the list (by calling Stop())
 	stopUpdateLoopChannel chan bool
 	// the name of the list (for debugging)
 	Name string
 	// the ID of the list (used for memory management)
-	ID uint16
+	ID int
 	// whether the entities slice should be sorted
 	Sorted bool
 	// a slice of funcs who want to be called *before* the entity gets
@@ -41,16 +49,23 @@ type UpdatedEntityList struct {
 // create a new UpdatedEntityList by giving it a channel on which it will
 // receive entity IDs
 func NewUpdatedEntityList(
+	Name string,
+	ID int,
 	InputChannel chan EntityToken,
-	ID uint16,
-	Name string) *UpdatedEntityList {
+	backlog []EntityToken,
+	backlogTester func(entity EntityToken) bool) *UpdatedEntityList {
 
 	l := UpdatedEntityList{}
+	l.Name = Name
+	l.ID = ID
 	l.InputChannel = InputChannel
 	l.Entities = make([]EntityToken, 0)
+
+	l.backlog = backlog
+	l.backlogTester = backlogTester
+	l.processingBacklog = len(backlog) > 0
+
 	l.stopUpdateLoopChannel = make(chan (bool))
-	l.Name = Name
-	l.start()
 	return &l
 }
 
@@ -62,9 +77,9 @@ func (l *UpdatedEntityList) Length() int {
 }
 
 // get the first element of the list
-func (l *UpdatedEntityList) GetFirst() (EntityToken, error) {
+func (l *UpdatedEntityList) First() (EntityToken, error) {
 	l.Mutex.RLock()
-	l.Mutex.RUnlock()
+	defer l.Mutex.RUnlock()
 	if len(l.Entities) > 0 {
 		return l.Entities[0], nil
 	} else {
@@ -75,6 +90,7 @@ func (l *UpdatedEntityList) GetFirst() (EntityToken, error) {
 // called during the creation of a list. Starts a goroutine which listens
 // on the channel and either inserts or deletes entities as appropriate
 func (l *UpdatedEntityList) start() {
+	updatedEntityListDebug("starting UpdatedEntityList %s...", l.Name)
 	go func() {
 	updateloop:
 		for {
@@ -85,42 +101,68 @@ func (l *UpdatedEntityList) start() {
 				updatedEntityListDebug("%s received signal", l.Name)
 				l.actOnEntitySignal(id)
 			default:
+				if l.processingBacklog {
+					l.popBacklog()
+				}
 				time.Sleep(100 * time.Millisecond)
 			}
 		}
 	}()
 }
 
-func (l *UpdatedEntityList) Stop() {
+func (l *UpdatedEntityList) popBacklog() {
+	l.Mutex.Lock()
+	defer l.Mutex.Unlock()
+
+	if len(l.backlog) == 0 {
+		l.processingBacklog = false
+		l.backlogTester = nil
+	}
+
+	last_ix := len(l.backlog) - 1
+	entity := l.backlog[last_ix]
+	l.backlog = l.backlog[:last_ix]
+	updatedEntityListDebug("popped %v from backlog for list %s", entity, l.Name)
+	if l.backlogTester(entity) {
+		l.actOnEntitySignal(entity)
+	}
+}
+
+func (l *UpdatedEntityList) stop() {
 	l.stopUpdateLoopChannel <- true
 }
 
 // acts on an ID signal, which is either an ID to insert or -(ID + 1) to remove
-func (l *UpdatedEntityList) actOnEntitySignal(e EntityToken) {
+func (l *UpdatedEntityList) actOnEntitySignal(entitySignal EntityToken) {
 	l.Mutex.Lock()
 	defer l.Mutex.Unlock()
 
-	encodedID := e.ID
 	// callbacks list want to be notified of each signal we get
 	for _, callback := range l.callbacks {
-		go callback(e)
+		go callback(entitySignal)
 	}
-	if encodedID >= 0 {
-		updatedEntityListDebug("%s got insert:%d", l.Name, encodedID)
-		l.insert(e)
+	if entitySignal.ID < 0 {
+		entitySignal = RemovalToken(entitySignal)
+		updatedEntityListDebug("%s got remove:%d", l.Name, entitySignal.ID)
+		removeEntityTokenFromSlice(&l.backlog, entitySignal)
+		l.remove(entitySignal)
 	} else {
-		// decode ID for removal
-		e.ID = -(encodedID + 1)
-		updatedEntityListDebug("%s got remove:%d", l.Name, e.ID)
-		l.remove(e)
+		updatedEntityListDebug("%s got insert:%d", l.Name, entitySignal.ID)
+		removeEntityTokenFromSlice(&l.backlog, entitySignal)
+		l.insert(entitySignal)
 	}
+	updatedEntityListDebug("%s now: %v", l.Name, l.Entities)
 }
 
 // inserts an entity into the list (private so only called by the update loop)
 func (l *UpdatedEntityList) insert(e EntityToken) {
+	// note: both sorted and regular list insert will not double-insert an entity
+	// (this deals with certain cases when lists are created at the same time
+	// as tags are being added and entities spawned, some entities being added
+	// to tags as the first entity with that tag. This will most often occur
 	if l.Sorted {
-		SortedEntityTokenSliceInsert(&l.Entities, e)
-	} else {
+		SortedEntityTokenSliceInsertIfNotPresent(&l.Entities, e)
+	} else if indexOfEntityTokenInSlice(&l.Entities, e) == -1 {
 		l.Entities = append(l.Entities, e)
 	}
 }

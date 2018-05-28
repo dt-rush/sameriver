@@ -11,7 +11,6 @@
 
 package engine
 
-// Commentary: this is a really cute way of doing a binary search
 // Returns the index to insert x at (could be len(a) if it would be new max)
 func SortedEntityTokenSliceSearch(s []EntityToken, x EntityToken) int {
 	n := len(s)
@@ -30,6 +29,15 @@ func SortedEntityTokenSliceSearch(s []EntityToken, x EntityToken) int {
 	}
 	// i == j, f(i-1) == false, and f(j) (= f(i)) == true  =>  answer is i.
 	return i
+}
+
+func SortedEntityTokenSliceInsertIfNotPresent(s *[]EntityToken, x EntityToken) {
+	i := SortedEntityTokenSliceSearch(*s, x)
+	if (*s)[i].ID != x.ID {
+		*s = append(*s, EntityToken{})
+		copy((*s)[i+1:], (*s)[i:])
+		(*s)[i] = x
+	}
 }
 
 func SortedEntityTokenSliceInsert(s *[]EntityToken, x EntityToken) {

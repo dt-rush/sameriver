@@ -11,8 +11,8 @@ import (
 )
 
 const PROFILE_EM_UPDATE = false
-const N_CROWS = 2
-const N_BEETLES = 1
+const N_CROWS = 1
+const N_BEETLES = 3
 const VERBOSE = true
 
 func verboseLog(s string, params ...interface{}) {
@@ -52,7 +52,10 @@ func main() {
 			if len(healthfulEntities) == 0 {
 				fmt.Println("No healthful entities")
 			}
+			fmt.Printf("%d healthful entities\n",
+				len(healthfulEntities))
 			for _, entity := range healthfulEntities {
+				fmt.Printf("trying to get health for %v\n", entity)
 				health, valid := em.Components.Health.SafeGet(entity)
 				if valid {
 					fmt.Printf("Entity %d has health %d\n", entity.ID, health)
@@ -60,13 +63,15 @@ func main() {
 			}
 		})
 
-	Crows := crow.RegisterCrows(&em)
-	Beetles := beetle.RegisterBeetles(&em)
+	em.RegisterEntityClass(&crow.Crows)
+	em.RegisterEntityClass(&beetle.Beetles)
 
-	em.RequestSpawn(Crows.SpawnRequest([2]int16{0, 0}))
-	em.RequestSpawn(Beetles.SpawnRequest([2]int16{30, 30}))
-	em.RequestSpawn(Beetles.SpawnRequest([2]int16{0, 30}))
-	em.RequestSpawn(Beetles.SpawnRequest([2]int16{30, 0}))
+	for i := 0; i < N_CROWS; i++ {
+		em.RequestSpawn(crow.SpawnRequest([2]int16{0, 0}))
+	}
+	for i := 0; i < N_BEETLES; i++ {
+		em.RequestSpawn(beetle.SpawnRequest([2]int16{30, 30}))
+	}
 
 	for {
 		var t0 time.Time

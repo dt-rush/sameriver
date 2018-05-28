@@ -8,13 +8,13 @@
 package engine
 
 import (
+	"sync/atomic"
 	"time"
 )
 
 // the type of a function run
 type BehaviorFunc func(
 	e EntityToken,
-	c *EntityClass,
 	em *EntityManager)
 
 type Behavior struct {
@@ -25,4 +25,49 @@ type Behavior struct {
 	Func BehaviorFunc
 	// used atomically as a lock to determine whether to run the Func
 	running uint32
+}
+
+// Creates en EntityLogicFunc using a list of Behaviors
+// See:
+//		entity_logic_func.go (type definition)
+//		logic_unit.go (containing type)
+//		logic_component.go (storage for LogicUnits)
+//		entity_manager.go (runs LogicUnits on entity spawn)
+func LogicUnitFromBehaviors(
+	name string,
+	behaviors []Behavior) LogicUnit {
+
+	return NewLogicUnit(
+		name,
+		func(entity EntityToken,
+			StopChannel chan bool,
+			em *EntityManager) {
+
+		logicloop:
+			for {
+				select {
+				case <-StopChannel:
+					break logicloop
+				default:
+					for i := 0; i < len(behaviors); i++ {
+						if atomic.CompareAndSwapUint32(
+							&(behaviors[i].running), 0, 1) {
+
+							go func(behavior *Behavior) {
+								behaviorDebug("Running behavior %s for entity "+
+									"%d, ", behavior.Name, entity.ID)
+								behavior.Func(entity, em)
+								behaviorDebug("Sleeping %d ms for entity %d, "+
+									"behavior: %s",
+									behavior.Sleep.Nanoseconds()/1e6,
+									entity.ID, behavior.Name)
+								time.Sleep(behavior.Sleep)
+								atomic.StoreUint32(&(behavior.running), 0)
+							}(&behaviors[i])
+						}
+					}
+				}
+			}
+
+		})
 }

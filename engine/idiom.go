@@ -18,7 +18,7 @@ package engine
 // little splice idiom when we don't care about slice order (saves
 // a copy operation if we wanted to shift the slice to fill the gap)
 
-func removeUint16FromSlice(slice *[]uint16, x uint16) {
+func removeEntityTokenFromSlice(slice *[]EntityToken, x EntityToken) {
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {
 		if v == x {
@@ -29,19 +29,23 @@ func removeUint16FromSlice(slice *[]uint16, x uint16) {
 	}
 }
 
-func removeIndexFromUint16Slice(slice *[]uint16, index int) {
+func removeAtIndexInEntityTokenSlice(slice *[]EntityToken, index int) {
 	last_ix := len(*slice) - 1
 	(*slice)[index] = (*slice)[last_ix]
 	*slice = (*slice)[:last_ix]
 }
 
-func indexOfUint16InSlice(slice *[]uint16, x uint16) int {
+func indexOfEntityTokenInSlice(slice *[]EntityToken, x EntityToken) int {
 	for i, v := range *slice {
 		if v == x {
 			return i
 		}
 	}
 	return -1
+}
+
+func appendStringToSlice(slice *[]string, x string) {
+	*slice = append(*slice, x)
 }
 
 func removeStringFromSlice(slice *[]string, x string) {
@@ -55,19 +59,8 @@ func removeStringFromSlice(slice *[]string, x string) {
 	}
 }
 
-func removeEntityTokenFromSlice(slice *[]EntityToken, x EntityToken) {
-	last_ix := len(*slice) - 1
-	for i, v := range *slice {
-		if v.ID == x.ID {
-			(*slice)[i] = (*slice)[last_ix]
-			*slice = (*slice)[:last_ix]
-			break
-		}
-	}
-}
-
 func removeEntityQueryWatcherFromSliceByID(
-	slice *[]EntityQueryWatcher, ID uint16) {
+	slice *[]EntityQueryWatcher, ID int) {
 
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {

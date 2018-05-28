@@ -7,14 +7,16 @@
 
 package engine
 
+import (
+	"go.uber.org/atomic"
+)
+
 type IDGenerator struct {
-	x uint16
+	x atomic.Uint32
 }
 
-func (g *IDGenerator) Gen() uint16 {
-	id := g.x
-	g.x += 1
-	return id
+func (g *IDGenerator) Gen() int {
+	return int(g.x.Inc())
 }
 
 var IDGEN_OBJ = IDGenerator{}

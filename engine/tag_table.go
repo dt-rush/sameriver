@@ -6,12 +6,21 @@ import (
 
 // used by the EntityManager to tag entities
 type TagTable struct {
-	// guards all state
-	mutex sync.RWMutex
-	// data members to support the entity tagging system, which allows us to
-	// associate a set of strings with an entity
-	// tag -> []IDs
-	entitiesWithTag map[string]([]uint16)
-	// ID -> []tag
-	tagsOfEntity map[uint16]([]string)
+	mutex           sync.RWMutex
+	tagsOfEntity    [MAX_ENTITIES][]string
+	entitiesWithTag map[string]*UpdatedEntityList
+}
+
+func (t *TagTable) Init() {
+	t.entitiesWithTag = make(map[string]*UpdatedEntityList)
+}
+
+func (t *TagTable) NumEntitiesWithTag(tag string) int {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+	if _, exists := t.entitiesWithTag[tag]; !exists {
+		return 0
+	} else {
+		return t.entitiesWithTag[tag].Length()
+	}
 }

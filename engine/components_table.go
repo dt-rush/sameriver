@@ -46,7 +46,7 @@ func (ct *ComponentsTable) LinkEntityManager(em *EntityManager) {
 // NOTE: this must be called in a context in which the entity lock is preventing
 // any reads or writes to the entity, or the gods will have mighty revenge on
 // you for your hubris
-func (ct *ComponentsTable) ApplyComponentSet(id uint16, cs ComponentSet) {
+func (ct *ComponentsTable) ApplyComponentSet(id int, cs ComponentSet) {
 	// color
 	if cs.Color != nil {
 		ct.Color.Data[id] = *cs.Color

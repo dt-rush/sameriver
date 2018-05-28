@@ -4,4 +4,5 @@ package engine
 type EntitySpawnRequest struct {
 	Components ComponentSet
 	Tags       []string
+	UniqueTag  string
 }

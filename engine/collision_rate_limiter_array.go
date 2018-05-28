@@ -73,16 +73,16 @@ func (a *CollisionRateLimiterArray) GetRateLimiter(
 
 // Reset all the rate limiters corresponding to an ID in the array (the
 // entity there has been despawned)
-func (a *CollisionRateLimiterArray) ResetAll(id uint16) {
+func (a *CollisionRateLimiterArray) ResetAll(entity EntityToken) {
 	// clear all where i = id
-	for _, r := range a.Arr[id] {
+	for _, r := range a.Arr[entity.ID] {
 		r.Reset()
 	}
 	// clear all where j = id
 	// NOTE: the ID's are also the indexes so i < id makes sense
 	// NOTE: see comment in GetRateLimiter() to see the reasoning behind
 	// (i + 1)
-	for i := uint16(0); i < id; i++ {
-		a.Arr[i][id-(i+1)].Reset()
+	for i := 0; i < entity.ID; i++ {
+		a.Arr[i][entity.ID-(i+1)].Reset()
 	}
 }

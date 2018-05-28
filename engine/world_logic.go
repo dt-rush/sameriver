@@ -42,7 +42,7 @@ func (wl *WorldLogicManager) AddList(
 	wl.mutex.Lock()
 	defer wl.mutex.Unlock()
 	wl.lists[name] = wl.em.GetUpdatedActiveEntityList(
-		query, name)
+		name, query)
 }
 
 func (wl *WorldLogicManager) GetEntitiesFromList(name string) []EntityToken {

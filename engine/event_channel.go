@@ -17,7 +17,7 @@ func NewEventChannel(name string, q EventQuery) EventChannel {
 
 	return EventChannel{
 		active: 1,
-		C:      make(chan (Event), EVENT_CHANNEL_CAPACITY),
+		C:      make(chan (Event), EVENT_SUBSCRIBER_CHANNEL_CAPACITY),
 		Query:  q,
 		Name:   name}
 }

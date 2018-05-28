@@ -7,6 +7,14 @@ package engine
 // once a new entity has been spawned with its ID, which may happen quite
 // readily otherwise
 type EntityToken struct {
-	ID  int32
+	ID  int
 	gen uint32
+}
+
+var ENTITY_TOKEN_NIL = EntityToken{-1, 0}
+
+func RemovalToken(token EntityToken) EntityToken {
+	return EntityToken{
+		-(token.ID + 1),
+		token.gen}
 }
