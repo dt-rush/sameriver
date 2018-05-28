@@ -19,3 +19,7 @@ bin/*
 
 # ignore the quest.log file created by test_run.sh
 quest.log
+
+# ignore executables and profiling data created by testing
+test.out
+test.prof
