@@ -60,3 +60,52 @@ func (t *EntityTable) getEntityToken(id int) EntityToken {
 func (t *EntityTable) genValidate(entity EntityToken) bool {
 	return t.getGen(entity.ID) == entity.gen
 }
+
+// get the ID for a new entity. Only called by SpawnEntity, which locks
+// the entityTable, so it's safe that this method operates on that data.
+// Returns int32 so that we can return -1 in case we have run out of space
+// to spawn entities
+func (t *EntityTable) allocateID() (EntityToken, error) {
+	t.IDMutex.Lock()
+	defer t.IDMutex.Unlock()
+	// if maximum entity count reached, fail with message
+	if t.numEntities == MAX_ENTITIES {
+		msg := fmt.Sprintf("Reached max entity count: %d. "+
+			"Will not allocate ID.\n", MAX_ENTITIES)
+		Logger.Println(msg)
+		return ENTITY_TOKEN_NIL, errors.New(msg)
+	}
+	// Increment the entity count
+	t.numEntities++
+	// if there is a deallocated entity somewhere in the table before the
+	// highest ID, return that ID to the caller
+	n_avail := len(t.availableIDs)
+	var id int
+	if n_avail > 0 {
+		// there is an ID available for a previously deallocated entity.
+		// pop it from the list and continue with that as the ID
+		id = t.availableIDs[n_avail-1]
+		t.availableIDs = t.availableIDs[:n_avail-1]
+	} else {
+		// every slot in the table before the highest ID is filled
+		id = t.numEntities - 1
+	}
+	// add the ID to the list of allocated IDs
+	entity := EntityToken{id, t.gens[id]}
+	t.currentEntities = append(t.currentEntities, entity)
+	return entity, nil
+}
+
+// lock the ID table after waiting on spawn mutex to be unlocked,
+// and grab a copy of the currently allocated IDs
+func (t *EntityTable) snapshotAllocatedEntities() []EntityToken {
+	t.IDMutex.RLock()
+	updatedEntityListDebug("got IDMutex in snapshot")
+	defer t.IDMutex.RUnlock()
+
+	snapshot := make([]EntityToken, len(t.currentEntities))
+	copy(snapshot, t.currentEntities)
+	return snapshot
+}
+
+

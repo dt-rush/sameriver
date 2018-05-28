@@ -1,25 +1,32 @@
 package engine
 
+// used to communicate insert / remove events
+type EntitySignalType int
+
+const (
+	ENTITY_ADD = iota
+	ENTITY_REMOVE = iota
+)
+
+type EntitySignal struct {
+	signalType EntitySignalType
+	entity Entity
+}
+
 type EntityQueryWatcher struct {
-	// the query this watcher will watch
-	Query EntityQuery
-	// A channel along which entity ID's will be sent, with the possibility
-	// that those IDs are negative, with -(ID + 1) corresponding to ID
-	// being deactivated
-	Channel chan EntityToken
 	Name    string
-	// the ID of this watcher (used for memory management)
 	ID int
+	Query EntityQuery
+	// A channel along which entity signals will be sent
+	Channel chan EntitySignal
 }
 
 // Construct a new entity query watcher (its channel will be created at the
 // capacity of ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY constant)
-func NewEntityQueryWatcher(
-	q EntityQuery, name string, ID int) EntityQueryWatcher {
+func NewEntityQueryWatcher(q EntityQuery) EntityQueryWatcher {
 
 	return EntityQueryWatcher{
-		q,
-		make(chan EntityToken, ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY),
-		name,
-		ID}
+		q.Name,
+		IDGEN(),
+		make(chan EntityToken, ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY)}
 }

@@ -13,7 +13,7 @@ func (ect *entityClassTable) Init() {
 	ect.classes = make(map[string]EntityClass)
 }
 
-func (ect *entityClassTable) addEntityClass(ec EntityClass) {
+func (ect *entityClassTable) addClass(ec EntityClass) {
 	ect.mutex.Lock()
 	defer ect.mutex.Unlock()
 	ect.classes[ec.Name()] = ec

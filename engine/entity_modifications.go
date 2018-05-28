@@ -23,39 +23,14 @@ func (m *EntityManager) DespawnAtomic(entity EntityToken) {
 // apply the given tag to the given entity
 func (m *EntityManager) TagEntityAtomic(tag string) func(EntityToken) {
 	return func(entity EntityToken) {
-
-		tagsDebug("want to acquire tagTable mutex in TagEntityAtomic(%s)(%v)",
-			tag, entity)
-		m.tagTable.mutex.Lock()
-		tagsDebug("tagTable mutex acquired in TagEntityAtomic(%s)(%v)",
-			tag, entity)
-		defer tagsDebug("tagTable mutex released by TagEntityAtomic(%s)(%v)",
-			tag, entity)
-		defer m.tagTable.mutex.Unlock()
-
-		appendStringToSlice(&m.tagTable.tagsOfEntity[entity.ID], tag)
-		m.createTagListIfNeeded(tag)
-		tagsDebug("In TagEntityAtomic, sending %v to InputChannel of list "+
-			"for %s", entity, tag)
-		m.tagTable.entitiesWithTag[tag].InputChannel <- entity
+		m.tagTable.tagEntity(entity, tag)
 	}
 }
 
 // remove a tag from an entity
 func (m *EntityManager) UntagEntityAtomic(tag string) func(EntityToken) {
 	return func(entity EntityToken) {
-		tagsDebug("want to acquire tagTable mutex in UntagEntityAtomic(%s)(%v)",
-			tag, entity)
-		m.tagTable.mutex.Lock()
-		tagsDebug("tagTable mutex acquired in UntagEntityAtomic(%s)(%v)",
-			tag, entity)
-		defer tagsDebug("tagTable mutex released by UntagEntityAtomic(%s)(%v)",
-			tag, entity)
-		defer m.tagTable.mutex.Unlock()
-
-		tagsDebug("Removing tag %s from %d", tag, entity.ID)
-		removeStringFromSlice(&m.tagTable.tagsOfEntity[entity.ID], tag)
-		m.tagTable.entitiesWithTag[tag].InputChannel <- RemovalToken(entity)
+		m.tagTable.untagEntity(tag, entity)
 	}
 }
 

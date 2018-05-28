@@ -21,18 +21,3 @@ func BitArrayToString(arr bitarray.BitArray) string {
 	buf.WriteString("]")
 	return buf.String()
 }
-
-// Query for whether the bitarray (Match) is a subset of the target
-// BitArray
-func NewEntityComponentBitArrayQuery(
-	q bitarray.BitArray) GenericEntityQuery {
-
-	return GenericEntityQuery{
-		Name: BitArrayToString(q),
-		TestFunc: func(entity EntityToken, em *EntityManager) bool {
-			// determine if q = q&b
-			// that is, if every set bit of q is set in b
-			b := em.entityComponentBitArray(entity.ID)
-			return q.Equals(q.And(b))
-		}}
-}

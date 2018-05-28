@@ -37,7 +37,7 @@ func (wl *WorldLogicManager) Init(
 }
 
 func (wl *WorldLogicManager) AddList(
-	name string, query GenericEntityQuery) {
+	name string, query EntityQuery) {
 
 	wl.mutex.Lock()
 	defer wl.mutex.Unlock()
