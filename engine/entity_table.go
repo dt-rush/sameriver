@@ -2,8 +2,9 @@ package engine
 
 import (
 	"github.com/golang-collections/go-datastructures/bitarray"
+	"go.uber.org/atomic"
 	"sync"
-	"sync/atomic"
+	goatomic "sync/atomic"
 )
 
 // used by the EntityManager to hold info about the allocated entities
@@ -32,15 +33,15 @@ type EntityTable struct {
 	// cycle is a hell of a long time. It should be like 4 milliseconds at
 	// most (thinking here of an inventory modification after comparing
 	// inventory contents to entity desires)
-	locks [MAX_ENTITIES]uint32
+	locks [MAX_ENTITIES]atomic.Uint32
 }
 
 func (t *EntityTable) incrementGen(id int) {
-	atomic.AddUint32(&t.gens[id], 1)
+	goatomic.AddUint32(&t.gens[id], 1)
 }
 
 func (t *EntityTable) getGen(id int) uint32 {
-	return atomic.LoadUint32(&t.gens[id])
+	return goatomic.LoadUint32(&t.gens[id])
 }
 
 func (t *EntityTable) getEntityToken(id int) EntityToken {

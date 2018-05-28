@@ -1,8 +1,8 @@
 package engine
 
 import (
+	"go.uber.org/atomic"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -15,7 +15,7 @@ type WorldLogic struct {
 	Name   string
 	sleep  time.Duration
 	f      WorldLogicFunc
-	active uint32
+	active atomic.Uint32
 }
 
 type WorldLogicManager struct {
@@ -64,7 +64,7 @@ func (wl *WorldLogicManager) ActivateLogic(name string) {
 	defer wl.mutex.RUnlock()
 
 	Logic := wl.Logics[name]
-	atomic.StoreUint32(&Logic.active, 1)
+	Logic.active.Store(1)
 	go wl.run(name)
 }
 
@@ -75,7 +75,7 @@ func (wl *WorldLogicManager) DeactivateLogic(name string) {
 	defer wl.mutex.RUnlock()
 
 	Logic := wl.Logics[name]
-	atomic.StoreUint32(&Logic.active, 0)
+	Logic.active.Store(0)
 }
 
 func (wl *WorldLogicManager) IsActive(name string) bool {
@@ -83,7 +83,7 @@ func (wl *WorldLogicManager) IsActive(name string) bool {
 	defer wl.mutex.RUnlock()
 
 	Logic := wl.Logics[name]
-	return atomic.LoadUint32(&Logic.active) == 1
+	return Logic.active.Load() == 1
 }
 
 func (wl *WorldLogicManager) AddLogic(
@@ -106,12 +106,12 @@ func (wl *WorldLogicManager) run(name string) {
 	wl.mutex.RLock()
 	Logic := wl.Logics[name]
 	wl.mutex.RUnlock()
-	atomic.StoreUint32(&Logic.active, 1)
+	Logic.active.Store(1)
 
 	worldLogicDebug("running %s...", name)
 
 	// while it's active, invoke the function and sleep in a loop
-	for atomic.LoadUint32(&Logic.active) == 1 {
+	for Logic.active.Load() == 1 {
 		// the WorldLogicFunc wants to be invoked with
 		// (*EntityManager, *EventBus, *WorldLogicManager)
 		Logic.f(wl.em, wl.ev, wl)

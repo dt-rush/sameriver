@@ -1,8 +1,8 @@
 package engine
 
 import (
+	"go.uber.org/atomic"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -33,7 +33,7 @@ type ResettableRateLimiter struct {
 	// used so the automatic reset can check, after sleeping, if
 	// another goroutine also had called Reset() while it slept. If so,
 	// do not reset as we would if nothing happened during sleep.
-	resetCounter uint32
+	resetCounter atomic.Uint32
 }
 
 func (r *ResettableRateLimiter) Do(f func()) {
@@ -42,9 +42,9 @@ func (r *ResettableRateLimiter) Do(f func()) {
 	r.once.Do(func() {
 		f()
 		go func() {
-			resetCounterBeforeSleep := atomic.LoadUint32(&r.resetCounter)
+			resetCounterBeforeSleep := r.resetCounter.Load()
 			time.Sleep(r.delay)
-			if atomic.LoadUint32(&r.resetCounter) == resetCounterBeforeSleep {
+			if r.resetCounter.Load() == resetCounterBeforeSleep {
 				r.Reset()
 			}
 		}()
@@ -54,6 +54,6 @@ func (r *ResettableRateLimiter) Do(f func()) {
 func (r *ResettableRateLimiter) Reset() {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	atomic.AddUint32(&r.resetCounter, 1)
+	r.resetCounter.Inc()
 	r.once = sync.Once{}
 }

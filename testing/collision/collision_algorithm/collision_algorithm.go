@@ -1,18 +1,19 @@
 package main
 
 import (
-	"fmt"
+	"go.uber.org/atomic"
 	"math/rand"
 	"sync"
-	"sync/atomic"
 	"time"
 )
+
+const N = 10
 
 type ResettableRateLimiter struct {
 	once         sync.Once
 	mutex        sync.RWMutex
 	delay        time.Duration
-	resetCounter uint32
+	resetCounter atomic.Uint32
 }
 
 func (r *ResettableRateLimiter) Do(f func()) {
@@ -21,9 +22,9 @@ func (r *ResettableRateLimiter) Do(f func()) {
 	r.once.Do(func() {
 		f()
 		go func() {
-			resetCounterBeforeSleep := atomic.LoadUint32(&r.resetCounter)
+			resetCounterBeforeSleep := r.resetCounter.Load()
 			time.Sleep(r.delay)
-			if atomic.LoadUint32(&r.resetCounter) == resetCounterBeforeSleep {
+			if r.resetCounter.Load() == resetCounterBeforeSleep {
 				r.Reset()
 			}
 		}()
@@ -33,7 +34,7 @@ func (r *ResettableRateLimiter) Do(f func()) {
 func (r *ResettableRateLimiter) Reset() {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	atomic.AddUint32(&r.resetCounter, 1)
+	r.resetCounter.Inc()
 	r.once = sync.Once{}
 }
 
@@ -170,8 +171,6 @@ func (c *CollisionRateLimiterArray) ResetAll(id uint16) {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	t0 := time.Now().UnixNano()
-
 	// make entities
 	e := NewEntityList(MAX_ENTITIES)
 	for i := 0; i < rand.Intn(MAX_ENTITIES); i++ {
@@ -180,7 +179,7 @@ func main() {
 	// spawn a thread to randomly add and remove entities from the entitylist
 	go listModifier(&e)
 
-	backingArray := [*(N + 1) / 2]ResettableRateLimiter{}
+	backingArray := [N * (N + 1) / 2]ResettableRateLimiter{}
 
 	// TODO: start a loop every 16 ms that chcks all entity collisions
 	// TODO: keep entities watched array sorted, so in-order traversal is

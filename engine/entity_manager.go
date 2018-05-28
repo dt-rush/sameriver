@@ -9,8 +9,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"go.uber.org/atomic"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/golang-collections/go-datastructures/bitarray"
@@ -35,7 +35,7 @@ type EntityManager struct {
 	spawnChannel chan EntitySpawnRequest
 
 	// a fag signifying that we are currently despawning all entities
-	despawningAll uint32
+	despawningAll atomic.Uint32
 	// updateMutex is used so that String() can grab the whole entity table
 	// (massively interrupting Update()) and stringify it, safely at any rate
 	// (this is not used often, or ever, unless you call String())
@@ -125,7 +125,7 @@ func (m *EntityManager) snapshotAllocatedEntities() []EntityToken {
 func (m *EntityManager) processSpawnChannel() {
 	// get the current number of requests in the channel and only process
 	// them. More may continue to pile up. They'll get processed next time.
-	if atomic.LoadUint32(&m.despawningAll) != 1 {
+	if m.despawningAll.Load() != 1 {
 		n := len(m.spawnChannel)
 		for i := 0; i < n; i++ {
 			// get the request from the channel
@@ -218,7 +218,7 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 // entity manager, and will also kill any pending spawn requests
 func (m *EntityManager) DespawnAll() {
 	despawnDebug("setting despawningAll flag")
-	atomic.StoreUint32(&m.despawningAll, 1)
+	m.despawningAll.Store(1)
 	// iterate all IDs which could have been allocated and despawn them
 	// (each time a despawn goes through, the entityTable.currentEntities list
 	// will shrink)
@@ -242,7 +242,7 @@ func (m *EntityManager) DespawnAll() {
 		// we're draining the channel, so do nothing
 		_ = <-m.spawnChannel
 	}
-	atomic.StoreUint32(&m.despawningAll, 0)
+	m.despawningAll.Store(0)
 }
 
 // internal despawn function which assumes the EntityTable is locked
@@ -466,7 +466,7 @@ func (m *EntityManager) AtomicEntitiesModify(
 // gen mismatch, release and return false. else return true
 func (m *EntityManager) lockEntity(entity EntityToken) bool {
 	// wait until we can lock the entity
-	for !atomic.CompareAndSwapUint32(&m.entityTable.locks[entity.ID], 0, 1) {
+	for !m.entityTable.locks[entity.ID].CAS(0, 1) {
 		// if we can't lock the entity, sleep half a frame
 		time.Sleep(FRAME_SLEEP / 2)
 	}
@@ -483,7 +483,7 @@ func (m *EntityManager) lockEntity(entity EntityToken) bool {
 
 // used by physics system to release an entity locked for modification
 func (m *EntityManager) releaseEntity(entity EntityToken) {
-	atomic.StoreUint32(&m.entityTable.locks[entity.ID], 0)
+	m.entityTable.locks[entity.ID].Store(0)
 	entityManagerDebug("RELEASED entity %v", entity)
 }
 
@@ -527,8 +527,8 @@ func (m *EntityManager) releaseEntities(entities []EntityToken) {
 // self explanatory
 func (m *EntityManager) releaseTwoEntities(
 	entityA EntityToken, entityB EntityToken) {
-	atomic.StoreUint32(&m.entityTable.locks[entityA.ID], 0)
-	atomic.StoreUint32(&m.entityTable.locks[entityB.ID], 0)
+	m.entityTable.locks[entityA.ID].Store(0)
+	m.entityTable.locks[entityB.ID].Store(0)
 }
 
 // used by physics system to attempt to lock an entity for modification, but
@@ -537,8 +537,7 @@ func (m *EntityManager) releaseTwoEntities(
 // and gen doesn't match.
 func (m *EntityManager) attemptLockEntityOnce(entity EntityToken) bool {
 	// do a single attempt to lock
-	locked := atomic.CompareAndSwapUint32(
-		&m.entityTable.locks[entity.ID], 0, 1)
+	locked := m.entityTable.locks[entity.ID].CAS(0, 1)
 	// if we locked the entity but gen mistmatches, release it
 	// and return false
 	if locked &&

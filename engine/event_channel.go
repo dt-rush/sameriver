@@ -1,12 +1,12 @@
 package engine
 
 import (
+	"go.uber.org/atomic"
 	"sync"
-	"sync/atomic"
 )
 
 type EventChannel struct {
-	active          uint32
+	active          *atomic.Uint32
 	C               chan (Event)
 	channelSendLock sync.Mutex
 	Query           EventQuery
@@ -16,22 +16,22 @@ type EventChannel struct {
 func NewEventChannel(name string, q EventQuery) EventChannel {
 
 	return EventChannel{
-		active: 1,
+		active: atomic.NewUint32(1),
 		C:      make(chan (Event), EVENT_SUBSCRIBER_CHANNEL_CAPACITY),
 		Query:  q,
 		Name:   name}
 }
 
 func (c *EventChannel) Activate() {
-	atomic.StoreUint32(&c.active, 1)
+	c.active.Store(1)
 }
 
 func (c *EventChannel) Deactivate() {
-	atomic.StoreUint32(&c.active, 0)
+	c.active.Store(0)
 }
 
 func (c *EventChannel) IsActive() bool {
-	return atomic.LoadUint32(&c.active) == 1
+	return c.active.Load() == 1
 }
 
 func (c *EventChannel) Send(e Event) {

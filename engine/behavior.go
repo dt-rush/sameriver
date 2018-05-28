@@ -8,7 +8,7 @@
 package engine
 
 import (
-	"sync/atomic"
+	"go.uber.org/atomic"
 	"time"
 )
 
@@ -24,7 +24,7 @@ type Behavior struct {
 	// the function this behaviour represents (run when running is 0)
 	Func BehaviorFunc
 	// used atomically as a lock to determine whether to run the Func
-	running uint32
+	running atomic.Uint32
 }
 
 // Creates en EntityLogicFunc using a list of Behaviors
@@ -50,8 +50,7 @@ func LogicUnitFromBehaviors(
 					break logicloop
 				default:
 					for i := 0; i < len(behaviors); i++ {
-						if atomic.CompareAndSwapUint32(
-							&(behaviors[i].running), 0, 1) {
+						if behaviors[i].running.CAS(0, 1) {
 
 							go func(behavior *Behavior) {
 								behaviorDebug("Running behavior %s for entity "+
@@ -62,7 +61,7 @@ func LogicUnitFromBehaviors(
 									behavior.Sleep.Nanoseconds()/1e6,
 									entity.ID, behavior.Name)
 								time.Sleep(behavior.Sleep)
-								atomic.StoreUint32(&(behavior.running), 0)
+								behavior.running.Store(0)
 							}(&behaviors[i])
 						}
 					}
