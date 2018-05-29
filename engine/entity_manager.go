@@ -15,8 +15,6 @@ import (
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
-// created by game scene as a singleton, containing the component, entity,
-// and tag data
 type EntityManager struct {
 	// Component data (can be accessed by users (but only safely inside an
 	// AtomicEntit(y|ies)Modify callback)
@@ -24,7 +22,7 @@ type EntityManager struct {
 	// EntityTable stores component bitarrays, a list of allocated EntityTokens,
 	// and a list of available IDs from previous deallocations
 	entityTable EntityTable
-	// TagTable stores data for the entity tagging system
+	// TagTable contains UpdatedEntityLists for tagged entities
 	tags TagTable
 	// EntityClassTable stores references to entity classes, which can be
 	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
