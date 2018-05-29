@@ -1,7 +1,7 @@
 #!/bin/bash
 
-file="test.prof"
-go build -o test.out spatial_hash.go
-./test.out -cpuprofile=${file}
+outputfile="test.prof"
+go build -o test.out *.go
+./test.out -cpuprofile=${outputfile} "$@"
 echo ""
-echo "profiling done. result can be viewed with go tool pprof ${file}"
+echo "profiling done. result can be viewed with go tool pprof ${outputfile}"
