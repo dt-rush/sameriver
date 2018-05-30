@@ -10,7 +10,17 @@ import (
 	"time"
 )
 
+func PrintIfNotProfiling(s string, args ...interface{}) {
+	if *cpuprofile == "" {
+		fmt.Printf(s, args...)
+	}
+}
+
 func main() {
+
+	rand.Seed(time.Now().UnixNano())
+
+	// parse CLI flags and set up profiling if need be
 	flag.Parse()
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
@@ -20,11 +30,8 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
-
+	// the CLI flag "-seconds" is the number of seconds to run for
 	var FRAMES_TO_RUN = FPS * *seconds
-
-	startTime := time.Now()
-	rand.Seed(startTime.UnixNano())
 
 	// build the position component
 	var Position PositionComponent
@@ -33,38 +40,38 @@ func main() {
 			int16(rand.Intn(WORLD_WIDTH)),
 			int16(rand.Intn(WORLD_HEIGHT))}
 	}
-	// build an entity table
+	// prepare data needed for simulation
 	var entityTable EntityTable
 	entityTable.SpawnEntities()
-	// build a list of spatial entities
 	spatialEntities := UpdatedEntityList{Entities: entityTable.currentEntities}
-	fmt.Printf("entityTable.currentEntities: %d\n",
+	PrintIfNotProfiling("entityTable.currentEntities: %d\n",
 		len(entityTable.currentEntities))
-	// build the spatial hash computer
 	spatialHash := NewSpatialHash(&spatialEntities, &entityTable, &Position)
-	// start the behavior goroutines
+	// start a bunch of goroutines to lock entities
 	StartBehaviors(&entityTable, &Position)
 
-	fmt.Println("testing spatial hashing...")
-	fmt.Printf("time before loop started to run: %d ms\n",
-		time.Since(startTime).Nanoseconds()/1e6)
+	PrintIfNotProfiling("testing spatial hashing...")
 
 	for i := 0; i < FRAMES_TO_RUN; i++ {
+		// do the compute
 		t0 := time.Now()
-		if PRINT_EXAMPLE && i == FRAMES_TO_RUN/2 {
-			fmt.Println(spatialHash.String())
-		}
-		// preemptively prevent new locks
-		time.Sleep(2 * time.Millisecond)
-		t1 := time.Now()
 		spatialHash.ComputeSpatialHash()
-		milliseconds := time.Duration(time.Since(t1).Nanoseconds() / 1e6)
-		if *cpuprofile == "" {
-			fmt.Printf("computing spatial hash took %d ms\n", milliseconds)
+		computeMilliseconds := time.Duration(time.Since(t0).Nanoseconds() / 1e6)
+		PrintIfNotProfiling("computing spatial hash took %d ms\n",
+			computeMilliseconds)
+		PrintIfNotProfiling("table pointer: %p\n", spatialHash.CurrentTable())
+		// do a copy
+		t1 := time.Now()
+		currentTable := spatialHash.CurrentTableCopy()
+		copyMilliseconds := time.Duration(time.Since(t1).Nanoseconds() / 1e6)
+		PrintIfNotProfiling("copying spatial hash table took %d ms\n",
+			copyMilliseconds)
+		// print the hash halfway through, if -printhash passed
+		if *printHash && i == FRAMES_TO_RUN/2 {
+			PrintIfNotProfiling("%s\n", currentTable.String())
 		}
-		if *printHash {
-			fmt.Println(spatialHash.String())
-		}
+		// determine how long to sleep for in order to make good on 16 ms per
+		// loop
 		totalMilliseconds := time.Duration(time.Since(t0).Nanoseconds() / 1e6)
 		if totalMilliseconds >= FRAME_SLEEP {
 			continue
