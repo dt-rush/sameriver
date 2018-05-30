@@ -59,7 +59,8 @@ func main() {
 		computeMilliseconds := time.Duration(time.Since(t0).Nanoseconds() / 1e6)
 		PrintIfNotProfiling("computing spatial hash took %d ms\n",
 			computeMilliseconds)
-		PrintIfNotProfiling("table pointer: %p\n", spatialHash.CurrentTable())
+		PrintIfNotProfiling("table pointer: %p\n",
+			spatialHash.CurrentTablePointer())
 		// do a copy
 		t1 := time.Now()
 		currentTable := spatialHash.CurrentTableCopy()

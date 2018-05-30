@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"go.uber.org/atomic"
 	"math"
-	"sync"
 	"time"
 	"unsafe"
 )
@@ -30,12 +29,17 @@ func (t *SpatialHashTable) Copy() SpatialHashTable {
 		for x := 0; x < GRID; x++ {
 			t2[y][x] = make([]EntityPosition, len(t[y][x]))
 			copy(t2[y][x], t[y][x])
+
 		}
 	}
 	return t2
 }
 
-// turn a SpatialHashTable into a String representation
+// turn a SpatialHashTable into a String representation (NOTE: do *NOT* call
+// this on a pointer returned from CurrentTablePointer unless you can be sure
+// that you have not called ComputeSpatialHash more than once - it does not
+// lock the table it reads, and if you call ComputeSpatialHash twice, you may
+// start to write to the table as this function reads it)
 func (t *SpatialHashTable) String() string {
 	var buffer bytes.Buffer
 	size := int(unsafe.Sizeof(*t))
@@ -56,34 +60,36 @@ func (t *SpatialHashTable) String() string {
 	return buffer.String()
 }
 
-// used to compute the spatial hash cells given a list of entities
+// used to compute the spatial hash tables given a list of entities
 type SpatialHash struct {
 	// we double-buffer the data structure by atomically incrementing this
 	// Uint32 every time we finish computing a new one, taking its
 	// (value - 1) % 2 to return the index of the latest completed cell
 	// structure
 	tableBufIndex atomic.Uint32
-	// cells is a double-buffer for holding SpatialHashTable results
+	// tables is a double-buffer for holding SpatialHashTable results
 	// computed during ComputeSpatialHash
-	cells [2]SpatialHashTable
-	// waitGroup used for goroutines to let the compute method know when
-	// they've all finished
-	// (not double-buffered since we exclude two
-	// ComputeSpatialHash() instances from running at the same time using
-	// the computeInProgress flag)
-	waitGroup sync.WaitGroup
+	tables [2]SpatialHashTable
+	// an unsafe pointer used by receiver() workers in the compute stage
+	// to find the table we're currently building
+	computingTable *SpatialHashTable
 	// channels (one per grid square) used to receive successfully-read
 	// positions from the goroutines which scan the entities
 	// (not double-buffered since we exclude two
 	// ComputeSpatialHash() instances from running at the same time using
 	// the computeInProgress flag)
 	cellChannels [GRID][GRID]chan EntityPosition
+	// used to signal that the compute is done from one of the receive()
+	// workers
+	computeDoneChannel chan bool
 	// an array of bools (one per buffer)
 	// As we loop through partitions of the entity list, waiting to get all
 	// entity positions to feed them to the goroutines appending to each
 	// cell's list, we skip both those which are locked and, using this array,
 	// those which have already been sent to the table-building goroutines
 	alreadyRead [2][N_ENTITIES]bool // (N_ENTIITES = MAX_ENTITIES)
+	// how many entities are yet to store in the current computation
+	entitiesRemaining atomic.Uint32
 	// a lock to ensure that we never enter ComputeSpatialHash while
 	// another instance of the function is still running (we return early,
 	// while a mutex would freeze the goroutine of the caller if called
@@ -105,7 +111,7 @@ func NewSpatialHash(
 	entityTable *EntityTable,
 	position *PositionComponent) *SpatialHash {
 
-	h := SpatialHash{}
+	h := SpatialHash{computeDoneChannel: make(chan bool)}
 	// for each cell in the grid
 	for y := 0; y < GRID; y++ {
 		for x := 0; x < GRID; x++ {
@@ -116,9 +122,11 @@ func NewSpatialHash(
 			for buffer := 0; buffer < 2; buffer++ {
 				// we assume a uniform distribution of entities
 				// (N_ENTITIES / GRID^2 per cell)
-				h.cells[buffer][y][x] = make([]EntityPosition,
+				h.tables[buffer][y][x] = make([]EntityPosition,
 					N_ENTITIES/(GRID*GRID))
 			}
+			// start the receiver for this cell
+			go h.receiver(y, x, h.cellChannels[y][x])
 		}
 	}
 	// take down references needed during compute
@@ -132,15 +140,16 @@ func NewSpatialHash(
 }
 
 // returns the double-buffer index of the current spatial hash table (the one
-// that callers will want)
+// that callers will want). We subtract 1 since we increment tableBufIndex
+// atomically once the computation completes
 func (h *SpatialHash) computedBufIndex() uint32 {
-	return h.tableBufIndex.Load() % 2
+	return (h.tableBufIndex.Load() - 1) % 2
 }
 
 // returns the double-buffer index of the *next* spatial hash table (the one
 // we will be / we are computing)
 func (h *SpatialHash) nextBufIndex() uint32 {
-	return (h.tableBufIndex.Load() + 1) % 2
+	return h.tableBufIndex.Load() % 2
 }
 
 // get the pointer to the current spatial hash data structure
@@ -148,13 +157,13 @@ func (h *SpatialHash) nextBufIndex() uint32 {
 // at *most* one time more. If you can't ensure that it won't be called, and
 // want to do something outside of the main game loop with a spatial hash
 // result, use CurrentTableCopy()
-func (h *SpatialHash) CurrentTable() *SpatialHashTable {
-	return &h.cells[h.computedBufIndex()]
+func (h *SpatialHash) CurrentTablePointer() *SpatialHashTable {
+	return &h.tables[h.computedBufIndex()]
 }
 
 // get a *copy* of the current table which is safe to hold onto, mutate, etc.
 func (h *SpatialHash) CurrentTableCopy() SpatialHashTable {
-	return h.CurrentTable().Copy()
+	return h.CurrentTablePointer().Copy()
 }
 
 // spawns a certain number of goroutines to iterate through entities, trying
@@ -170,13 +179,31 @@ func (h *SpatialHash) ComputeSpatialHash() {
 		return
 	}
 
+	// set the computingTable pointer used by the receiver() workers to point
+	// to the table we're building
+	h.computingTable = &h.tables[h.nextBufIndex()]
+
 	// we don't want the UpdatedEntityList from modifying itself while
 	// we read it
 	h.spatialEntities.Mutex.Lock()
 	defer h.spatialEntities.Mutex.Unlock()
 
+	// set the number of entities remaining (used by receiver workers to
+	// notify that computation is done)
+	h.entitiesRemaining.Store(uint32(len(h.spatialEntities.Entities)))
+	// clear the table data
+	// NOTE: we "clear" the slice by setting its length to 0 (capacity remains
+	// , so this is why a quadtree is a better structure if we'
+	// re going to have entities clustering all into one place then
+	// fanning out or clustering somewhere else
+	for y := 0; y < GRID; y++ {
+		for x := 0; x < GRID; x++ {
+			cell := &h.computingTable[y][x]
+			*cell = (*cell)[:0]
+		}
+	}
 	// Divide the list of entities into a certain number of partitions
-	// which will be scanned by cellSender() instances.
+	// which will be scanned by scanner() instances.
 	// We determine the number of partitions via
 	// N_PARTITIONS = 4 * log(N_ENTITIES+1)^2 + 1
 	// We choose the number of partitions this way because it decently
@@ -195,28 +222,9 @@ func (h *SpatialHash) ComputeSpatialHash() {
 			// the last partition includes the remainder
 			partition_size = len(h.spatialEntities.Entities) - offset
 		}
-		h.waitGroup.Add(1)
-		go h.cellSender(offset, partition_size)
+		go h.scanner(offset, partition_size)
 	}
-	// for each cell, spawn a cellReceiver goroutine to write to the
-	// SpatialHashTable data structure
-	// (but ensure that we mutually exclude access from String() while it's
-	// running - this should never be an issue given how infrequently this
-	// method needs to run, how fast it is, and how infrequently String()
-	// needs to run and how fast it is, but we want to be robust)
-	// this would cause a race if a table was computed, returned to the
-	// user, a new compute started and completed, then a new compute
-	// started, and the user called String() on the originally-returned
-	// pointer, so that they were trying to read the cells as they were being
-	// written
-	var entitiesRemaining *atomic.Uint32 = atomic.NewUint32(N_ENTITIES)
-	for y := 0; y < GRID; y++ {
-		for x := 0; x < GRID; x++ {
-			h.waitGroup.Add(1)
-			go h.cellReceiver(y, x, entitiesRemaining)
-		}
-	}
-	h.waitGroup.Wait()
+	<-h.computeDoneChannel
 	// if we're here, the computation has completed.
 	// this increment, due to the modulo logic, is equivalent to setting
 	// computedBufIndex = nextBufIndex
@@ -233,30 +241,22 @@ func (h *SpatialHash) ComputeSpatialHash() {
 }
 
 // used to receive EntityPositions and put them into the right cell
-func (h *SpatialHash) cellReceiver(
-	y int, x int, entitiesRemaining *atomic.Uint32) {
+func (h *SpatialHash) receiver(
+	y int, x int,
+	channel chan EntityPosition) {
 
-	cell := h.cells[h.nextBufIndex()][y][x]
-	// "clear" the slice by setting its length to 0 (capacity remains, so this
-	// is why a quadtree is a better structure if we're going to have
-	// entities clustering all into one place then fanning out or clustering
-	// somewhere else
-	cell = cell[:0]
-	for entitiesRemaining.Load() > 0 {
-		select {
-		case entityPosition := <-h.cellChannels[y][x]:
-			cell = append(cell, entityPosition)
-			entitiesRemaining.Dec()
-		default:
-			time.Sleep(2 * time.Microsecond)
+	for {
+		entityPosition := <-channel
+		cell := &h.computingTable[y][x]
+		*cell = append(*cell, entityPosition)
+		if h.entitiesRemaining.Dec() == 0 {
+			h.computeDoneChannel <- true
 		}
 	}
-	h.waitGroup.Done()
 }
 
-// used to iterate the entities and send them to the right cell's
-// cellReceiver() instance (they are spawned, one for each cell, as goroutines)
-func (h *SpatialHash) cellSender(offset int, partition_size int) {
+// used to iterate the entities and send them to the right cell's channels
+func (h *SpatialHash) scanner(offset int, partition_size int) {
 
 	// keep track of how many we've read
 	n_read := 0
@@ -273,7 +273,8 @@ func (h *SpatialHash) cellSender(offset int, partition_size int) {
 			h.entityTable.releaseEntity(entity)
 			y := position[1] / SPATIAL_HASH_CELL_HEIGHT
 			x := position[0] / SPATIAL_HASH_CELL_WIDTH
-			h.cellChannels[y][x] <- EntityPosition{entity, position}
+			e := EntityPosition{entity, position}
+			h.cellChannels[y][x] <- e
 			h.alreadyRead[h.nextBufIndex()][offset+i] = true
 			n_read++
 			continue
@@ -282,5 +283,4 @@ func (h *SpatialHash) cellSender(offset int, partition_size int) {
 		// a few entities left and they are all locked)
 		time.Sleep(10 * time.Microsecond)
 	}
-	h.waitGroup.Done()
 }
