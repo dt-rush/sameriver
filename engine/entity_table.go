@@ -23,6 +23,9 @@ type EntityTable struct {
 	// (indexes are IDs, bitarrays have bit set if entity has the
 	// component corresponding to that index)
 	componentBitArrays [MAX_ENTITIES]bitarray.BitArray
+	// the active state for an entity is used to maintain the state of
+	// UpdatedEntityLists returned by EntityManager.GetUpdatedActiveEntityList
+	activeStates [MAX_ENTITIES]bool
 	// the gen of an ID is how many times an entity has been
 	// spawned on that ID
 	gens [MAX_ENTITIES]uint32

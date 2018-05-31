@@ -97,7 +97,7 @@ func (s *CollisionSystem) Init(
 	// (position and hitbox)
 	query := EntityQueryFromComponentBitArray(
 		"collidable",
-		MakeComponentBitArray([]int{
+		MakeComponentBitArray([]ComponentType{
 			POSITION_COMPONENT,
 			HITBOX_COMPONENT}))
 	s.collidableEntities = s.em.GetUpdatedEntityList(query)
@@ -172,9 +172,9 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 					uint16(i.ID),
 					uint16(j.ID)).Do(func() {
 					s.ev.Publish(Event{
-						Type:        EVENT_TYPE_COLLISION,
+						Type:        COLLISION_EVENT,
 						Description: fmt.Sprintf("collision(%d,%d)", i, j),
-						Data: CollisionEventData{
+						Data: CollisionEvent{
 							EntityA: i,
 							EntityB: j}})
 				})

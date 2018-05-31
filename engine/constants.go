@@ -29,6 +29,7 @@ const DEBUG_ENTITY_LOCKS = false
 const DEBUG_BEHAVIOR = false
 const DEBUG_TAGS = false
 const DEBUG_FUNCTION_END = false
+const DEBUG_ACTIVE_STATE = true
 
 const FPS = 60
 const FRAME_SLEEP = (1000 / FPS) * time.Millisecond

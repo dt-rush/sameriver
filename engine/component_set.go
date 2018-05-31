@@ -13,7 +13,6 @@ import (
 )
 
 type ComponentSet struct {
-	Active   *bool
 	Color    *sdl.Color
 	Health   *uint8
 	HitBox   *[2]uint16

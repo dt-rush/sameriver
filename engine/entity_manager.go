@@ -136,7 +136,6 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	// goroutine could be also writing to this entity, due to the
 	// AtomicEntityModify pattern
 	spawnDebug("applying component set for %v...", entity)
-	m.Components.Active.Data[entity.ID] = true
 	m.ApplyComponentSetAtomic(r.Components)(entity)
 	// apply the tags
 	spawnDebug("applying tags for %v...", entity)
@@ -156,15 +155,30 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 			m)
 	}
 	// set entity active and notify entity is active
-	spawnDebug("setting entity active %v...", entity)
-	m.Components.Active.Data[entity.ID] = true
-	spawnDebug("calling go notifyActiveState for %v...", entity)
-	m.activeEntityLists.notifyActiveState(entity, true)
+	m.setActiveState(entity, false)
+
 	// add the entity to the list of current entities
 	spawnDebug("adding %v to current entities...", entity)
 	m.entityTable.addToCurrentEntities(entity)
 	// return EntityToken
 	return entity, nil
+}
+
+// sets the active state on an entity and notifies all watchers
+func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
+	if m.Components.Active.Data[entity.ID] != state {
+		m.Components.Active.Data[entity.ID] = state
+		go m.activeEntityLists.notifyActiveState(entity, state)
+	}
+}
+
+// returns the entity's active state if gen matches, else an error
+// (using an option-type pattern)
+func (m *EntityManager) GetActiveState(entity EntityToken) (bool, error) {
+	if !m.entityTable.genValidate(entity) {
+		return false, errors.New("tried to get active state of despawned entity")
+	}
+	return m.entityTable.activeStates[entity.ID], nil
 }
 
 // User facing function which is used to drain the state of the
@@ -223,8 +237,7 @@ func (m *EntityManager) despawnInternal(entity EntityToken) {
 
 	// Deactivate and notify
 	despawnDebug("setting %v inactive...", entity)
-	m.Components.Active.Data[entity.ID] = false
-	m.activeEntityLists.notifyActiveState(entity, false)
+	m.setActiveState(entity, false)
 	t0 := time.Now()
 	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
 		fmt.Printf("removing tags took: %d ms\n",

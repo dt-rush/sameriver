@@ -48,3 +48,5 @@ var tagsDebug = DebugFunction(
 	"Tags", DEBUG_TAGS)
 var functionEndDebug = DebugFunction(
 	">>>>>>>> Function End", DEBUG_FUNCTION_END)
+var activeStateDebug = DebugFunction(
+	"ActiveState", DEBUG_ACTIVE_STATE)

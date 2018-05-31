@@ -20,20 +20,14 @@ func (m *EntityManager) DespawnAtomic(entity EntityToken) {
 	m.despawnInternal(entity)
 }
 
-// sets the active state on an entity and notifies all watchers
-func (m *EntityManager) SetActiveStateAtomic(state bool) func(EntityToken) {
-	return func(entity EntityToken) {
-		// NOTE: we can access the active value directly since this is called
-		// exclusively when the entityLock is set (will be reset at the end of
-		// the loop iteration in processStateModificationChannel which called
-		// this function via one of activate, deactivate, or despawn)
-		if m.Components.Active.Data[entity.ID] != state {
-			// setActiveState is only called when the entity is locked, so we're
-			// good to write directly to the component
-			m.Components.Active.Data[entity.ID] = state
-			go m.activeEntityLists.notifyActiveState(entity, state)
-		}
-	}
+// set an entity Active and notify all active entity lists
+func (m *EntityManager) Activate(entity EntityToken) {
+	m.setActiveState(entity, true)
+}
+
+// set an entity inactive and notify all active entity lists
+func (m *EntityManager) Deactivate(entity EntityToken) {
+	m.setActiveState(entity, false)
 }
 
 // apply the given tag to the given entity

@@ -5,10 +5,11 @@ import (
 )
 
 type Event struct {
-	Type EventType
-	Data interface{}
+	Type        EventType
+	Description string
+	Data        interface{}
 }
 
 func (e Event) String() string {
-	return fmt.Sprintf("%s", EVENT_NAMES[e.Type])
+	return fmt.Sprintf("%s: %s", EVENT_NAMES[e.Type], e.Description)
 }

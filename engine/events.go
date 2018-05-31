@@ -5,8 +5,9 @@ type CollisionEvent struct {
 	EntityB EntityToken
 }
 
-type SpawnRequest struct {
-	EntityType int
-	Position   [2]int16
-	Active     bool
+type GenericEvent struct {
+	Type int
+	Data interface{}
 }
+
+type Hello struct{}

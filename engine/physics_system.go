@@ -25,7 +25,7 @@ func (s *PhysicsSystem) Init(em *EntityManager) {
 	// (position, velocity and hitbox)
 	query := EntityQueryFromComponentBitArray(
 		"physical",
-		MakeComponentBitArray([]int{
+		MakeComponentBitArray([]ComponentType{
 			POSITION_COMPONENT,
 			VELOCITY_COMPONENT,
 			HITBOX_COMPONENT}))

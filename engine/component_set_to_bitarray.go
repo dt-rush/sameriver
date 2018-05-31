@@ -8,9 +8,6 @@ import (
 
 func (s *ComponentSet) ToBitArray() bitarray.BitArray {
 	b := bitarray.NewBitArray(uint64(N_COMPONENT_TYPES))
-	if s.Active != nil {
-		b.SetBit(uint64(ACTIVE_COMPONENT))
-	}
 	if s.Color != nil {
 		b.SetBit(uint64(COLOR_COMPONENT))
 	}

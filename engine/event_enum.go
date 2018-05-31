@@ -12,6 +12,6 @@ const (
 )
 
 var EVENT_NAMES = map[EventType]string{
-	COLLISION_EVENT:     "collision event",
-	SPAWN_REQUEST_EVENT: "spawn request event",
+	COLLISION_EVENT:     "COLLISION_EVENT",
+	SPAWN_REQUEST_EVENT: "SPAWN_REQUEST_EVENT",
 }
