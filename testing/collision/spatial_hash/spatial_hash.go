@@ -73,6 +73,7 @@ type SpatialHash struct {
 	// an unsafe pointer used by receiver() workers in the compute stage
 	// to find the table we're currently building
 	computingTable *SpatialHashTable
+	computedTable  *SpatialHashTable
 	// channels (one per grid square) used to receive successfully-read
 	// positions from the goroutines which scan the entities
 	// (not double-buffered since we exclude two
