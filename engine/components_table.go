@@ -6,6 +6,8 @@
  *
  */
 
+// TODO: generate
+
 package engine
 
 type ComponentsTable struct {
