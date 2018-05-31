@@ -397,3 +397,37 @@ test):
 14: 0
 15: 0
 ```
+
+After some modifications put in in commit 
+`f73fe9efd714dca215e4967b445ae9ba9643465b`, we get an average of `92`
+*microseconds* per computation with the following parameters:
+
+```
+const N_ENTITIES = 1600
+const N_ENTITIES_WITH_BEHAVIOR = 800
+const N_BEHAVIORS_PER_ENTITY = 4
+const CHANCE_TO_SAFEGET_IN_BEHAVIOR = 0.3
+const SAFEGET_DURATION = 4 * time.Microsecond
+const CHANCE_TO_LOCK_OTHER_ENTITY = 0.05
+const OTHER_ENTITY_LOCK_DURATION = 12 * time.Microsecond
+
+const WORLD_WIDTH = 5760
+const WORLD_HEIGHT = 5760
+
+const FPS = 60
+const FRAME_SLEEP = (1000 / FPS) * time.Millisecond
+
+var ATOMIC_MODIFY_DURATION = func() time.Duration {
+	return time.Duration(rand.Intn(4000)) * time.Nanosecond
+}
+
+var BEHAVIOR_POST_SLEEP = func() time.Duration {
+	return time.Duration(time.Duration(rand.Intn(700)) * time.Millisecond)
+}
+
+const GRID = 12
+const SPATIAL_HASH_CELL_WIDTH = WORLD_WIDTH / GRID
+const SPATIAL_HASH_CELL_HEIGHT = WORLD_HEIGHT / GRID
+
+nScanPartitions := int(2*math.Pow(math.Log(N_ENTITIES+1), 2) + 1)
+```
