@@ -3,7 +3,25 @@ River
 
 Game Engine taking advantage of go's concurrency
 
-# Technical Details
+> **Heraclitus** of Ephesus (/ˌhɛrəˈklaɪtəs/; Greek: Ἡράκλειτος ὁ Ἐφέσιος
+> Hērákleitos ho Ephésios; c. 535 – c. 475 BC) was a pre-Socratic Greek
+> philosopher, and a native of the city of Ephesus, then part of the
+> Persian Empire. Little is known about his early life and education, but 
+> he regarded himself as self-taught and a pioneer of wisdom.
+> 
+> Heraclitus was famous for his insistence on ever-present change as
+> being the fundamental essence of the universe, as stated in the famous
+> saying, "No man ever steps in the same river twice" (see panta rhei
+> below). This position was complemented by his stark commitment to
+> a unity of opposites in the world, stating that "the path up and down
+> are one and the same". Through these doctrines Heraclitus characterized all
+> existing entities by pairs of contrary properties, whereby no entity may
+> ever occupy a single state at a single time. This, along with his cryptic
+> utterance that "all entities come to be in accordance with this Logos
+> " (literally, "word", "reason", or "account") has been the subject of
+> numerous interpretations.
+
+# 1. Technical Details
 
 The engine takes advantage of language features to define concurrently-executing entity behaviour relative to a traditional synchronous game loop ("input, update, draw").
 
@@ -43,26 +61,6 @@ Scenes are initialized and loaded in the background while a singleton loading sc
 
 ^1. It's possible that the game loop will not draw every iteration in order to keep a certain framerate
 
-# The Name?
+#### 1.b. Build system
 
-**Heraclitus** of Ephesus (/ˌhɛrəˈklaɪtəs/; Greek: Ἡράκλειτος ὁ Ἐφέσιος
-Hērákleitos ho Ephésios; c. 535 – c. 475 BC) was a pre-Socratic Greek
-philosopher, and a native of the city of Ephesus, then part of the
-Persian Empire. He was of distinguished parentage. Little is known about
-his early life and education, but he regarded himself as self-taught
-and a pioneer of wisdom. From the lonely life he led, and still more
-from the apparently riddled and allegedly paradoxical nature of his
-philosophy and his stress upon the needless unconsciousness of humankind
-, he was called "The Obscure" and the "Weeping Philosopher".
-
-Heraclitus was famous for his insistence on ever-present change as
-being the fundamental essence of the universe, as stated in the famous
-saying, "No man ever steps in the same river twice" (see panta rhei
-below). This position was complemented by his stark commitment to
-a unity of opposites in the world, stating that "the path up and down
-are one and the same". Through these doctrines Heraclitus characterized all
-existing entities by pairs of contrary properties, whereby no entity may
-ever occupy a single state at a single time. This, along with his cryptic
-utterance that "all entities come to be in accordance with this Logos
-" (literally, "word", "reason", or "account") has been the subject of
-numerous interpretations.
+The engine is, without events or components specified by a game using the engine, not of much use. The code-generation system by which the game author can integrate their components and events into the engine will be described in a future modification to this README, when the system has taken more concrete form. This is a TODO.
