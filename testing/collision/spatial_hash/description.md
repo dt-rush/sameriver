@@ -105,7 +105,7 @@ Duration: 11.49947704s
 Total: 7.34s
 
 main.(*SpatialHash).ComputeSpatialHash
-/home/anon/go/src/github.com/dt-rush/donkeys-qquest/testing/collision/spatial_hash/spatial_hash.go
+/home/anon/go/src/github.com/dt-rush/sameriver/testing/collision/spatial_hash/spatial_hash.go
 
   Total:           0       30ms (flat, cum)  0.41%
     128            .          . } 
@@ -162,7 +162,7 @@ main.(*SpatialHash).ComputeSpatialHash
     179            .          . 	for y := 0; y < GRID; y++ { 
 
 main.(*SpatialHash).cellReceiver
-/home/anon/go/src/github.com/dt-rush/donkeys-qquest/testing/collision/spatial_hash/spatial_hash.go
+/home/anon/go/src/github.com/dt-rush/sameriver/testing/collision/spatial_hash/spatial_hash.go
 
   Total:        20ms      320ms (flat, cum)  4.36%
      78            .          . 	h.resetMutex.Unlock() 
@@ -190,7 +190,7 @@ main.(*SpatialHash).cellReceiver
     100            .          . 	offset int, partition_size int, 
 
 main.(*SpatialHash).cellSender
-/home/anon/go/src/github.com/dt-rush/donkeys-qquest/testing/collision/spatial_hash/spatial_hash.go
+/home/anon/go/src/github.com/dt-rush/sameriver/testing/collision/spatial_hash/spatial_hash.go
 
   Total:        30ms      170ms (flat, cum)  2.32%
      96            .          .  
@@ -233,7 +233,7 @@ main.(*SpatialHash).cellSender
     133            .          . func (h *SpatialHash) ComputeSpatialHash() { 
 
 main.Behavior
-/home/anon/go/src/github.com/dt-rush/donkeys-qquest/testing/collision/spatial_hash/behavior.go
+/home/anon/go/src/github.com/dt-rush/sameriver/testing/collision/spatial_hash/behavior.go
 
   Total:        50ms         1s (flat, cum) 13.62%
       6            .          . ) 
