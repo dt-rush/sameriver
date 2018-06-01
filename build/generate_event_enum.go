@@ -18,7 +18,7 @@ func (g *GenerateProcess) GenerateEventFiles(target string) (
 	moreTargets TargetsCollection) {
 
 	// read the events.go file as an ast.File
-	srcFileName := fmt.Sprintf("%s/events.go", g.engineDir)
+	srcFileName := fmt.Sprintf("%s/events/sameriver.go", g.gameDir)
 	eventsAst, _, err := g.ReadSourceFile(srcFileName)
 	if err != nil {
 		msg := fmt.Sprintf("failed to generate ast.File for %s", srcFileName)

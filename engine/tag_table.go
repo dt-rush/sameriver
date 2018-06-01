@@ -17,13 +17,13 @@ func (t *TagTable) Init(em *EntityManager) {
 }
 
 func (t *TagTable) GetEntitiesWithTag(tag string) *UpdatedEntityList {
-	t.createTagListIfNeeded(tag)
+	t.createEntitiesWithTagListIfNeeded(tag)
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 	return t.entitiesWithTag[tag]
 }
 
-func (t *TagTable) createTagListIfNeeded(tag string) {
+func (t *TagTable) createEntitiesWithTagListIfNeeded(tag string) {
 	t.mutex.RLock()
 	_, exists := t.entitiesWithTag[tag]
 	t.mutex.RUnlock()

@@ -1,8 +1,3 @@
-/**
-  * Manages the spawning and querying of entities
-  *
-**/
-
 package engine
 
 import (
@@ -20,10 +15,13 @@ type EntityManager struct {
 	// AtomicEntit(y|ies)Modify callback)
 	Components ComponentsTable
 	// EntityTable stores component bitarrays, a list of allocated EntityTokens,
-	// and a list of available IDs from previous deallocations
+	// active states, and a list of available IDs from previous deallocations
 	entityTable EntityTable
 	// TagTable contains UpdatedEntityLists for tagged entities
 	tags TagTable
+	// entityLogicTable contains references to the LogicUnits of the entities, if
+	// they supplied one
+	entityLogicTable EntityLogicTable
 	// EntityClassTable stores references to entity classes, which can be
 	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
 	entityClasses entityClassTable
@@ -56,6 +54,8 @@ func (m *EntityManager) Init() {
 	m.tags.Init(m)
 	// init ActiveEntityListCollection
 	m.activeEntityLists.Init(m)
+	// init EntityLogicTable
+	m.EntityLogicTable.Init()
 }
 
 // called once per scene Update() for scenes holding an entity manager
@@ -147,15 +147,12 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 		m.TagEntityAtomic(r.UniqueTag)(entity)
 	}
 	// start the logic goroutine if supplied
-	if r.Components.Logic != nil {
-		spawnDebug("Starting logic for %d...", entity.ID)
-		go r.Components.Logic.f(
-			entity,
-			r.Components.Logic.StopChannel,
-			m)
+	if r.Logic != nil {
+		spawnDebug("Setting and starting logic for %d...", entity.ID)
+		logicUnit := r.entityLogicTable.setLogic(entity, r.Logic)
 	}
 	// set entity active and notify entity is active
-	m.setActiveState(entity, false)
+	m.setActiveState(entity, true)
 
 	// add the entity to the list of current entities
 	spawnDebug("adding %v to current entities...", entity)
@@ -166,8 +163,20 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 
 // sets the active state on an entity and notifies all watchers
 func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
+	// only act if the state is different to that which exists
 	if m.Components.Active.Data[entity.ID] != state {
-		m.Components.Active.Data[entity.ID] = state
+		// start / stop logic accordingly
+		logic := m.logicTable.getLogic(entity)
+		if state == true {
+			go logicUnit.f(entity, logicUnit.stopChannel, m)
+		} else {
+			go func() {
+				logicUnit.stopChannel <- true
+			}()
+		}
+		// set active state
+		m.entitytable.activeState[entity.ID] = state
+		// notify any listening lists
 		go m.activeEntityLists.notifyActiveState(entity, state)
 	}
 }
@@ -238,17 +247,9 @@ func (m *EntityManager) despawnInternal(entity EntityToken) {
 	// Deactivate and notify
 	despawnDebug("setting %v inactive...", entity)
 	m.setActiveState(entity, false)
-	t0 := time.Now()
-	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
-		fmt.Printf("removing tags took: %d ms\n",
-			time.Since(t0).Nanoseconds()/1e6)
-	}
-	// stop the entity's logic
-	// NOTE: we don't need to worry about reading the component value
-	// directly since this is called exclusively from AtomicEntityModify
-	go func() {
-		m.Components.Logic.Data[entity.ID].StopChannel <- true
-	}()
+	// delete the entity's logic (we have to do this *after* stopping it)
+	despawnDebug("deleting %v logic...", entity)
+	m.entityLogicTable.deleteLogic(entity)
 }
 
 // Get a list of entities which will be updated whenever an entity becomes

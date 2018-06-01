@@ -1,18 +1,17 @@
 /*
- * Functions which produce functions that can be passed to
  * AtomicEntityModify or AtomicEntitiesModify, that is, which produce functions
  * of type func(EntityToken) or func([]EntityToken)
  * Special case for functions which operate directly using the EntityToken,
  * they simply *are* the function which would be output, to prevent patterns
  * like DespawnAtomic()(entity), which just looks cluttered
  *
- * To help reading comprehension, they are always suffixed with "Atomic"
+ * To make this clear, they are always suffixed with "Atomic", so that a function
+ * suffixed "Atomic" should appear out of place if not inside an instance of
+ * Atomic.+Modify()
  *
  */
 
 package engine
-
-import ()
 
 // user-facing despawn function which locks the EntityTable for a single
 // despawn
@@ -39,7 +38,7 @@ func (m *EntityManager) TagEntityAtomic(tag string) func(EntityToken) {
 		// if the entity is active, it has already been checked by all lists,
 		// thus generate a new signal to add it to the list of the tag
 		if m.Components.Active.Data[entity.ID] {
-			m.tags.createTagListIfNeeded(tag)
+			m.tags.createEntitiesWithTagListIfNeeded(tag)
 			m.activeEntityLists.checkActiveEntity(entity)
 		}
 	}

@@ -18,16 +18,14 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 	sourceFiles map[string]string,
 	moreTargets TargetsCollection) {
 
-	// read the component_set.go file as an ast.File
-	componentSetSrcFileName := fmt.Sprintf("%s/component_set.go", g.engineDir)
-	componentSetAst, componentSetSrc, err := g.ReadSourceFile(componentSetSrcFileName)
-	if err != nil {
-		msg := fmt.Sprintf("failed to generate ast.File for %s", componentSetSrcFileName)
-		return msg, err, nil, nil
-	}
 	// get needed info from src file
-	componentSetFields, err := getComponentSetFields(
-		componentSetSrcFileName, componentSetSrc, componentSetAst)
+	componentSetFields, err := g.getComponentSetFields(
+		fmt.Sprintf("%s/components/sameriver.go", g.gameDir),
+		"ComponentSet")
+	err = g.includeEngineBaseComponentSetFieldsInMap(componentSetFields)
+	if err != nil {
+		return "failed to include engine base component set", err, nil, nil
+	}
 	var componentNames []string
 	for componentName, _ := range componentSetFields {
 		componentNames = append(componentNames, componentName)
@@ -129,7 +127,6 @@ func (ct *ComponentsTable) Init(em *EntityManager) {
 		linkStatements[i] = Id("ct").Dot(componentName).Dot("em").
 			Op("=").Id("em")
 	}
-	fmt.Println(linkStatements)
 	Func().
 		Params(Id("ct").Op("*").Id("ComponentsTable")).
 		Id("linkEntityManager").
@@ -154,11 +151,19 @@ func generateComponentFile(componentName string, componentType string) string {
 	return "TODO"
 }
 
-func getComponentSetFields(
-	componentSetSrcFileName string, srcFile []byte, astFile *ast.File) (
-	map[string]string, error) {
+func (g *GenerateProcess) getComponentSetFields(
+	srcFileName string, structName string) (map[string]string, error) {
 
-	for _, d := range astFile.Decls {
+	// read the component_set.go file as an ast.File
+	componentSetAst, componentSetSrcFile, err :=
+		g.ReadSourceFile(srcFileName)
+	if err != nil {
+		fmt.Printf("failed to generate ast.File for %s",
+			srcFileName)
+		return nil, err
+	}
+
+	for _, d := range componentSetAst.Decls {
 		decl, ok := d.(*(ast.GenDecl))
 		if !ok {
 			continue
@@ -167,7 +172,7 @@ func getComponentSetFields(
 			continue
 		}
 		typeSpec := decl.Specs[0].(*ast.TypeSpec)
-		if typeSpec.Name.Name == "ComponentSet" {
+		if typeSpec.Name.Name == structName {
 			componentSetFields := make(map[string]string)
 			for _, field := range typeSpec.Type.(*ast.StructType).Fields.List {
 				componentName := field.Names[0].Name
@@ -180,7 +185,7 @@ func getComponentSetFields(
 					continue
 				}
 				componentType := string(
-					srcFile[field.Type.Pos()-1 : field.Type.End()-1])
+					componentSetSrcFile[field.Type.Pos()-1 : field.Type.End()-1])
 				fmt.Printf("found component: %s: %s\n",
 					componentName, componentType)
 				componentSetFields[componentName] = componentType
@@ -188,6 +193,23 @@ func getComponentSetFields(
 			return componentSetFields, nil
 		}
 	}
-	msg := fmt.Sprintf("no ComponentSet struct found in %s", srcFile)
+	msg := fmt.Sprintf("no ComponentSet struct found in %s",
+		componentSetSrcFile)
 	return nil, errors.New(msg)
+}
+
+func (g *GenerateProcess) includeEngineBaseComponentSetFieldsInMap(
+	componentSetFields map[string]string) error {
+
+	// read baes_component_set.go from the engine for merging
+	engineBaseComponentSetFields, err := g.getComponentSetFields(
+		fmt.Sprintf("%s/base_component_set.go", g.engineDir),
+		"BaseComponentSet")
+	if err != nil {
+		return err
+	}
+	for componentName, componentType := range engineBaseComponentSetFields {
+		componentSetFields[componentName] = componentType
+	}
+	return nil
 }

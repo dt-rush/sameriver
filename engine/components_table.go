@@ -14,7 +14,6 @@ type ComponentsTable struct {
 	Color    *ColorComponent
 	Health   *HealthComponent
 	HitBox   *HitBoxComponent
-	Logic    *LogicComponent
 	Mind     *MindComponent
 	Position *PositionComponent
 	Sprite   *SpriteComponent
@@ -31,7 +30,6 @@ func (ct *ComponentsTable) allocate() {
 	ct.Color = &ColorComponent{}
 	ct.Health = &HealthComponent{}
 	ct.HitBox = &HitBoxComponent{}
-	ct.Logic = &LogicComponent{}
 	ct.Mind = &MindComponent{}
 	ct.Position = &PositionComponent{}
 	ct.Sprite = &SpriteComponent{}

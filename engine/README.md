@@ -1,18 +1,11 @@
-
-donkeys-qquest
+River
 ===
 
-A game engine written in Go, with a silly little donkey game as a demo
+Game Engine taking advantage of go's concurrency
+
+# Technical Details
 
 The engine takes advantage of language features to define concurrently-executing entity behaviour relative to a traditional synchronous game loop ("input, update, draw").
-
-
----
-
-
-### 1. Technical details
-
-See the [wiki](https://github.com/dt-rush/donkeys-qquest/wiki) for diagrams.
 
 #### 1.a. General engine design
 
@@ -50,22 +43,26 @@ Scenes are initialized and loaded in the background while a singleton loading sc
 
 ^1. It's possible that the game loop will not draw every iteration in order to keep a certain framerate
 
-### 2. Donkey Game
+# The Name?
 
-Quest for Donkey-based Plot Items, Action Adventures, Shopkeepers and Dungeons
+**Heraclitus** of Ephesus (/ˌhɛrəˈklaɪtəs/; Greek: Ἡράκλειτος ὁ Ἐφέσιος
+Hērákleitos ho Ephésios; c. 535 – c. 475 BC) was a pre-Socratic Greek
+philosopher, and a native of the city of Ephesus, then part of the
+Persian Empire. He was of distinguished parentage. Little is known about
+his early life and education, but he regarded himself as self-taught
+and a pioneer of wisdom. From the lonely life he led, and still more
+from the apparently riddled and allegedly paradoxical nature of his
+philosophy and his stress upon the needless unconsciousness of humankind
+, he was called "The Obscure" and the "Weeping Philosopher".
 
-Will you save the world? Will you rescue Old Man's garden from gophers? What secrets are hidden under the church? Who *are* you and *why are you alive*?
-
-```
-Inspecting donkey corpse...
-    you found:
-        donkey pelt x 1
-        donkey ears x 2
-        donkey hooves x 4
-        donkey whiskers x 32
-        gold x 100
-        ruby x 3
-        magic shield x 2
-        health potion x 2
-```
--- ancient proverb
+Heraclitus was famous for his insistence on ever-present change as
+being the fundamental essence of the universe, as stated in the famous
+saying, "No man ever steps in the same river twice" (see panta rhei
+below). This position was complemented by his stark commitment to
+a unity of opposites in the world, stating that "the path up and down
+are one and the same". Through these doctrines Heraclitus characterized all
+existing entities by pairs of contrary properties, whereby no entity may
+ever occupy a single state at a single time. This, along with his cryptic
+utterance that "all entities come to be in accordance with this Logos
+" (literally, "word", "reason", or "account") has been the subject of
+numerous interpretations.

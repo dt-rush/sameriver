@@ -19,6 +19,7 @@ type TargetsCollection map[string]GenerateFunc
 // struct to hold data related to the generation
 type GenerateProcess struct {
 	engineDir        string
+	gameDir          string
 	sourceFiles      map[string]string
 	messages         map[string]string
 	errors           map[string]string
@@ -27,10 +28,11 @@ type GenerateProcess struct {
 }
 
 func NewGenerateProcess(
-	engineDir string) *GenerateProcess {
+	engineDir string, gameDir string) *GenerateProcess {
 
 	g := GenerateProcess{}
 	g.engineDir = engineDir
+	g.gameDir = gameDir
 	g.sourceFiles = make(map[string]string)
 	g.messages = make(map[string]string)
 	g.errors = make(map[string]string)

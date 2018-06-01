@@ -11,14 +11,6 @@ import (
 	"fmt"
 )
 
-// allows arbitrary storage of data
-
-type Mind map[string]interface{}
-
-func NewMind() Mind {
-	return make(map[string]interface{})
-}
-
 type MindComponent struct {
 	Data [MAX_ENTITIES]Mind
 	em   *EntityManager
