@@ -3,9 +3,11 @@ package build
 import (
 	"bytes"
 	"fmt"
+	. "github.com/dave/jennifer/jen"
 	"go/ast"
 	"go/token"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -24,6 +26,7 @@ func (g *GenerateProcess) GenerateEventFiles(target string) (
 	}
 	// traverse the declarations in the ast.File to get the event names
 	eventNames := getEventNames(srcFileName, eventsAst)
+	sort.Strings(eventNames)
 	if len(eventNames) == 0 {
 		msg := fmt.Sprintf("no structs with name matching .*Event found in %s\n",
 			srcFileName)
@@ -37,17 +40,22 @@ func (g *GenerateProcess) GenerateEventFiles(target string) (
 	return "generated", nil, sourceFiles, nil
 }
 
-func getEventNames(srcFile string, astFile *ast.File) []string {
-	eventNames := make([]string, 0)
+func getEventNames(srcFile string, astFile *ast.File) (
+	eventNames []string) {
+	// for each declaration in the source file
 	for _, d := range astFile.Decls {
+		// cast to generic declaration
 		decl, ok := d.(*(ast.GenDecl))
 		if !ok {
 			continue
 		}
+		// if not a type declaration, continue
 		if decl.Tok != token.TYPE {
 			continue
 		}
+		// get the name of the type
 		name := decl.Specs[0].(*ast.TypeSpec).Name.Name
+		// if it's not a .+Event name, continue
 		if validName, _ := regexp.MatchString(".+Event", name); !validName {
 			fmt.Printf("type %s in %s does not match regexp for an event "+
 				"type (\".+Event\"). Will not include in generated files.\n",
@@ -69,28 +77,30 @@ func generateEventsEnumFile(eventNames []string) string {
 	}
 	// generate the source file
 	var buffer bytes.Buffer
-	// write the top of the file
-	buffer.WriteString("//\n//\n//\n// THIS FILE IS GENERATED\n//\n//\n//\n")
-	buffer.WriteString("package engine\n\n")
-	buffer.WriteString("type EventType int\n\n")
-	buffer.WriteString(fmt.Sprintf(
-		"const N_EVENT_TYPES = %d\n\n", len(eventNames)))
+
+	Type().Id("EventType").Int().Render(&buffer)
+	buffer.WriteString("\n\n")
+
+	Const().Id("N_EVENT_TYPES").Op("=").Lit(len(eventNames)).Render(&buffer)
+	buffer.WriteString("\n\n")
+
 	// write the enum
-	buffer.WriteString("const (\n")
-	for _, eventName := range eventNames {
-		buffer.WriteString(fmt.Sprintf(
-			"\t%s = EventType(iota)\n",
-			constNames[eventName]))
+	constDefs := make([]Code, len(eventNames))
+	for i, eventName := range eventNames {
+		constDefs[i] = Id(constNames[eventName]).Op("=").Iota()
 	}
-	buffer.WriteString(")\n\n")
+	Const().Defs(constDefs...).Render(&buffer)
+	buffer.WriteString("\n\n")
+
 	// write the enum->string function
-	buffer.WriteString("var EVENT_NAMES = map[EventType]string{\n")
-	for _, eventName := range eventNames {
-		buffer.WriteString(fmt.Sprintf(
-			"\t%s: \"%s\",\n",
-			constNames[eventName],
-			constNames[eventName]))
-	}
-	buffer.WriteString("}")
+	Var().Id("EVENT_NAMES").Op("=").
+		Map(Id("EventType")).String().
+		Values(DictFunc(func(d Dict) {
+			for _, eventName := range eventNames {
+				constName := constNames[eventName]
+				d[Id(constName)] = Lit(constName)
+			}
+		})).
+		Render(&buffer)
 	return buffer.String()
 }

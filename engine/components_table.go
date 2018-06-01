@@ -11,7 +11,6 @@
 package engine
 
 type ComponentsTable struct {
-	Active   *ActiveComponent
 	Color    *ColorComponent
 	Health   *HealthComponent
 	HitBox   *HitBoxComponent
@@ -29,7 +28,6 @@ func (ct *ComponentsTable) Init(em *EntityManager) {
 }
 
 func (ct *ComponentsTable) allocate() {
-	ct.Active = &ActiveComponent{}
 	ct.Color = &ColorComponent{}
 	ct.Health = &HealthComponent{}
 	ct.HitBox = &HitBoxComponent{}
@@ -44,7 +42,6 @@ func (ct *ComponentsTable) allocate() {
 func (ct *ComponentsTable) linkEntityManager(
 	em *EntityManager) {
 
-	ct.Active.em = em
 	ct.Color.em = em
 	ct.Health.em = em
 	ct.HitBox.em = em

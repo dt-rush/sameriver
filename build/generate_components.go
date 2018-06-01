@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	. "github.com/dave/jennifer/jen"
 	"go/ast"
 	"go/token"
+	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -16,21 +19,26 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 	moreTargets TargetsCollection) {
 
 	// read the component_set.go file as an ast.File
-	srcFileName := fmt.Sprintf("%s/component_set.go", g.engineDir)
-	componentSetAst, componentSetSrc, err := g.ReadSourceFile(srcFileName)
+	componentSetSrcFileName := fmt.Sprintf("%s/component_set.go", g.engineDir)
+	componentSetAst, componentSetSrc, err := g.ReadSourceFile(componentSetSrcFileName)
 	if err != nil {
-		msg := fmt.Sprintf("failed to generate ast.File for %s", srcFileName)
+		msg := fmt.Sprintf("failed to generate ast.File for %s", componentSetSrcFileName)
 		return msg, err, nil, nil
 	}
-	// get component set componentSetFields from src file
+	// get needed info from src file
 	componentSetFields, err := getComponentSetFields(
-		componentSetSrc, componentSetAst)
+		componentSetSrcFileName, componentSetSrc, componentSetAst)
+	var componentNames []string
+	for componentName, _ := range componentSetFields {
+		componentNames = append(componentNames, componentName)
+	}
+	sort.Strings(componentNames)
 	// generate source files
 	sourceFiles = make(map[string]string)
 	sourceFiles["components_enum.go"] =
-		generateComponentsEnumFile(componentSetFields)
+		generateComponentsEnumFile(componentNames)
 	sourceFiles["components_table.go"] =
-		generateComponentsTableFile(componentSetFields)
+		generateComponentsTableFile(componentNames)
 	for componentName, componentType := range componentSetFields {
 		filename := strings.ToLower(componentName) + "_component.go"
 		sourceFiles[filename] = generateComponentFile(
@@ -40,44 +48,99 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 	return "generated", nil, sourceFiles, nil
 }
 
-func generateComponentsEnumFile(componentSetFields map[string]string) string {
+func generateComponentsEnumFile(componentNames []string) string {
 	// for each component name, create an uppercase const name
 	constNames := make(map[string]string)
-	for componentName, _ := range componentSetFields {
+	for _, componentName := range componentNames {
 		constNames[componentName] = strings.ToUpper(componentName) + "_COMPONENT"
 	}
 	// generate the source file
 	var buffer bytes.Buffer
-	// write the top of the file
-	buffer.WriteString("//\n//\n//\n// THIS FILE IS GENERATED\n//\n//\n//\n")
-	buffer.WriteString("package engine\n\n")
-	buffer.WriteString("type ComponentType int\n\n")
-	buffer.WriteString(fmt.Sprintf("const N_COMPONENT_TYPES = %d\n\n",
-		len(componentSetFields)))
+
+	Type().Id("ComponentType").Int().
+		Render(&buffer)
+	buffer.WriteString("\n\n")
+
+	Const().Id("N_COMPONENT_TYPES").Op("=").Lit(len(componentNames)).
+		Render(&buffer)
+	buffer.WriteString("\n\n")
+
 	// write the enum
-	buffer.WriteString("const (\n")
-	for componentName, _ := range componentSetFields {
-		buffer.WriteString(fmt.Sprintf(
-			"\t%s = componentType(iota)\n",
-			constNames[componentName]))
+	constDefs := make([]Code, len(componentNames))
+	for i, componentName := range componentNames {
+		constDefs[i] = Id(constNames[componentName]).Op("=").Iota()
 	}
-	buffer.WriteString(")\n\n")
+	Const().Defs(constDefs...).
+		Render(&buffer)
+	buffer.WriteString("\n\n")
+
 	// write the enum->string function
-	buffer.WriteString("var component_NAMES = map[componentType]string{\n")
-	for componentName, _ := range componentSetFields {
-		buffer.WriteString(fmt.Sprintf(
-			"\t%s: \"%s\",\n",
-			constNames[componentName],
-			constNames[componentName]))
-	}
-	buffer.WriteString("}")
+	Var().Id("COMPONENT_NAMES").Op("=").
+		Map(Id("ComponentType")).String().
+		Values(DictFunc(func(d Dict) {
+			for _, componentName := range componentNames {
+				constName := constNames[componentName]
+				d[Id(constName)] = Lit(constName)
+			}
+		})).
+		Render(&buffer)
 	return buffer.String()
 }
 
 func generateComponentsTableFile(
-	componentSetFields map[string]string) string {
+	componentNames []string) string {
 
-	return "TODO"
+	// generate the source file
+	var buffer bytes.Buffer
+	// build the ComponentsTable struct declaration
+	fields := make([]Code, len(componentNames))
+	for i, componentName := range componentNames {
+		fields[i] = Id(componentName).
+			Op("*").Id(componentStructName(componentName))
+	}
+	Type().Id("ComponentsTable").Struct(fields...).
+		Render(&buffer)
+	// write the Init method (static)
+	buffer.WriteString(`
+
+func (ct *ComponentsTable) Init(em *EntityManager) {
+	ct.allocate()
+	ct.linkEntityManager(em)
+}
+
+`)
+	// write the allocate() function
+	allocateStatements := make([]Code, len(componentNames))
+	for i, componentName := range componentNames {
+		allocateStatements[i] = Id("ct").Dot(componentName).
+			Op("=").Op("&").Id(componentStructName(componentName)).Values()
+	}
+	Func().
+		Params(Id("ct").Op("*").Id("ComponentsTable")).
+		Id("allocate").
+		Params().
+		Block(allocateStatements...).
+		Render(&buffer)
+	buffer.WriteString("\n\n")
+
+	// write the linkEntityManager() function
+	linkStatements := make([]Code, len(componentNames))
+	for i, componentName := range componentNames {
+		linkStatements[i] = Id("ct").Dot(componentName).Dot("em").
+			Op("=").Id("em")
+	}
+	fmt.Println(linkStatements)
+	Func().
+		Params(Id("ct").Op("*").Id("ComponentsTable")).
+		Id("linkEntityManager").
+		Params(Id("em").Op("*").Id("EntityManager")).
+		Block(linkStatements...).
+		Render(&buffer)
+	return buffer.String()
+}
+
+func componentStructName(componentName string) string {
+	return componentName + "Component"
 }
 
 // generate the source files for each component (position_component.go, etc.)
@@ -91,7 +154,8 @@ func generateComponentFile(componentName string, componentType string) string {
 	return "TODO"
 }
 
-func getComponentSetFields(srcFile []byte, astFile *ast.File) (
+func getComponentSetFields(
+	componentSetSrcFileName string, srcFile []byte, astFile *ast.File) (
 	map[string]string, error) {
 
 	for _, d := range astFile.Decls {
@@ -107,6 +171,14 @@ func getComponentSetFields(srcFile []byte, astFile *ast.File) (
 			componentSetFields := make(map[string]string)
 			for _, field := range typeSpec.Type.(*ast.StructType).Fields.List {
 				componentName := field.Names[0].Name
+				if validName, _ :=
+					regexp.MatchString(
+						"[A-Z][a-z-A-Z]+", componentName); !validName {
+					fmt.Printf("field %s in %s did not match regexp " +
+						"[A-Z][a-z-A-Z]+ (exported field), and so won't " +
+						"be considered a component")
+					continue
+				}
 				componentType := string(
 					srcFile[field.Type.Pos()-1 : field.Type.End()-1])
 				fmt.Printf("found component: %s: %s\n",

@@ -78,6 +78,8 @@ func (g *GenerateProcess) PrintSourceFiles() {
 	fmt.Println("Source file output:")
 	for filename, contents := range g.sourceFiles {
 		fmt.Printf("---\n%s\n---\n\n", filename)
+		fmt.Printf("//\n//\n//\n// THIS FILE IS GENERATED\n//\n//\n//\n")
+		fmt.Printf("package engine\n\n")
 		fmt.Printf("%s\n\n\n", contents)
 	}
 }
