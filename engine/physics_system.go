@@ -7,10 +7,6 @@
 
 package engine
 
-import (
-	"github.com/dt-rush/donkeys-qquest/constant"
-)
-
 type PhysicsSystem struct {
 	// to filter, lookup entities
 	em *EntityManager
@@ -47,8 +43,8 @@ func (s *PhysicsSystem) applyPhysics(entity EntityToken, dt_ms uint16) {
 		int16(box[0]/2) {
 		pos[0] = int16(box[0] / 2)
 	} else if pos[0]+dx >
-		int16(constant.WINDOW_WIDTH)-int16(box[0]/2) {
-		pos[0] = int16(constant.WINDOW_WIDTH) - int16(box[0]/2)
+		int16(WORLD_WIDTH)-int16(box[0]/2) {
+		pos[0] = int16(WORLD_WIDTH) - int16(box[0]/2)
 	} else {
 		pos[0] += dx
 	}
@@ -57,8 +53,8 @@ func (s *PhysicsSystem) applyPhysics(entity EntityToken, dt_ms uint16) {
 		int16(box[1]/2) {
 		pos[1] = int16(box[1] / 2)
 	} else if pos[1]+dy >
-		int16(constant.WINDOW_HEIGHT)-int16(box[1]/2) {
-		pos[1] = int16(constant.WINDOW_HEIGHT) - int16(box[1]/2)
+		int16(WORLD_HEIGHT)-int16(box[1]/2) {
+		pos[1] = int16(WORLD_HEIGHT) - int16(box[1]/2)
 	} else {
 		pos[1] += dy
 	}
