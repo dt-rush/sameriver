@@ -1,5 +1,9 @@
 package build
 
+// takes the engine's base_component_set.go and applies it on top of the
+// game's components/sameriver.go ComponentSet struct, generating various
+// component-related code in the engine
+
 import (
 	"bytes"
 	"errors"
