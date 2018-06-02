@@ -431,3 +431,31 @@ const SPATIAL_HASH_CELL_HEIGHT = WORLD_HEIGHT / GRID
 
 nScanPartitions := int(2*math.Pow(math.Log(N_ENTITIES+1), 2) + 1)
 ```
+
+Testing on `Fri Jun  1 23:59:27 EDT 2018`, with constants:
+
+```
+const N_ENTITIES = 3000
+const N_ENTITIES_WITH_BEHAVIOR = 3000
+const WORLD_WIDTH = 5760
+const WORLD_HEIGHT = 5760
+```
+
+We saw the following results:
+
+```
+millisecond range frequency and percentage for 600 frames:
+
+[start,		end)	freq	percent
+[0.0,		0.1):	0	0.00 %
+[0.1,		0.5):	4	0.67 %
+[0.5,		1.0):	361	60.17 %
+[1.0,		2.0):	204	34.00 %
+[2.0,		4.0):	19	3.17 %
+[4.0,		8.0):	5	0.83 %
+[8.0,		16.0):	6	1.00 %
+[16.0,		32.0):	1	0.17 %
+[32.0,		64.0):	0	0.00 %
+```
+
+... that is, 99.83% of computing spatial hash calls finished in less than 16 ms.

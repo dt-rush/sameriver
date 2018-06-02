@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-const N_ENTITIES = 1600
-const N_ENTITIES_WITH_BEHAVIOR = 800
+const N_ENTITIES = 3000
+const N_ENTITIES_WITH_BEHAVIOR = 3000
 const N_BEHAVIORS_PER_ENTITY = 4
 const CHANCE_TO_SAFEGET_IN_BEHAVIOR = 0.3
 const SAFEGET_DURATION = 4 * time.Microsecond

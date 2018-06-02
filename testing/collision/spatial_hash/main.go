@@ -52,21 +52,23 @@ func main() {
 
 	PrintIfNotProfiling("testing spatial hashing...")
 
+	computeNanosecondsList := make([]int64, FRAMES_TO_RUN)
 	for i := 0; i < FRAMES_TO_RUN; i++ {
 		// do the compute
 		t0 := time.Now()
 		spatialHash.ComputeSpatialHash()
-		computeMilliseconds := time.Duration(time.Since(t0).Nanoseconds() / 1e6)
+		computeNanoseconds := time.Since(t0).Nanoseconds()
+		computeNanosecondsList[i] = computeNanoseconds
 		PrintIfNotProfiling("computing spatial hash took %d ms\n",
-			computeMilliseconds)
+			computeNanoseconds/1e6)
 		PrintIfNotProfiling("table pointer: %p\n",
 			spatialHash.CurrentTablePointer())
 		// do a copy
-		t1 := time.Now()
+		// t1 := time.Now()
 		currentTable := spatialHash.CurrentTableCopy()
-		copyMilliseconds := time.Duration(time.Since(t1).Nanoseconds() / 1e6)
-		PrintIfNotProfiling("copying spatial hash table took %d ms\n",
-			copyMilliseconds)
+		// copyMilliseconds := time.Duration(time.Since(t1).Nanoseconds() / 1e6)
+		// PrintIfNotProfiling("copying spatial hash table took %d ms\n",
+		//	copyMilliseconds)
 		// print the hash halfway through, if -printhash passed
 		if *printHash && i == FRAMES_TO_RUN/2 {
 			PrintIfNotProfiling("%s\n", currentTable.String())
@@ -79,5 +81,26 @@ func main() {
 		} else {
 			time.Sleep(FRAME_SLEEP - totalMilliseconds)
 		}
+	}
+	cutoffs := []float32{0.0, 0.1, 0.5, 1, 2, 4, 8, 16, 32, 64}
+	histBins := make([]int, len(cutoffs)-1)
+	for _, ns := range computeNanosecondsList {
+		ms := float32(ns) / float32(1e6)
+		bin := 0
+		for ms > cutoffs[bin] {
+			if bin+1 != len(cutoffs) && ms < cutoffs[bin+1] {
+				break
+			}
+			bin++
+		}
+		histBins[bin]++
+	}
+	fmt.Printf("\nmillisecond range frequency and percentage for %d frames:\n\n",
+		FRAMES_TO_RUN)
+	fmt.Printf("[start,\t\tend)\tfreq\tpercent\n")
+	for i := 0; i < len(histBins); i++ {
+		fmt.Printf("[%.1f,\t\t%.1f):\t%d\t%.2f %%\n",
+			cutoffs[i], cutoffs[i+1], histBins[i],
+			float32(100*histBins[i])/float32(FRAMES_TO_RUN))
 	}
 }
