@@ -1,1 +1,20 @@
+[ENGINE]
 yield lock if physics / collision has registered to grab lock, in lockEntity, after CAS(0, 1)
+
+[BUILD]
+
+output files into /tmp/sameriver
+
+generate basic _component.go files (incl. basic SafeGet())
+
+write func to detect if data type is primitive value or struct/map/slice
+
+require copy function to be defined if not primtive value
+
+copy function to be integrated into SafeGet()
+
+if component type is struct, find struct def in file named via camel to underscore conversion .go
+
+copy struct-defining file into output dir, with all instances of "engine." elided, import of engine removed, and package changed to engine
+
+verify output is all good and won't clobber anything - then set to output to engine dir
