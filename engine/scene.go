@@ -14,7 +14,7 @@ import (
 type Scene interface {
 	Name() string
 
-	Init(game *Game, endGameLoopChan chan (bool))
+	New(config map[string]string, game *Game, stopChannel chan bool)
 	StartLogic()
 	StopLogic()
 
