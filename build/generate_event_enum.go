@@ -14,15 +14,14 @@ import (
 func (g *GenerateProcess) GenerateEventFiles(target string) (
 	message string,
 	err error,
-	sourceFiles map[string]string,
-	moreTargets TargetsCollection) {
+	sourceFiles map[string]string) {
 
 	// read the events.go file as an ast.File
-	srcFileName := fmt.Sprintf("%s/events/sameriver.go", g.gameDir)
-	eventsAst, _, err := g.ReadSourceFile(srcFileName)
+	srcFileName := fmt.Sprintf("%s/events/sameriver_events.go", g.gameDir)
+	eventsAst, _, err := readSourceFile(srcFileName)
 	if err != nil {
 		msg := fmt.Sprintf("failed to generate ast.File for %s", srcFileName)
-		return msg, err, nil, nil
+		return msg, err, nil
 	}
 	// traverse the declarations in the ast.File to get the event names
 	eventNames := getEventNames(srcFileName, eventsAst)
@@ -30,14 +29,14 @@ func (g *GenerateProcess) GenerateEventFiles(target string) (
 	if len(eventNames) == 0 {
 		msg := fmt.Sprintf("no structs with name matching .*Event found in %s\n",
 			srcFileName)
-		return msg, nil, nil, nil
+		return msg, nil, nil
 	}
 	// generate source files
 	sourceFiles = make(map[string]string)
 	// generate enum source file
 	sourceFiles["events_enum.go"] = generateEventsEnumFile(eventNames)
 	// return
-	return "generated", nil, sourceFiles, nil
+	return "generated", nil, sourceFiles
 }
 
 func getEventNames(srcFile string, astFile *ast.File) (

@@ -1,14 +1,12 @@
 package build
 
 // takes the engine's base_component_set.go and applies it on top of the
-// game's components/sameriver.go ComponentSet struct, generating various
-// component-related code in the engine
+// game's components/sameriver_component_set.go ComponentSet struct, generating
+// various component-related code in the engine
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	. "github.com/dave/jennifer/jen"
 	"go/ast"
 	"go/token"
 	"regexp"
@@ -19,16 +17,29 @@ import (
 func (g *GenerateProcess) GenerateComponentFiles(target string) (
 	message string,
 	err error,
-	sourceFiles map[string]string,
-	moreTargets TargetsCollection) {
+	sourceFiles map[string]string) {
+
+	// seed file is the file in the gameDir that we'll generate engine
+	// code from
+	seedFile := fmt.Sprintf("%s/components/sameriver_component_set.go",
+		g.gameDir)
+	// engine base component set file is the file in engineDir which holds the
+	// base components which all entities can have according to the minimal
+	// requirements of the engine
+	engineBaseComponentSetFile := fmt.Sprintf("%s/base_component_set.go",
+		g.engineDir)
 
 	// get needed info from src file
-	componentSetFields, err := g.getComponentSetFields(
-		fmt.Sprintf("%s/components/sameriver.go", g.gameDir),
-		"ComponentSet")
-	err = g.includeEngineBaseComponentSetFieldsInMap(componentSetFields)
+	componentSetFields, err := getComponentSetFields(seedFile, "ComponentSet")
 	if err != nil {
-		return "failed to include engine base component set", err, nil, nil
+		msg := fmt.Sprintf("failed to process %s", seedFile)
+		return msg, err, nil
+	}
+	err = includeEngineBaseComponentSetFieldsInMap(
+		engineBaseComponentSetFile, componentSetFields)
+	if err != nil {
+		msg := fmt.Sprintf("failed to process %s", engineBaseComponentSetFile)
+		return msg, err, nil
 	}
 	var componentNames []string
 	for componentName, _ := range componentSetFields {
@@ -37,6 +48,7 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 	sort.Strings(componentNames)
 	// generate source files
 	sourceFiles = make(map[string]string)
+
 	sourceFiles["components_enum.go"] =
 		generateComponentsEnumFile(componentNames)
 	sourceFiles["components_table.go"] =
@@ -47,97 +59,7 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 			componentName, componentType)
 	}
 	// return
-	return "generated", nil, sourceFiles, nil
-}
-
-func generateComponentsEnumFile(componentNames []string) string {
-	// for each component name, create an uppercase const name
-	constNames := make(map[string]string)
-	for _, componentName := range componentNames {
-		constNames[componentName] = strings.ToUpper(componentName) + "_COMPONENT"
-	}
-	// generate the source file
-	var buffer bytes.Buffer
-
-	Type().Id("ComponentType").Int().
-		Render(&buffer)
-	buffer.WriteString("\n\n")
-
-	Const().Id("N_COMPONENT_TYPES").Op("=").Lit(len(componentNames)).
-		Render(&buffer)
-	buffer.WriteString("\n\n")
-
-	// write the enum
-	constDefs := make([]Code, len(componentNames))
-	for i, componentName := range componentNames {
-		constDefs[i] = Id(constNames[componentName]).Op("=").Iota()
-	}
-	Const().Defs(constDefs...).
-		Render(&buffer)
-	buffer.WriteString("\n\n")
-
-	// write the enum->string function
-	Var().Id("COMPONENT_NAMES").Op("=").
-		Map(Id("ComponentType")).String().
-		Values(DictFunc(func(d Dict) {
-			for _, componentName := range componentNames {
-				constName := constNames[componentName]
-				d[Id(constName)] = Lit(constName)
-			}
-		})).
-		Render(&buffer)
-	return buffer.String()
-}
-
-func generateComponentsTableFile(
-	componentNames []string) string {
-
-	// generate the source file
-	var buffer bytes.Buffer
-	// build the ComponentsTable struct declaration
-	fields := make([]Code, len(componentNames))
-	for i, componentName := range componentNames {
-		fields[i] = Id(componentName).
-			Op("*").Id(componentStructName(componentName))
-	}
-	Type().Id("ComponentsTable").Struct(fields...).
-		Render(&buffer)
-	// write the Init method (static)
-	buffer.WriteString(`
-
-func (ct *ComponentsTable) Init(em *EntityManager) {
-	ct.allocate()
-	ct.linkEntityManager(em)
-}
-
-`)
-	// write the allocate() function
-	allocateStatements := make([]Code, len(componentNames))
-	for i, componentName := range componentNames {
-		allocateStatements[i] = Id("ct").Dot(componentName).
-			Op("=").Op("&").Id(componentStructName(componentName)).Values()
-	}
-	Func().
-		Params(Id("ct").Op("*").Id("ComponentsTable")).
-		Id("allocate").
-		Params().
-		Block(allocateStatements...).
-		Render(&buffer)
-	buffer.WriteString("\n\n")
-
-	// write the linkEntityManager() function
-	linkStatements := make([]Code, len(componentNames))
-	for i, componentName := range componentNames {
-		linkStatements[i] = Id("ct").Dot(componentName).Dot("em").
-			Op("=").Id("em")
-	}
-	Func().
-		Params(Id("ct").Op("*").Id("ComponentsTable")).
-		Id("linkEntityManager").
-		Params(Id("em").Op("*").Id("EntityManager")).
-		Block(linkStatements...).
-		Render(&buffer)
-	return buffer.String()
+	return "generated", nil, sourceFiles
 }
 
 func componentStructName(componentName string) string {
@@ -155,15 +77,13 @@ func generateComponentFile(componentName string, componentType string) string {
 	return "TODO"
 }
 
-func (g *GenerateProcess) getComponentSetFields(
+func getComponentSetFields(
 	srcFileName string, structName string) (map[string]string, error) {
 
 	// read the component_set.go file as an ast.File
 	componentSetAst, componentSetSrcFile, err :=
-		g.ReadSourceFile(srcFileName)
+		readSourceFile(srcFileName)
 	if err != nil {
-		fmt.Printf("failed to generate ast.File for %s",
-			srcFileName)
 		return nil, err
 	}
 
@@ -202,12 +122,13 @@ func (g *GenerateProcess) getComponentSetFields(
 	return nil, errors.New(msg)
 }
 
-func (g *GenerateProcess) includeEngineBaseComponentSetFieldsInMap(
+func includeEngineBaseComponentSetFieldsInMap(
+	engineBaseComponentSetFile string,
 	componentSetFields map[string]string) error {
 
 	// read baes_component_set.go from the engine for merging
-	engineBaseComponentSetFields, err := g.getComponentSetFields(
-		fmt.Sprintf("%s/base_component_set.go", g.engineDir),
+	engineBaseComponentSetFields, err := getComponentSetFields(
+		engineBaseComponentSetFile,
 		"BaseComponentSet")
 	if err != nil {
 		return err

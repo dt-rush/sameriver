@@ -2,18 +2,13 @@ package build
 
 import (
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"io/ioutil"
 )
 
 // type definitions used by the generate process
 type GenerateFunc func(target string) (
 	message string,
 	err error,
-	sourceFiles map[string]string,
-	moreTargets TargetsCollection)
+	sourceFiles map[string]string)
 type TargetsCollection map[string]GenerateFunc
 
 // struct to hold data related to the generation
@@ -39,26 +34,18 @@ func NewGenerateProcess(
 	return &g
 }
 
-// used to run the targets and recursively run any more targets they produce
-func (g *GenerateProcess) runTargets(targets TargetsCollection) {
+// used to run the targets
+func (g *GenerateProcess) Run(targets TargetsCollection) {
 	for target, f := range targets {
 		fmt.Printf("----- running target: %s -----\n", target)
-		message, err, sourceFiles, moreTargets := f(target)
+		message, err, sourceFiles := f(target)
 		g.messages[target] = message
 		g.errors[target] = fmt.Sprintf("%v", err)
 		for filename, contents := range sourceFiles {
 			g.sourceFiles[filename] = contents
 		}
 		g.targetsProcessed = append(g.targetsProcessed, target)
-		if moreTargets != nil {
-			g.runTargets(moreTargets)
-		}
 	}
-}
-
-// used to run the process
-func (g *GenerateProcess) Run(rootTargets TargetsCollection) {
-	g.runTargets(rootTargets)
 }
 
 // used to display a summary at the end
@@ -86,17 +73,6 @@ func (g *GenerateProcess) PrintSourceFiles() {
 	}
 }
 
-func (g *GenerateProcess) ReadSourceFile(srcFileName string) (
-	*ast.File, []byte, error) {
-
-	src, err := ioutil.ReadFile(srcFileName)
-	if err != nil {
-		return nil, []byte{}, err
-	}
-	astFile, err := parser.ParseFile(
-		token.NewFileSet(), "", src, parser.AllErrors)
-	if err != nil {
-		return nil, []byte{}, err
-	}
-	return astFile, src, nil
+func (g *GenerateProcess) HadErrors() bool {
+	return len(g.errors) > 0
 }

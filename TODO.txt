@@ -1,0 +1,1 @@
+yield lock if physics / collision has registered to grab lock, in lockEntity, after CAS(0, 1)
