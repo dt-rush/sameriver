@@ -151,6 +151,21 @@ func (h *SpatialHash) CurrentTableCopy() SpatialHashTable {
 // list for each grid cell
 func (h *SpatialHash) ComputeSpatialHash() {
 
+	// TODO: (see entity_manager_entity_component_lock_methods.go)
+	// - set flag to block new locks on position component
+	// - wait for count of position component lockers to go to 0
+	// - proceed without any fear
+	// - open the floodgates (unset flag) when done computing
+	// (or should this happen at a higher level of abstraction, in the
+	// system which will use the hash for physics / collision? do we really
+	// want to let a bunch of position component lock acquires happen
+	// in between computing the hash and using it? why not just lock the
+	// position / hitbox components for the duration of the whole physics /
+	// collision / spatial hash routine? (and lock velocity only for the
+	// physics portion)
+	// a similar lock will need to happen for the sprite component in Draw(),
+	// but we can use the frozen position data from the spatial hash there
+
 	// this lock prevents another call to ComputeSpatialHash()
 	// entering while we are currently calculating (this ensures robustness
 	// if for some reason it is called too often)

@@ -24,7 +24,7 @@ type EntityManager struct {
 	entityLogicTable EntityLogicTable
 	// EntityClassTable stores references to entity classes, which can be
 	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
-	entityClasses entityClassTable
+	entityClasses EntityClassTable
 	// ActiveEntityListCollection is used by GetUpdatedEntityList to
 	// store EntityQueryWatchers and references to UpdatedEntityLists used
 	// to implement GetUpdatedEntityList
@@ -34,12 +34,6 @@ type EntityManager struct {
 	spawnChannel chan EntitySpawnRequest
 	// spawnMutex prevents despawn / spawn events from occurring at the same time
 	spawnMutex sync.Mutex
-	// updateMutex is used so that String() can grab the whole entity table
-	// (massively interrupting Update()) and stringify it, safely at any rate
-	// (this is not used often, or ever, unless you call String() - really this
-	// should only be used in developent, in debugging, or in printing state
-	// during a crash
-	updateMutex sync.Mutex
 }
 
 func (m *EntityManager) Init() {
@@ -164,7 +158,7 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 // sets the active state on an entity and notifies all watchers
 func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
 	// only act if the state is different to that which exists
-	if m.Components.Active.Data[entity.ID] != state {
+	if m.entityTable.activeState[entity.ID] != state {
 		// start / stop logic accordingly
 		logic := m.logicTable.getLogic(entity)
 		if state == true {
@@ -266,16 +260,31 @@ func (m *EntityManager) GetUpdatedEntityList(
 // (remember lockEntity will wait as long as it needs to access the entity,
 // but will fail if, upon locking, gen does not match)
 func (m *EntityManager) AtomicEntityModify(
-	entity EntityToken,
+	req EntityModificationRequest,
 	f func()) bool {
 
-	if !m.lockEntity(entity) {
-		return false
+	m.entityTable.activeModifierCountLocks[req.entity.ID].Lock()
+	m.entityTable.activeModifierCount[req.entity.ID].Inc()
+	defer m.entityTable.activeModifierCount[req.entity.ID].Dec()
+	m.entityTable.activeModifierCountLocks[req.entity.ID].Unlock()
+
+	locksAcquired := make([]EntityComponent, 0)
+	sort.Slice(req.components, func(i int, j int) bool {
+		return req.components[i] < req.components[j]
+	})
+	for _, component := range req.components {
+		if m.lockEntityComponent(req.entity, component) {
+			locksAcquired = append(locksAcquired,
+				EntityComponent{entity, component})
+		} else {
+			m.releaseEntityComponents(locksAcquired)
+			return false
+		}
 	}
-	atomicEntityModifyDebug("acquired entity lock in AtomicEntityModify(%v)",
-		entity)
+
+	// if we're here, all components were acquired for the entity
 	f()
-	m.releaseEntity(entity)
+	m.releaseEntityComponents(locksAcquired)
 	return true
 }
 
@@ -283,19 +292,38 @@ func (m *EntityManager) AtomicEntityModify(
 // clear to access the entity components directly, releasing the entities on
 // return. Return value is whether the entities were locked and f was run
 func (m *EntityManager) AtomicEntitiesModify(
-	entities []EntityToken,
+	reqs []EntityModificationRequest,
 	f func()) bool {
 
-	var time = time.Now().UnixNano()
+	sort.Slice(reqs, func(i int, j int) bool {
+		return reqs[i].entity.ID < reqs[j].entity.ID
+	})
 
-	atomicEntityModifyDebug("[%d] trying to lock %v", time, entities)
-	if !m.lockEntities(entities) {
-		return false
+	for _, req := range reqs {
+		m.entityTable.activeModifierCountLocks[req.entity.ID].Lock()
+		m.entityTable.activeModifierCount[req.entity.ID].Inc()
+		defer m.entityTable.activeModifierCount[req.entity.ID].Inc()
+		m.entityTable.activeModifierCountLocks[req.entity.ID].Unlock()
 	}
-	atomicEntityModifyDebug("[%d] lock succeeded, trying to run f()", time)
+
+	locksAcquired := make([]EntityComponent, 0)
+	for _, req := range reqs {
+		sort.Slice(req.components, func(i int, j int) bool {
+			return req.components[i] < req.components[j]
+		})
+		for _, component := range req.components {
+			if m.lockEntityComponent(req.entity, component) {
+				locksAcquired = append(locksAcquired,
+					EntityComponent{entity, component})
+			} else {
+				m.releaseEntityComponents(locksAcquired)
+				return false
+			}
+		}
+	}
+
 	f()
-	atomicEntityModifyDebug("[%d] f() completed, releasing entities", time)
-	m.releaseEntities(entities)
+	m.releaseEntityComponents(locksAcquired)
 	return true
 }
 
@@ -348,10 +376,12 @@ func (m *EntityManager) entityComponentBitArray(id int) bitarray.BitArray {
 	return m.entityTable.componentBitArrays[id]
 }
 
-// Somewhat expensive conversion of entire entity list to string
+// Somewhat expensive conversion of entire entity list to string, locking
+// spawn/despawn from occurring while we read the entities (best to use for
+// debugging, very ocassional diagnostic output)
 func (m *EntityManager) String() string {
-	m.updateMutex.Lock()
-	defer m.updateMutex.Unlock()
+	m.spawnMutex.Lock()
+	defer m.spawnMutex.Unlock()
 
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")

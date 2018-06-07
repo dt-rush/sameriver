@@ -16,6 +16,12 @@ package engine
 // user-facing despawn function which locks the EntityTable for a single
 // despawn
 func (m *EntityManager) DespawnAtomic(entity EntityToken) {
+	m.activeModifierCountLocks[entity.ID].Lock()
+	defer m.activeModifierCountLocks[entity.ID].Unlock()
+
+	for m.activeModifierCount[entity.ID].Load() > 0 {
+		time.Sleep(50 * time.Microsecond)
+	}
 	m.despawnInternal(entity)
 }
 

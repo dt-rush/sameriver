@@ -29,16 +29,17 @@ type EntityTable struct {
 	// the gen of an ID is how many times an entity has been
 	// spawned on that ID
 	gens [MAX_ENTITIES]uint32
-	// locks so that goroutines can operate atomically on individual entities
-	// (eg. imagine two squirrels coming upon a nut and trying to eat it. One
-	// must win!). Also used by systems like PhysicsSystem to avoid modifying
-	// those entities while they're held for modification (hence the
-	// importance of not holding entities for modification longer than, say,
-	// one update cycle (at 60fps, around 16 ms). In fact, one update
-	// cycle is a hell of a long time. It should be like 4 milliseconds at
-	// most (thinking here of an inventory modification after comparing
-	// inventory contents to entity desires)
-	locks [MAX_ENTITIES]atomic.Uint32
+	// used to keep track of how many goroutines are currently atomically
+	// modifying components on an entity
+	activeModifierCount [MAX_ENTITIES]atomic.Uint32
+	// used to lock the above counters. AtomicEntityModify() tries to acquire
+	// the lock here, acquire the entity's component lock, and on success,
+	// increment the counter when it begins (despawn locks the lock and doesn't
+	// release until the entity is despawned - in which case after acquiring
+	// the lock and attempting to lock the entity's component, the
+	// AtomicEntityModify() will get a fail on lock acquire, since the gen of
+	// the entity will have been incremented
+	activeModifierCountLocks [MAX_ENTITIES]*ABQL
 }
 
 func (t *EntityTable) incrementGen(id int) {
@@ -95,6 +96,11 @@ func (t *EntityTable) allocateID() (EntityToken, error) {
 		// every slot in the table before the highest ID is filled
 		id = t.numEntities - 1
 	}
+	// allocate an activeModifierCountLock for this entity
+	// (allocating to heap on each entity spawn is good since this way when
+	// the ABQL modifies its array, it is (slightly) less likely to invalidate
+	// cache line of another entity's ABQL
+	t.activeModifierCountLocks[id] = NewABQL(10 * time.Microsecond)
 	// return the token
 	entity := EntityToken{id, t.gens[id]}
 	return entity, nil

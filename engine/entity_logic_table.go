@@ -40,8 +40,8 @@ func (t *EntityLogicTable) getLogic(entity EntityToken) EntityLogicUnit {
 }
 
 func (t *EntityLogicTable) deleteLogic(entity EntityToken) {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 
 	if unit, exists := t.entityLogicUnits[entity]; exists {
 		delete(t.entityLogicUnits, entity)
