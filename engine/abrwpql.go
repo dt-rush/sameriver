@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Array-Based Read-Write-Priority Queueing Lock
 type ABRWPQL struct {
 	arr      []int
 	queue_sz int

@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Array-Based Queueing Lock
 // implementation of a circular array-based queueing lock which is
 // safe from overflow at the expense of relatively-busy checking on a single
 // atomic value (dequeueCount) in the case of overflow
