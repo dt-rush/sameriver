@@ -93,7 +93,7 @@ func (g *GenerateProcess) OutputFiles() {
 
 	for filename, file := range g.sourceFiles {
 		// open the file to write
-		outputFileName := fmt.Sprintf("%s/__generated_%s", g.outputDir, filename)
+		outputFileName := fmt.Sprintf("%s/GENERATED_%s", g.outputDir, filename)
 		f, err := os.Create(outputFileName)
 		if err != nil {
 			panic(err)
@@ -127,7 +127,7 @@ func (g *GenerateProcess) CopyFiles() {
 		srcPath := path.Join(
 			g.gameDir, fileinfo.Name())
 		destPath := path.Join(
-			g.outputDir, fmt.Sprintf("__custom_copied_%s", fileinfo.Name()))
+			g.outputDir, fmt.Sprintf("CUSTOM_%s", fileinfo.Name()))
 		fmt.Printf("Copying %s...\n\tto %s\n", srcPath, destPath)
 		err = exec.Command("cp", srcPath, destPath).Run()
 		if err != nil {
