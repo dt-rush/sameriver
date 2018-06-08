@@ -35,14 +35,18 @@ type Behavior struct {
 //		entity_manager.go (runs LogicUnits on entity spawn)
 func LogicUnitFromBehaviors(
 	name string,
-	behaviors []Behavior) LogicUnit {
+	behaviors []Behavior) EntityLogicUnit {
 
-	return NewLogicUnit(
-		name,
+	return EntityLogicUnit{
+		// stopChannel
+		make(chan bool),
+		/* start of EntityLogicFunc */
 		func(entity EntityToken,
 			StopChannel chan bool,
 			em *EntityManager) {
 
+			// runs each of the entity behaviours whenever they're ready,
+			// until we get a value on the stopchannel
 		logicloop:
 			for {
 				select {
@@ -66,9 +70,14 @@ func LogicUnitFromBehaviors(
 						}
 					}
 					// we need to sleep here in order to avoid burning the CPU!
+					// honestly - no entity logic needs to run every frame, that's
+					// insane. If something like that is needed (60fps animations,
+					// for example), it should be integrated into the graphics
+					// system in a totally different way than as an entity
+					// atomically modifying its own frame or something
 					time.Sleep(5 * FRAME_SLEEP)
 				}
 			}
-
-		})
+		}, /* end of EntityLogicFunc */
+	}
 }

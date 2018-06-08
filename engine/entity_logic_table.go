@@ -5,8 +5,8 @@ import (
 )
 
 type EntityLogicUnit struct {
-	f           EntityLogicFunc
 	stopChannel chan bool
+	f           EntityLogicFunc
 }
 
 type EntityLogicTable struct {

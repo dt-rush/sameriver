@@ -93,7 +93,7 @@ func (g *GenerateProcess) OutputFiles() {
 
 	for filename, file := range g.sourceFiles {
 		// open the file to write
-		outputFileName := fmt.Sprintf("%s/%s", g.outputDir, filename)
+		outputFileName := fmt.Sprintf("%s/__generated_%s", g.outputDir, filename)
 		f, err := os.Create(outputFileName)
 		if err != nil {
 			panic(err)
@@ -117,16 +117,19 @@ func (g *GenerateProcess) OutputFiles() {
 
 // copy the files from ${gameDir}/sameriver/ into the outputDir
 func (g *GenerateProcess) CopyFiles() {
-	fmt.Printf("Copying all files from %s to %s...\n",
+	fmt.Printf("Copying all files from %s to %s with prefix...\n",
 		g.gameDir, g.outputDir)
 	files, err := ioutil.ReadDir(g.gameDir)
 	if err != nil {
 		panic(err)
 	}
 	for _, fileinfo := range files {
-		filePath := path.Join(g.gameDir, fileinfo.Name())
-		fmt.Printf("Copying %s...\n", filePath)
-		err = exec.Command("cp", filePath, g.outputDir).Run()
+		srcPath := path.Join(
+			g.gameDir, fileinfo.Name())
+		destPath := path.Join(
+			g.outputDir, fmt.Sprintf("__custom_copied_%s", fileinfo.Name()))
+		fmt.Printf("Copying %s...\n\tto %s\n", srcPath, destPath)
+		err = exec.Command("cp", srcPath, destPath).Run()
 		if err != nil {
 			panic(err)
 		}
