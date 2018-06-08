@@ -18,33 +18,33 @@ func (g *GenerateProcess) GenerateEventFiles(target string) (
 	// generate source files
 	sourceFiles = make(map[string]*File)
 
-	if g.gameDir == "" {
-		return "not-generated", nil, sourceFiles
-	}
+	// seed file is the file in ${gameDir}/sameriver that we'll generate
+	// engine code from
+	seedFile := path.Join(g.gameDir, "custom_events.go")
+	// engine base events file is the file in engineDir which holds the
+	// base events which are integrated into the minimal reuqirements of
+	// the engine
+	engineBaseEventsFile := path.Join(g.engineDir, "base_events.go")
 
-	// read the ${gameDir}/sameriver/events.go file as an ast.File
-	srcFileName := path.Join(g.gameDir, "custom_events.go")
-	eventsAst, _, err := readSourceFile(srcFileName)
-	if err != nil {
-		msg := fmt.Sprintf("failed to generate ast.File for %s", srcFileName)
-		return msg, err, nil
+	// read from files
+	var eventNames []string
+	if g.gameDir != "" {
+		eventNames = g.getEventNames(seedFile)
 	}
-	// traverse the declarations in the ast.File to get the event names
-	eventNames := getEventNames(srcFileName, eventsAst)
+	eventNames = append(eventNames, g.getEventNames(engineBaseEventsFile)...)
 	sort.Strings(eventNames)
-	if len(eventNames) == 0 {
-		msg := fmt.Sprintf("no structs with name matching .*Event found in %s\n",
-			srcFileName)
-		return msg, nil, nil
-	}
+
 	// generate enum source file
 	sourceFiles["events_enum.go"] = generateEventsEnumFile(eventNames)
 	// return
 	return "generated", nil, sourceFiles
 }
 
-func getEventNames(srcFile string, astFile *ast.File) (
+func (g *GenerateProcess) getEventNames(srcFileName string) (
 	eventNames []string) {
+
+	astFile, _ := readSourceFile(srcFileName)
+
 	// for each declaration in the source file
 	for _, d := range astFile.Decls {
 		// cast to generic declaration
@@ -62,7 +62,7 @@ func getEventNames(srcFile string, astFile *ast.File) (
 		if validName, _ := regexp.MatchString(".+Event", name); !validName {
 			fmt.Printf("type %s in %s does not match regexp for an event "+
 				"type (\".+Event\"). Will not include in generated files.\n",
-				name, srcFile)
+				name, srcFileName)
 			continue
 		}
 		eventNames = append(eventNames, name)

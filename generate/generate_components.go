@@ -5,7 +5,6 @@ package generate
 // various component-related code in the engine
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -33,7 +32,7 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 
 	sourceFiles = make(map[string]*jen.File)
 
-	// seed file is the file in the ${gameDir}/sameriver that we'll generate engine
+	// seed file is the file in ${gameDir}/sameriver that we'll generate engine
 	// code from
 	seedFile := path.Join(g.gameDir, "custom_component_set.go")
 	// engine base component set file is the file in engineDir which holds the
@@ -41,26 +40,17 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 	// requirements of the engine
 	engineBaseComponentSetFile := path.Join(g.engineDir, "base_component_set.go")
 
-	// get needed info from src file
+	// read from files
 	var components []ComponentSpec
-	if g.gameDir == "" {
-		components = make([]ComponentSpec, 0)
-	} else {
-		components, err = g.getComponentSpecs(seedFile, "CustomComponentSet")
-		if err != nil {
-			msg := fmt.Sprintf("failed to process %s", seedFile)
-			return msg, err, nil
-		}
+	if g.gameDir != "" {
+		components = g.getComponentSpecs(seedFile, "CustomComponentSet")
 	}
-	err = g.includeEngineBaseComponentSetFieldsInSpec(
-		engineBaseComponentSetFile, &components)
-	if err != nil {
-		msg := fmt.Sprintf("failed to process %s", engineBaseComponentSetFile)
-		return msg, err, nil
-	}
+	components = append(components, g.getComponentSpecs(
+		engineBaseComponentSetFile, "BaseComponentSet")...)
 	sort.Slice(components, func(i int, j int) bool {
 		return strings.Compare(components[i].Name, components[j].Name) == -1
 	})
+
 	// generate source files
 	sourceFiles["components_enum.go"] =
 		generateComponentsEnumFile(components)
@@ -79,14 +69,10 @@ func componentStructName(componentName string) string {
 }
 
 func (g *GenerateProcess) getComponentSpecs(
-	srcFileName string, structName string) ([]ComponentSpec, error) {
+	srcFileName string, structName string) (components []ComponentSpec) {
 
 	// read the component_set.go file as an ast.File
-	componentSetAst, componentSetSrcFile, err :=
-		readSourceFile(srcFileName)
-	if err != nil {
-		return nil, err
-	}
+	componentSetAst, componentSetSrcFile := readSourceFile(srcFileName)
 
 	for _, d := range componentSetAst.Decls {
 		decl, ok := d.(*(ast.GenDecl))
@@ -98,7 +84,6 @@ func (g *GenerateProcess) getComponentSpecs(
 		}
 		typeSpec := decl.Specs[0].(*ast.TypeSpec)
 		if typeSpec.Name.Name == structName {
-			components := make([]ComponentSpec, 0)
 			for _, field := range typeSpec.Type.(*ast.StructType).Fields.List {
 				componentName := field.Names[0].Name
 				if validName, _ :=
@@ -132,28 +117,13 @@ func (g *GenerateProcess) getComponentSpecs(
 						hasDeepCopyMethod,
 						deepCopyMethodFile})
 			}
-			return components, nil
+			return components
 		}
 	}
 	// if we're here, we didn't find struct ComponentSet in the file
-	msg := fmt.Sprintf("struct named ComponentSet not found in %s",
+	fmt.Printf("no struct named ComponentSet not found in %s",
 		componentSetSrcFile)
-	return nil, errors.New(msg)
-}
-
-func (g *GenerateProcess) includeEngineBaseComponentSetFieldsInSpec(
-	engineBaseComponentSetFile string,
-	components *[]ComponentSpec) error {
-
-	// read baes_component_set.go from the engine for merging
-	engineBaseComponents, err := g.getComponentSpecs(
-		engineBaseComponentSetFile,
-		"BaseComponentSet")
-	if err != nil {
-		return err
-	}
-	*components = append(*components, engineBaseComponents...)
-	return nil
+	return components
 }
 
 func (g *GenerateProcess) getDeepCopyMethod(

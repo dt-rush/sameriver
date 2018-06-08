@@ -8,20 +8,16 @@ import (
 )
 
 func readSourceFile(srcFileName string) (
-	*ast.File, []byte, error) {
-
-	var fail = func(err error) (*ast.File, []byte, error) {
-		return nil, []byte{}, err
-	}
+	*ast.File, []byte) {
 
 	src, err := ioutil.ReadFile(srcFileName)
 	if err != nil {
-		return fail(err)
+		panic(err)
 	}
 	astFile, err := parser.ParseFile(
 		token.NewFileSet(), "", src, parser.AllErrors)
 	if err != nil {
-		return fail(err)
+		panic(err)
 	}
-	return astFile, src, nil
+	return astFile, src
 }

@@ -9,5 +9,3 @@ type GenericEvent struct {
 	Type int
 	Data interface{}
 }
-
-type Hello struct{}
