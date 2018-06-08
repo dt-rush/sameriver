@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/dt-rush/sameriver/generate"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 )
@@ -27,6 +28,14 @@ func pathResolve(path string) string {
 	var err error
 	// replace $GOPATH (from DEFAULT_ENGINE_DIR)
 	resolved = strings.Replace(resolved, "$GOPATH", os.Getenv("GOPATH"), 1)
+	// resolve replace tilde at start with home directory
+	if rune(resolved[0]) == '~' {
+		usr, err := user.Current()
+		if err != nil {
+			panic(err)
+		}
+		resolved = strings.Replace(resolved, "~", usr.HomeDir, 1)
+	}
 	// resolve relative paths
 	if rune(resolved[0]) != '/' {
 		resolved, err = filepath.Abs(resolved)
@@ -37,19 +46,25 @@ func pathResolve(path string) string {
 	return resolved
 }
 
-func main() {
+func ParseArgs() {
 	flag.Parse()
 	*engineDir = pathResolve(*engineDir)
+	fmt.Printf("sameriver/engine/ dir is: %s\n", *engineDir)
 	if *gameDir != "" {
 		*gameDir = pathResolve(*gameDir)
+		fmt.Printf("${yourgame}/../sameriver dir is: %s\n", *gameDir)
 	}
 	if *outputDir == DEFAULT_OUTPUT_DIR {
 		os.MkdirAll(DEFAULT_OUTPUT_DIR, os.ModePerm)
+	} else {
+		*outputDir = pathResolve(*outputDir)
 	}
-	fmt.Printf("sameriver/engine/ dir is: %s\n", *engineDir)
-	if *gameDir != "" {
-		fmt.Printf("${yourgame}/../sameriver dir is: %s\n", *gameDir)
-	}
+	fmt.Printf("output dir is: %s\n", *outputDir)
+}
+
+func main() {
+
+	ParseArgs()
 
 	g := generate.NewGenerateProcess(*engineDir, *gameDir, *outputDir)
 	g.Run(generate.TargetsCollection{

@@ -12,7 +12,7 @@ func generateComponentsTableFile(
 	// build the ComponentsTable struct declaration
 	f.Type().Id("ComponentsTable").StructFunc(func(g *Group) {
 		g.Id("accessLocks").
-			Index(Id("N_COMPONENT_TYPES")).Op("*").Id("ComponentAccessLock")
+			Index(Id("N_COMPONENT_TYPES")).Qual("sync", "RWMutex")
 		g.Id("valueLocks").
 			Index(Id("N_COMPONENT_TYPES")).
 			Index(Id("MAX_ENTITIES")).Qual("sync", "RWMutex")
@@ -20,7 +20,22 @@ func generateComponentsTableFile(
 			g.Id(component.Name).
 				Index(Id("MAX_ENTITIES")).Id(component.Type)
 		}
-	})
+	}).Line()
+
+	// write the Init method
+	f.Func().
+		Params(Id("ct").Op("*").Id("ComponentsTable")).
+		Id("Init").
+		Params(Id("em").Op("*").Id("EntityManager")).
+		Block(
+			For(
+				Id("i").Op(":=").Lit(0),
+				Id("i").Op("<").Id("N_COMPONENT_TYPES"),
+				Id("i").Op("++"),
+			).Block(
+				Id("ct").Dot("accessLocks").Index(Id("i")).Op("=").
+					Id("NewComponentAccessLock").Call()),
+		).Line()
 
 	// write the lock method
 	f.Func().
@@ -30,7 +45,7 @@ func generateComponentsTableFile(
 		Block(
 			Id("ct").Dot("accessLocks").Index(Id("component")).
 				Dot("Lock").Call(),
-		)
+		).Line()
 
 	// write the unlock method
 	f.Func().
@@ -40,7 +55,7 @@ func generateComponentsTableFile(
 		Block(
 			Id("ct").Dot("accessLocks").Index(Id("component")).
 				Dot("Unlock").Call(),
-		)
+		).Line()
 
 	// write the accessStart method
 	f.Func().
@@ -50,7 +65,7 @@ func generateComponentsTableFile(
 		Block(
 			Id("ct").Dot("accessLocks").Index(Id("component")).
 				Dot("RLock").Call(),
-		)
+		).Line()
 
 	// write the accessEnd method
 	f.Func().
@@ -60,7 +75,7 @@ func generateComponentsTableFile(
 		Block(
 			Id("ct").Dot("accessLocks").Index(Id("component")).
 				Dot("RUnlock").Call(),
-		)
+		).Line()
 
 	return f
 }
