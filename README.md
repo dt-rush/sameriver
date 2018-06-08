@@ -62,29 +62,28 @@ thoroughly. Do not believe their lies.**
 
 apt:
 
-* libsdl2{,-mixer,-image,-ttf,-gfx}-dev
+* `libsdl2{,-mixer,-image,-ttf,-gfx}-dev`
 
 pacman:
 
-* sdl2{,_mixer,_image,_ttf,_gfx}
+* `sdl2{,_mixer,_image,_ttf,_gfx}`
 
 #### 1.b. windows: mingw env packages (install from source)
 
-* SDL2-devel-2.0.5-mingw.tar.gz
-* SDL2_image-devel-2.0.1-mingw.tar.gz
-* SDL2_mixer-devel-2.0.1-mingw.tar.gz
-* SDL2_ttf-devel-2.0.14-mingw.tar.gz
+* `SDL2-devel-2.0.5-mingw.tar.gz`
+* `SDL2_image-devel-2.0.1-mingw.tar.gz`
+* `SDL2_mixer-devel-2.0.1-mingw.tar.gz`
+* `SDL2_ttf-devel-2.0.14-mingw.tar.gz`
 
 
 #### 1.c. go packages (go get)
 
-* github.com/veandco/go-sdl2/sdl
-* github.com/veandco/go-sdl2/mix
-* github.com/veandco/go-sdl2/img
-* github.com/veandco/go-sdl2/ttf
-* github.com/golang-collections/go-datastructures/bitarray
-* go.uber.org/atomic
-* github.com/dave/jennifer
+* `github.com/veandco/go-sdl2/sdl`
+* `github.com/veandco/go-sdl2/mix`
+* `github.com/veandco/go-sdl2/img`
+* `github.com/veandco/go-sdl2/ttf`
+* `github.com/golang-collections/go-datastructures/bitarray`
+* `go.uber.org/atomic`
 
 #### NOTE on `go.uber.org/atomic`
 
@@ -101,7 +100,7 @@ See the [wiki](https://github.com/dt-rush/donkeys-qquest/wiki) for diagrams.
 
 The engine is built on an "entity-component-system" architecture, in which:
 
-**Components** are collections of a certain type of data indexed by the ID's of entities. For example, a position component is at bottom a `map[int]([2]int16)`
+**Components** are collections of a certain type of data indexed by the ID's of entities. For example, the velocity component is at bottom a `[MAX_ENTITIES]([2]float32)`
 
 **Entities** are merely the set of components which their ID's index, and are essentially passed around in the system *as identical with* their ID's.
 
