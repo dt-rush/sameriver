@@ -13,9 +13,8 @@ import (
 )
 
 type PositionComponent struct {
-	Data  [MAX_ENTITIES][2]int16
-	locks [MAX_ENTITIES]*ABRWPQL
-	em    *EntityManager
+	Data [MAX_ENTITIES][2]int16
+	em   *EntityManager
 }
 
 func (c *PositionComponent) SafeGet(e EntityToken) ([2]int16, error) {

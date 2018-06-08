@@ -6,12 +6,9 @@ package engine
 func (m *EntityManager) lockEntityComponent(
 	entity EntityToken, component ComponentType) bool {
 
-	// TODO: (see spatial_hash.go)
-	// - enter ABQL if whole component set to blocked (flag atomic load)
-	// - increment counter for nLockers on component if lock attained
-	// - decrement counter in releaseEntityComponent()
+	m.Components.access(component)
 
-	m.Components[component].locks[entity.ID].Lock()
+	m.Components.valueLocks[entity.ID].Lock()
 	if !m.entityTable.genValidate(entity) {
 		entityLocksDebug("GENMISMATCH entity %v", entity)
 		m.Components[component].locks[entity.ID].Unlock()

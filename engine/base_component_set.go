@@ -1,8 +1,11 @@
 package engine
 
+import (
+	"github.com/veandco/go-sdl2/sdl"
+)
+
 type BaseComponentSet struct {
-	Position *[2]int16
-	HitBox   *[2]uint16
+	Box      *sdl.Rect
 	Sprite   *Sprite
 	TagList  *TagList
 	Velocity *[2]float32

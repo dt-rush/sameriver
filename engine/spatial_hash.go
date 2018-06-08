@@ -4,8 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"go.uber.org/atomic"
-	"math"
-	"time"
+	"runtime"
 	"unsafe"
 )
 
@@ -46,12 +45,6 @@ type SpatialHash struct {
 	// used to signal that the compute is done from one of the receive()
 	// workers
 	computeDoneChannel chan bool
-	// an array of bools (one per buffer)
-	// As we loop through partitions of the entity list, waiting to get all
-	// entity positions to feed them to the goroutines appending to each
-	// cell's list, we skip both those which are locked and, using this array,
-	// those which have already been sent to the table-building goroutines
-	alreadyRead [2][MAX_ENTITIES]bool
 	// how many entities are yet to store in the current computation
 	entitiesRemaining atomic.Uint32
 	// a lock to ensure that we never enter ComputeSpatialHash while
@@ -151,12 +144,8 @@ func (h *SpatialHash) CurrentTableCopy() SpatialHashTable {
 // list for each grid cell
 func (h *SpatialHash) ComputeSpatialHash() {
 
-	// TODO: (see entity_manager_entity_component_lock_methods.go)
-	// - set flag to block new locks on position component
-	// - wait for count of position component lockers to go to 0
-	// - proceed without any fear
-	// - open the floodgates (unset flag) when done computing
-	// (or should this happen at a higher level of abstraction, in the
+	// acquire exclusive lock on the box component (position and bounding box)
+	// TODO: should this happen at a higher level of abstraction, in the
 	// system which will use the hash for physics / collision? do we really
 	// want to let a bunch of position component lock acquires happen
 	// in between computing the hash and using it? why not just lock the
@@ -165,6 +154,8 @@ func (h *SpatialHash) ComputeSpatialHash() {
 	// physics portion)
 	// a similar lock will need to happen for the sprite component in Draw(),
 	// but we can use the frozen position data from the spatial hash there
+	h.em.Components.accessLocks[BOX_COMPONENT].lock()
+	defer h.em.Components.accessLocks[BOX_COMPONENT].unlock()
 
 	// this lock prevents another call to ComputeSpatialHash()
 	// entering while we are currently calculating (this ensures robustness
@@ -198,17 +189,10 @@ func (h *SpatialHash) ComputeSpatialHash() {
 	}
 	// Divide the list of entities into a certain number of partitions
 	// which will be scanned by scanner() instances.
-	// We determine the number of partitions via
-	// N_PARTITIONS = 4 * log(MAX_ENTITIES+1)^2 + 1
-	// We choose the number of partitions this way because it decently
-	// approximates the estimated number of entities per cell assuming
-	// a uniform distribution when the number of entities are in a reasonable
-	// range, but also doesn't scale linearly with that number, approaching
-	// a sort of soft "asymptote" around 50 for entity-counts less than
-	// 4000 (that's a HELL OF A LOT OF ENTITIES!), or 75 entities
-	// per partition. For 1600 entities that's 42 partitions with 38 entities
-	// per partition.
-	nScanPartitions := int(2*math.Pow(math.Log(MAX_ENTITIES+1), 2) + 1)
+	// TODO: have the goroutines
+	// already running, ready to be activated given a
+	// range of entities to scan, each one pinned to a CPU
+	nScanPartitions := runtime.NumCPU()
 	partition_size := len(h.spatialEntities.Entities) / nScanPartitions
 	for partition := 0; partition < nScanPartitions; partition++ {
 		offset := partition * partition_size
@@ -223,15 +207,8 @@ func (h *SpatialHash) ComputeSpatialHash() {
 	// this increment, due to the modulo logic, is equivalent to setting
 	// computedBufIndex = nextBufIndex
 	h.tableBufIndex.Inc()
-	// We will now spawn a goroutine to clear the `alreadyRead` data for the
-	// next computation, and then set canEnterCompute to 1 so the next call
-	// can enter and write
-	go func() {
-		for i := 0; i < MAX_ENTITIES; i++ {
-			h.alreadyRead[h.nextBufIndex()][i] = false
-			h.canEnterCompute.Store(1)
-		}
-	}()
+	// set canEnterCompute to 1 so the next call can enter and write
+	h.canEnterCompute.Store(1)
 }
 
 // used to receive EntityPositions and put them into the right cell
@@ -256,26 +233,16 @@ func (h *SpatialHash) scanner(offset int, partition_size int) {
 	n_read := 0
 	for i := 0; n_read < partition_size; i = (i + 1) % partition_size {
 		entity := h.spatialEntities.Entities[offset+i]
-		if h.alreadyRead[h.nextBufIndex()][offset+i] {
-			continue
-		}
-		// attempt the lock
-		if h.em.attemptLockEntityOnce(entity) {
-			// if we locked, grab the position and send it to
-			// the channel
-			position := h.position.Data[entity.ID]
-			h.em.releaseEntity(entity)
-			y := position[1] / int16(h.WORLD_HEIGHT/h.GRID)
-			x := position[0] / int16(h.WORLD_WIDTH/h.GRID)
-			e := EntityPosition{entity, position}
-			h.cellChannels[y][x] <- e
-			h.alreadyRead[h.nextBufIndex()][offset+i] = true
-			n_read++
-			continue
-		}
-		// else, sleep a bit (to prevent hot loops if there are only
-		// a few entities left and they are all locked)
-		time.Sleep(10 * time.Microsecond)
+		// TODO: implement the below properly
+		// determine which grid boxes this entity is in, and send to
+		// the appropriate channels
+		position := h.position.Data[entity.ID]
+		h.em.releaseEntity(entity)
+		y := position[1] / int16(h.WORLD_HEIGHT/h.GRID)
+		x := position[0] / int16(h.WORLD_WIDTH/h.GRID)
+		e := EntityPosition{entity, position}
+		h.cellChannels[y][x] <- e
+		n_read++
 	}
 }
 

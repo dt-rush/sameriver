@@ -6,47 +6,72 @@
  *
  */
 
-// TODO: generate
-
 package engine
 
+import (
+	"github.com/veandco/go-sdl2/sdl"
+)
+
 type ComponentsTable struct {
-	Color    *ColorComponent
-	Health   *HealthComponent
-	HitBox   *HitBoxComponent
-	Mind     *MindComponent
-	Position *PositionComponent
-	Sprite   *SpriteComponent
-	TagList  *TagListComponent
-	Velocity *VelocityComponent
+	accessLocks [N_COMPONENT_TYPES]*ComponentAccessLock
+	valueLocks  [N_COMPONENT_TYPES][MAX_ENTITIES]*ComponentValueLock
+
+	Box      [MAX_ENTITIES]sdl.Rect
+	Sprite   [MAX_ENTITIES]Sprite
+	TagList  [MAX_ENTITIES]TagList
+	Velocity [MAX_ENTITIES][2]float32
+}
+
+func (t *ComponentsTable) lock(component ComponentType) {
+	// lock the accessLock with Lock() (write-lock), causing calls to Access()
+	// to enter the wait queue until we unlock
+	t.accessLocks[component].Lock()
+}
+
+func (t *ComponentsTable) unlock(component ComponentType) {
+	// allows all waiting calls to Access to proceed
+	t.accessLocks[component].Unlock()
+}
+
+func (t *ComponentsTable) access(component ComponentType) {
+	// enter a queue if the accessLock is currently Locked, otherwise
+	// we get access because all copies of this method instantly RUnlock
+	// after acquiring
+	t.accessLocks[component].RLock()
+	t.accessLocks[component].RUnlock()
 }
 
 func (ct *ComponentsTable) Init(em *EntityManager) {
-	ct.allocate()
-	ct.linkEntityManager(em)
-}
-
-func (ct *ComponentsTable) allocate() {
-	ct.Color = &ColorComponent{}
-	ct.Health = &HealthComponent{}
-	ct.HitBox = &HitBoxComponent{}
-	ct.Mind = &MindComponent{}
-	ct.Position = &PositionComponent{}
-	ct.Sprite = &SpriteComponent{}
-	ct.TagList = &TagListComponent{}
-	ct.Velocity = &VelocityComponent{}
-}
-
-func (ct *ComponentsTable) linkEntityManager(
-	em *EntityManager) {
-
-	ct.Color.em = em
-	ct.Health.em = em
-	ct.HitBox.em = em
-	ct.Logic.em = em
-	ct.Mind.em = em
-	ct.Position.em = em
-	ct.Sprite.em = em
-	ct.TagList.em = em
-	ct.Velocity.em = em
+	ct.Color = &ColorComponent{
+		em:         em,
+		accessLock: NewComponentAccessLock(),
+	}
+	ct.Health = &HealthComponent{
+		em:         em,
+		accessLock: NewComponentAccessLock(),
+	}
+	ct.HitBox = &HitBoxComponent{
+		em:         em,
+		accessLock: NewComponentAccessLock(),
+	}
+	ct.Mind = &MindComponent{
+		em:         em,
+		accessLock: NewComponentAccessLock(),
+	}
+	ct.Position = &PositionComponent{
+		em:         em,
+		accessLock: NewComponentAccessLock(),
+	}
+	ct.Sprite = &SpriteComponent{
+		em:         em,
+		accessLock: NewComponentAccessLock(),
+	}
+	ct.TagList = &TagListComponent{
+		em:         em,
+		accessLock: NewComponentAccessLock(),
+	}
+	ct.Velocity = &VelocityComponent{
+		em:         em,
+		accessLock: NewComponentAccessLock(),
+	}
 }

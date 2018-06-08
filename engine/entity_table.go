@@ -29,17 +29,13 @@ type EntityTable struct {
 	// the gen of an ID is how many times an entity has been
 	// spawned on that ID
 	gens [MAX_ENTITIES]uint32
-	// used to keep track of how many goroutines are currently atomically
-	// modifying components on an entity
-	activeModifierCount [MAX_ENTITIES]atomic.Uint32
-	// used to lock the above counters. AtomicEntityModify() tries to acquire
-	// the lock here, acquire the entity's component lock, and on success,
-	// increment the counter when it begins (despawn locks the lock and doesn't
-	// release until the entity is despawned - in which case after acquiring
-	// the lock and attempting to lock the entity's component, the
-	// AtomicEntityModify() will get a fail on lock acquire, since the gen of
-	// the entity will have been incremented
-	activeModifierCountLocks [MAX_ENTITIES]*ABQL
+	// array-based read-write queueing lock used by AtomicEntityModify() and
+	// Despawn(). AtomicEntityModify() enters as a Reader (RLock(), Despawn()
+	// enters as a Writer (Lock())
+	activeModificationLocks [MAX_ENTITIES]*ActiveModificationLock
+	// despawnFlag is set for an entity when Despawn() starts, and is set to 0
+	// when an entity is spawned on that ID
+	despawnFlags [MAX_ENTITIES]atomic.Uint32
 }
 
 func (t *EntityTable) incrementGen(id int) {
@@ -96,11 +92,6 @@ func (t *EntityTable) allocateID() (EntityToken, error) {
 		// every slot in the table before the highest ID is filled
 		id = t.numEntities - 1
 	}
-	// allocate an activeModifierCountLock for this entity
-	// (allocating to heap on each entity spawn is good since this way when
-	// the ABQL modifies its array, it is (slightly) less likely to invalidate
-	// cache line of another entity's ABQL
-	t.activeModifierCountLocks[id] = NewABQL(10 * time.Microsecond)
 	// return the token
 	entity := EntityToken{id, t.gens[id]}
 	return entity, nil

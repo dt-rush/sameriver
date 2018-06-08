@@ -131,6 +131,10 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	// AtomicEntityModify pattern
 	spawnDebug("applying component set for %v...", entity)
 	m.ApplyComponentSetAtomic(r.Components)(entity)
+	// allocate ComponentValueLock's for each component for this entity
+	for i := 0; i < N_COMPONENTS; i++ {
+		m.Components[i].locks[entity.ID] = NewComponentValueLock()
+	}
 	// apply the tags
 	spawnDebug("applying tags for %v...", entity)
 	for _, tag := range r.Tags {
@@ -147,10 +151,19 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	}
 	// set entity active and notify entity is active
 	m.setActiveState(entity, true)
-
 	// add the entity to the list of current entities
 	spawnDebug("adding %v to current entities...", entity)
 	m.entityTable.addToCurrentEntities(entity)
+	// set despawnFlag to 0 for the entity
+	m.entityTable.despawnFlags[entity.ID].Store(0)
+	// create the Array-Based Read-Write Queuing Lock for activeModificationLocks
+	// (allocating on heap on spawn this way is good since it means the
+	// locks will be less likely to false-share with other locks, causing
+	// interconnect traffic when the queue moves, since we expect that in any
+	// given game situation, the pattern of locks is a uniform distribution,
+	// hence there's little likelyhood that two locks "next to" each other
+	// will both be updated within the same cache-line lifetime)
+	m.entityTable.activeModificationLocks[entity.ID] = NewActiveModificationLock()
 	// return EntityToken
 	return entity, nil
 }
@@ -263,67 +276,73 @@ func (m *EntityManager) AtomicEntityModify(
 	req EntityModificationRequest,
 	f func()) bool {
 
-	m.entityTable.activeModifierCountLocks[req.entity.ID].Lock()
-	m.entityTable.activeModifierCount[req.entity.ID].Inc()
-	defer m.entityTable.activeModifierCount[req.entity.ID].Dec()
-	m.entityTable.activeModifierCountLocks[req.entity.ID].Unlock()
-
+	// keep track of locks acquired
 	locksAcquired := make([]EntityComponent, 0)
+	defer m.releaseEntityComponents(locksAcquired)
+	// acquire locks on components in sorted order
 	sort.Slice(req.components, func(i int, j int) bool {
 		return req.components[i] < req.components[j]
 	})
+	// lock the activemodification lock as a "reader" for the duration of this
+	// function (that is, other copies of AtomicEntityModify can also lock)
+	m.entityTable.activeModificationLocks[req.entity.ID].RLock()
+	defer m.entityTable.activeModificationLocks[req.entity.ID].RUnlock()
+	// attempt to lock each component in order
 	for _, component := range req.components {
+		// if lock acquired, add it to the list of locks acquired
 		if m.lockEntityComponent(req.entity, component) {
 			locksAcquired = append(locksAcquired,
 				EntityComponent{entity, component})
 		} else {
-			m.releaseEntityComponents(locksAcquired)
+			// if here, the lock on the entity's component was failed, because
+			// the gen changed (was despawned in between when the caller got
+			// their entity token and when they called this function ), so we
+			// should return false to notify caller (this triggers the deferred
+			// release of all locks on entity components)
 			return false
 		}
 	}
 
 	// if we're here, all components were acquired for the entity
 	f()
-	m.releaseEntityComponents(locksAcquired)
 	return true
 }
 
-// hold several entities for modification, invoking a function which will be
-// clear to access the entity components directly, releasing the entities on
-// return. Return value is whether the entities were locked and f was run
+// hold several entities on several components for modification, invoking a
+// function which will be clear to access the entity components directly,
+// releasing them on return. Return value is whether the entities were locked
+// successfully (and hence, f ran)
+//
+// this is an extension of AtomicEntityModify and the comments for that function
+// should be seen for reference in understanding this code
 func (m *EntityManager) AtomicEntitiesModify(
 	reqs []EntityModificationRequest,
 	f func()) bool {
 
+	// acquire entities in sorted order of ID's
 	sort.Slice(reqs, func(i int, j int) bool {
 		return reqs[i].entity.ID < reqs[j].entity.ID
 	})
 
-	for _, req := range reqs {
-		m.entityTable.activeModifierCountLocks[req.entity.ID].Lock()
-		m.entityTable.activeModifierCount[req.entity.ID].Inc()
-		defer m.entityTable.activeModifierCount[req.entity.ID].Inc()
-		m.entityTable.activeModifierCountLocks[req.entity.ID].Unlock()
-	}
-
 	locksAcquired := make([]EntityComponent, 0)
+	defer m.releaseEntityComponents(locksAcquired)
 	for _, req := range reqs {
 		sort.Slice(req.components, func(i int, j int) bool {
 			return req.components[i] < req.components[j]
 		})
+		m.entityTable.activeModificationLocks[req.entity.ID].RLock()
+		defer m.entityTable.activeModificationLocks[req.entity.ID].RUnlock()
 		for _, component := range req.components {
 			if m.lockEntityComponent(req.entity, component) {
 				locksAcquired = append(locksAcquired,
 					EntityComponent{entity, component})
 			} else {
-				m.releaseEntityComponents(locksAcquired)
 				return false
 			}
 		}
 	}
 
 	f()
-	m.releaseEntityComponents(locksAcquired)
 	return true
 }
 

@@ -16,13 +16,23 @@ package engine
 // user-facing despawn function which locks the EntityTable for a single
 // despawn
 func (m *EntityManager) DespawnAtomic(entity EntityToken) {
-	m.activeModifierCountLocks[entity.ID].Lock()
-	defer m.activeModifierCountLocks[entity.ID].Unlock()
 
-	for m.activeModifierCount[entity.ID].Load() > 0 {
-		time.Sleep(50 * time.Microsecond)
+	// NOTE: we don't need to gen validate here because we can only
+	// despawn, changing gen, once all current modifications (by the logic of
+	// AtomicEntityModify are valid for the gen of the entity) are RUnlock()'d,
+	// and we can only call DespawnAtomic inside an AtomicEntityModify for
+	// which gen matched
+	if m.entityTable.despawnFlags[entity.ID].CAS(0, 1) {
+		go func() {
+			// lock the activeModification lock as a *writer* (compare with
+			// the lock as RLock() in AtomicEntityModify), so that we will
+			// acquire the lock once all instances of AtomicEntityModify that
+			// have already enqueued have finished
+			m.activeModificationLocks[entity.ID].Lock()
+			m.despawnInternal(entity)
+			m.activeModificationLocks[entity.ID].Unlock()
+		}()
 	}
-	m.despawnInternal(entity)
 }
 
 // set an entity Active and notify all active entity lists
