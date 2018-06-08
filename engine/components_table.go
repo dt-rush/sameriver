@@ -10,11 +10,12 @@ package engine
 
 import (
 	"github.com/veandco/go-sdl2/sdl"
+	"sync"
 )
 
 type ComponentsTable struct {
 	accessLocks [N_COMPONENT_TYPES]*ComponentAccessLock
-	valueLocks  [N_COMPONENT_TYPES][MAX_ENTITIES]*ComponentValueLock
+	valueLocks  [N_COMPONENT_TYPES][MAX_ENTITIES]sync.RWMutex
 
 	Box      [MAX_ENTITIES]sdl.Rect
 	Sprite   [MAX_ENTITIES]Sprite
@@ -45,6 +46,9 @@ func (t *ComponentsTable) accessEnd(component ComponentType) {
 }
 
 func (ct *ComponentsTable) Init(em *EntityManager) {
+	for i := 0; i < N_COMPONENT_TYPES; i++ {
+		ct.accessLocks[i] = NewComponentAccessLock()
+	}
 	ct.Color = &ColorComponent{
 		em:         em,
 		accessLock: NewComponentAccessLock(),

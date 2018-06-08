@@ -1,6 +1,4 @@
 package engine
 
-type EntityModificationRequest struct {
-	entity     EntityToken
-	components []ComponentType
-}
+// see entity_component.go
+type EntityModificationRequest OneEntityComponents

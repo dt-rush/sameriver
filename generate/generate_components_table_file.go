@@ -15,7 +15,7 @@ func generateComponentsTableFile(
 			Index(Id("N_COMPONENT_TYPES")).Op("*").Id("ComponentAccessLock")
 		g.Id("valueLocks").
 			Index(Id("N_COMPONENT_TYPES")).
-			Index(Id("MAX_ENTITIES")).Op("*").Id("ComponentValueLock")
+			Index(Id("MAX_ENTITIES")).Qual("sync", "RWMutex")
 		for _, component := range components {
 			g.Id(component.Name).
 				Index(Id("MAX_ENTITIES")).Id(component.Type)

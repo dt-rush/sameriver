@@ -29,10 +29,10 @@ type EntityTable struct {
 	// the gen of an ID is how many times an entity has been
 	// spawned on that ID
 	gens [MAX_ENTITIES]uint32
-	// array-based read-write queueing lock used by AtomicEntityModify() and
+	// RWMutex used by AtomicEntityModify() and
 	// Despawn(). AtomicEntityModify() enters as a Reader (RLock(), Despawn()
 	// enters as a Writer (Lock())
-	activeModificationLocks [MAX_ENTITIES]*ActiveModificationLock
+	activeModificationLocks [MAX_ENTITIES]sync.RWMutex
 	// despawnFlag is set for an entity when Despawn() starts, and is set to 0
 	// when an entity is spawned on that ID
 	despawnFlags [MAX_ENTITIES]atomic.Uint32

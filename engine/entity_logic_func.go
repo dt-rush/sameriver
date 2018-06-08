@@ -8,7 +8,7 @@ package engine
 //
 // - request an UpdatedEntityList with an arbitrary EntityQuery
 // - make a one-time query with EntityManager.RunQuery()
-// - get entity component data via EntityManager.SafeGet()
+// - get entity component data via EntityManager.Components.Read${Component}()
 // - send EntitySpawnRequest messages to the SpawnChannel
 // - atomically modify entities using em.AtomicEntit(y|ies)Modify()
 //

@@ -63,8 +63,8 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 		generateComponentSetFile(components)
 	sourceFiles["components_table.go"] =
 		generateComponentsTableFile(components)
-	sourceFiles["components_safeget_methods.go"] =
-		generateComponentsSafeGetMethodsFile(components)
+	sourceFiles["component_read_methods.go"] =
+		generateComponentReadMethodsFile(components)
 	// return
 	return "generated", nil, sourceFiles
 }

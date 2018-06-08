@@ -156,14 +156,6 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	m.entityTable.addToCurrentEntities(entity)
 	// set despawnFlag to 0 for the entity
 	m.entityTable.despawnFlags[entity.ID].Store(0)
-	// create the Array-Based Read-Write Queuing Lock for activeModificationLocks
-	// (allocating on heap on spawn this way is good since it means the
-	// locks will be less likely to false-share with other locks, causing
-	// interconnect traffic when the queue moves, since we expect that in any
-	// given game situation, the pattern of locks is a uniform distribution,
-	// hence there's little likelyhood that two locks "next to" each other
-	// will both be updated within the same cache-line lifetime)
-	m.entityTable.activeModificationLocks[entity.ID] = NewActiveModificationLock()
 	// return EntityToken
 	return entity, nil
 }
@@ -276,32 +268,17 @@ func (m *EntityManager) AtomicEntityModify(
 	req EntityModificationRequest,
 	f func()) bool {
 
-	// keep track of locks acquired
-	locksAcquired := make([]EntityComponent, 0)
-	defer m.releaseEntityComponents(locksAcquired)
-	// acquire locks on components in sorted order
-	sort.Slice(req.components, func(i int, j int) bool {
-		return req.components[i] < req.components[j]
-	})
 	// lock the activemodification lock as a "reader" for the duration of this
 	// function (that is, other copies of AtomicEntityModify can also lock)
 	m.entityTable.activeModificationLocks[req.entity.ID].RLock()
 	defer m.entityTable.activeModificationLocks[req.entity.ID].RUnlock()
-	// attempt to lock each component in order
-	for _, component := range req.components {
-		// if lock acquired, add it to the list of locks acquired
-		if m.lockEntityComponent(req.entity, component) {
-			locksAcquired = append(locksAcquired,
-				EntityComponent{entity, component})
-		} else {
-			// if here, the lock on the entity's component was failed, because
-			// the gen changed (was despawned in between when the caller got
-			// their entity token and when they called this function ), so we
-			// should return false to notify caller (this triggers the deferred
-			// release of all locks on entity components)
-			return false
-		}
+	if !m.entityTable.genValidate(req.entity) {
+		atomicEntityModifyDebug("GENMISMATCH entity %v", req.entity)
+		return false
 	}
+
+	// lock the entity we want to modify on the requested components
+	m.lockOneEntityComponents(req)
 
 	// if we're here, all components were acquired for the entity
 	f()
@@ -319,27 +296,20 @@ func (m *EntityManager) AtomicEntitiesModify(
 	reqs []EntityModificationRequest,
 	f func()) bool {
 
-	// acquire entities in sorted order of ID's
-	sort.Slice(reqs, func(i int, j int) bool {
-		return reqs[i].entity.ID < reqs[j].entity.ID
-	})
-
-	locksAcquired := make([]EntityComponent, 0)
-	defer m.releaseEntityComponents(locksAcquired)
+	// NOTE: we don't need to sort the requests by entity ID since these are
+	// RLocks and can overlap without deadlock
 	for _, req := range reqs {
-		sort.Slice(req.components, func(i int, j int) bool {
-			return req.components[i] < req.components[j]
-		})
 		m.entityTable.activeModificationLocks[req.entity.ID].RLock()
 		defer m.entityTable.activeModificationLocks[req.entity.ID].RUnlock()
-		for _, component := range req.components {
-			if m.lockEntityComponent(req.entity, component) {
-				locksAcquired = append(locksAcquired,
-					EntityComponent{entity, component})
-			} else {
-				return false
-			}
+		if !m.entityTable.genValidate(req.entity) {
+			atomicEntityModifyDebug("GENMISMATCH entity %v", req.entity)
+			return false
 		}
+	}
+
+	// lock all the entities we want to modify on the requested components
+	if ok := m.lockEntitiesComponents(reqs); !ok {
+		return false
 	}
 
 	f()
@@ -405,7 +375,7 @@ func (m *EntityManager) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
 	for _, entity := range m.entityTable.currentEntities {
-		tags, err := m.Components.TagList.SafeGet(entity)
+		tags, err := m.Components.ReadTagList(entity)
 		if err != nil {
 			continue // entity was despawned
 		}
