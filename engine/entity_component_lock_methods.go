@@ -6,12 +6,14 @@ package engine
 func (m *EntityManager) lockEntityComponent(
 	entity EntityToken, component ComponentType) bool {
 
-	m.Components.access(component)
+	// starts an RLock() on the accessLock for the component
+	m.Components.accessStart(component)
 
-	m.Components.valueLocks[entity.ID].Lock()
+	// Lock() the valueLock for this entity on this component
+	m.Components.valueLocks[component][entity.ID].Lock()
 	if !m.entityTable.genValidate(entity) {
 		entityLocksDebug("GENMISMATCH entity %v", entity)
-		m.Components[component].locks[entity.ID].Unlock()
+		m.Components.valueLocks[component][entity.ID].Unlock()
 		return false
 	}
 	entityLocksDebug("LOCKED entity %v component %s",
@@ -25,7 +27,8 @@ func (m *EntityManager) releaseEntityComponent(
 	entityLocksDebug("RELEASING entity %v component %s",
 		entity, COMPONENT_NAMES[component])
 	m.Components[component].locks[entity.ID].Unlock()
-
+	// ends the RLock() on the accessLock for the component
+	m.Components.accessEnd(component)
 }
 
 func (m *EntityManager) releaseEntityComponents(

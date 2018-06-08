@@ -33,11 +33,14 @@ func (t *ComponentsTable) unlock(component ComponentType) {
 	t.accessLocks[component].Unlock()
 }
 
-func (t *ComponentsTable) access(component ComponentType) {
+func (t *ComponentsTable) accessStart(component ComponentType) {
 	// enter a queue if the accessLock is currently Locked, otherwise
-	// we get access because all copies of this method instantly RUnlock
-	// after acquiring
+	// we get access because all copies of this method run RLock, which can
+	// stack
 	t.accessLocks[component].RLock()
+}
+
+func (t *ComponentsTable) accessEnd(component ComponentType) {
 	t.accessLocks[component].RUnlock()
 }
 
