@@ -1,6 +1,31 @@
 sameriver
 ===
 
+    ##XxxxxXXx:;;;;;;;;;xo;;;;;;;;;;;;;;:::::::::::ooooooooxxXX#X##X
+    ###00OO0OOo:,,,,,,;:OO;;;;;;;;;;;;;;;;;::::::::::ooxoooxx00X####
+    ###XOOx0xxxo,,,,,,;xO0o:x;,,,,,,;;;;;;;;;;;;;:::oO0#oxx0x00X####
+    XXXX00Oxxxo:,,,,,,:x0XxxOx,,,,,,,,,,,,,;;::;;;o:xO0#0XX0O00X###X
+    XXX####xooo;,,,;,ox0#XOxOOo,,,,,,,,,,,oo,xxOOxO0OOXXXX#X00O000XX
+    #######Oxxoo,:x0OxOX#Oxxxxx,,,,,,,,;ooOOxxO##X0#00X0X####XOXX#X0
+    #######XxxxXoOOX#OOX#XxOxxx,......,oxx00XOO##0X#0X#X#####0O0XX00
+    ########0#X#OxO##X0###x0OOo,...,.,oxOO0X#O0##OX0XXOX#####0O0X#X#
+    #########000xO0###X###0XOXx;,,ox:xOOOO0#X0XX#0X##XX#####XXXXX0X#
+    ###########0xO0###########XxO00#XXX0O00#OOX#0OX#####X#####XXXX##
+    ############00X############XX######000X#00OOOO###XOOxxOXXX0OXOOO
+    ###XXO#OxXOOOOX#Xxx#0####XX#X#X###XOxxOxxxOxxOxxxxxxxxxxxxxxxxxx
+    ###OXX#OxxxxxxxxxxOO0OX##xxxxxxoooxxOxxxxxxxxxx0Xxxxxxxxxxoxxxxx
+    OOOOOxO#0OxxxX0xxxOxxxxxoooo;;.   ,:oxxxxxxxxxxOOxxoxxxxxxxoxxxx
+    0OOxx00###0X0X#000O0OOxxo:;         .  .;oo:ooxxOOOxxxxxxxxxxxxx
+    ##X0OOxxxxxxOOxxxxo;,..      .;o::xxxxxxxxxx:,,..,ooxOOxxxxxxxxx
+    #####XX0xo;:::,.....      .   .xxxxxoxOxxxxxo,.,oo:oxxxxxxxOOX0X
+    ####Xx::,.   ....      .    .,xxxxxxoox: .oxxo::xxxo;oxxO00X0xxx
+    xo;:,..                .,oooxxxxxOxOOxxxxoxxxxxxxoxO0xo;oxxO##OX
+            .............,;oxxxxxxxxxOOOOOOOOxxxoooxxxoxxxxO0X0##0xx
+    ,. . ...........,,;:ooxxxxOOOOOxxxxOOO0XO0OOOx:;oxOxxOOxO0OO##XX
+    o;;,,,,...,,,,;:oooxxxxxxOOOOOOOOOOOOO00XXXX##OxxxxOO0OOO#XXXX##
+    ,..,,,,,,,;;;oooooooxxxOOOO0XX00000000X0X0XXXXX#XOxOOO00XX######
+    ..,,,,:;;:;:ooooxxxoxxxxOOO0X#XXXXX000000000X0O00OO0XX00X##XX#X#
+
 > Heraclitus of Ephesus (/ˌhɛrəˈklaɪtəs/;[1] Greek: Ἡράκλειτος ὁ Ἐφέσιος
 > Hērákleitos ho Ephésios; c. 535 – c. 475 BC) was a pre-Socratic Greek
 > philosopher, and a native of the city of Ephesus,[2] then part of
@@ -18,11 +43,15 @@ sameriver
 > " (literally, "word", "reason", or "account") has been the subject of
 > numerous interpretations.
 
-The engine takes advantage of go's language features to define 
+---
+
+### 0. What is it?
+
+A game engine which takes advantage of go's language features to define 
 concurrently-executing entity behaviour and world logic relative to a 
 traditional synchronous game loop ("input, update, draw").
 
-Note: **The engine is in heavy development by a single developer, and so is
+**NOTE: The engine is in heavy development by a single developer, and so is
 probably not in a very readable state at any given time until this comment is
 removed from the README. Comments in code files have not been reviewed
 thoroughly. Do not believe their lies.**
