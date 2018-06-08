@@ -117,15 +117,14 @@ func (g *GenerateProcess) OutputFiles() {
 
 // copy the files from ${gameDir}/sameriver/ into the outputDir
 func (g *GenerateProcess) CopyFiles() {
-	gameDirSameRiver := path.Join(g.gameDir, "sameriver")
 	fmt.Printf("Copying all files from %s to %s...\n",
-		gameDirSameRiver, g.outputDir)
-	files, err := ioutil.ReadDir(gameDirSameRiver)
+		g.gameDir, g.outputDir)
+	files, err := ioutil.ReadDir(g.gameDir)
 	if err != nil {
 		panic(err)
 	}
 	for _, fileinfo := range files {
-		filePath := path.Join(g.gameDir, "sameriver", fileinfo.Name())
+		filePath := path.Join(g.gameDir, fileinfo.Name())
 		fmt.Printf("Copying %s...\n", filePath)
 		err = exec.Command("cp", filePath, g.outputDir).Run()
 		if err != nil {

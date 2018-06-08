@@ -42,14 +42,22 @@ func generateComponentsTableFile(
 				Dot("Unlock").Call(),
 		)
 
-	// write the access method
+	// write the accessStart method
 	f.Func().
 		Params(Id("ct").Op("*").Id("ComponentsTable")).
-		Id("access").
+		Id("accessStart").
 		Params(Id("component").Id("ComponentType")).
 		Block(
 			Id("ct").Dot("accessLocks").Index(Id("component")).
 				Dot("RLock").Call(),
+		)
+
+	// write the accessEnd method
+	f.Func().
+		Params(Id("ct").Op("*").Id("ComponentsTable")).
+		Id("accessEnd").
+		Params(Id("component").Id("ComponentType")).
+		Block(
 			Id("ct").Dot("accessLocks").Index(Id("component")).
 				Dot("RUnlock").Call(),
 		)

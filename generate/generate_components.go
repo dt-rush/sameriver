@@ -31,19 +31,26 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 	err error,
 	sourceFiles map[string]*jen.File) {
 
+	sourceFiles = make(map[string]*jen.File)
+
 	// seed file is the file in the ${gameDir}/sameriver that we'll generate engine
 	// code from
-	seedFile := path.Join(g.gameDir, "sameriver", "custom_component_set.go")
+	seedFile := path.Join(g.gameDir, "custom_component_set.go")
 	// engine base component set file is the file in engineDir which holds the
 	// base components which all entities can have according to the minimal
 	// requirements of the engine
 	engineBaseComponentSetFile := path.Join(g.engineDir, "base_component_set.go")
 
 	// get needed info from src file
-	components, err := g.getComponentSpecs(seedFile, "CustomComponentSet")
-	if err != nil {
-		msg := fmt.Sprintf("failed to process %s", seedFile)
-		return msg, err, nil
+	var components []ComponentSpec
+	if g.gameDir == "" {
+		components = make([]ComponentSpec, 0)
+	} else {
+		components, err = g.getComponentSpecs(seedFile, "CustomComponentSet")
+		if err != nil {
+			msg := fmt.Sprintf("failed to process %s", seedFile)
+			return msg, err, nil
+		}
 	}
 	err = g.includeEngineBaseComponentSetFieldsInSpec(
 		engineBaseComponentSetFile, &components)
@@ -55,8 +62,6 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 		return strings.Compare(components[i].Name, components[j].Name) == -1
 	})
 	// generate source files
-	sourceFiles = make(map[string]*jen.File)
-
 	sourceFiles["components_enum.go"] =
 		generateComponentsEnumFile(components)
 	sourceFiles["component_set.go"] =
@@ -161,9 +166,12 @@ func (g *GenerateProcess) getDeepCopyMethod(
 	if err != nil {
 		panic(err)
 	}
-	gameDirFiles, err := ioutil.ReadDir(path.Join(g.gameDir, "sameriver"))
-	if err != nil {
-		panic(err)
+	var gameDirFiles []os.FileInfo
+	if g.gameDir != "" {
+		gameDirFiles, err = ioutil.ReadDir(g.gameDir)
+		if err != nil {
+			panic(err)
+		}
 	}
 	allFiles := make([]os.FileInfo, 0)
 	allFiles = append(allFiles, engineDirFiles...)

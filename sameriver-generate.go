@@ -14,10 +14,10 @@ const DEFAULT_OUTPUT_DIR = "/tmp/sameriver"
 
 var engineDir = flag.String("enginedir",
 	DEFAULT_ENGINE_DIR,
-	"the directory where the sameriver/engine has been cloned to")
+	"the directory sameriver has been cloned to")
 var gameDir = flag.String("gamedir",
 	"",
-	"the game/ directory of the game we're generating engine source files for")
+	"the sameriver/ directory of the game we're generating engine source files for")
 var outputDir = flag.String("outputdir",
 	DEFAULT_OUTPUT_DIR,
 	"the directory in which to output the generated files")
@@ -40,17 +40,16 @@ func pathResolve(path string) string {
 func main() {
 	flag.Parse()
 	*engineDir = pathResolve(*engineDir)
-	if *gameDir == "" {
-		flag.Usage()
-		os.Exit(1)
-	} else {
+	if *gameDir != "" {
 		*gameDir = pathResolve(*gameDir)
 	}
 	if *outputDir == DEFAULT_OUTPUT_DIR {
 		os.MkdirAll(DEFAULT_OUTPUT_DIR, os.ModePerm)
 	}
 	fmt.Printf("sameriver/engine/ dir is: %s\n", *engineDir)
-	fmt.Printf("${yourgame}/game/ dir is: %s\n", *gameDir)
+	if *gameDir != "" {
+		fmt.Printf("${yourgame}/../sameriver dir is: %s\n", *gameDir)
+	}
 
 	g := generate.NewGenerateProcess(*engineDir, *gameDir, *outputDir)
 	g.Run(generate.TargetsCollection{
@@ -63,7 +62,9 @@ func main() {
 		os.Exit(1)
 	} else {
 		g.OutputFiles()
-		g.CopyFiles()
+		if *gameDir != "" {
+			g.CopyFiles()
+		}
 	}
 	fmt.Printf("Done.\n")
 }
