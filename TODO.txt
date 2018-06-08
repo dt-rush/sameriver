@@ -1,17 +1,55 @@
 [ENGINE]
-yield lock if physics / collision has registered to grab lock, in lockEntity, after CAS(0, 1)
+
+graphics via BlitSurface / ScaleSurface
+per-pixel collision via http://www.sdltutorials.com/sdl-per-pixel-collision
+	(ctrl + f "bulk of our per pixel collision")
+
+Note comment:
+
+Are you aware that your program only works for you, because your pc 
+doesn't support Hwsurface? Actually hwsurface means that the picture 
+is stored in the video memory, so you can't just access its pixels, 
+because the pixel array doesn't even exist the way you want to use it
+. You'd have to call SDL_LockSurface() to make your picture copied 
+from hardware memory to system memory which makes you able to access 
+it's pixels. If you run this program with some memory checking 
+library (eg. Valgrind) it will error: "Invalid read of size 4" 
+because you are accessing memory, that's not yours.
+
+Also its a good idea to set an accuracy for the collision detection 
+rather than always checking every pixel. I mean, at real games, you 
+barely ever need pure check, even checking every fourth pixel by the 
+x and the y coordinates turn out to have the exact same result for 
+human eyes, yet it makes collision detecion 16 times faster(and it 
+counts a lot as low level access is really slow).
+
+solution to the above: keep a copy of the sprite pixels surface in memory so we
+can always access it, while we have another which is hwsurface (or not, as the
+machine may or may not allow it and hence both will be swsurface, stored in RAM)
+
+(actually, can we detect if hwsurface is supported? it seems annoying and costly
+to duplicate all sprites into memory if hwsurface isn't supported)
+
+Note from stack overflow:
+
+https://gamedev.stackexchange.com/questions/30866/collision-detection-with-non-rectangular-images
+
+use collision *points*. So when two entity boxes overlap, check through the 8 or
+so collision points for each of them and consider a collision to have occurred if
+and only if the collision point for one of them is positioned over a pixel with 
+alpha in the other sprite
+
+
 
 [BUILD]
 
-output files into /tmp/sameriver
-
-generate basic _component.go files (incl. basic SafeGet())
+add comments to generated files
 
 write func to detect if data type is primitive value or struct/map/slice
 
 require copy function to be defined if not primtive value
 
-copy function to be integrated into SafeGet()
+copy function to be integrated into SafeGet() if needed for type
 
 if component type is struct, find struct def in file named via camel to underscore conversion .go
 

@@ -1,11 +1,11 @@
-package build
+package generate
 
 import (
-	"bytes"
 	"fmt"
 	. "github.com/dave/jennifer/jen"
 	"go/ast"
 	"go/token"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -14,10 +14,10 @@ import (
 func (g *GenerateProcess) GenerateEventFiles(target string) (
 	message string,
 	err error,
-	sourceFiles map[string]string) {
+	sourceFiles map[string]*File) {
 
-	// read the events.go file as an ast.File
-	srcFileName := fmt.Sprintf("%s/events/sameriver_events.go", g.gameDir)
+	// read the ${gameDir}/sameriver/events.go file as an ast.File
+	srcFileName := path.Join(g.gameDir, "sameriver", "custom_events.go")
 	eventsAst, _, err := readSourceFile(srcFileName)
 	if err != nil {
 		msg := fmt.Sprintf("failed to generate ast.File for %s", srcFileName)
@@ -32,7 +32,7 @@ func (g *GenerateProcess) GenerateEventFiles(target string) (
 		return msg, nil, nil
 	}
 	// generate source files
-	sourceFiles = make(map[string]string)
+	sourceFiles = make(map[string]*File)
 	// generate enum source file
 	sourceFiles["events_enum.go"] = generateEventsEnumFile(eventNames)
 	// return
@@ -67,7 +67,7 @@ func getEventNames(srcFile string, astFile *ast.File) (
 	return eventNames
 }
 
-func generateEventsEnumFile(eventNames []string) string {
+func generateEventsEnumFile(eventNames []string) *File {
 	// for each event name, create an uppercase const name
 	constNames := make(map[string]string)
 	for _, eventName := range eventNames {
@@ -75,31 +75,31 @@ func generateEventsEnumFile(eventNames []string) string {
 		constNames[eventName] = strings.ToUpper(eventNameStem) + "_EVENT"
 	}
 	// generate the source file
-	var buffer bytes.Buffer
+	f := NewFile("engine")
 
-	Type().Id("EventType").Int().Render(&buffer)
-	buffer.WriteString("\n\n")
+	// typedef EventType int
+	f.Type().Id("EventType").Int()
 
-	Const().Id("N_EVENT_TYPES").Op("=").Lit(len(eventNames)).Render(&buffer)
-	buffer.WriteString("\n\n")
+	// const N_EVENT_TYPES = ___
+	f.Const().Id("N_EVENT_TYPES").Op("=").Lit(len(eventNames))
 
 	// write the enum
-	constDefs := make([]Code, len(eventNames))
-	for i, eventName := range eventNames {
-		constDefs[i] = Id(constNames[eventName]).Op("=").Iota()
-	}
-	Const().Defs(constDefs...).Render(&buffer)
-	buffer.WriteString("\n\n")
+	f.Const().DefsFunc(func(g *Group) {
+		for _, eventName := range eventNames {
+			g.Id(constNames[eventName]).Op("=").Iota()
+		}
+	})
 
 	// write the enum->string function
-	Var().Id("EVENT_NAMES").Op("=").
+	f.Var().Id("EVENT_NAMES").Op("=").
 		Map(Id("EventType")).String().
 		Values(DictFunc(func(d Dict) {
 			for _, eventName := range eventNames {
 				constName := constNames[eventName]
 				d[Id(constName)] = Lit(constName)
 			}
-		})).
-		Render(&buffer)
-	return buffer.String()
+		}))
+
+	return f
+
 }

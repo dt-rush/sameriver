@@ -20,3 +20,6 @@ bin/*
 # ignore executables and profiling data created by testing
 test.out
 test.prof
+
+# generate binary
+sameriver-generate
