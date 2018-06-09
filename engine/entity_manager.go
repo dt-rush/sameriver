@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
@@ -59,7 +58,6 @@ func (m *EntityManager) Update() {
 
 	// proces any requests to spawn new entities queued in the
 	// buffered channel
-	var t0 time.Time
 	m.processDespawnChannel()
 	m.processSpawnChannel()
 }
@@ -120,7 +118,7 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	if err != nil {
 		errorMsg := fmt.Sprintf("⚠ Error in allocateID(): %s. Will not spawn "+
 			"entity with tags: %v\n", err, r.Tags)
-		return fail("ran out of entity space")
+		return fail(errorMsg)
 	}
 	// print a debug message
 	// set the bitarray for this entity
