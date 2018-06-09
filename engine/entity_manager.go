@@ -62,10 +62,6 @@ func (m *EntityManager) Update() {
 	var t0 time.Time
 	m.processDespawnChannel()
 	m.processSpawnChannel()
-	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
-		fmt.Printf("EntityManager.Update(): %d ms\n",
-			time.Since(t0).Nanoseconds()/1e6)
-	}
 }
 
 // process the despawn requests in the channel buffer
@@ -76,7 +72,6 @@ func (m *EntityManager) processDespawnChannel() {
 	n := len(m.despawnChannel)
 	for i := 0; i < n; i++ {
 		e := <-m.despawnChannel
-		despawnDebug("processing request: %+v", e)
 		m.despawnInternal(e)
 		m.entityTable.activeModificationLocks[e.ID].Unlock()
 	}
@@ -93,7 +88,6 @@ func (m *EntityManager) processSpawnChannel() {
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		r := <-m.spawnChannel
-		spawnDebug("processing request: %+v", r)
 		m.Spawn(r)
 	}
 }
@@ -107,11 +101,9 @@ func (m *EntityManager) RequestSpawn(r EntitySpawnRequest) {
 // returns the EntityToken (used to spawn an entity for which we *want* the
 // token back)
 func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
-	defer functionEndDebug("spawn %v", r)
 
 	// used if spawn is impossible for various reasons
 	var fail = func(msg string) (EntityToken, error) {
-		spawnDebug(msg)
 		return ENTITY_TOKEN_NIL, errors.New(msg)
 	}
 
@@ -124,16 +116,13 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	}
 
 	// get an ID for the entity
-	spawnDebug("trying to allocate ID for spawn request with tags %v", r.Tags)
 	entity, err := m.entityTable.allocateID()
 	if err != nil {
 		errorMsg := fmt.Sprintf("⚠ Error in allocateID(): %s. Will not spawn "+
 			"entity with tags: %v\n", err, r.Tags)
-		spawnDebug(errorMsg)
 		return fail("ran out of entity space")
 	}
 	// print a debug message
-	spawnDebug("Spawning: %v\n", entity)
 	// set the bitarray for this entity
 	m.entityTable.componentBitArrays[entity.ID] = r.Components.ToBitArray()
 	// copy the data inNto the component storage for each component
@@ -147,10 +136,8 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	// NOTE: we can directly set the Active component value since no other
 	// goroutine could be also writing to this entity, due to the
 	// AtomicEntityModify pattern
-	spawnDebug("applying component set for %v...", entity)
 	m.ApplyComponentSetAtomic(r.Components)(entity)
 	// apply the tags
-	spawnDebug("applying tags for %v...", entity)
 	for _, tag := range r.Tags {
 		m.TagEntityAtomic(tag)(entity)
 	}
@@ -160,13 +147,11 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	}
 	// start the logic goroutine if supplied
 	if r.Logic != nil {
-		spawnDebug("Setting logic for %d...", entity.ID)
 		m.EntityLogicTable.setLogic(entity, r.Logic)
 	}
 	// set entity active and notify entity is active
 	m.setActiveState(entity, true)
 	// add the entity to the list of current entities
-	spawnDebug("adding %v to current entities...", entity)
 	m.entityTable.addToCurrentEntities(entity)
 	// set despawnFlag to 0 for the entity
 	m.entityTable.despawnFlags[entity.ID].Store(0)
@@ -180,10 +165,8 @@ func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
 	if m.entityTable.activeStates[entity.ID] != state {
 		// start / stop logic accordingly
 		if state == true {
-			behaviorDebug("Starting logic for %d...", entity.ID)
 			m.EntityLogicTable.StartLogic(entity)
 		} else {
-			behaviorDebug("Stopping logic for %d...", entity.ID)
 			m.EntityLogicTable.StopLogic(entity)
 		}
 		// set active state
@@ -257,10 +240,8 @@ func (m *EntityManager) despawnInternal(entity EntityToken) {
 	m.entityTable.incrementGen(entity.ID)
 
 	// Deactivate and notify
-	despawnDebug("setting %v inactive...", entity)
 	m.setActiveState(entity, false)
 	// delete the entity's logic (we have to do this *after* stopping it)
-	despawnDebug("deleting %v logic...", entity)
 	m.EntityLogicTable.deleteLogic(entity)
 }
 
@@ -286,7 +267,6 @@ func (m *EntityManager) AtomicEntityModify(
 	m.entityTable.activeModificationLocks[req.Entity.ID].RLock()
 	defer m.entityTable.activeModificationLocks[req.Entity.ID].RUnlock()
 	if !m.entityTable.genValidate(req.Entity) {
-		atomicEntityModifyDebug("GENMISMATCH entity %v", req.Entity)
 		return false
 	}
 
@@ -315,7 +295,6 @@ func (m *EntityManager) AtomicEntitiesModify(
 		m.entityTable.activeModificationLocks[req.Entity.ID].RLock()
 		defer m.entityTable.activeModificationLocks[req.Entity.ID].RUnlock()
 		if !m.entityTable.genValidate(req.Entity) {
-			atomicEntityModifyDebug("GENMISMATCH entity %v", req.Entity)
 			return false
 		}
 	}
@@ -348,7 +327,6 @@ func (m *EntityManager) UniqueTaggedEntity(tag string) (EntityToken, error) {
 	if list.Length() == 0 {
 		errorMsg := fmt.Sprintf("tried to fetch unique entity %s, but did "+
 			"not exist", tag)
-		tagsDebug(errorMsg)
 		return ENTITY_TOKEN_NIL, errors.New(errorMsg)
 	}
 	if list.Length() > 1 {

@@ -107,7 +107,6 @@ func (t *EntityTable) addToCurrentEntities(entity EntityToken) {
 // and grab a copy of the currently allocated IDs
 func (t *EntityTable) snapshotAllocatedEntities() []EntityToken {
 	t.IDMutex.RLock()
-	updatedEntityListDebug("got IDMutex in snapshot")
 	defer t.IDMutex.RUnlock()
 
 	snapshot := make([]EntityToken, len(t.currentEntities))

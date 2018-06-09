@@ -54,13 +54,7 @@ func EntityLogicFuncFromBehaviors(
 					if behaviors[i].running.CAS(0, 1) {
 
 						go func(behavior *Behavior) {
-							behaviorDebug("Running behavior %s for entity "+
-								"%d, ", behavior.Name, entity.ID)
 							behavior.Func(entity, em)
-							behaviorDebug("Sleeping %d ms for entity %d, "+
-								"behavior: %s",
-								behavior.Sleep.Nanoseconds()/1e6,
-								entity.ID, behavior.Name)
 							time.Sleep(behavior.Sleep)
 							behavior.running.Store(0)
 						}(&behaviors[i])

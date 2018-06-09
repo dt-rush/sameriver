@@ -11,15 +11,11 @@ func (m *EntityManager) lockEntityComponent(
 	m.Components.accessStart(component)
 	// Lock() the valueLock for this entity on this component
 	m.Components.valueLocks[component][entity.ID].Lock()
-	entityLocksDebug("LOCKED entity %v component %s",
-		entity, COMPONENT_NAMES[component])
 }
 
 func (m *EntityManager) unlockEntityComponent(
 	entity EntityToken, component ComponentType) {
 
-	entityLocksDebug("UNLOCK entity %v component %s",
-		entity, COMPONENT_NAMES[component])
 	// Unlock() the valueLock for this entity on this component
 	m.Components.valueLocks[component][entity.ID].Unlock()
 	// ends the RLock() on the accessLock for the component
@@ -75,15 +71,11 @@ func (m *EntityManager) rLockEntityComponent(
 	m.Components.accessStart(component)
 	// RLock() the valueLock for this entity on this component
 	m.Components.valueLocks[component][entity.ID].RLock()
-	entityLocksDebug("RLOCKED entity %v component %s",
-		entity, COMPONENT_NAMES[component])
 }
 
 func (m *EntityManager) rUnlockEntityComponent(
 	entity EntityToken, component ComponentType) {
 
-	entityLocksDebug("RUNLOCK entity %v component %s",
-		entity, COMPONENT_NAMES[component])
 	// RUnlock() the valueLock for this entity on this component
 	m.Components.valueLocks[component][entity.ID].RUnlock()
 	// ends the RLock() on the accessLock for the component

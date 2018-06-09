@@ -50,8 +50,6 @@ func (ev *EventBus) Subscribe(
 
 	// Create a channel to return to the user
 	c := NewEventChannel(name, q)
-	eventsDebug("Subscribe: %s on channel %v\n",
-		name, c)
 	// Add the channel to the subscriber list for its type
 	ev.subscriberList.channels[q.Type] = append(
 		ev.subscriberList.channels[q.Type], c)
@@ -63,7 +61,6 @@ func (ev *EventBus) Subscribe(
 func (ev *EventBus) Unsubscribe(c EventChannel) {
 	ev.subscriberList.mutex.Lock()
 	defer ev.subscriberList.mutex.Unlock()
-	eventsDebug("Unsubscribe on channel %v\n", c)
 	removeEventChannelFromSlice(&ev.subscriberList.channels[c.Query.Type], c)
 }
 
@@ -85,8 +82,7 @@ func (ev *EventBus) notifySubscribers(e Event) {
 
 	for _, c := range ev.subscriberList.channels[e.Type] {
 		if !c.IsActive() {
-			eventsDebug("%s channel inactive, "+
-				"not sending event %s\n", c.Name, e.Description)
+			continue
 		}
 		go func(c EventChannel) {
 			// notify if the channel buffer is filled (we're in a
@@ -98,8 +94,6 @@ func (ev *EventBus) notifySubscribers(e Event) {
 					c.Name)
 			}
 			if c.Query.Test(e) {
-				eventsDebug("sending %s on %s",
-					e.Description, c.Name)
 				c.Send(e)
 			}
 		}(c)

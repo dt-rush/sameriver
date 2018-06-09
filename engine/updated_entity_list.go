@@ -91,7 +91,6 @@ func (l *UpdatedEntityList) RandomEntity() (EntityToken, error) {
 // called during the creation of a list. Starts a goroutine which listens
 // on the channel and either adds or removes entities as appropriate
 func (l *UpdatedEntityList) start() {
-	updatedEntityListDebug("starting UpdatedEntityList %s...", l.qw.Name)
 	go func() {
 	updateloop:
 		for {
@@ -99,7 +98,6 @@ func (l *UpdatedEntityList) start() {
 			case _ = <-l.stopUpdateLoopChannel:
 				break updateloop
 			case signal := <-l.qw.Channel:
-				updatedEntityListDebug("%s received signal", l.qw.Name)
 				l.actOnSignal(signal)
 			default:
 				if l.processingBacklog {
@@ -122,8 +120,6 @@ func (l *UpdatedEntityList) popBacklog() {
 	last_ix := len(l.backlog) - 1
 	entity := l.backlog[last_ix]
 	l.backlog = l.backlog[:last_ix]
-	updatedEntityListDebug("popped %v from backlog for list %s",
-		entity, l.qw.Name)
 	if l.backlogTester(entity) {
 		l.actOnSignal(EntitySignal{ENTITY_ADD, entity})
 	}
@@ -144,17 +140,12 @@ func (l *UpdatedEntityList) actOnSignal(signal EntitySignal) {
 	// act on signal
 	switch signal.signalType {
 	case ENTITY_REMOVE:
-		updatedEntityListDebug("%s got remove:%v",
-			l.qw.Name, signal.entity)
 		removeEntityTokenFromSlice(&l.backlog, signal.entity)
 		l.remove(signal.entity)
 	case ENTITY_ADD:
-		updatedEntityListDebug("%s got add:%v",
-			l.qw.Name, signal.entity)
 		removeEntityTokenFromSlice(&l.backlog, signal.entity)
 		l.add(signal.entity)
 	}
-	updatedEntityListDebug("%s now: %v", l.qw.Name, l.Entities)
 }
 
 // adds an entity into the list (private so only called by the update loop)

@@ -33,7 +33,6 @@ func (t *TagTable) createEntitiesWithTagListIfNeeded(tag string) {
 		// thankfully GetUpdatedEntityList itself will return the same list if it
 		// was already created, so we'll just write the same list to the map
 		t.mutex.Lock()
-		tagsDebug("creating list for tag \"%s\"", tag)
 		t.entitiesWithTag[tag] =
 			t.em.GetUpdatedEntityList(EntityQueryFromTag(tag))
 		t.mutex.Unlock()
