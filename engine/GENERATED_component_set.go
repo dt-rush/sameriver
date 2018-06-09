@@ -12,6 +12,7 @@
 package engine
 
 import (
+	"github.com/golang-collections/go-datastructures/bitarray"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -20,4 +21,21 @@ type ComponentSet struct {
 	Sprite   *Sprite
 	TagList  *TagList
 	Velocity *[2]float32
+}
+
+func (cs *ComponentSet) ToBitArray() bitarray.BitArray {
+	b := bitarray.NewBitArray(uint64(N_COMPONENT_TYPES))
+	if cs.Box != nil {
+		b.SetBit(uint64(BOX_COMPONENT))
+	}
+	if cs.Sprite != nil {
+		b.SetBit(uint64(SPRITE_COMPONENT))
+	}
+	if cs.TagList != nil {
+		b.SetBit(uint64(TAGLIST_COMPONENT))
+	}
+	if cs.Velocity != nil {
+		b.SetBit(uint64(VELOCITY_COMPONENT))
+	}
+	return b
 }
