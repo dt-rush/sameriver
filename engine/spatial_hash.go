@@ -232,7 +232,7 @@ func (h *SpatialHash) receiver(
 
 // helper function for hashing
 func (h *SpatialHash) cellForPoint(x int, y int) (cellX int, cellY int) {
-	return x / (h.WORLD_HEIGHT / h.GRID), y / h.WORLD_WIDTH / h.GRID
+	return x / (h.WORLD_HEIGHT / h.GRID), y / (h.WORLD_WIDTH / h.GRID)
 }
 
 // used to iterate the entities and send them to the right cell's channels
@@ -246,8 +246,8 @@ func (h *SpatialHash) scanner(offset int, partition_size int) {
 		// find out how many grids the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)
-		gridsHigh := int(box.Y) / h.GRID
-		gridsWide := int(box.X) / h.GRID
+		gridsHigh := int(box.H) / (h.WORLD_HEIGHT / h.GRID)
+		gridsWide := int(box.W) / (h.WORLD_WIDTH / h.GRID)
 		// figure out which cell the topleft corner is in
 		topLeftCellX, topLeftCellY := h.cellForPoint(int(box.X), int(box.Y))
 		// walk through each cell the entity touches by starting in the top-left
@@ -256,6 +256,8 @@ func (h *SpatialHash) scanner(offset int, partition_size int) {
 			for ix := 0; ix < gridsWide+1; ix++ {
 				y := topLeftCellY + iy
 				x := topLeftCellX + ix
+				fmt.Printf("%+v has box %+v and is in (%d, %d)\n",
+					entity, box, x, y)
 				h.cellChannels[y][x] <- EntityPosition{entity, box}
 			}
 		}
