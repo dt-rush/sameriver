@@ -8,5 +8,6 @@ sameriver-generate:
 
 clean:
 	rm engine/CUSTOM_* 2>/dev/null || true
+	git checkout HEAD -- engine/GENERATED_*
 
 
