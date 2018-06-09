@@ -177,7 +177,7 @@ func (g *Game) RunScene(scene Scene, endGameLoopChan chan (bool)) {
 
 func (g *Game) AsyncRunLoadingScene() chan bool {
 	g.endLoadingSceneGameLoopChan = make(chan (bool), 1)
-	g.loadingScene.Init(g, g.endLoadingSceneGameLoopChan)
+	g.loadingScene.Init(g, nil, g.endLoadingSceneGameLoopChan)
 	loading_scene_stopped_signal_chan := make(chan (bool))
 	go func() {
 		g.RunScene(g.loadingScene, g.endLoadingSceneGameLoopChan)

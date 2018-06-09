@@ -12,9 +12,15 @@ type PhysicsSystem struct {
 	em *EntityManager
 	// targetted entities
 	physicsEntities *UpdatedEntityList
+	// world dimensions
+	WORLD_WIDTH  int
+	WORLD_HEIGHT int
 }
 
-func (s *PhysicsSystem) Init(em *EntityManager) {
+func (s *PhysicsSystem) Init(
+	WORLD_WIDTH int,
+	WORLD_HEIGHT int,
+	em *EntityManager) {
 	// take down a reference to entity manager
 	s.em = em
 	// get a regularly updated list of the entities which have physics
@@ -25,6 +31,9 @@ func (s *PhysicsSystem) Init(em *EntityManager) {
 			BOX_COMPONENT,
 			VELOCITY_COMPONENT}))
 	s.physicsEntities = s.em.GetUpdatedEntityList(query)
+	// set world dimensions
+	s.WORLD_WIDTH = WORLD_WIDTH
+	s.WORLD_HEIGHT = WORLD_HEIGHT
 }
 
 // apply velocity to position of entities
@@ -32,30 +41,27 @@ func (s *PhysicsSystem) Init(em *EntityManager) {
 // components
 func (s *PhysicsSystem) applyPhysics(entity EntityToken, dt_ms uint16) {
 	// read the position and velocity, using dt to compute dx, dy
-	pos := s.em.Components.Position.Data[entity.ID]
-	vel := s.em.Components.Velocity.Data[entity.ID]
-	dx := int16(vel[0] * float32(dt_ms/4))
-	dy := int16(vel[1] * float32(dt_ms/4))
-	box := s.em.Components.HitBox.Data[entity.ID]
+	box := s.em.Components.Box[entity.ID]
+	vel := s.em.Components.Velocity[entity.ID]
+	dx := int32(vel[0] * float32(dt_ms/4))
+	dy := int32(vel[1] * float32(dt_ms/4))
 	// prevent from leaving the world in X
-	if pos[0]+dx <
-		int16(box[0]/2) {
-		pos[0] = int16(box[0] / 2)
-	} else if pos[0]+dx >
-		int16(WORLD_WIDTH)-int16(box[0]/2) {
-		pos[0] = int16(WORLD_WIDTH) - int16(box[0]/2)
+	if box.X+dx < 0 {
+		box.X = 0
+	} else if box.X+dx > WORLD_WIDTH-box.W {
+		box.X = int16(WORLD_WIDTH) - int16(box.X/2)
 	} else {
-		pos[0] += dx
+		box.X += dx
 	}
 	// prevent from leaving the world in Y
-	if pos[1]+dy <
+	if box.Y+dy <
 		int16(box[1]/2) {
-		pos[1] = int16(box[1] / 2)
-	} else if pos[1]+dy >
+		box.Y = int16(box[1] / 2)
+	} else if box.Y+dy >
 		int16(WORLD_HEIGHT)-int16(box[1]/2) {
-		pos[1] = int16(WORLD_HEIGHT) - int16(box[1]/2)
+		box.Y = int16(WORLD_HEIGHT) - int16(box[1]/2)
 	} else {
-		pos[1] += dy
+		box.Y += dy
 	}
 	// set the new position which has been computed
 	s.em.Components.Position.Data[entity.ID] = pos

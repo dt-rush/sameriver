@@ -14,7 +14,7 @@ import (
 type Scene interface {
 	Name() string
 
-	New(config map[string]string, game *Game, stopChannel chan bool)
+	Init(game *Game, config map[string]string, stopChannel chan bool)
 	StartLogic()
 	StopLogic()
 
