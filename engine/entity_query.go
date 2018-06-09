@@ -10,9 +10,7 @@ type EntityQuery struct {
 }
 
 func (q EntityQuery) Test(entity EntityToken, em *EntityManager) bool {
-	em.lockEntity(entity)
 	result := q.TestFunc(entity, em)
-	em.releaseEntity(entity)
 	return result
 }
 
@@ -21,7 +19,14 @@ func EntityQueryFromTag(tag string) EntityQuery {
 	return EntityQuery{
 		Name: tag,
 		TestFunc: func(entity EntityToken, em *EntityManager) bool {
-			return em.Components.TagList.Data[entity.ID].Has(tag)
+			tagList, err := em.Components.ReadTagList(entity)
+			if err != nil {
+				return false
+			} else {
+				tagList.Mutex.RLock()
+				defer tagList.Mutex.RUnlock()
+				return tagList.Has(tag)
+			}
 		}}
 }
 

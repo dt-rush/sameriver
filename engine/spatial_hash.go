@@ -3,15 +3,17 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"go.uber.org/atomic"
 	"runtime"
 	"unsafe"
+
+	"github.com/veandco/go-sdl2/sdl"
+	"go.uber.org/atomic"
 )
 
 // used to store an entity with a position in a grid cell
 type EntityPosition struct {
 	entity   EntityToken
-	position Box
+	position sdl.Rect
 }
 
 // the actual cell data structure is a GRID x GRID array of []EntityPosition
@@ -142,20 +144,6 @@ func (h *SpatialHash) CurrentTableCopy() SpatialHashTable {
 // list for each grid cell
 func (h *SpatialHash) ComputeSpatialHash() {
 
-	// acquire exclusive lock on the box component (position and bounding box)
-
-	// TODO: should this happen at a higher level of abstraction, in the
-	// system which will use the hash for physics / collision? do we really
-	// want to let a bunch of position component lock acquires happen
-	// in between computing the hash and using it? why not just lock the
-	// position / hitbox components for the duration of the whole physics /
-	// collision / spatial hash routine? (and lock velocity only for the
-	// physics portion)
-	// a similar lock will need to happen for the sprite component in Draw(),
-	// but we can use the frozen position data from the spatial hash there
-	h.em.Components.accessLocks[BOX_COMPONENT].lock()
-	defer h.em.Components.accessLocks[BOX_COMPONENT].unlock()
-
 	// this lock prevents another call to ComputeSpatialHash()
 	// entering while we are currently calculating (this ensures robustness
 	// if for some reason it is called too often)
@@ -167,10 +155,22 @@ func (h *SpatialHash) ComputeSpatialHash() {
 	// to the table we're building
 	h.computingTable = &h.tables[h.nextBufIndex()]
 
-	// we don't want the UpdatedEntityList from modifying itself while
-	// we read it
+	// prevent any updates to the spatialEntities list while we're using it
 	h.spatialEntities.Mutex.Lock()
 	defer h.spatialEntities.Mutex.Unlock()
+
+	// acquire exclusive lock on the box component (position and bounding box)
+	// TODO: should this happen at a higher level of abstraction, in the
+	// system which will use the hash for physics / collision? do we really
+	// want to let a bunch of position component lock acquires happen
+	// in between computing the hash and using it? why not just lock the
+	// position / hitbox components for the duration of the whole physics /
+	// collision / spatial hash routine? (and lock velocity only for the
+	// physics portion)
+	// a similar lock will need to happen for the sprite component in Draw(),
+	// but we can use the frozen position data from the spatial hash there
+	h.em.Components.accessLocks[BOX_COMPONENT].Lock()
+	defer h.em.Components.accessLocks[BOX_COMPONENT].Unlock()
 
 	// set the number of entities remaining (used by receiver workers to
 	// notify that computation is done)

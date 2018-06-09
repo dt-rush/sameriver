@@ -116,19 +116,21 @@ func (s *CollisionSystem) Init(
 }
 
 // Test collision between two entities
-// NOTE: this is called by CollisionSystem.Update(), so it's covered by the
-// mutex on position and hitbox
 func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
-	// grab component data
-	box := s.em.Components.Box[i]
-	other_box := s.em.Components.Box[j]
-	return box.HasIntersection(other_box)
+	return s.em.Components.Box[i].HasIntersection(&s.em.Components.Box[j])
 }
 
 func (s *CollisionSystem) Update(dt_ms uint16) {
 
+	// prevent any updates to the collidableEntities list while we're using it
 	s.collidableEntities.Mutex.Lock()
 	defer s.collidableEntities.Mutex.Unlock()
+
+	// acquire exclusive lock on the box component (position and bounding box)
+	// TODO: have this happen at a higher level of abstraction - see comment
+	// in spatial_hash.go in ComputeSpatialHash()
+	s.em.Components.accessLocks[BOX_COMPONENT].Lock()
+	defer s.em.Components.accessLocks[BOX_COMPONENT].Unlock()
 
 	entities := s.collidableEntities.Entities
 
@@ -141,12 +143,6 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 			// get the entity ID's
 			i := entities[ix]
 			j := entities[jx]
-			// only proceed if we can hold both entities for modification,
-			// since we need to be able to move them away from their common
-			// center if overlapping
-			if !s.em.attemptLockTwoEntitiesOnce(i, j) {
-				continue
-			}
 			// check the collision
 			if s.TestCollision(uint16(i.ID), uint16(j.ID)) {
 				// if colliding, send the message (rate-limited)
@@ -162,8 +158,6 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 				})
 				// TODO: move both entities away from their common center
 			}
-			// release the entities now that we're done with them
-			s.em.releaseTwoEntities(i, j)
 		}
 	}
 }

@@ -1,7 +1,12 @@
 package engine
 
+import (
+	"sync"
+)
+
 type TagList struct {
-	tags []string
+	Mutex sync.RWMutex
+	tags  []string
 }
 
 func (l *TagList) Has(tag string) bool {

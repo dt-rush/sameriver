@@ -65,13 +65,7 @@ func (ct *ComponentsTable) ReadTagList(e EntityToken) (TagList, error) {
 		// simply because it's of the right type.
 		return ct.TagList[0], errors.New(fmt.Sprintf("%+v no longer exists", e))
 	}
-	/*
-	   get the TagList with deepcopy, since DeepCopyTagList() was specified.
-	   (a DeepCopy method should be specified whenever the component value
-	   returned may change as a receiver is reading it, after it's been
-	   retrieved from the component data table)
-	*/
-	return DeepCopyTagList(ct.TagList[e.ID]), nil
+	return ct.TagList[e.ID], nil
 }
 
 // read an entity's Velocity by read-locking the value

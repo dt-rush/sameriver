@@ -1,5 +1,9 @@
 package engine
 
+import (
+	"sort"
+)
+
 func (m *EntityManager) lockEntityComponent(
 	entity EntityToken, component ComponentType) {
 
@@ -26,7 +30,7 @@ func (m *EntityManager) lockOneEntityComponents(
 	entityComponents OneEntityComponents) {
 
 	// lock components in sorted order
-	sort.Slice(entityComponents.components, func(i int, j int) {
+	sort.Slice(entityComponents.components, func(i int, j int) bool {
 		return entityComponents.components[i] < entityComponents.components[j]
 	})
 	for _, component := range entityComponents.components {
@@ -38,11 +42,11 @@ func (m *EntityManager) lockEntitiesComponents(
 	entitiesComponents []OneEntityComponents) {
 
 	// lock entities in sorted order
-	sort.Slice(entitiesComponents, func(i int, j int) {
+	sort.Slice(entitiesComponents, func(i int, j int) bool {
 		return entitiesComponents[i].entity.ID < entitiesComponents[j].entity.ID
 	})
 	for _, entityComponents := range entitiesComponents {
-		m.lockEntityComponents(entityComponents)
+		m.lockOneEntityComponents(entityComponents)
 	}
 }
 
@@ -57,10 +61,10 @@ func (m *EntityManager) unlockEntitiesComponents(
 
 func (m *EntityManager) unlockOneEntityComponents(
 	entityComponents OneEntityComponents) {
-	for _, entityComponent := range entityComponents {
+	for _, component := range entityComponents.components {
 		m.unlockEntityComponent(
-			entityComponent.entity,
-			entityComponent.component)
+			entityComponents.entity,
+			component)
 	}
 }
 
@@ -90,7 +94,7 @@ func (m *EntityManager) rUnlockEntityComponent(
 	entityLocksDebug("RUNLOCK entity %v component %s",
 		entity, COMPONENT_NAMES[component])
 	// RUnlock() the valueLock for this entity on this component
-	m.Components[component].locks[entity.ID].RUnlock()
+	m.Components.valueLocks[component][entity.ID].RUnlock()
 	// ends the RLock() on the accessLock for the component
 	m.Components.accessEnd(component)
 }

@@ -39,9 +39,9 @@ func LogicUnitFromBehaviors(
 
 	return EntityLogicUnit{
 		// stopChannel
-		make(chan bool),
+		stopChannel: make(chan bool),
 		/* start of EntityLogicFunc */
-		func(entity EntityToken,
+		f: func(entity EntityToken,
 			StopChannel chan bool,
 			em *EntityManager) {
 

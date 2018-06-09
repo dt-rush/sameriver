@@ -21,7 +21,7 @@ type EntityManager struct {
 	tags TagTable
 	// entityLogicTable contains references to the LogicUnits of the entities, if
 	// they supplied one
-	entityLogicTable EntityLogicTable
+	EntityLogicTable EntityLogicTable
 	// EntityClassTable stores references to entity classes, which can be
 	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
 	entityClasses EntityClassTable
@@ -51,7 +51,7 @@ func (m *EntityManager) Init() {
 	// init ActiveEntityListCollection
 	m.activeEntityLists.Init(m)
 	// init EntityLogicTable
-	m.EntityLogicTable.Init()
+	m.EntityLogicTable.Init(m)
 }
 
 // called once per scene Update() for scenes holding an entity manager
@@ -78,7 +78,7 @@ func (m *EntityManager) processDespawnChannel() {
 		e := <-m.despawnChannel
 		despawnDebug("processing request: %+v", e)
 		m.despawnInternal(e)
-		m.activeModificationLocks[e].Unlock()
+		m.entityTable.activeModificationLocks[e.ID].Unlock()
 	}
 }
 
@@ -149,10 +149,6 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	// AtomicEntityModify pattern
 	spawnDebug("applying component set for %v...", entity)
 	m.ApplyComponentSetAtomic(r.Components)(entity)
-	// allocate ComponentValueLock's for each component for this entity
-	for i := 0; i < N_COMPONENTS; i++ {
-		m.Components[i].locks[entity.ID] = NewComponentValueLock()
-	}
 	// apply the tags
 	spawnDebug("applying tags for %v...", entity)
 	for _, tag := range r.Tags {
@@ -165,7 +161,7 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	// start the logic goroutine if supplied
 	if r.Logic != nil {
 		spawnDebug("Setting and starting logic for %d...", entity.ID)
-		logicUnit := r.entityLogicTable.setLogic(entity, r.Logic)
+		logicUnit := m.EntityLogicTable.setLogic(entity, r.Logic)
 	}
 	// set entity active and notify entity is active
 	m.setActiveState(entity, true)
@@ -181,18 +177,16 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 // sets the active state on an entity and notifies all watchers
 func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
 	// only act if the state is different to that which exists
-	if m.entityTable.activeState[entity.ID] != state {
+	if m.entityTable.activeStates[entity.ID] != state {
 		// start / stop logic accordingly
-		logic := m.logicTable.getLogic(entity)
+		logic := m.EntityLogicTable.getLogic(entity)
 		if state == true {
-			go logicUnit.f(entity, logicUnit.stopChannel, m)
+			m.EntityLogicTable.startLogic(entity)
 		} else {
-			go func() {
-				logicUnit.stopChannel <- true
-			}()
+			m.EntityLogicTable.stopLogic(entity)
 		}
 		// set active state
-		m.entitytable.activeState[entity.ID] = state
+		m.entityTable.activeStates[entity.ID] = state
 		// notify any listening lists
 		go m.activeEntityLists.notifyActiveState(entity, state)
 	}
@@ -226,9 +220,9 @@ func (m *EntityManager) DespawnAll() {
 		// released the entityTable lock, and would then exit since gen
 		// had changed
 		entity := m.entityTable.currentEntities[0]
-		m.lockEntity(entity)
+		m.entityTable.despawnFlags[entity.ID].Store(1)
+		m.entityTable.activeModificationLocks[entity.ID].Lock()
 		m.despawnInternal(entity)
-		m.releaseEntity(entity)
 	}
 	// drain the spawn channel
 	for len(m.spawnChannel) > 0 {
@@ -266,7 +260,7 @@ func (m *EntityManager) despawnInternal(entity EntityToken) {
 	m.setActiveState(entity, false)
 	// delete the entity's logic (we have to do this *after* stopping it)
 	despawnDebug("deleting %v logic...", entity)
-	m.entityLogicTable.deleteLogic(entity)
+	m.EntityLogicTable.deleteLogic(entity)
 }
 
 // Get a list of entities which will be updated whenever an entity becomes
@@ -283,7 +277,7 @@ func (m *EntityManager) GetUpdatedEntityList(
 // (remember lockEntity will wait as long as it needs to access the entity,
 // but will fail if, upon locking, gen does not match)
 func (m *EntityManager) AtomicEntityModify(
-	req EntityModificationRequest,
+	req OneEntityComponents,
 	f func()) bool {
 
 	// lock the activemodification lock as a "reader" for the duration of this
@@ -311,7 +305,7 @@ func (m *EntityManager) AtomicEntityModify(
 // this is an extension of AtomicEntityModify and the comments for that function
 // should be seen for reference in understanding this code
 func (m *EntityManager) AtomicEntitiesModify(
-	reqs []EntityModificationRequest,
+	reqs []OneEntityComponents,
 	f func()) bool {
 
 	// NOTE: we don't need to sort the requests by entity ID since these are
@@ -326,9 +320,7 @@ func (m *EntityManager) AtomicEntitiesModify(
 	}
 
 	// lock all the entities we want to modify on the requested components
-	if ok := m.lockEntitiesComponents(reqs); !ok {
-		return false
-	}
+	m.lockEntitiesComponents(reqs)
 
 	f()
 	return true
