@@ -11,7 +11,7 @@ import (
 // used to store an entity with a position in a grid cell
 type EntityPosition struct {
 	entity   EntityToken
-	position [2]int16
+	position Box
 }
 
 // the actual cell data structure is a GRID x GRID array of []EntityPosition
@@ -41,7 +41,7 @@ type SpatialHash struct {
 	// (not double-buffered since we exclude two
 	// ComputeSpatialHash() instances from running at the same time using
 	// the computeInProgress flag)
-	cellChannels [][]chan EntityPosition
+	cellChannels [][]chan EntityToken
 	// used to signal that the compute is done from one of the receive()
 	// workers
 	computeDoneChannel chan bool
@@ -57,8 +57,6 @@ type SpatialHash struct {
 	// spatialEntities is an UpdatedEntityList of entities who have position
 	// and hitbox components
 	spatialEntities *UpdatedEntityList
-	// a reference to the position component
-	position *PositionComponent
 	// entityManager is used to acquire locks on entities
 	em *EntityManager
 }
@@ -67,9 +65,7 @@ func NewSpatialHash(
 	WORLD_WIDTH int,
 	WORLD_HEIGHT int,
 	GRID int,
-	spatialEntities *UpdatedEntityList,
-	em *EntityManager,
-	position *PositionComponent) *SpatialHash {
+	em *EntityManager) *SpatialHash {
 
 	h := SpatialHash{computeDoneChannel: make(chan bool)}
 	h.WORLD_WIDTH = WORLD_WIDTH
@@ -92,10 +88,12 @@ func NewSpatialHash(
 			go h.receiver(y, x, h.cellChannels[y][x])
 		}
 	}
+	// get a list of spatial entities
+	h.spatialEntities = em.GetUpdatedEntityList(
+		engine.EntityQueryFromComponentBitArray("spatial",
+			MakeComponentBitArray([]engine.ComponentType{engine.BOX_COMPONENT})))
 	// take down references needed during compute
-	h.spatialEntities = spatialEntities
 	h.em = em
-	h.position = position
 	// canEnterCompute is expressed in the traditional sense that 1 = true,
 	// so we have to initialize it
 	h.canEnterCompute.Store(1)
@@ -145,6 +143,7 @@ func (h *SpatialHash) CurrentTableCopy() SpatialHashTable {
 func (h *SpatialHash) ComputeSpatialHash() {
 
 	// acquire exclusive lock on the box component (position and bounding box)
+
 	// TODO: should this happen at a higher level of abstraction, in the
 	// system which will use the hash for physics / collision? do we really
 	// want to let a bunch of position component lock acquires happen
@@ -226,23 +225,37 @@ func (h *SpatialHash) receiver(
 	}
 }
 
+// helper function for hashing
+func cellForPoint(x int32, y int32) (cellX int, cellY int) {
+	retur(x/int32(h.WORLD_HEIGHT/h.GRID),
+		y/int32(h.WORLD_WIDTH/h.GRID))
+}
+
 // used to iterate the entities and send them to the right cell's channels
 func (h *SpatialHash) scanner(offset int, partition_size int) {
 
-	// keep track of how many we've read
-	n_read := 0
-	for i := 0; n_read < partition_size; i = (i + 1) % partition_size {
+	// iterate each entity in the partition
+	for i := 0; i < partition_size; i++ {
+		// get the entity's box
 		entity := h.spatialEntities.Entities[offset+i]
-		// TODO: implement the below properly
-		// determine which grid boxes this entity is in, and send to
-		// the appropriate channels
-		position := h.position.Data[entity.ID]
-		h.em.releaseEntity(entity)
-		y := position[1] / int16(h.WORLD_HEIGHT/h.GRID)
-		x := position[0] / int16(h.WORLD_WIDTH/h.GRID)
-		e := EntityPosition{entity, position}
-		h.cellChannels[y][x] <- e
-		n_read++
+		box := h.em.Components.Box[entity.ID]
+		// find out how many grids the entity spans in x and y (almost always 0,
+		// but we want to be thorough, and the fact that it's got a predictable
+		// pattern 99% of the time means that branch prediction should help us)
+		gridsHigh := box.Y / h.GRID
+		gridsWide := box.X / h.GRID
+		// figure out which cell the topleft corner is in
+		topLeftCellY := cellForPoint(box.Y)
+		topLeftCellX := cellForPoint(box.X)
+		// walk through each cell the entity touches by starting in the top-left
+		// and walking according to gridsHigh and gridsWide
+		for iy := 0; iy < gridsHigh+1; iy++ {
+			for ix := 0; ix < gridsWide+1; ix++ {
+				y := topLeftCellX + iy
+				x := topLeftCellX + ix
+				h.cellChannels[y][x] <- EntityPosition{entity, box}
+			}
+		}
 	}
 }
 

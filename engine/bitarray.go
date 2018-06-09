@@ -8,7 +8,7 @@ import (
 func BitArrayToString(arr bitarray.BitArray) string {
 	var buf bytes.Buffer
 	buf.WriteString("[")
-	for i := uint64(0); i < N_COMPONENTS; i++ {
+	for i := uint64(0); i < N_COMPONENT_TYPES; i++ {
 		bit, _ := arr.GetBit(i)
 		var val int
 		if bit {

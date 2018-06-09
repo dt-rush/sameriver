@@ -10,15 +10,16 @@ import (
 )
 
 type SpriteManager struct {
-	SpriteComponent *SpriteComponent
-	Textures        map[string]*sdl.Texture
+	Sprite   *[MAX_ENTITIES]Sprite
+	Textures map[string]*sdl.Texture
 }
 
 func (c *SpriteManager) Init(
-	sprite_component *SpriteComponent,
+	Sprite *[MAX_ENTITIES]Sprite,
 	renderer *sdl.Renderer) {
 
-	c.SpriteComponent = sprite_component
+	// take down a reference to the Sprite component
+	c.Sprite = Sprite
 	c.Textures = make(map[string]*sdl.Texture, 256)
 	c.LoadFiles(renderer)
 }

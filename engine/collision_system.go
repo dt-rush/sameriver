@@ -98,8 +98,7 @@ func (s *CollisionSystem) Init(
 	query := EntityQueryFromComponentBitArray(
 		"collidable",
 		MakeComponentBitArray([]ComponentType{
-			POSITION_COMPONENT,
-			HITBOX_COMPONENT}))
+			BOX_COMPONENT}))
 	s.collidableEntities = s.em.GetUpdatedEntityList(query)
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
@@ -121,26 +120,9 @@ func (s *CollisionSystem) Init(
 // mutex on position and hitbox
 func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
 	// grab component data
-	position_component := s.em.Components.Position
-	hitbox_component := s.em.Components.HitBox
-	box := hitbox_component.Data[i]
-	other_box := hitbox_component.Data[j]
-	center := position_component.Data[i]
-	other_center := position_component.Data[j]
-	// find the distance between the X and Y centers
-	// NOTE: "abs" is for absolute value
-	dxabs := center[0] - other_center[0]
-	if dxabs < 0 {
-		dxabs *= -1
-	}
-	dyabs := center[1] - other_center[1]
-	if dyabs < 0 {
-		dyabs *= -1
-	}
-	// if the sum of the widths is greater than twice the x distance,
-	// collision has occurred (same for y)
-	return (dxabs*2 < int16(box[0]+other_box[0]) &&
-		dyabs*2 < int16(box[1]+other_box[1]))
+	box := s.em.Components.Box[i]
+	other_box := s.em.Components.Box[j]
+	return box.HasIntersection(other_box)
 }
 
 func (s *CollisionSystem) Update(dt_ms uint16) {

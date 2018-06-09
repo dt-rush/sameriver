@@ -29,10 +29,12 @@ type EntityManager struct {
 	// store EntityQueryWatchers and references to UpdatedEntityLists used
 	// to implement GetUpdatedEntityList
 	activeEntityLists ActiveEntityListCollection
-	// Channel for spawn entity requests which we don't need to get the
-	// entity returned from (processed as a batch each Update())
+	// Channel for spawn entity requests (processed as a batch each Update())
 	spawnChannel chan EntitySpawnRequest
-	// spawnMutex prevents despawn / spawn events from occurring at the same time
+	// Channel for despawn entity requests (processed as a batch each Update())
+	despawnChannel chan EntityToken
+	// spawnMutex prevents despawn / spawn events from occurring while we
+	// convert the entire EntityManager to string (expensive!)
 	spawnMutex sync.Mutex
 }
 
@@ -58,9 +60,25 @@ func (m *EntityManager) Update() {
 	// proces any requests to spawn new entities queued in the
 	// buffered channel
 	var t0 time.Time
+	m.processDespawnChannel()
 	m.processSpawnChannel()
 	if DEBUG_ENTITY_MANAGER_UPDATE_TIMING {
-		fmt.Printf("spawn: %d ms\n", time.Since(t0).Nanoseconds()/1e6)
+		fmt.Printf("EntityManager.Update(): %d ms\n",
+			time.Since(t0).Nanoseconds()/1e6)
+	}
+}
+
+// process the despawn requests in the channel buffer
+func (m *EntityManager) processDespawnChannel() {
+	m.spawnMutex.Lock()
+	defer m.spawnMutex.Unlock()
+
+	n := len(m.despawnChannel)
+	for i := 0; i < n; i++ {
+		e := <-m.despawnChannel
+		despawnDebug("processing request: %+v", e)
+		m.despawnInternal(e)
+		m.activeModificationLocks[e].Unlock()
 	}
 }
 
@@ -75,7 +93,7 @@ func (m *EntityManager) processSpawnChannel() {
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		r := <-m.spawnChannel
-		spawnDebug("processing request: %v", r)
+		spawnDebug("processing request: %+v", r)
 		m.Spawn(r)
 	}
 }

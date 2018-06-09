@@ -13,8 +13,10 @@
 
 package engine
 
-// user-facing despawn function which locks the EntityTable for a single
-// despawn
+// despawn function (this is how entities *must* be despawned, other than
+// DespawnAll() which should not happen during normal gameplay)
+// TODO: figure out whether DespawnAll works properly and doesn't race with
+// anything
 func (m *EntityManager) DespawnAtomic(entity EntityToken) {
 
 	// NOTE: we don't need to gen validate here because we can only
@@ -25,12 +27,15 @@ func (m *EntityManager) DespawnAtomic(entity EntityToken) {
 	if m.entityTable.despawnFlags[entity.ID].CAS(0, 1) {
 		go func() {
 			// lock the activeModification lock as a *writer* (compare with
-			// the lock as RLock() in AtomicEntityModify), so that we will
-			// acquire the lock once all instances of AtomicEntityModify that
-			// have already enqueued have finished
+			// the lock as RLock() in lockEntityComponent), so that calls to
+			// AtomicEntityModify which want to lock the active modification
+			// lock will not proceed until the lock is released in
+			// EntityManager.processDespawnChannel() (at which point they will
+			// proceed, but immediately fail the genValidate() call, since the
+			// entity was despawned, causing the AtomicEntityModify call for
+			// the despawned entity to return flase)
 			m.activeModificationLocks[entity.ID].Lock()
-			m.despawnInternal(entity)
-			m.activeModificationLocks[entity.ID].Unlock()
+			m.despawnChannel <- entity
 		}()
 	}
 }
