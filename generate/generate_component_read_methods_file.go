@@ -18,7 +18,7 @@ func generateComponentReadMethodsFile(
 		f.Func().
 			Params(Id("ct").Op("*").Id("ComponentsTable")).
 			Id(methodName).
-			Params(Id("entity").Id("EntityToken")).
+			Params(Id("e").Id("EntityToken")).
 			Params(Id(component.Type), Error()).
 			Block(
 				Id("ct").Dot("em").Dot("rLockEntityComponent").
@@ -32,7 +32,7 @@ func generateComponentReadMethodsFile(
 					Return(
 						List(
 							Id(component.Type).Values(),
-							Qual("errors", "New").Dot("New").Call(
+							Qual("errors", "New").Call(
 								Qual("fmt", "Sprintf").Call(
 									Lit("%+v no longer exists"),
 									Id("e"),
