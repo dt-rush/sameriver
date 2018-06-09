@@ -11,7 +11,7 @@ dirty:
 
 clean:
 	mkdir /tmp/sameriver 2>/dev/null || true
-	cp engine/CUSTOM_* /tmp/sameriver/ 2>/dev/null || true
+	mv engine/CUSTOM_* /tmp/sameriver/ 2>/dev/null || true
 	cp engine/GENERATED_* /tmp/sameriver
 	git checkout HEAD -- engine/GENERATED_*
 
