@@ -160,8 +160,8 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	}
 	// start the logic goroutine if supplied
 	if r.Logic != nil {
-		spawnDebug("Setting and starting logic for %d...", entity.ID)
-		logicUnit := m.EntityLogicTable.setLogic(entity, r.Logic)
+		spawnDebug("Setting logic for %d...", entity.ID)
+		m.EntityLogicTable.setLogic(entity, r.Logic)
 	}
 	// set entity active and notify entity is active
 	m.setActiveState(entity, true)
@@ -179,11 +179,12 @@ func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
 	// only act if the state is different to that which exists
 	if m.entityTable.activeStates[entity.ID] != state {
 		// start / stop logic accordingly
-		logic := m.EntityLogicTable.getLogic(entity)
 		if state == true {
-			m.EntityLogicTable.startLogic(entity)
+			behaviorDebug("Starting logic for %d...", entity.ID)
+			m.EntityLogicTable.StartLogic(entity)
 		} else {
-			m.EntityLogicTable.stopLogic(entity)
+			behaviorDebug("Stopping logic for %d...", entity.ID)
+			m.EntityLogicTable.StopLogic(entity)
 		}
 		// set active state
 		m.entityTable.activeStates[entity.ID] = state
@@ -277,20 +278,20 @@ func (m *EntityManager) GetUpdatedEntityList(
 // (remember lockEntity will wait as long as it needs to access the entity,
 // but will fail if, upon locking, gen does not match)
 func (m *EntityManager) AtomicEntityModify(
-	req OneEntityComponents,
+	req EntityComponents,
 	f func()) bool {
 
 	// lock the activemodification lock as a "reader" for the duration of this
 	// function (that is, other copies of AtomicEntityModify can also lock)
-	m.entityTable.activeModificationLocks[req.entity.ID].RLock()
-	defer m.entityTable.activeModificationLocks[req.entity.ID].RUnlock()
-	if !m.entityTable.genValidate(req.entity) {
-		atomicEntityModifyDebug("GENMISMATCH entity %v", req.entity)
+	m.entityTable.activeModificationLocks[req.Entity.ID].RLock()
+	defer m.entityTable.activeModificationLocks[req.Entity.ID].RUnlock()
+	if !m.entityTable.genValidate(req.Entity) {
+		atomicEntityModifyDebug("GENMISMATCH entity %v", req.Entity)
 		return false
 	}
 
 	// lock the entity we want to modify on the requested components
-	m.lockOneEntityComponents(req)
+	m.lockEntityComponents(req)
 
 	// if we're here, all components were acquired for the entity
 	f()
@@ -305,16 +306,16 @@ func (m *EntityManager) AtomicEntityModify(
 // this is an extension of AtomicEntityModify and the comments for that function
 // should be seen for reference in understanding this code
 func (m *EntityManager) AtomicEntitiesModify(
-	reqs []OneEntityComponents,
+	reqs []EntityComponents,
 	f func()) bool {
 
 	// NOTE: we don't need to sort the requests by entity ID since these are
 	// RLocks and can overlap without deadlock
 	for _, req := range reqs {
-		m.entityTable.activeModificationLocks[req.entity.ID].RLock()
-		defer m.entityTable.activeModificationLocks[req.entity.ID].RUnlock()
-		if !m.entityTable.genValidate(req.entity) {
-			atomicEntityModifyDebug("GENMISMATCH entity %v", req.entity)
+		m.entityTable.activeModificationLocks[req.Entity.ID].RLock()
+		defer m.entityTable.activeModificationLocks[req.Entity.ID].RUnlock()
+		if !m.entityTable.genValidate(req.Entity) {
+			atomicEntityModifyDebug("GENMISMATCH entity %v", req.Entity)
 			return false
 		}
 	}

@@ -43,7 +43,7 @@ type SpatialHash struct {
 	// (not double-buffered since we exclude two
 	// ComputeSpatialHash() instances from running at the same time using
 	// the computeInProgress flag)
-	cellChannels [][]chan EntityToken
+	cellChannels [][]chan EntityPosition
 	// used to signal that the compute is done from one of the receive()
 	// workers
 	computeDoneChannel chan bool
@@ -92,8 +92,8 @@ func NewSpatialHash(
 	}
 	// get a list of spatial entities
 	h.spatialEntities = em.GetUpdatedEntityList(
-		engine.EntityQueryFromComponentBitArray("spatial",
-			MakeComponentBitArray([]engine.ComponentType{engine.BOX_COMPONENT})))
+		EntityQueryFromComponentBitArray("spatial",
+			MakeComponentBitArray([]ComponentType{BOX_COMPONENT})))
 	// take down references needed during compute
 	h.em = em
 	// canEnterCompute is expressed in the traditional sense that 1 = true,
@@ -193,15 +193,20 @@ func (h *SpatialHash) ComputeSpatialHash() {
 	// range of entities to scan, each one pinned to a CPU
 	nScanPartitions := runtime.NumCPU()
 	partition_size := len(h.spatialEntities.Entities) / nScanPartitions
-	for partition := 0; partition < nScanPartitions; partition++ {
-		offset := partition * partition_size
-		if partition == nScanPartitions-1 {
-			// the last partition includes the remainder
-			partition_size = len(h.spatialEntities.Entities) - offset
+	// only compute if there is at least 1 entity
+	if len(h.spatialEntities.Entities) > 0 {
+		fmt.Printf("There are %d entities to spatially hash...\n",
+			len(h.spatialEntities.Entities))
+		for partition := 0; partition < nScanPartitions; partition++ {
+			offset := partition * partition_size
+			if partition == nScanPartitions-1 {
+				// the last partition includes the remainder
+				partition_size = len(h.spatialEntities.Entities) - offset
+			}
+			go h.scanner(offset, partition_size)
 		}
-		go h.scanner(offset, partition_size)
+		<-h.computeDoneChannel
 	}
-	<-h.computeDoneChannel
 	// if we're here, the computation has completed.
 	// this increment, due to the modulo logic, is equivalent to setting
 	// computedBufIndex = nextBufIndex
@@ -226,9 +231,8 @@ func (h *SpatialHash) receiver(
 }
 
 // helper function for hashing
-func cellForPoint(x int32, y int32) (cellX int, cellY int) {
-	retur(x/int32(h.WORLD_HEIGHT/h.GRID),
-		y/int32(h.WORLD_WIDTH/h.GRID))
+func (h *SpatialHash) cellForPoint(x int, y int) (cellX int, cellY int) {
+	return x / (h.WORLD_HEIGHT / h.GRID), y / h.WORLD_WIDTH / h.GRID
 }
 
 // used to iterate the entities and send them to the right cell's channels
@@ -242,16 +246,15 @@ func (h *SpatialHash) scanner(offset int, partition_size int) {
 		// find out how many grids the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)
-		gridsHigh := box.Y / h.GRID
-		gridsWide := box.X / h.GRID
+		gridsHigh := int(box.Y) / h.GRID
+		gridsWide := int(box.X) / h.GRID
 		// figure out which cell the topleft corner is in
-		topLeftCellY := cellForPoint(box.Y)
-		topLeftCellX := cellForPoint(box.X)
+		topLeftCellX, topLeftCellY := h.cellForPoint(int(box.X), int(box.Y))
 		// walk through each cell the entity touches by starting in the top-left
 		// and walking according to gridsHigh and gridsWide
 		for iy := 0; iy < gridsHigh+1; iy++ {
 			for ix := 0; ix < gridsWide+1; ix++ {
-				y := topLeftCellX + iy
+				y := topLeftCellY + iy
 				x := topLeftCellX + ix
 				h.cellChannels[y][x] <- EntityPosition{entity, box}
 			}
@@ -263,7 +266,8 @@ func (h *SpatialHash) scanner(offset int, partition_size int) {
 // this on a pointer returned from CurrentTablePointer unless you can be sure
 // that you have not called ComputeSpatialHash more than once - it does not
 // lock the table it reads, and if you call ComputeSpatialHash twice, you may
-// start to write to the table as this function reads it)
+// start to write to the table as this function reads it). Usually best to call
+// on a Copy()
 func (h *SpatialHash) String(table *SpatialHashTable) string {
 	var buffer bytes.Buffer
 	size := int(unsafe.Sizeof(*table))

@@ -236,7 +236,10 @@ sceneloop:
 			Logger.Printf("[Game] wanting to run %s\n", scene.Name())
 			loadingSceneStoppedChan := g.AsyncRunLoadingScene()
 			g.currentSceneEndGameLoopChan = make(chan (bool), 1)
-			scene.Init(g, g.currentSceneEndGameLoopChan)
+			// TODO: nil below could be a config - how do we get the config
+			// for the incoming scene? Is it attached to what comes through
+			// the channel?
+			scene.Init(g, nil, g.currentSceneEndGameLoopChan)
 			Logger.Printf("[Game] %s.Init() finished\n", scene.Name())
 			g.endLoadingSceneGameLoopChan <- true
 			Logger.Printf("[Game] sent signal to stop loading scene\n")

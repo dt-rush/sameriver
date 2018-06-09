@@ -26,54 +26,45 @@ func (m *EntityManager) unlockEntityComponent(
 	m.Components.accessEnd(component)
 }
 
-func (m *EntityManager) lockOneEntityComponents(
-	entityComponents OneEntityComponents) {
+func (m *EntityManager) lockEntityComponents(
+	entityComponents EntityComponents) {
 
 	// lock components in sorted order
-	sort.Slice(entityComponents.components, func(i int, j int) bool {
-		return entityComponents.components[i] < entityComponents.components[j]
+	sort.Slice(entityComponents.Components, func(i int, j int) bool {
+		return entityComponents.Components[i] < entityComponents.Components[j]
 	})
-	for _, component := range entityComponents.components {
-		m.lockEntityComponent(entityComponents.entity, component)
+	for _, component := range entityComponents.Components {
+		m.lockEntityComponent(entityComponents.Entity, component)
 	}
 }
 
 func (m *EntityManager) lockEntitiesComponents(
-	entitiesComponents []OneEntityComponents) {
+	entitiesComponents []EntityComponents) {
 
 	// lock entities in sorted order
 	sort.Slice(entitiesComponents, func(i int, j int) bool {
-		return entitiesComponents[i].entity.ID < entitiesComponents[j].entity.ID
+		return entitiesComponents[i].Entity.ID < entitiesComponents[j].Entity.ID
 	})
 	for _, entityComponents := range entitiesComponents {
-		m.lockOneEntityComponents(entityComponents)
+		m.lockEntityComponents(entityComponents)
 	}
 }
 
 func (m *EntityManager) unlockEntitiesComponents(
-	entitiesComponents []OneEntityComponents) {
+	entitiesComponents []EntityComponents) {
 	for _, entityComponents := range entitiesComponents {
-		for _, component := range entityComponents.components {
-			m.unlockEntityComponent(entityComponents.entity, component)
+		for _, component := range entityComponents.Components {
+			m.unlockEntityComponent(entityComponents.Entity, component)
 		}
 	}
 }
 
-func (m *EntityManager) unlockOneEntityComponents(
-	entityComponents OneEntityComponents) {
-	for _, component := range entityComponents.components {
-		m.unlockEntityComponent(
-			entityComponents.entity,
-			component)
-	}
-}
-
 func (m *EntityManager) unlockEntityComponents(
-	entityComponents []EntityComponent) {
-	for _, entityComponent := range entityComponents {
+	entityComponents EntityComponents) {
+	for _, component := range entityComponents.Components {
 		m.unlockEntityComponent(
-			entityComponent.entity,
-			entityComponent.component)
+			entityComponents.Entity,
+			component)
 	}
 }
 

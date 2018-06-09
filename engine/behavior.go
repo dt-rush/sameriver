@@ -33,51 +33,47 @@ type Behavior struct {
 //		logic_unit.go (containing type)
 //		logic_component.go (storage for LogicUnits)
 //		entity_manager.go (runs LogicUnits on entity spawn)
-func LogicUnitFromBehaviors(
+func EntityLogicFuncFromBehaviors(
 	name string,
-	behaviors []Behavior) EntityLogicUnit {
+	behaviors []Behavior) EntityLogicFunc {
 
-	return EntityLogicUnit{
-		// stopChannel
-		stopChannel: make(chan bool),
-		/* start of EntityLogicFunc */
-		f: func(entity EntityToken,
-			StopChannel chan bool,
-			em *EntityManager) {
+	/* start of EntityLogicFunc */
+	return func(entity EntityToken,
+		StopChannel chan bool,
+		em *EntityManager) {
 
-			// runs each of the entity behaviours whenever they're ready,
-			// until we get a value on the stopchannel
-		logicloop:
-			for {
-				select {
-				case <-StopChannel:
-					break logicloop
-				default:
-					for i := 0; i < len(behaviors); i++ {
-						if behaviors[i].running.CAS(0, 1) {
+		// runs each of the entity behaviours whenever they're ready,
+		// until we get a value on the stopchannel
+	logicloop:
+		for {
+			select {
+			case <-StopChannel:
+				break logicloop
+			default:
+				for i := 0; i < len(behaviors); i++ {
+					if behaviors[i].running.CAS(0, 1) {
 
-							go func(behavior *Behavior) {
-								behaviorDebug("Running behavior %s for entity "+
-									"%d, ", behavior.Name, entity.ID)
-								behavior.Func(entity, em)
-								behaviorDebug("Sleeping %d ms for entity %d, "+
-									"behavior: %s",
-									behavior.Sleep.Nanoseconds()/1e6,
-									entity.ID, behavior.Name)
-								time.Sleep(behavior.Sleep)
-								behavior.running.Store(0)
-							}(&behaviors[i])
-						}
+						go func(behavior *Behavior) {
+							behaviorDebug("Running behavior %s for entity "+
+								"%d, ", behavior.Name, entity.ID)
+							behavior.Func(entity, em)
+							behaviorDebug("Sleeping %d ms for entity %d, "+
+								"behavior: %s",
+								behavior.Sleep.Nanoseconds()/1e6,
+								entity.ID, behavior.Name)
+							time.Sleep(behavior.Sleep)
+							behavior.running.Store(0)
+						}(&behaviors[i])
 					}
-					// we need to sleep here in order to avoid burning the CPU!
-					// honestly - no entity logic needs to run every frame, that's
-					// insane. If something like that is needed (60fps animations,
-					// for example), it should be integrated into the graphics
-					// system in a totally different way than as an entity
-					// atomically modifying its own frame or something
-					time.Sleep(5 * FRAME_SLEEP)
 				}
+				// we need to sleep here in order to avoid burning the CPU!
+				// honestly - no entity logic needs to run every frame, that's
+				// insane. If something like that is needed (60fps animations,
+				// for example), it should be integrated into the graphics
+				// system in a totally different way than as an entity
+				// atomically modifying its own frame or something
+				time.Sleep(5 * FRAME_SLEEP)
 			}
-		}, /* end of EntityLogicFunc */
-	}
+		}
+	} /* end of EntityLogicFunc */
 }

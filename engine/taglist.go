@@ -5,8 +5,8 @@ import (
 )
 
 type TagList struct {
-	Mutex sync.RWMutex
 	tags  []string
+	Mutex sync.RWMutex
 }
 
 func (l *TagList) Has(tag string) bool {
@@ -29,5 +29,5 @@ func (l *TagList) Remove(tag string) {
 func (l *TagList) Copy() TagList {
 	tagsCopy := make([]string, len(l.tags))
 	copy(tagsCopy, l.tags)
-	return TagList{tagsCopy}
+	return TagList{tags: tagsCopy}
 }

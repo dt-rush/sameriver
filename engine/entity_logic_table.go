@@ -35,7 +35,7 @@ func (t *EntityLogicTable) setLogic(
 	return logicUnit
 }
 
-func (t *EntityLogicTable) startLogic(entity EntityToken) {
+func (t *EntityLogicTable) StartLogic(entity EntityToken) {
 	t.mutex.RLock()
 	t.mutex.RUnlock()
 	if logicUnit, exists := t.entityLogicUnits[entity]; exists {
@@ -45,7 +45,7 @@ func (t *EntityLogicTable) startLogic(entity EntityToken) {
 	}
 }
 
-func (t *EntityLogicTable) stopLogic(entity EntityToken) {
+func (t *EntityLogicTable) StopLogic(entity EntityToken) {
 	t.mutex.RLock()
 	t.mutex.RUnlock()
 	if logicUnit, exists := t.entityLogicUnits[entity]; exists {
@@ -69,7 +69,8 @@ func (t *EntityLogicTable) deleteLogic(entity EntityToken) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	if unit, exists := t.entityLogicUnits[entity]; exists {
+	if _, exists := t.entityLogicUnits[entity]; exists {
+		t.StopLogic(entity)
 		delete(t.entityLogicUnits, entity)
 	}
 }
