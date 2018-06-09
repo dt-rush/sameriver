@@ -133,14 +133,14 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	// NOTE: we can directly set the Active component value since no other
 	// goroutine could be also writing to this entity, due to the
 	// AtomicEntityModify pattern
-	m.ApplyComponentSet(entity, r.Components)
+	m.ApplyComponentSet(r.Components)(entity)
 	// apply the tags
 	for _, tag := range r.Tags {
-		m.TagEntityAtomic(tag)(entity)
+		m.TagEntity(tag)(entity)
 	}
 	// apply the unique tag if provided
 	if r.UniqueTag != "" {
-		m.TagEntityAtomic(r.UniqueTag)(entity)
+		m.TagEntity(r.UniqueTag)(entity)
 	}
 	// start the logic goroutine if supplied
 	if r.Logic != nil {
@@ -312,7 +312,7 @@ func (m *EntityManager) entityComponentBitArray(id int) bitarray.BitArray {
 }
 
 // apply the given tag to the given entity
-func (m *EntityManager) TagEntityAtomic(tag string) func(EntityToken) {
+func (m *EntityManager) TagEntity(tag string) func(EntityToken) {
 	return func(entity EntityToken) {
 
 		// add the tag to the taglist component
@@ -327,7 +327,7 @@ func (m *EntityManager) TagEntityAtomic(tag string) func(EntityToken) {
 }
 
 // remove a tag from an entity
-func (m *EntityManager) UntagEntityAtomic(tag string) func(EntityToken) {
+func (m *EntityManager) UntagEntity(tag string) func(EntityToken) {
 	return func(entity EntityToken) {
 		m.Components.TagList[entity.ID].Remove(tag)
 		m.activeEntityLists.checkActiveEntity(entity)
@@ -335,11 +335,11 @@ func (m *EntityManager) UntagEntityAtomic(tag string) func(EntityToken) {
 }
 
 // Tag each of the entities in the provided array of ID's with the given tag
-func (m *EntityManager) TagEntitiesAtomic(tag string) func([]EntityToken) {
+func (m *EntityManager) TagEntities(tag string) func([]EntityToken) {
 	return func(entities []EntityToken) {
 
 		for _, entity := range entities {
-			m.TagEntityAtomic(tag)(entity)
+			m.TagEntity(tag)(entity)
 		}
 	}
 }

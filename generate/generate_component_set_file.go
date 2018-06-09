@@ -40,21 +40,24 @@ func generateComponentSetFile(
 			g.Return(Id("b"))
 		}).Line()
 
-	// create EntityManager.ApplyComponentSet method
+	// create EntityManager.ApplyComponent method
 	f.Func().
 		Params(Id("em").Op("*").Id("EntityManager")).
-		Id("ApplyComponentSet").Params(
-		Id("cs").Id("ComponentSet"),
-		Id("entity").Id("EntityToken")).
-		BlockFunc(func(g *Group) {
-			for _, component := range components {
-				g.If(Id("cs").Dot(component.Name).Op("!=").Nil()).Block(
-					Id("em").Dot("Components").Dot(component.Name).
-						Index(Id("entity").Dot("ID")).Op("=").
-						Op("*").Id("cs").Dot(component.Name),
-				)
-			}
-		})
+		Id("ApplyComponentSet").Params(Id("cs").Id("ComponentSet")).
+		Func().Parens(Id("EntityToken")).
+		Block(
+			Return(Func().Parens(Id("entity").Id("EntityToken")).
+				BlockFunc(func(g *Group) {
+					for _, component := range components {
+						g.If(Id("cs").Dot(component.Name).Op("!=").Nil()).Block(
+							Id("em").Dot("Components").Dot(component.Name).
+								Index(Id("entity").Dot("ID")).Op("=").
+								Op("*").Id("cs").Dot(component.Name),
+						)
+					}
+				}),
+			),
+		)
 
 	return f
 }
