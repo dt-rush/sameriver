@@ -29,10 +29,6 @@ type EntityTable struct {
 	// the gen of an ID is how many times an entity has been
 	// spawned on that ID
 	gens [MAX_ENTITIES]uint32
-	// RWMutex used by AtomicEntityModify() and
-	// Despawn(). AtomicEntityModify() enters as a Reader (RLock(), Despawn()
-	// enters as a Writer (Lock())
-	activeModificationLocks [MAX_ENTITIES]sync.RWMutex
 	// despawnFlag is set for an entity when Despawn() starts, and is set to 0
 	// when an entity is spawned on that ID
 	despawnFlags [MAX_ENTITIES]atomic.Uint32
@@ -68,8 +64,6 @@ func (t *EntityTable) genValidate(entity EntityToken) bool {
 // Returns int32 so that we can return -1 in case we have run out of space
 // to spawn entities
 func (t *EntityTable) allocateID() (EntityToken, error) {
-	t.IDMutex.Lock()
-	defer t.IDMutex.Unlock()
 	// if maximum entity count reached, fail with message
 	if t.numEntities == MAX_ENTITIES {
 		msg := fmt.Sprintf("Reached max entity count: %d. "+
@@ -98,16 +92,12 @@ func (t *EntityTable) allocateID() (EntityToken, error) {
 }
 
 func (t *EntityTable) addToCurrentEntities(entity EntityToken) {
-	t.IDMutex.Lock()
-	defer t.IDMutex.Unlock()
 	t.currentEntities = append(t.currentEntities, entity)
 }
 
 // lock the ID table after waiting on spawn mutex to be unlocked,
 // and grab a copy of the currently allocated IDs
 func (t *EntityTable) snapshotAllocatedEntities() []EntityToken {
-	t.IDMutex.RLock()
-	defer t.IDMutex.RUnlock()
 
 	snapshot := make([]EntityToken, len(t.currentEntities))
 	copy(snapshot, t.currentEntities)

@@ -17,30 +17,6 @@ package engine
 // DespawnAll() which should not happen during normal gameplay)
 // TODO: figure out whether DespawnAll works properly and doesn't race with
 // anything
-func (m *EntityManager) DespawnAtomic(entity EntityToken) {
-
-	// NOTE: we don't need to gen validate here because we can only
-	// despawn, changing gen, once all current modifications (by the logic of
-	// AtomicEntityModify are valid for the gen of the entity) are RUnlock()'d,
-	// and we can only call DespawnAtomic inside an AtomicEntityModify for
-	// which gen matched, which will only be able to acquire the
-	// activeModificationLock after this despawn has been processed (gen will
-	// the mismatch)
-	if m.entityTable.despawnFlags[entity.ID].CAS(0, 1) {
-		go func() {
-			// lock the activeModification lock as a *writer* (compare with
-			// the lock as RLock() in lockEntityComponent), so that calls to
-			// AtomicEntityModify which want to lock the active modification
-			// lock will not proceed until the lock is released in
-			// EntityManager.processDespawnChannel() (at which point they will
-			// proceed, but immediately fail the genValidate() call, since the
-			// entity was despawned, causing the AtomicEntityModify call for
-			// the despawned entity to return flase)
-			m.entityTable.activeModificationLocks[entity.ID].Lock()
-			m.despawnChannel <- entity
-		}()
-	}
-}
 
 // set an entity Active and notify all active entity lists
 func (m *EntityManager) Activate(entity EntityToken) {

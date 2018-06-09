@@ -99,10 +99,6 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 		File:    generateComponentsTableFile(components),
 		Imports: importStrings,
 	}
-	sourceFiles["component_read_methods.go"] = GenerateFile{
-		File:    generateComponentReadMethodsFile(components),
-		Imports: importStrings,
-	}
 	// return
 	return "generated", nil, sourceFiles
 }

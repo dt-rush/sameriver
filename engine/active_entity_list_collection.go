@@ -1,14 +1,9 @@
 package engine
 
-import (
-	"sync"
-)
-
 type ActiveEntityListCollection struct {
 	em       *EntityManager
 	watchers map[string]*EntityQueryWatcher
 	lists    map[string]*UpdatedEntityList
-	mutex    sync.RWMutex
 }
 
 func (c *ActiveEntityListCollection) Init(em *EntityManager) {
@@ -19,9 +14,6 @@ func (c *ActiveEntityListCollection) Init(em *EntityManager) {
 
 func (c *ActiveEntityListCollection) GetUpdatedEntityList(
 	q EntityQuery) *UpdatedEntityList {
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 
 	// return the list if it already exists (this is why query names should
 	// be unique if they expect to be unique!)
@@ -46,9 +38,6 @@ func (c *ActiveEntityListCollection) GetUpdatedEntityList(
 
 func (c *ActiveEntityListCollection) notifyActiveState(
 	entity EntityToken, active bool) {
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 
 	for _, watcher := range c.watchers {
 
@@ -75,9 +64,6 @@ func (c *ActiveEntityListCollection) notifyActiveState(
 }
 
 func (c *ActiveEntityListCollection) checkActiveEntity(entity EntityToken) {
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 
 	for _, watcher := range c.watchers {
 

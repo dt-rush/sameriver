@@ -71,7 +71,6 @@ func (m *EntityManager) processDespawnChannel() {
 	for i := 0; i < n; i++ {
 		e := <-m.despawnChannel
 		m.despawnInternal(e)
-		m.entityTable.activeModificationLocks[e.ID].Unlock()
 	}
 }
 
@@ -134,7 +133,7 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	// NOTE: we can directly set the Active component value since no other
 	// goroutine could be also writing to this entity, due to the
 	// AtomicEntityModify pattern
-	m.ApplyComponentSetAtomic(r.Components)(entity)
+	m.ApplyComponentSet(entity, r.Components)
 	// apply the tags
 	for _, tag := range r.Tags {
 		m.TagEntityAtomic(tag)(entity)
@@ -157,6 +156,16 @@ func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
 	return entity, nil
 }
 
+// set an entity Active and notify all active entity lists
+func (m *EntityManager) Activate(entity EntityToken) {
+	m.setActiveState(entity, true)
+}
+
+// set an entity inactive and notify all active entity lists
+func (m *EntityManager) Deactivate(entity EntityToken) {
+	m.setActiveState(entity, false)
+}
+
 // sets the active state on an entity and notifies all watchers
 func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
 	// only act if the state is different to that which exists
@@ -170,7 +179,7 @@ func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
 		// set active state
 		m.entityTable.activeStates[entity.ID] = state
 		// notify any listening lists
-		go m.activeEntityLists.notifyActiveState(entity, state)
+		m.activeEntityLists.notifyActiveState(entity, state)
 	}
 }
 
@@ -203,7 +212,6 @@ func (m *EntityManager) DespawnAll() {
 		// had changed
 		entity := m.entityTable.currentEntities[0]
 		m.entityTable.despawnFlags[entity.ID].Store(1)
-		m.entityTable.activeModificationLocks[entity.ID].Lock()
 		m.despawnInternal(entity)
 	}
 	// drain the spawn channel
@@ -237,10 +245,17 @@ func (m *EntityManager) despawnInternal(entity EntityToken) {
 	// immediately want to check if the gen of the entity still matches.
 	m.entityTable.incrementGen(entity.ID)
 
-	// Deactivate and notify
+	//  and notify
 	m.setActiveState(entity, false)
 	// delete the entity's logic (we have to do this *after* stopping it)
 	m.EntityLogicTable.deleteLogic(entity)
+}
+
+func (m *EntityManager) Despawn(entity EntityToken) {
+	// despawn is idempotent
+	if m.entityTable.despawnFlags[entity.ID].CAS(0, 1) {
+		m.despawnChannel <- entity
+	}
 }
 
 // Get a list of entities which will be updated whenever an entity becomes
@@ -249,59 +264,6 @@ func (m *EntityManager) GetUpdatedEntityList(
 	q EntityQuery) *UpdatedEntityList {
 
 	return m.activeEntityLists.GetUpdatedEntityList(q)
-}
-
-// hold a single entity for modification, invoking a function which will be
-// clear to access the entity components directly, releasing the entity on
-// return. Return value is whether the entity was locked and f was run
-// (remember lockEntity will wait as long as it needs to access the entity,
-// but will fail if, upon locking, gen does not match)
-func (m *EntityManager) AtomicEntityModify(
-	req EntityComponents,
-	f func()) bool {
-
-	// lock the activemodification lock as a "reader" for the duration of this
-	// function (that is, other copies of AtomicEntityModify can also lock)
-	m.entityTable.activeModificationLocks[req.Entity.ID].RLock()
-	defer m.entityTable.activeModificationLocks[req.Entity.ID].RUnlock()
-	if !m.entityTable.genValidate(req.Entity) {
-		return false
-	}
-
-	// lock the entity we want to modify on the requested components
-	m.lockEntityComponents(req)
-
-	// if we're here, all components were acquired for the entity
-	f()
-	return true
-}
-
-// hold several entities on several components for modification, invoking a
-// function which will be clear to access the entity components directly,
-// releasing them on return. Return value is whether the entities were locked
-// successfully (and hence, f ran)
-//
-// this is an extension of AtomicEntityModify and the comments for that function
-// should be seen for reference in understanding this code
-func (m *EntityManager) AtomicEntitiesModify(
-	reqs []EntityComponents,
-	f func()) bool {
-
-	// NOTE: we don't need to sort the requests by entity ID since these are
-	// RLocks and can overlap without deadlock
-	for _, req := range reqs {
-		m.entityTable.activeModificationLocks[req.Entity.ID].RLock()
-		defer m.entityTable.activeModificationLocks[req.Entity.ID].RUnlock()
-		if !m.entityTable.genValidate(req.Entity) {
-			return false
-		}
-	}
-
-	// lock all the entities we want to modify on the requested components
-	m.lockEntitiesComponents(reqs)
-
-	f()
-	return true
 }
 
 // Register an entity class (subsequently retrievable)
@@ -318,9 +280,6 @@ func (m *EntityManager) GetEntityClass(name string) EntityClass {
 // Gets the first entity with the given tag. Warns to console if the entity is
 // not unique. Returns an error if the entity doesn't exist
 func (m *EntityManager) UniqueTaggedEntity(tag string) (EntityToken, error) {
-	m.tags.mutex.RLock()
-	defer m.tags.mutex.RUnlock()
-
 	list := m.EntitiesWithTag(tag)
 	if list.Length() == 0 {
 		errorMsg := fmt.Sprintf("tried to fetch unique entity %s, but did "+
@@ -350,6 +309,39 @@ func (m *EntityManager) EntityHasComponent(id int, COMPONENT int) bool {
 // Returns the component bit array for an entity
 func (m *EntityManager) entityComponentBitArray(id int) bitarray.BitArray {
 	return m.entityTable.componentBitArrays[id]
+}
+
+// apply the given tag to the given entity
+func (m *EntityManager) TagEntityAtomic(tag string) func(EntityToken) {
+	return func(entity EntityToken) {
+
+		// add the tag to the taglist component
+		m.Components.TagList[entity.ID].Add(tag)
+		// if the entity is active, it has already been checked by all lists,
+		// thus generate a new signal to add it to the list of the tag
+		if m.entityTable.activeStates[entity.ID] {
+			m.tags.createEntitiesWithTagListIfNeeded(tag)
+			m.activeEntityLists.checkActiveEntity(entity)
+		}
+	}
+}
+
+// remove a tag from an entity
+func (m *EntityManager) UntagEntityAtomic(tag string) func(EntityToken) {
+	return func(entity EntityToken) {
+		m.Components.TagList[entity.ID].Remove(tag)
+		m.activeEntityLists.checkActiveEntity(entity)
+	}
+}
+
+// Tag each of the entities in the provided array of ID's with the given tag
+func (m *EntityManager) TagEntitiesAtomic(tag string) func([]EntityToken) {
+	return func(entities []EntityToken) {
+
+		for _, entity := range entities {
+			m.TagEntityAtomic(tag)(entity)
+		}
+	}
 }
 
 // Somewhat expensive conversion of entire entity list to string, locking

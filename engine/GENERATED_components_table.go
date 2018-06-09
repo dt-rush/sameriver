@@ -12,36 +12,17 @@
 package engine
 
 import (
-	"sync"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
 type ComponentsTable struct {
-	em          *EntityManager
-	accessLocks [N_COMPONENT_TYPES]sync.RWMutex
-	valueLocks  [N_COMPONENT_TYPES][MAX_ENTITIES]sync.RWMutex
-	Box         [MAX_ENTITIES]sdl.Rect
-	Sprite      [MAX_ENTITIES]Sprite
-	TagList     [MAX_ENTITIES]TagList
-	Velocity    [MAX_ENTITIES][2]float32
+	em       *EntityManager
+	Box      [MAX_ENTITIES]sdl.Rect
+	Sprite   [MAX_ENTITIES]Sprite
+	TagList  [MAX_ENTITIES]TagList
+	Velocity [MAX_ENTITIES][2]float32
 }
 
 func (ct *ComponentsTable) Init(em *EntityManager) {
 	ct.em = em
-}
-
-func (ct *ComponentsTable) lock(component ComponentType) {
-	ct.accessLocks[component].Lock()
-}
-
-func (ct *ComponentsTable) unlock(component ComponentType) {
-	ct.accessLocks[component].Unlock()
-}
-
-func (ct *ComponentsTable) accessStart(component ComponentType) {
-	ct.accessLocks[component].RLock()
-}
-
-func (ct *ComponentsTable) accessEnd(component ComponentType) {
-	ct.accessLocks[component].RUnlock()
 }
