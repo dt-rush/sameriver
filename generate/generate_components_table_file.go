@@ -28,13 +28,7 @@ func generateComponentsTableFile(
 		Id("Init").
 		Params(Id("em").Op("*").Id("EntityManager")).
 		Block(
-			For(
-				Id("i").Op(":=").Lit(0),
-				Id("i").Op("<").Id("N_COMPONENT_TYPES"),
-				Id("i").Op("++"),
-			).Block(
-				Id("ct").Dot("accessLocks").Index(Id("i")).Op("=").
-					Id("NewComponentAccessLock").Call()),
+			Id("ct").Dot("em").Op("=").Id("em"),
 		).Line()
 
 	// write the lock method

@@ -23,9 +23,7 @@ type ComponentsTable struct {
 }
 
 func (ct *ComponentsTable) Init(em *EntityManager) {
-	for i := 0; i < N_COMPONENT_TYPES; i++ {
-		ct.accessLocks[i] = NewComponentAccessLock()
-	}
+	ct.em = em
 }
 
 func (ct *ComponentsTable) lock(component ComponentType) {
