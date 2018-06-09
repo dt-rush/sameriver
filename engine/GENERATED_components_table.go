@@ -14,6 +14,7 @@ package engine
 import "sync"
 
 type ComponentsTable struct {
+	em          *EntityManager
 	accessLocks [N_COMPONENT_TYPES]sync.RWMutex
 	valueLocks  [N_COMPONENT_TYPES][MAX_ENTITIES]sync.RWMutex
 	Box         [MAX_ENTITIES]Box

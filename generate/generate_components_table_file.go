@@ -11,6 +11,7 @@ func generateComponentsTableFile(
 
 	// build the ComponentsTable struct declaration
 	f.Type().Id("ComponentsTable").StructFunc(func(g *Group) {
+		g.Id("em").Op("*").Id("EntityManager")
 		g.Id("accessLocks").
 			Index(Id("N_COMPONENT_TYPES")).Qual("sync", "RWMutex")
 		g.Id("valueLocks").
