@@ -127,8 +127,9 @@ func (h *SpatialHash) CurrentTablePointer() *SpatialHashTable {
 // get a *copy* of the current table which is safe to hold onto, mutate, etc.
 func (h *SpatialHash) CurrentTableCopy() SpatialHashTable {
 	var t = h.CurrentTablePointer()
-	var t2 SpatialHashTable
+	t2 := make([][][]EntityPosition, h.GRID)
 	for y := 0; y < h.GRID; y++ {
+		t2[y] = make([][]EntityPosition, h.GRID)
 		for x := 0; x < h.GRID; x++ {
 			t2[y][x] = make([]EntityPosition, len((*t)[y][x]))
 			copy(t2[y][x], (*t)[y][x])
@@ -195,8 +196,6 @@ func (h *SpatialHash) ComputeSpatialHash() {
 	partition_size := len(h.spatialEntities.Entities) / nScanPartitions
 	// only compute if there is at least 1 entity
 	if len(h.spatialEntities.Entities) > 0 {
-		fmt.Printf("There are %d entities to spatially hash...\n",
-			len(h.spatialEntities.Entities))
 		for partition := 0; partition < nScanPartitions; partition++ {
 			offset := partition * partition_size
 			if partition == nScanPartitions-1 {
@@ -256,8 +255,6 @@ func (h *SpatialHash) scanner(offset int, partition_size int) {
 			for ix := 0; ix < gridsWide+1; ix++ {
 				y := topLeftCellY + iy
 				x := topLeftCellX + ix
-				fmt.Printf("%+v has box %+v and is in (%d, %d)\n",
-					entity, box, x, y)
 				h.cellChannels[y][x] <- EntityPosition{entity, box}
 			}
 		}
