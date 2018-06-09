@@ -39,3 +39,20 @@ func (cs *ComponentSet) ToBitArray() bitarray.BitArray {
 	}
 	return b
 }
+
+func (em *EntityManager) ApplyComponentSetAtomic(cs ComponentSet) func(EntityToken) {
+	return func(entity EntityToken) {
+		if cs.Box != nil {
+			em.Components.Box[entity.ID] = *cs.Box
+		}
+		if cs.Sprite != nil {
+			em.Components.Sprite[entity.ID] = *cs.Sprite
+		}
+		if cs.TagList != nil {
+			em.Components.TagList[entity.ID] = *cs.TagList
+		}
+		if cs.Velocity != nil {
+			em.Components.Velocity[entity.ID] = *cs.Velocity
+		}
+	}
+}
