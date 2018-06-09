@@ -11,8 +11,12 @@
 
 package engine
 
+import (
+	"github.com/veandco/go-sdl2/sdl"
+)
+
 type ComponentSet struct {
-	Box      *Box
+	Box      *sdl.Rect
 	Sprite   *Sprite
 	TagList  *TagList
 	Velocity *[2]float32

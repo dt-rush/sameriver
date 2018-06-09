@@ -11,13 +11,16 @@
 
 package engine
 
-import "sync"
+import (
+	"sync"
+	"github.com/veandco/go-sdl2/sdl"
+)
 
 type ComponentsTable struct {
 	em          *EntityManager
 	accessLocks [N_COMPONENT_TYPES]sync.RWMutex
 	valueLocks  [N_COMPONENT_TYPES][MAX_ENTITIES]sync.RWMutex
-	Box         [MAX_ENTITIES]Box
+	Box         [MAX_ENTITIES]sdl.Rect
 	Sprite      [MAX_ENTITIES]Sprite
 	TagList     [MAX_ENTITIES]TagList
 	Velocity    [MAX_ENTITIES][2]float32

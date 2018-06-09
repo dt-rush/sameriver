@@ -7,16 +7,33 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 
 	"github.com/dave/jennifer/jen"
 )
 
 // type definitions used by the generate process
+type GenerateFile struct {
+	File    *jen.File
+	Imports []string
+}
 type GenerateFunc func(target string) (
 	message string,
 	err error,
-	sourceFiles map[string]*jen.File)
+	sourceFiles map[string]GenerateFile)
 type TargetsCollection map[string]GenerateFunc
+
+// struct to hold data related to the generation
+type GenerateProcess struct {
+	engineDir        string
+	gameDir          string
+	outputDir        string
+	sourceFiles      map[string]GenerateFile
+	messages         map[string]string
+	errors           map[string]string
+	rootTargets      TargetsCollection
+	targetsProcessed []string
+}
 
 // a header to affix to all files generated
 const GENERATED_HEADER = `
@@ -31,18 +48,7 @@ const GENERATED_HEADER = `
 //
 `
 
-// struct to hold data related to the generation
-type GenerateProcess struct {
-	engineDir        string
-	gameDir          string
-	outputDir        string
-	sourceFiles      map[string]*jen.File
-	messages         map[string]string
-	errors           map[string]string
-	rootTargets      TargetsCollection
-	targetsProcessed []string
-}
-
+// Init the struct
 func NewGenerateProcess(
 	engineDir string, gameDir string, outputDir string) *GenerateProcess {
 
@@ -50,7 +56,7 @@ func NewGenerateProcess(
 	g.engineDir = engineDir
 	g.gameDir = gameDir
 	g.outputDir = outputDir
-	g.sourceFiles = make(map[string]*jen.File)
+	g.sourceFiles = make(map[string]GenerateFile)
 	g.messages = make(map[string]string)
 	g.errors = make(map[string]string)
 	return &g
@@ -60,13 +66,13 @@ func NewGenerateProcess(
 func (g *GenerateProcess) Run(targets TargetsCollection) {
 	for target, f := range targets {
 		fmt.Printf("----- running target: %s -----\n", target)
-		message, err, sourceFiles := f(target)
+		message, err, generateFiles := f(target)
 		g.messages[target] = message
 		if err != nil {
 			g.errors[target] = fmt.Sprintf("%v", err)
 		}
-		for filename, contents := range sourceFiles {
-			g.sourceFiles[filename] = contents
+		for filename, generateFile := range generateFiles {
+			g.sourceFiles[filename] = generateFile
 		}
 		g.targetsProcessed = append(g.targetsProcessed, target)
 	}
@@ -91,7 +97,7 @@ func (g *GenerateProcess) OutputFiles() {
 	fmt.Println("Generated source file output in progress...")
 	defer fmt.Println("Finished output of generated source files.")
 
-	for filename, file := range g.sourceFiles {
+	for filename, generateFile := range g.sourceFiles {
 		// open the file to write
 		outputFileName := fmt.Sprintf("%s/GENERATED_%s", g.outputDir, filename)
 		f, err := os.Create(outputFileName)
@@ -99,7 +105,57 @@ func (g *GenerateProcess) OutputFiles() {
 			panic(err)
 		}
 		// add header and package declaration
-		contents := fmt.Sprintf("%s\n%#v", GENERATED_HEADER, file)
+		contents := fmt.Sprintf("%s\n", GENERATED_HEADER)
+		// add the file contents
+		contents += fmt.Sprintf("%#v", generateFile.File)
+		// parse the generated file to find out what imports it has
+		importsToAdd := getImportStringsFromFileAsString(
+			fmt.Sprintf("%#v", generateFile.File))
+		nImportsAlready := len(importsToAdd)
+		// add any imports to be added which are not already in the
+		// generated file
+		for _, importStr := range generateFile.Imports {
+			importedAlready := false
+			for _, importAlready := range importsToAdd {
+				if importStr == importAlready {
+					importedAlready = true
+				}
+			}
+			if !importedAlready {
+				importsToAdd = append(importsToAdd, importStr)
+			}
+		}
+		// if we have imports to add
+		if len(importsToAdd) > 0 {
+			if nImportsAlready == 0 {
+				// there is no import statement already. We can add ours
+				// directly after the package statement
+				packageStatementRegexp := regexp.MustCompile("\npackage .+\n")
+				regexpPosition := packageStatementRegexp.
+					FindStringIndex(contents)
+				contents = contents[:regexpPosition[1]+1] +
+					importsBlockFromStrings(importsToAdd) +
+					contents[regexpPosition[1]:]
+			} else {
+				// replace the import statement/block of the generated file with
+				// our own import block containing what was already there plus what
+				// was part of the specifications of the GenerateFile (usually the
+				// imports from the custom files)
+				var importStatementRegexp *regexp.Regexp
+				if nImportsAlready == 1 {
+					importStatementRegexp = regexp.MustCompile(
+						"\nimport .+\n")
+				} else {
+					importStatementRegexp = regexp.MustCompile(
+						"\nimport \\(\n[^\\)]+\\)\n")
+				}
+				regexpPosition := importStatementRegexp.
+					FindStringIndex(contents)
+				contents = contents[:regexpPosition[0]+1] +
+					importsBlockFromStrings(importsToAdd) +
+					contents[regexpPosition[1]:]
+			}
+		}
 		// write the file
 		contentsBytes := []byte(contents)
 		bytesWritten, err := f.Write(contentsBytes)

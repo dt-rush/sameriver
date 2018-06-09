@@ -5,6 +5,7 @@ package generate
 // various component-related code in the engine
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -14,8 +15,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-
-	"github.com/dave/jennifer/jen"
 )
 
 type ComponentSpec struct {
@@ -28,13 +27,13 @@ type ComponentSpec struct {
 func (g *GenerateProcess) GenerateComponentFiles(target string) (
 	message string,
 	err error,
-	sourceFiles map[string]*jen.File) {
+	sourceFiles map[string]GenerateFile) {
 
-	sourceFiles = make(map[string]*jen.File)
+	sourceFiles = make(map[string]GenerateFile)
 
 	// seed file is the file in ${gameDir}/sameriver that we'll generate engine
 	// code from
-	seedFile := path.Join(g.gameDir, "custom_component_set.go")
+	customFile := path.Join(g.gameDir, "custom_component_set.go")
 	// engine base component set file is the file in engineDir which holds the
 	// base components which all entities can have according to the minimal
 	// requirements of the engine
@@ -42,24 +41,68 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 
 	// read from files
 	var components []ComponentSpec
-	if g.gameDir != "" {
-		components = g.getComponentSpecs(seedFile, "CustomComponentSet")
-	}
+	// read components from the engine base
 	components = append(components, g.getComponentSpecs(
 		engineBaseComponentSetFile, "BaseComponentSet")...)
+	// add in the custom components from the game dir
+	if g.gameDir != "" {
+		customComponents := g.getComponentSpecs(customFile, "CustomComponentSet")
+		// if there's a name collision, stop and return error
+		for _, baseComponent := range components {
+			for _, customComponent := range customComponents {
+				if baseComponent.Name == customComponent.Name {
+					msg := fmt.Sprintf("component name collision between "+
+						"engine and game custom code: %s appears twice\n",
+						baseComponent.Name)
+					return msg, errors.New(msg), nil
+				}
+			}
+		}
+		components = append(components, customComponents...)
+	}
+	// sort the names
 	sort.Slice(components, func(i int, j int) bool {
 		return strings.Compare(components[i].Name, components[j].Name) == -1
 	})
 
+	// combine imports from seed file and engine base file
+	var importStrings []string
+	importStrings = append(importStrings,
+		getImportStringsFromFile(engineBaseComponentSetFile)...)
+	if g.gameDir != "" {
+		// if the import is already in the engine base file's imports,
+		// skip inclusion, else add to the list of import strings
+		for _, customImport := range getImportStringsFromFile(customFile) {
+			inBaseImports := false
+			for _, baseImport := range importStrings {
+				if baseImport == customImport {
+					inBaseImports = true
+					break
+				}
+			}
+			if !inBaseImports {
+				importStrings = append(importStrings, customImport)
+			}
+		}
+	}
+
 	// generate source files
-	sourceFiles["components_enum.go"] =
-		generateComponentsEnumFile(components)
-	sourceFiles["component_set.go"] =
-		generateComponentSetFile(components)
-	sourceFiles["components_table.go"] =
-		generateComponentsTableFile(components)
-	sourceFiles["component_read_methods.go"] =
-		generateComponentReadMethodsFile(components)
+	sourceFiles["components_enum.go"] = GenerateFile{
+		File:    generateComponentsEnumFile(components),
+		Imports: make([]string, 0),
+	}
+	sourceFiles["component_set.go"] = GenerateFile{
+		File:    generateComponentSetFile(components),
+		Imports: importStrings,
+	}
+	sourceFiles["components_table.go"] = GenerateFile{
+		File:    generateComponentsTableFile(components),
+		Imports: importStrings,
+	}
+	sourceFiles["component_read_methods.go"] = GenerateFile{
+		File:    generateComponentReadMethodsFile(components),
+		Imports: importStrings,
+	}
 	// return
 	return "generated", nil, sourceFiles
 }

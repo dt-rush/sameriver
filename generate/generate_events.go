@@ -1,8 +1,8 @@
 package generate
 
 import (
+	"errors"
 	"fmt"
-	. "github.com/dave/jennifer/jen"
 	"go/ast"
 	"go/token"
 	"path"
@@ -13,14 +13,14 @@ import (
 func (g *GenerateProcess) GenerateEventFiles(target string) (
 	message string,
 	err error,
-	sourceFiles map[string]*File) {
+	sourceFiles map[string]GenerateFile) {
 
 	// generate source files
-	sourceFiles = make(map[string]*File)
+	sourceFiles = make(map[string]GenerateFile)
 
 	// seed file is the file in ${gameDir}/sameriver that we'll generate
 	// engine code from
-	seedFile := path.Join(g.gameDir, "custom_events.go")
+	customFile := path.Join(g.gameDir, "custom_events.go")
 	// engine base events file is the file in engineDir which holds the
 	// base events which are integrated into the minimal reuqirements of
 	// the engine
@@ -28,14 +28,54 @@ func (g *GenerateProcess) GenerateEventFiles(target string) (
 
 	// read from files
 	var eventNames []string
-	if g.gameDir != "" {
-		eventNames = g.getEventNames(seedFile)
-	}
+	// read event names from the engine base
 	eventNames = append(eventNames, g.getEventNames(engineBaseEventsFile)...)
+	// add in the custom event names from the game dir
+	if g.gameDir != "" {
+		customEventNames := g.getEventNames(customFile)
+		// if there's a name collision, stop and return an error
+		for _, baseEventName := range eventNames {
+			for _, customEventName := range customEventNames {
+				if baseEventName == customEventName {
+					msg := fmt.Sprintf("event name collision between engine "+
+						"and game custom code: %s appears twice\n",
+						baseEventName)
+					return msg, errors.New(msg), nil
+				}
+			}
+		}
+		// if no error, we'll be here. append the custom names
+		eventNames = append(eventNames, customEventNames...)
+	}
+	// sort the names
 	sort.Strings(eventNames)
 
+	// combine imports from seed file and engine base file
+	var importStrings []string
+	importStrings = append(importStrings,
+		getImportStringsFromFile(engineBaseEventsFile)...)
+	if g.gameDir != "" {
+		// if the import is already in the engine base file's imports,
+		// skip inclusion, else add to the list of import strings
+		for _, customImport := range getImportStringsFromFile(customFile) {
+			inBaseImports := false
+			for _, baseImport := range importStrings {
+				if baseImport == customImport {
+					inBaseImports = true
+					break
+				}
+			}
+			if !inBaseImports {
+				importStrings = append(importStrings, customImport)
+			}
+		}
+	}
+
 	// generate enum source file
-	sourceFiles["events_enum.go"] = generateEventsEnumFile(eventNames)
+	sourceFiles["events_enum.go"] = GenerateFile{
+		File:    generateEventsEnumFile(eventNames),
+		Imports: importStrings,
+	}
 	// return
 	return "generated", nil, sourceFiles
 }
