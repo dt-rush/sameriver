@@ -42,8 +42,6 @@ var spawnDebug = DebugFunction(
 	"Spawn", DEBUG_SPAWN)
 var despawnDebug = DebugFunction(
 	"Despawn", DEBUG_DESPAWN)
-var behaviorDebug = DebugFunction(
-	"Behavior", DEBUG_BEHAVIOR)
 var tagsDebug = DebugFunction(
 	"Tags", DEBUG_TAGS)
 var functionEndDebug = DebugFunction(

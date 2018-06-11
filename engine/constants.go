@@ -26,7 +26,6 @@ const DEBUG_ATOMIC_MODIFY = false
 const DEBUG_ENTITY_CLASS = false
 const DEBUG_WORLD_LOGIC = true
 const DEBUG_ENTITY_LOCKS = false
-const DEBUG_BEHAVIOR = false
 const DEBUG_TAGS = true
 const DEBUG_FUNCTION_END = false
 const DEBUG_ACTIVE_STATE = false
