@@ -36,26 +36,7 @@ func (s *PhysicsSystem) Init(
 	s.WORLD_HEIGHT = int32(WORLD_HEIGHT)
 }
 
-// apply velocity to position of entities
-// NOTE: this is called from Update and is covered by its mutex on the
-// components
-func (s *PhysicsSystem) applyPhysics(entity EntityToken, dt_ms uint16) {
-
-}
-
-func (s *PhysicsSystem) Update(dt_ms uint16) {
-
-	// prevent any updates to the physicsEntities list while we're using it
-	s.physicsEntities.Mutex.Lock()
-	defer s.physicsEntities.Mutex.Unlock()
-
-	// acquire exclusive lock on the box and velocity components
-	// TODO: have this happen at a higher level of abstraction - see comment
-	// in spatial_hash.go in ComputeSpatialHash()
-	s.em.Components.accessLocks[BOX_COMPONENT].Lock()
-	s.em.Components.accessLocks[VELOCITY_COMPONENT].Lock()
-	defer s.em.Components.accessLocks[BOX_COMPONENT].Unlock()
-	defer s.em.Components.accessLocks[VELOCITY_COMPONENT].Unlock()
+func (s *PhysicsSystem) Update(dt_ms int64) {
 
 	// note: there are no function calls in the below, so we won't
 	// be preempted while computin physics (this is very good, get it over with)

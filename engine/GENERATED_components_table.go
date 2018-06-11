@@ -16,11 +16,13 @@ import (
 )
 
 type ComponentsTable struct {
-	em       *EntityManager
-	Box      [MAX_ENTITIES]sdl.Rect
-	Sprite   [MAX_ENTITIES]Sprite
-	TagList  [MAX_ENTITIES]TagList
-	Velocity [MAX_ENTITIES][2]float32
+	em             *EntityManager
+	Box            [MAX_ENTITIES]sdl.Rect
+	MovementTarget [MAX_ENTITIES]Vec2D
+	Sprite         [MAX_ENTITIES]Sprite
+	Steer          [MAX_ENTITIES]float32
+	TagList        [MAX_ENTITIES]TagList
+	Velocity       [MAX_ENTITIES]Vec2D
 }
 
 func (ct *ComponentsTable) Init(em *EntityManager) {

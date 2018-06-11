@@ -9,7 +9,7 @@ func generateEventsEnumFile(eventNames []string) *File {
 	// for each event name, create an uppercase const name
 	constNames := make(map[string]string)
 	for _, eventName := range eventNames {
-		eventNameStem := strings.Replace(eventName, "Event", "", 1)
+		eventNameStem := strings.Replace(eventName, "Data", "", 1)
 		constNames[eventName] = strings.ToUpper(eventNameStem) + "_EVENT"
 	}
 	// generate the source file

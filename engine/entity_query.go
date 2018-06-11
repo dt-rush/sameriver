@@ -19,14 +19,7 @@ func EntityQueryFromTag(tag string) EntityQuery {
 	return EntityQuery{
 		Name: tag,
 		TestFunc: func(entity EntityToken, em *EntityManager) bool {
-			tagList, err := em.Components.ReadTagList(entity)
-			if err != nil {
-				return false
-			} else {
-				tagList.Mutex.RLock()
-				defer tagList.Mutex.RUnlock()
-				return tagList.Has(tag)
-			}
+			return em.Components.TagList[entity.ID].Has(tag)
 		}}
 }
 

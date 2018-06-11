@@ -122,16 +122,6 @@ func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
 
 func (s *CollisionSystem) Update(dt_ms uint16) {
 
-	// prevent any updates to the collidableEntities list while we're using it
-	s.collidableEntities.Mutex.Lock()
-	defer s.collidableEntities.Mutex.Unlock()
-
-	// acquire exclusive lock on the box component (position and bounding box)
-	// TODO: have this happen at a higher level of abstraction - see comment
-	// in spatial_hash.go in ComputeSpatialHash()
-	s.em.Components.accessLocks[BOX_COMPONENT].Lock()
-	defer s.em.Components.accessLocks[BOX_COMPONENT].Unlock()
-
 	entities := s.collidableEntities.Entities
 
 	// NOTE: The ID's in collidableEntities are in sorted order,

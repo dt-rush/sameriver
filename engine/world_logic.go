@@ -2,7 +2,6 @@ package engine
 
 import (
 	"go.uber.org/atomic"
-	"sync"
 	"time"
 )
 
@@ -23,7 +22,6 @@ type WorldLogicManager struct {
 	ev     *EventBus
 	Logics map[string]*WorldLogic
 	lists  map[string]*UpdatedEntityList
-	mutex  sync.RWMutex
 }
 
 func (wl *WorldLogicManager) Init(
@@ -38,16 +36,10 @@ func (wl *WorldLogicManager) Init(
 
 func (wl *WorldLogicManager) AddList(query EntityQuery) {
 
-	wl.mutex.Lock()
-	defer wl.mutex.Unlock()
 	wl.lists[query.Name] = wl.em.GetUpdatedEntityList(query)
 }
 
 func (wl *WorldLogicManager) GetEntitiesFromList(name string) []EntityToken {
-	wl.mutex.RLock()
-	wl.lists[name].Mutex.RLock()
-	defer wl.lists[name].Mutex.RUnlock()
-	defer wl.mutex.RUnlock()
 
 	entities := wl.lists[name].Entities
 	copyOfEntities := make([]EntityToken, len(entities))
@@ -58,8 +50,6 @@ func (wl *WorldLogicManager) GetEntitiesFromList(name string) []EntityToken {
 // NOTE: we make no check of whether the key exists in the map,
 // if used improperly, this will cause panics
 func (wl *WorldLogicManager) ActivateLogic(name string) {
-	wl.mutex.RLock()
-	defer wl.mutex.RUnlock()
 
 	Logic := wl.Logics[name]
 	Logic.active.Store(1)
@@ -69,16 +59,12 @@ func (wl *WorldLogicManager) ActivateLogic(name string) {
 // NOTE: we make no check of whether the key exists in the map,
 // if used improperly, this will cause panics
 func (wl *WorldLogicManager) DeactivateLogic(name string) {
-	wl.mutex.RLock()
-	defer wl.mutex.RUnlock()
 
 	Logic := wl.Logics[name]
 	Logic.active.Store(0)
 }
 
 func (wl *WorldLogicManager) IsActive(name string) bool {
-	wl.mutex.RLock()
-	defer wl.mutex.RUnlock()
 
 	Logic := wl.Logics[name]
 	return Logic.active.Load() == 1
@@ -86,9 +72,6 @@ func (wl *WorldLogicManager) IsActive(name string) bool {
 
 func (wl *WorldLogicManager) AddLogic(
 	name string, sleep time.Duration, f WorldLogicFunc) {
-
-	wl.mutex.Lock()
-	defer wl.mutex.Unlock()
 
 	wl.Logics[name] = &WorldLogic{
 		Name:  name,
@@ -98,12 +81,11 @@ func (wl *WorldLogicManager) AddLogic(
 	go wl.run(name)
 }
 
+// TODO: revisit how this works in light of the new sync gameloop we're working
+// with
 func (wl *WorldLogicManager) run(name string) {
-
 	// set the logic active
-	wl.mutex.RLock()
 	Logic := wl.Logics[name]
-	wl.mutex.RUnlock()
 	Logic.active.Store(1)
 
 	worldLogicDebug("running %s...", name)

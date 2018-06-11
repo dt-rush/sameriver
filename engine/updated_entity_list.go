@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"sync"
 	"time"
 )
 
@@ -23,8 +22,6 @@ type UpdatedEntityList struct {
 	qw EntityQueryWatcher
 	// the entities in the list (tagged with gen)
 	Entities []EntityToken
-	// used to protect the Entities slice when adding or removing an entity
-	Mutex sync.RWMutex
 	// a list of ID's the channel has yet to check in being created
 	backlog []EntityToken
 	// a function used to test if an entity belongs in the list
@@ -62,15 +59,11 @@ func NewUpdatedEntityList(
 
 // get the length of the list
 func (l *UpdatedEntityList) Length() int {
-	l.Mutex.RLock()
-	l.Mutex.RUnlock()
 	return len(l.Entities)
 }
 
 // get the first element of the list
 func (l *UpdatedEntityList) FirstEntity() (EntityToken, error) {
-	l.Mutex.RLock()
-	defer l.Mutex.RUnlock()
 	if len(l.Entities) == 0 {
 		return ENTITY_TOKEN_NIL, errors.New("list is empty, no first element")
 	}
@@ -79,8 +72,6 @@ func (l *UpdatedEntityList) FirstEntity() (EntityToken, error) {
 
 // get a random element of the list
 func (l *UpdatedEntityList) RandomEntity() (EntityToken, error) {
-	l.Mutex.RLock()
-	defer l.Mutex.RUnlock()
 	if len(l.Entities) == 0 {
 		return ENTITY_TOKEN_NIL,
 			errors.New("list is empty, can't get random element")
@@ -130,8 +121,6 @@ func (l *UpdatedEntityList) stop() {
 }
 
 func (l *UpdatedEntityList) actOnSignal(signal EntitySignal) {
-	l.Mutex.Lock()
-	defer l.Mutex.Unlock()
 
 	// callbacks list want to be notified of each signal we get
 	for _, callback := range l.callbacks {
@@ -171,15 +160,10 @@ func (l *UpdatedEntityList) remove(e EntityToken) {
 func (l *UpdatedEntityList) addCallback(
 	callback func(EntitySignal)) {
 
-	l.Mutex.Lock()
-	defer l.Mutex.Unlock()
-
 	l.callbacks = append(l.callbacks, callback)
 }
 
 // For printing the list
 func (l *UpdatedEntityList) String() string {
-	l.Mutex.Lock()
-	defer l.Mutex.Unlock()
 	return fmt.Sprintf("%s", l.Entities)
 }

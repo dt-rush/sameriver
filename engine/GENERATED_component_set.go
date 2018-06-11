@@ -17,10 +17,12 @@ import (
 )
 
 type ComponentSet struct {
-	Box      *sdl.Rect
-	Sprite   *Sprite
-	TagList  *TagList
-	Velocity *[2]float32
+	Box            *sdl.Rect
+	MovementTarget *Vec2D
+	Sprite         *Sprite
+	Steer          *float32
+	TagList        *TagList
+	Velocity       *Vec2D
 }
 
 func (cs *ComponentSet) ToBitArray() bitarray.BitArray {
@@ -28,8 +30,14 @@ func (cs *ComponentSet) ToBitArray() bitarray.BitArray {
 	if cs.Box != nil {
 		b.SetBit(uint64(BOX_COMPONENT))
 	}
+	if cs.MovementTarget != nil {
+		b.SetBit(uint64(MOVEMENTTARGET_COMPONENT))
+	}
 	if cs.Sprite != nil {
 		b.SetBit(uint64(SPRITE_COMPONENT))
+	}
+	if cs.Steer != nil {
+		b.SetBit(uint64(STEER_COMPONENT))
 	}
 	if cs.TagList != nil {
 		b.SetBit(uint64(TAGLIST_COMPONENT))
@@ -45,8 +53,14 @@ func (em *EntityManager) ApplyComponentSet(cs ComponentSet) func(EntityToken) {
 		if cs.Box != nil {
 			em.Components.Box[entity.ID] = *cs.Box
 		}
+		if cs.MovementTarget != nil {
+			em.Components.MovementTarget[entity.ID] = *cs.MovementTarget
+		}
 		if cs.Sprite != nil {
 			em.Components.Sprite[entity.ID] = *cs.Sprite
+		}
+		if cs.Steer != nil {
+			em.Components.Steer[entity.ID] = *cs.Steer
 		}
 		if cs.TagList != nil {
 			em.Components.TagList[entity.ID] = *cs.TagList

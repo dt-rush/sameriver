@@ -4,15 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang-collections/go-datastructures/bitarray"
-	"go.uber.org/atomic"
-	"sync"
-	goatomic "sync/atomic"
 )
 
 // used by the EntityManager to hold info about the allocated entities
 type EntityTable struct {
-	// mutex used to make the allocation / deallocation of an ID atomic
-	IDMutex sync.RWMutex
 	// how many entities there are
 	numEntities int
 	// list of Entities which have been allocated
@@ -31,15 +26,15 @@ type EntityTable struct {
 	gens [MAX_ENTITIES]uint32
 	// despawnFlag is set for an entity when Despawn() starts, and is set to 0
 	// when an entity is spawned on that ID
-	despawnFlags [MAX_ENTITIES]atomic.Uint32
+	despawnFlags [MAX_ENTITIES]int
 }
 
 func (t *EntityTable) incrementGen(id int) {
-	goatomic.AddUint32(&t.gens[id], 1)
+	t.gens[id]++
 }
 
 func (t *EntityTable) getGen(id int) uint32 {
-	return goatomic.LoadUint32(&t.gens[id])
+	return t.gens[id]
 }
 
 func (t *EntityTable) getEntityToken(id int) EntityToken {
@@ -95,8 +90,6 @@ func (t *EntityTable) addToCurrentEntities(entity EntityToken) {
 	t.currentEntities = append(t.currentEntities, entity)
 }
 
-// lock the ID table after waiting on spawn mutex to be unlocked,
-// and grab a copy of the currently allocated IDs
 func (t *EntityTable) snapshotAllocatedEntities() []EntityToken {
 
 	snapshot := make([]EntityToken, len(t.currentEntities))

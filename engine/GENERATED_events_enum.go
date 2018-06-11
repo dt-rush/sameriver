@@ -13,13 +13,7 @@ package engine
 
 type EventType int
 
-const N_EVENT_TYPES = 2
-const (
-	COLLISION_EVENT = iota
-	GENERIC_EVENT   = iota
-)
+const N_EVENT_TYPES = 0
+const ()
 
-var EVENT_NAMES = map[EventType]string{
-	COLLISION_EVENT: "COLLISION_EVENT",
-	GENERIC_EVENT:   "GENERIC_EVENT",
-}
+var EVENT_NAMES = map[EventType]string{}

@@ -28,19 +28,28 @@ type EntityManager struct {
 	// store EntityQueryWatchers and references to UpdatedEntityLists used
 	// to implement GetUpdatedEntityList
 	activeEntityLists ActiveEntityListCollection
+	// used to communicate with other systems
+	ev *EventBus
 	// Channel for spawn entity requests (processed as a batch each Update())
-	spawnChannel chan EntitySpawnRequest
+	spawnSubscription EventChannel
 	// Channel for despawn entity requests (processed as a batch each Update())
-	despawnChannel chan EntityToken
+	despawnSubscription EventChannel
 	// spawnMutex prevents despawn / spawn events from occurring while we
 	// convert the entire EntityManager to string (expensive!)
 	spawnMutex sync.Mutex
 }
 
-func (m *EntityManager) Init() {
-	// allocate space for the spawn buffer
-	m.spawnChannel = make(chan EntitySpawnRequest,
-		MAX_ENTITIES)
+func (m *EntityManager) Init(ev *EventBus) {
+	// take down a reference to the event bus
+	m.ev = ev
+	// set up spawn / despawn channels as listeners on the appropriate
+	// events
+	m.spawnSubscription = ev.Subscribe(
+		"EntityManager::SpawnRequest",
+		NewSimpleEventQuery(SPAWNREQUEST_EVENT))
+	m.despawnSubscription = ev.Subscribe(
+		"EntityManager::DespawnRequest",
+		NewSimpleEventQuery(DESPAWNREQUEST_EVENT))
 	// init ComponentsTable
 	m.Components.Init(m)
 	// init EntityClassTable
@@ -50,7 +59,7 @@ func (m *EntityManager) Init() {
 	// init ActiveEntityListCollection
 	m.activeEntityLists.Init(m)
 	// init EntityLogicTable
-	m.EntityLogicTable.Init(m)
+	m.EntityLogicTable.Init()
 }
 
 // called once per scene Update() for scenes holding an entity manager
@@ -60,100 +69,6 @@ func (m *EntityManager) Update() {
 	// buffered channel
 	m.processDespawnChannel()
 	m.processSpawnChannel()
-}
-
-// process the despawn requests in the channel buffer
-func (m *EntityManager) processDespawnChannel() {
-	m.spawnMutex.Lock()
-	defer m.spawnMutex.Unlock()
-
-	n := len(m.despawnChannel)
-	for i := 0; i < n; i++ {
-		e := <-m.despawnChannel
-		m.despawnInternal(e)
-	}
-}
-
-// process the spawn requests in the channel buffer
-func (m *EntityManager) processSpawnChannel() {
-	// get the current number of requests in the channel and only process
-	// them. More may continue to pile up. They'll get processed next time.
-	m.spawnMutex.Lock()
-	defer m.spawnMutex.Unlock()
-
-	n := len(m.spawnChannel)
-	for i := 0; i < n; i++ {
-		// get the request from the channel
-		r := <-m.spawnChannel
-		m.Spawn(r)
-	}
-}
-
-// used by goroutines to request the spawning of an entity
-func (m *EntityManager) RequestSpawn(r EntitySpawnRequest) {
-	m.spawnChannel <- r
-}
-
-// given a list of components, spawn an entity with the default values
-// returns the EntityToken (used to spawn an entity for which we *want* the
-// token back)
-func (m *EntityManager) Spawn(r EntitySpawnRequest) (EntityToken, error) {
-
-	// used if spawn is impossible for various reasons
-	var fail = func(msg string) (EntityToken, error) {
-		return ENTITY_TOKEN_NIL, errors.New(msg)
-	}
-
-	// if the spawn request has a unique tag, return error if tag already
-	// has an entity
-	if r.UniqueTag != "" &&
-		m.EntitiesWithTag(r.UniqueTag).Length() != 0 {
-		return fail(fmt.Sprintf("requested to spawn unique entity for %s, "+
-			"but %s already exists", r.UniqueTag))
-	}
-
-	// get an ID for the entity
-	entity, err := m.entityTable.allocateID()
-	if err != nil {
-		errorMsg := fmt.Sprintf("⚠ Error in allocateID(): %s. Will not spawn "+
-			"entity with tags: %v\n", err, r.Tags)
-		return fail(errorMsg)
-	}
-	// print a debug message
-	// set the bitarray for this entity
-	m.entityTable.componentBitArrays[entity.ID] = r.Components.ToBitArray()
-	// copy the data inNto the component storage for each component
-	// (note: we dereference the pointers, this is a real copy, so it's good
-	// that component values are either small pieces of data like [2]uint16
-	// or a pointer to a func, etc.).
-	// We don't "zero" the values of components not in the entity's set,
-	// because if a system operating on the component data
-	// expects to work on the data, it should be maintaining a list of
-	// entities with the required components using an UpdatedEntityList
-	// NOTE: we can directly set the Active component value since no other
-	// goroutine could be also writing to this entity, due to the
-	// AtomicEntityModify pattern
-	m.ApplyComponentSet(r.Components)(entity)
-	// apply the tags
-	for _, tag := range r.Tags {
-		m.TagEntity(tag)(entity)
-	}
-	// apply the unique tag if provided
-	if r.UniqueTag != "" {
-		m.TagEntity(r.UniqueTag)(entity)
-	}
-	// start the logic goroutine if supplied
-	if r.Logic != nil {
-		m.EntityLogicTable.setLogic(entity, r.Logic)
-	}
-	// set entity active and notify entity is active
-	m.setActiveState(entity, true)
-	// add the entity to the list of current entities
-	m.entityTable.addToCurrentEntities(entity)
-	// set despawnFlag to 0 for the entity
-	m.entityTable.despawnFlags[entity.ID].Store(0)
-	// return EntityToken
-	return entity, nil
 }
 
 // set an entity Active and notify all active entity lists
@@ -172,9 +87,9 @@ func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
 	if m.entityTable.activeStates[entity.ID] != state {
 		// start / stop logic accordingly
 		if state == true {
-			m.EntityLogicTable.StartLogic(entity)
+			m.EntityLogicTable.ActivateLogic(entity)
 		} else {
-			m.EntityLogicTable.StopLogic(entity)
+			m.EntityLogicTable.DeactivateLogic(entity)
 		}
 		// set active state
 		m.entityTable.activeStates[entity.ID] = state
@@ -185,77 +100,11 @@ func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
 
 // returns the entity's active state if gen matches, else an error
 // (using an option-type pattern)
-func (m *EntityManager) GetActiveState(entity EntityToken) (bool, error) {
+func (m *EntityManager) getActiveState(entity EntityToken) (bool, error) {
 	if !m.entityTable.genValidate(entity) {
 		return false, errors.New("tried to get active state of despawned entity")
 	}
 	return m.entityTable.activeStates[entity.ID], nil
-}
-
-// User facing function which is used to drain the state of the
-// entity manager, and will also kill any pending spawn requests
-func (m *EntityManager) DespawnAll() {
-	m.spawnMutex.Lock()
-	defer m.spawnMutex.Unlock()
-	// iterate all IDs which could have been allocated and despawn them
-	// (each time a despawn goes through, the entityTable.currentEntities list
-	// will shrink)
-	for len(m.entityTable.currentEntities) > 0 {
-		// for each allocated ID, build a token based on the current gen
-		// lockEntity here will always return true because
-		// the gen will never mismatch, since only a despawnInternal() call
-		// could change that, and that occurs only in two places: here, where
-		// we iterate one despawn for each entity while the entityTable is
-		// locked, and in a call to Despawn() (in entity_modifications.go)
-		// from a user which would only be able to proceed after we
-		// released the entityTable lock, and would then exit since gen
-		// had changed
-		entity := m.entityTable.currentEntities[0]
-		m.entityTable.despawnFlags[entity.ID].Store(1)
-		m.despawnInternal(entity)
-	}
-	// drain the spawn channel
-	for len(m.spawnChannel) > 0 {
-		// we're draining the channel, so do nothing
-		_ = <-m.spawnChannel
-	}
-}
-
-// internal despawn function which assumes the EntityTable is locked
-func (m *EntityManager) despawnInternal(entity EntityToken) {
-	m.entityTable.IDMutex.Lock()
-	defer m.entityTable.IDMutex.Unlock()
-
-	// if the gen doesn't match, another despawn for this same entity
-	// has already been through here (if a regular Despawn() call and
-	// a DespawnAll() were racing)
-	if !m.entityTable.genValidate(entity) {
-		return
-	}
-	// decrement the entity count
-	m.entityTable.numEntities--
-	// add the ID to the list of available IDs
-	m.entityTable.availableIDs = append(m.entityTable.availableIDs, entity.ID)
-	// remove the ID from the list of allocated IDs
-	removeEntityTokenFromSlice(&m.entityTable.currentEntities, entity)
-	// Increment the gen for the ID
-	// NOTE: it's important that we increment gen before resetting the
-	// locks, since any goroutines waiting for the
-	// lock to be 0 so they can claim it in AtomicEntityModify() will then
-	// immediately want to check if the gen of the entity still matches.
-	m.entityTable.incrementGen(entity.ID)
-
-	//  and notify
-	m.setActiveState(entity, false)
-	// delete the entity's logic (we have to do this *after* stopping it)
-	m.EntityLogicTable.deleteLogic(entity)
-}
-
-func (m *EntityManager) Despawn(entity EntityToken) {
-	// despawn is idempotent
-	if m.entityTable.despawnFlags[entity.ID].CAS(0, 1) {
-		m.despawnChannel <- entity
-	}
 }
 
 // Get a list of entities which will be updated whenever an entity becomes
@@ -354,10 +203,7 @@ func (m *EntityManager) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
 	for _, entity := range m.entityTable.currentEntities {
-		tags, err := m.Components.ReadTagList(entity)
-		if err != nil {
-			continue // entity was despawned
-		}
+		tags := m.Components.TagList[entity.ID]
 		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",
 			entity.ID, tags)
 		buffer.WriteString(entityRepresentation)

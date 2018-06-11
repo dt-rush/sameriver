@@ -65,3 +65,5 @@ alpha in the other sprite
 [GENERATE]
 
 add comments to generated files
+
+generate event-to-string methods which print via printf "%+v" each struct field

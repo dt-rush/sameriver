@@ -1,11 +1,22 @@
 package engine
 
-type CollisionEvent struct {
+type CollisionData struct {
 	EntityA EntityToken
 	EntityB EntityToken
 }
 
-type GenericEvent struct {
-	Type int
-	Data interface{}
+type SpawnRequestData struct {
+	Components ComponentSet
+	Logic      func()
+	Tags       []string
+	UniqueTag  string
+}
+
+type DespawnRequestData struct {
+	Entity EntityToken
+}
+
+type LogicStartStopData struct {
+	entity    EntityToken
+	startStop bool
 }
