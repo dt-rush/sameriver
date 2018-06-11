@@ -139,12 +139,8 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 				s.rateLimiterArray.GetRateLimiter(
 					uint16(i.ID),
 					uint16(j.ID)).Do(func() {
-					s.ev.Publish(Event{
-						Type:        COLLISION_EVENT,
-						Description: fmt.Sprintf("collision(%d,%d)", i, j),
-						Data: CollisionEvent{
-							EntityA: i,
-							EntityB: j}})
+					s.ev.Publish(COLLISION_EVENT,
+						CollisionData{EntityA: i, EntityB: j})
 				})
 				// TODO: move both entities away from their common center
 			}

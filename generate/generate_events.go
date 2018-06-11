@@ -99,9 +99,9 @@ func (g *GenerateProcess) getEventNames(srcFileName string) (
 		// get the name of the type
 		name := decl.Specs[0].(*ast.TypeSpec).Name.Name
 		// if it's not a .+Event name, continue
-		if validName, _ := regexp.MatchString(".+Event", name); !validName {
+		if validName, _ := regexp.MatchString(".+Data", name); !validName {
 			fmt.Printf("type %s in %s does not match regexp for an event "+
-				"type (\".+Event\"). Will not include in generated files.\n",
+				"type (\".+Data\"). Will not include in generated files.\n",
 				name, srcFileName)
 			continue
 		}

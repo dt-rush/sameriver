@@ -13,7 +13,15 @@ package engine
 
 type EventType int
 
-const N_EVENT_TYPES = 0
-const ()
+const N_EVENT_TYPES = 3
+const (
+	COLLISION_EVENT      = iota
+	DESPAWNREQUEST_EVENT = iota
+	SPAWNREQUEST_EVENT   = iota
+)
 
-var EVENT_NAMES = map[EventType]string{}
+var EVENT_NAMES = map[EventType]string{
+	COLLISION_EVENT:      "COLLISION_EVENT",
+	DESPAWNREQUEST_EVENT: "DESPAWNREQUEST_EVENT",
+	SPAWNREQUEST_EVENT:   "SPAWNREQUEST_EVENT",
+}

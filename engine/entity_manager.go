@@ -18,12 +18,12 @@ type EntityManager struct {
 	entityTable EntityTable
 	// TagTable contains UpdatedEntityLists for tagged entities
 	tags TagTable
-	// entityLogicTable contains references to the LogicUnits of the entities, if
+	// Logics contains references to logic funcs of the entities, if
 	// they supplied one
-	EntityLogicTable EntityLogicTable
-	// EntityClassTable stores references to entity classes, which can be
+	Logics map[EntityToken]func()
+	// entityClasses stores references to entity classes, which can be
 	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
-	entityClasses EntityClassTable
+	entityClasses map[string]EntityClass
 	// ActiveEntityListCollection is used by GetUpdatedEntityList to
 	// store EntityQueryWatchers and references to UpdatedEntityLists used
 	// to implement GetUpdatedEntityList
@@ -117,13 +117,12 @@ func (m *EntityManager) GetUpdatedEntityList(
 
 // Register an entity class (subsequently retrievable)
 func (m *EntityManager) AddEntityClass(class EntityClass) {
-	// add the class to the EntityClassTable and return
-	m.entityClasses.addClass(class)
+	m.classes[ec.Name()] = ec
 }
 
 // Get an entity class by name
 func (m *EntityManager) GetEntityClass(name string) EntityClass {
-	return m.entityClasses.getClass(name)
+	return m.classes[name]
 }
 
 // Gets the first entity with the given tag. Warns to console if the entity is

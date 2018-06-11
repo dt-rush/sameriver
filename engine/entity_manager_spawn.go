@@ -69,7 +69,7 @@ func (m *EntityManager) processSpawn(req SpawnRequestData) (EntityToken, error) 
 	}
 	// start the logic goroutine if supplied
 	if r.Logic != nil {
-		m.EntityLogicTable.setLogic(entity, r.Logic)
+		m.Logics[e] = r.Logic
 	}
 	// set entity active and notify entity is active
 	m.setActiveState(entity, true)

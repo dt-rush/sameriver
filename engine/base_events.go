@@ -15,8 +15,3 @@ type SpawnRequestData struct {
 type DespawnRequestData struct {
 	Entity EntityToken
 }
-
-type LogicStartStopData struct {
-	entity    EntityToken
-	startStop bool
-}

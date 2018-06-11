@@ -72,6 +72,8 @@ func (m *EntityManager) processDespawn(entity EntityToken) {
 
 	//  and notify
 	m.setActiveState(entity, false)
-	// delete the entity's logic (we have to do this *after* stopping it)
-	m.EntityLogicTable.deleteLogic(entity)
+	// delete the entity's logic
+	if _, exists := m.Logics[entity]; exists {
+		delete(m.Logics, entity)
+	}
 }

@@ -192,10 +192,11 @@ func (g *Game) runGameLoopOnScene(scene Scene, endGameLoopChan chan (bool)) {
 	defer g.logGameLoopEnded(scene)
 
 	// Actual gameloop code:
-	fps_timer := NewPeriodicTimer(uint16(1000 / FPS))
-	t0 := time.Now().UnixNano()
+	fpsTicker := time.NewTicker(FRAME_SLEEP)
+	lastUpdate := time.Now().UnixNano()
 	// gameloop
 	for {
+		loopStart := time.Now().UnixNano()
 		// break the game loop when the end game loop channel gets a signal
 		if len(endGameLoopChan) > 0 {
 			Logger.Printf("[Game] len (endGameLoopChan) > 0 for %s\n",
@@ -203,27 +204,31 @@ func (g *Game) runGameLoopOnScene(scene Scene, endGameLoopChan chan (bool)) {
 			break
 		} else {
 			// else, run an iteration of the game loop
-			// calculate loop dt
-			t1 := time.Now().UnixNano()
-			dt_ms := uint16((t1 - t0) / 1e6)
-			// draw active scene at framerate
-			if fps_timer.Tick(dt_ms) {
+			// handle input
+			sdl.Do(func() {
+				g.handleKeyboard(scene)
+			})
+			// update scene
+			scene.Update(time.Since(lastUpdate).Nanoseconds() / 1e6)
+			lastUpdate = time.Now()
+			// draw scene at framerate
+			select {
+			case _ = <-fpsTicker.C:
 				sdl.Do(func() {
 					g.blankScreen()
 					scene.Draw(g.Window, g.Renderer)
 					g.Renderer.Present()
 				})
+			default:
 			}
-			// handle events and update scene
-			sdl.Do(func() {
-				g.handleKeyboard(scene)
-			})
-			scene.Update(dt_ms)
-			// set t0 so we can calculate dt next loop iteration
-			t0 = t1
 		}
-		// everyone deserves some rest now and then
-		sdl.Delay(16)
+		// sleep if we have time ("buffer time")
+		elapsed := time.Since(loopStart) / 1e6 * time.Millisecond
+		if elapsed > FRAME_SLEEP {
+			continue
+		} else {
+			sdl.Delay(FRAME_SLEEP - elapsed)
+		}
 	}
 }
 
