@@ -1,5 +1,9 @@
 package engine
 
+import (
+	"math"
+)
+
 type MovementSystem struct {
 	em               *EntityManager
 	movementEntities *UpdatedEntityList
@@ -25,17 +29,17 @@ func (s *MovementSystem) Update() {
 		// our target
 		p1 := s.em.Components.MovementTarget[e.ID]
 		v := &s.em.Components.Velocity[e.ID]
-		mv := math.Sqrt(v.x*v.x + v.y*v.y) // magnitude of velocity vector
+		mv := math.Sqrt(float64(v.X*v.X + v.Y*v.Y)) // magnitude of velocity vector
 		// our steer factor
 		s := s.em.Components.Steer[e.ID]
 
 		// compute vec with same magnitude as v pointing toward p1
-		d := Vec2D{p1.x - p0.x, p1.y - p0.y}
-		md := math.Sqrt(d.x*d.x + d.y*d.y)
-		d.x *= mv / md
-		d.y *= mv / md
+		d := Vec2D{p1.X - float32(p0.X), p1.Y - float32(p0.X)}
+		md := math.Sqrt(float64(d.X*d.X + d.Y*d.Y))
+		d.X *= float32(mv / md)
+		d.Y *= float32(mv / md)
 
-		*v.x = v.x + d.x*s
-		*v.y = v.y + d.y*s
+		v.X = v.X + d.X*s
+		v.Y = v.Y + d.Y*s
 	}
 }

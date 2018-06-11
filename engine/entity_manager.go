@@ -16,14 +16,14 @@ type EntityManager struct {
 	// EntityTable stores component bitarrays, a list of allocated EntityTokens,
 	// active states, and a list of available IDs from previous deallocations
 	entityTable EntityTable
-	// TagTable contains UpdatedEntityLists for tagged entities
-	tags TagTable
+	// updated entity lists of entities with given tags
+	entitiesWithTag map[string]*UpdatedEntityList
 	// Logics contains references to logic funcs of the entities, if
 	// they supplied one
-	Logics map[EntityToken]func()
+	Logics map[*EntityToken]*EntityLogicUnit
 	// entityClasses stores references to entity classes, which can be
 	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
-	entityClasses map[string]EntityClass
+	classes map[string]EntityClass
 	// ActiveEntityListCollection is used by GetUpdatedEntityList to
 	// store EntityQueryWatchers and references to UpdatedEntityLists used
 	// to implement GetUpdatedEntityList
@@ -53,13 +53,13 @@ func (m *EntityManager) Init(ev *EventBus) {
 	// init ComponentsTable
 	m.Components.Init(m)
 	// init EntityClassTable
-	m.entityClasses.Init()
-	// init TagTable
-	m.tags.Init(m)
+	m.classes = make(map[string]EntityClass)
 	// init ActiveEntityListCollection
 	m.activeEntityLists.Init(m)
+	// init TagTable
+	m.entitiesWithTag = make(map[string]*UpdatedEntityList)
 	// init EntityLogicTable
-	m.EntityLogicTable.Init()
+	m.Logics = make(map[*EntityToken]*EntityLogicUnit)
 }
 
 // called once per scene Update() for scenes holding an entity manager
@@ -72,39 +72,28 @@ func (m *EntityManager) Update() {
 }
 
 // set an entity Active and notify all active entity lists
-func (m *EntityManager) Activate(entity EntityToken) {
+func (m *EntityManager) Activate(entity *EntityToken) {
 	m.setActiveState(entity, true)
 }
 
 // set an entity inactive and notify all active entity lists
-func (m *EntityManager) Deactivate(entity EntityToken) {
+func (m *EntityManager) Deactivate(entity *EntityToken) {
 	m.setActiveState(entity, false)
 }
 
 // sets the active state on an entity and notifies all watchers
-func (m *EntityManager) setActiveState(entity EntityToken, state bool) {
+func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
 	// only act if the state is different to that which exists
-	if m.entityTable.activeStates[entity.ID] != state {
+	if entity.active != state {
 		// start / stop logic accordingly
-		if state == true {
-			m.EntityLogicTable.ActivateLogic(entity)
-		} else {
-			m.EntityLogicTable.DeactivateLogic(entity)
+		if logic, ok := m.Logics[entity]; ok {
+			m.Logics[entity].active = state
 		}
 		// set active state
-		m.entityTable.activeStates[entity.ID] = state
+		entity.active = state
 		// notify any listening lists
 		m.activeEntityLists.notifyActiveState(entity, state)
 	}
-}
-
-// returns the entity's active state if gen matches, else an error
-// (using an option-type pattern)
-func (m *EntityManager) getActiveState(entity EntityToken) (bool, error) {
-	if !m.entityTable.genValidate(entity) {
-		return false, errors.New("tried to get active state of despawned entity")
-	}
-	return m.entityTable.activeStates[entity.ID], nil
 }
 
 // Get a list of entities which will be updated whenever an entity becomes
@@ -116,8 +105,8 @@ func (m *EntityManager) GetUpdatedEntityList(
 }
 
 // Register an entity class (subsequently retrievable)
-func (m *EntityManager) AddEntityClass(class EntityClass) {
-	m.classes[ec.Name()] = ec
+func (m *EntityManager) AddEntityClass(c EntityClass) {
+	m.classes[c.Name()] = c
 }
 
 // Get an entity class by name
@@ -127,12 +116,12 @@ func (m *EntityManager) GetEntityClass(name string) EntityClass {
 
 // Gets the first entity with the given tag. Warns to console if the entity is
 // not unique. Returns an error if the entity doesn't exist
-func (m *EntityManager) UniqueTaggedEntity(tag string) (EntityToken, error) {
+func (m *EntityManager) UniqueTaggedEntity(tag string) (*EntityToken, error) {
 	list := m.EntitiesWithTag(tag)
 	if list.Length() == 0 {
 		errorMsg := fmt.Sprintf("tried to fetch unique entity %s, but did "+
 			"not exist", tag)
-		return ENTITY_TOKEN_NIL, errors.New(errorMsg)
+		return nil, errors.New(errorMsg)
 	}
 	if list.Length() > 1 {
 		tagsDebug("⚠ more than one entity tagged with %s, but "+
@@ -145,7 +134,16 @@ func (m *EntityManager) UniqueTaggedEntity(tag string) (EntityToken, error) {
 func (m *EntityManager) EntitiesWithTag(
 	tag string) *UpdatedEntityList {
 
-	return m.tags.GetEntitiesWithTag(tag)
+	m.createEntitiesWithTagListIfNeeded(tag)
+	return m.entitiesWithTag[tag]
+}
+
+func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
+	_, exists := m.entitiesWithTag[tag]
+	if !exists {
+		m.entitiesWithTag[tag] =
+			m.GetUpdatedEntityList(EntityQueryFromTag(tag))
+	}
 }
 
 // Boolean check of whether a given entity has a given component
@@ -160,31 +158,31 @@ func (m *EntityManager) entityComponentBitArray(id int) bitarray.BitArray {
 }
 
 // apply the given tag to the given entity
-func (m *EntityManager) TagEntity(tag string) func(EntityToken) {
-	return func(entity EntityToken) {
+func (m *EntityManager) TagEntity(t string) func(*EntityToken) {
+	return func(e *EntityToken) {
 
 		// add the tag to the taglist component
-		m.Components.TagList[entity.ID].Add(tag)
+		m.Components.TagList[e.ID].Add(t)
 		// if the entity is active, it has already been checked by all lists,
 		// thus generate a new signal to add it to the list of the tag
-		if m.entityTable.activeStates[entity.ID] {
-			m.tags.createEntitiesWithTagListIfNeeded(tag)
-			m.activeEntityLists.checkActiveEntity(entity)
+		if e.active {
+			m.createEntitiesWithTagListIfNeeded(t)
+			m.activeEntityLists.checkActiveEntity(e)
 		}
 	}
 }
 
 // remove a tag from an entity
-func (m *EntityManager) UntagEntity(tag string) func(EntityToken) {
-	return func(entity EntityToken) {
+func (m *EntityManager) UntagEntity(tag string) func(*EntityToken) {
+	return func(entity *EntityToken) {
 		m.Components.TagList[entity.ID].Remove(tag)
 		m.activeEntityLists.checkActiveEntity(entity)
 	}
 }
 
 // Tag each of the entities in the provided array of ID's with the given tag
-func (m *EntityManager) TagEntities(tag string) func([]EntityToken) {
-	return func(entities []EntityToken) {
+func (m *EntityManager) TagEntities(tag string) func([]*EntityToken) {
+	return func(entities []*EntityToken) {
 
 		for _, entity := range entities {
 			m.TagEntity(tag)(entity)

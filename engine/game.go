@@ -193,10 +193,10 @@ func (g *Game) runGameLoopOnScene(scene Scene, endGameLoopChan chan (bool)) {
 
 	// Actual gameloop code:
 	fpsTicker := time.NewTicker(FRAME_SLEEP)
-	lastUpdate := time.Now().UnixNano()
+	lastUpdate := time.Now()
 	// gameloop
 	for {
-		loopStart := time.Now().UnixNano()
+		loopStart := time.Now()
 		// break the game loop when the end game loop channel gets a signal
 		if len(endGameLoopChan) > 0 {
 			Logger.Printf("[Game] len (endGameLoopChan) > 0 for %s\n",
@@ -227,7 +227,7 @@ func (g *Game) runGameLoopOnScene(scene Scene, endGameLoopChan chan (bool)) {
 		if elapsed > FRAME_SLEEP {
 			continue
 		} else {
-			sdl.Delay(FRAME_SLEEP - elapsed)
+			sdl.Delay(uint32((FRAME_SLEEP - elapsed) / time.Millisecond))
 		}
 	}
 }

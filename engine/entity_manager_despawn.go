@@ -8,7 +8,7 @@ func (m *EntityManager) processDespawnChannel() {
 	n := len(m.despawnSubscription.C)
 	for i := 0; i < n; i++ {
 		e := <-m.despawnSubscription.C
-		m.processDespawn(e)
+		m.processDespawn(e.Data.(DespawnRequestData).Entity)
 	}
 }
 
@@ -30,45 +30,32 @@ func (m *EntityManager) DespawnAll() {
 		// from a user which would only be able to proceed after we
 		// released the entityTable lock, and would then exit since gen
 		// had changed
-		entity := m.entityTable.currentEntities[0]
-		m.processDespawn(entity)
+		m.processDespawn(m.entityTable.currentEntities[0])
 	}
 	// drain the spawn channel
-	for len(m.spawnSubscription) > 0 {
+	for len(m.spawnSubscription.C) > 0 {
 		// we're draining the channel, so do nothing
-		_ = <-m.spawnSubscription
+		_ = <-m.spawnSubscription.C
 	}
 }
 
-func (m *EntityManager) Despawn(entity EntityToken) {
+func (m *EntityManager) Despawn(entity *EntityToken) {
 	// despawn is idempotent
 	if m.entityTable.despawnFlags[entity.ID] == 0 {
 		m.entityTable.despawnFlags[entity.ID] = 1
-		m.ev.Publish(DESPAWN_EVENT, DespawnRequestData{entity})
+		m.ev.Publish(DESPAWNREQUEST_EVENT, DespawnRequestData{entity})
 	}
 }
 
 // internal despawn function which assumes the EntityTable is locked
-func (m *EntityManager) processDespawn(entity EntityToken) {
+func (m *EntityManager) processDespawn(entity *EntityToken) {
 
-	// if the gen doesn't match, another despawn for this same entity
-	// has already been through here (if a regular Despawn() call and
-	// a DespawnAll() were racing)
-	if !m.entityTable.genValidate(entity) {
-		return
-	}
 	// decrement the entity count
 	m.entityTable.numEntities--
 	// add the ID to the list of available IDs
 	m.entityTable.availableIDs = append(m.entityTable.availableIDs, entity.ID)
-	// remove the ID from the list of allocated IDs
+	// remove the entityfrom the list of current entities
 	removeEntityTokenFromSlice(&m.entityTable.currentEntities, entity)
-	// Increment the gen for the ID
-	// NOTE: it's important that we increment gen before resetting the
-	// locks, since any goroutines waiting for the
-	// lock to be 0 so they can claim it in AtomicEntityModify() will then
-	// immediately want to check if the gen of the entity still matches.
-	m.entityTable.incrementGen(entity.ID)
 
 	//  and notify
 	m.setActiveState(entity, false)

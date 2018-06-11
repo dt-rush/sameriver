@@ -21,13 +21,13 @@ type UpdatedEntityList struct {
 	// the query watcher this list is attached to
 	qw EntityQueryWatcher
 	// the entities in the list (tagged with gen)
-	Entities []EntityToken
+	Entities []*EntityToken
 	// a list of ID's the channel has yet to check in being created
-	backlog []EntityToken
+	backlog []*EntityToken
 	// a function used to test if an entity belongs in the list
 	// (supplied by EntityManager, it will have a reference to the EntityManager
 	// and will run a query's Test() function against the entity)
-	backlogTester func(entity EntityToken) bool
+	backlogTester func(entity *EntityToken) bool
 	// set to true while we're processing the backlog
 	processingBacklog bool
 	// used to stop the update loop's goroutine in
@@ -44,11 +44,11 @@ type UpdatedEntityList struct {
 // receive entity IDs
 func NewUpdatedEntityList(
 	qw EntityQueryWatcher,
-	backlog []EntityToken,
-	backlogTester func(entity EntityToken) bool) *UpdatedEntityList {
+	backlog []*EntityToken,
+	backlogTester func(entity *EntityToken) bool) *UpdatedEntityList {
 
 	l := UpdatedEntityList{}
-	l.Entities = make([]EntityToken, 0)
+	l.Entities = make([]*EntityToken, 0)
 	l.qw = qw
 	l.backlog = backlog
 	l.backlogTester = backlogTester
@@ -63,18 +63,17 @@ func (l *UpdatedEntityList) Length() int {
 }
 
 // get the first element of the list
-func (l *UpdatedEntityList) FirstEntity() (EntityToken, error) {
+func (l *UpdatedEntityList) FirstEntity() (*EntityToken, error) {
 	if len(l.Entities) == 0 {
-		return ENTITY_TOKEN_NIL, errors.New("list is empty, no first element")
+		return nil, errors.New("list is empty, no first element")
 	}
 	return l.Entities[0], nil
 }
 
 // get a random element of the list
-func (l *UpdatedEntityList) RandomEntity() (EntityToken, error) {
+func (l *UpdatedEntityList) RandomEntity() (*EntityToken, error) {
 	if len(l.Entities) == 0 {
-		return ENTITY_TOKEN_NIL,
-			errors.New("list is empty, can't get random element")
+		return nil, errors.New("list is empty, can't get random element")
 	}
 	return l.Entities[rand.Intn(len(l.Entities))], nil
 }
@@ -138,7 +137,7 @@ func (l *UpdatedEntityList) actOnSignal(signal EntitySignal) {
 }
 
 // adds an entity into the list (private so only called by the update loop)
-func (l *UpdatedEntityList) add(e EntityToken) {
+func (l *UpdatedEntityList) add(e *EntityToken) {
 	// note: both sorted and regular list add will not double-add an entity
 	if l.Sorted {
 		SortedEntityTokenSliceInsertIfNotPresent(&l.Entities, e)
@@ -148,7 +147,7 @@ func (l *UpdatedEntityList) add(e EntityToken) {
 }
 
 // removes an entity from the list (private so only called by the update loop)
-func (l *UpdatedEntityList) remove(e EntityToken) {
+func (l *UpdatedEntityList) remove(e *EntityToken) {
 	if l.Sorted {
 		SortedEntityTokenSliceRemove(&l.Entities, e)
 	} else {

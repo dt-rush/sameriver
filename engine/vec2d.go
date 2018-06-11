@@ -1,8 +1,13 @@
 package engine
 
+import (
+	"math"
+	"math/rand"
+)
+
 type Vec2D struct {
-	x float32
-	y float32
+	X float32
+	Y float32
 }
 
 func RandomUnitVec2D() Vec2D {
@@ -11,5 +16,6 @@ func RandomUnitVec2D() Vec2D {
 	l := math.Sqrt(x*x + y*y)
 	x /= l
 	y /= l
-	return Vec2D{x, y}
+	return Vec2D{float32(x), float32(y)}
+
 }

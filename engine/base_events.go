@@ -1,8 +1,8 @@
 package engine
 
 type CollisionData struct {
-	EntityA EntityToken
-	EntityB EntityToken
+	EntityA *EntityToken
+	EntityB *EntityToken
 }
 
 type SpawnRequestData struct {
@@ -13,5 +13,5 @@ type SpawnRequestData struct {
 }
 
 type DespawnRequestData struct {
-	Entity EntityToken
+	Entity *EntityToken
 }

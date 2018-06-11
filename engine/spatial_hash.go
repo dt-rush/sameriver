@@ -12,7 +12,7 @@ import (
 
 // used to store an entity with a position in a grid cell
 type EntityPosition struct {
-	entity   EntityToken
+	entity   *EntityToken
 	position sdl.Rect
 }
 

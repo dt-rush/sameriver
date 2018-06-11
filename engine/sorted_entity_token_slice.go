@@ -1,7 +1,7 @@
 /*
- * Methods needed to treat a slice of EntityTokens as a sorted slice of
- * EntityTokens using code derived from the go runtime's implementation of
- * binary search for sort.Search, specialized for EntityTokens
+ * Methods needed to treat a slice of *EntityTokens as a sorted slice of
+ * *EntityTokens using code derived from the go runtime's implementation of
+ * binary search for sort.Search, specialized for *EntityTokens
  *
  * This is used by the collision system, as provided to it by
  * EntityManager.GetSortedUpdatedEntityList, which returns a
@@ -12,7 +12,7 @@
 package engine
 
 // Returns the index to insert x at (could be len(a) if it would be new max)
-func SortedEntityTokenSliceSearch(s []EntityToken, x EntityToken) int {
+func SortedEntityTokenSliceSearch(s []*EntityToken, x *EntityToken) int {
 	n := len(s)
 	// Define f(-1) == false and f(n) == true.
 	// Invariant: f(i-1) == false, f(j) == true.
@@ -31,23 +31,23 @@ func SortedEntityTokenSliceSearch(s []EntityToken, x EntityToken) int {
 	return i
 }
 
-func SortedEntityTokenSliceInsertIfNotPresent(s *[]EntityToken, x EntityToken) {
+func SortedEntityTokenSliceInsertIfNotPresent(s *[]*EntityToken, x *EntityToken) {
 	i := SortedEntityTokenSliceSearch(*s, x)
 	if (*s)[i].ID != x.ID {
-		*s = append(*s, EntityToken{})
+		*s = append(*s, &EntityToken{})
 		copy((*s)[i+1:], (*s)[i:])
 		(*s)[i] = x
 	}
 }
 
-func SortedEntityTokenSliceInsert(s *[]EntityToken, x EntityToken) {
+func SortedEntityTokenSliceInsert(s *[]*EntityToken, x *EntityToken) {
 	i := SortedEntityTokenSliceSearch(*s, x)
-	*s = append(*s, EntityToken{})
+	*s = append(*s, &EntityToken{})
 	copy((*s)[i+1:], (*s)[i:])
 	(*s)[i] = x
 }
 
-func SortedEntityTokenSliceRemove(s *[]EntityToken, x EntityToken) {
+func SortedEntityTokenSliceRemove(s *[]*EntityToken, x *EntityToken) {
 	i := SortedEntityTokenSliceSearch(*s, x)
 	*s = append((*s)[:i], (*s)[i+1:]...)
 }

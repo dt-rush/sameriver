@@ -18,7 +18,7 @@ type Scene interface {
 	StartLogic()
 	StopLogic()
 
-	Update(dt_ms uint16)
+	Update(dt_ms int64)
 	Draw(window *sdl.Window, renderer *sdl.Renderer)
 	HandleKeyboardState(keyboard_state []uint8)
 	HandleKeyboardEvent(keyboard_event *sdl.KeyboardEvent)

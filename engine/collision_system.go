@@ -67,10 +67,6 @@ for a subscriber, it get sent to the channel of their CollisionQueryWatcher.
 
 package engine
 
-import (
-	"fmt"
-)
-
 type CollisionSystem struct {
 	// Reference to entity manager to reach components
 	em *EntityManager

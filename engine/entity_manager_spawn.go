@@ -1,5 +1,11 @@
 package engine
 
+import (
+	"errors"
+	"fmt"
+	"time"
+)
+
 // process the spawn requests in the channel buffer
 func (m *EntityManager) processSpawnChannel() {
 	// get the current number of requests in the channel and only process
@@ -11,22 +17,28 @@ func (m *EntityManager) processSpawnChannel() {
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		e := <-m.spawnSubscription.C
-		m.spawn(e)
+		_, err := m.processSpawn(e.Data.(SpawnRequestData))
+		if err != nil {
+			go func() {
+				time.Sleep(5 * time.Second)
+				m.ev.Publish(SPAWNREQUEST_EVENT, e.Data)
+			}()
+		}
 	}
 }
 
 func (m *EntityManager) Spawn(req SpawnRequestData) {
-	m.ev.Publish(SPAWN_EVENT, req)
+	m.ev.Publish(SPAWNREQUEST_EVENT, req)
 }
 
 // given a list of components, spawn an entity with the default values
 // returns the EntityToken (used to spawn an entity for which we *want* the
 // token back)
-func (m *EntityManager) processSpawn(req SpawnRequestData) (EntityToken, error) {
+func (m *EntityManager) processSpawn(r SpawnRequestData) (*EntityToken, error) {
 
 	// used if spawn is impossible for various reasons
-	var fail = func(msg string) (EntityToken, error) {
-		return ENTITY_TOKEN_NIL, errors.New(msg)
+	var fail = func(msg string) (*EntityToken, error) {
+		return nil, errors.New(msg)
 	}
 
 	// if the spawn request has a unique tag, return error if tag already
@@ -69,7 +81,7 @@ func (m *EntityManager) processSpawn(req SpawnRequestData) (EntityToken, error) 
 	}
 	// start the logic goroutine if supplied
 	if r.Logic != nil {
-		m.Logics[e] = r.Logic
+		m.Logics[entity] = &EntityLogicUnit{true, r.Logic}
 	}
 	// set entity active and notify entity is active
 	m.setActiveState(entity, true)

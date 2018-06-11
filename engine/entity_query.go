@@ -6,10 +6,10 @@ import (
 
 type EntityQuery struct {
 	Name     string
-	TestFunc func(entity EntityToken, em *EntityManager) bool
+	TestFunc func(entity *EntityToken, em *EntityManager) bool
 }
 
-func (q EntityQuery) Test(entity EntityToken, em *EntityManager) bool {
+func (q EntityQuery) Test(entity *EntityToken, em *EntityManager) bool {
 	result := q.TestFunc(entity, em)
 	return result
 }
@@ -18,7 +18,7 @@ func EntityQueryFromTag(tag string) EntityQuery {
 
 	return EntityQuery{
 		Name: tag,
-		TestFunc: func(entity EntityToken, em *EntityManager) bool {
+		TestFunc: func(entity *EntityToken, em *EntityManager) bool {
 			return em.Components.TagList[entity.ID].Has(tag)
 		}}
 }
@@ -29,7 +29,7 @@ func EntityQueryFromComponentBitArray(
 
 	return EntityQuery{
 		Name: name,
-		TestFunc: func(entity EntityToken, em *EntityManager) bool {
+		TestFunc: func(entity *EntityToken, em *EntityManager) bool {
 			// determine if q = q&b
 			// that is, if every set bit of q is set in b
 			b := em.entityComponentBitArray(entity.ID)

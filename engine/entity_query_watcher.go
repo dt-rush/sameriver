@@ -10,7 +10,7 @@ const (
 
 type EntitySignal struct {
 	signalType EntitySignalType
-	entity     EntityToken
+	entity     *EntityToken
 }
 
 type EntityQueryWatcher struct {

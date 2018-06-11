@@ -27,7 +27,7 @@ func (c *ActiveEntityListCollection) GetUpdatedEntityList(
 	c.watchers[q.Name] = &qw
 	// build the list (as yet empty), provide it with a backlog, and start it
 	backlog := c.em.entityTable.snapshotAllocatedEntities()
-	backlogTester := func(entity EntityToken) bool {
+	backlogTester := func(entity *EntityToken) bool {
 		return q.Test(entity, c.em)
 	}
 	list := NewUpdatedEntityList(qw, backlog, backlogTester)
@@ -37,7 +37,7 @@ func (c *ActiveEntityListCollection) GetUpdatedEntityList(
 }
 
 func (c *ActiveEntityListCollection) notifyActiveState(
-	entity EntityToken, active bool) {
+	entity *EntityToken, active bool) {
 
 	for _, watcher := range c.watchers {
 
@@ -63,7 +63,7 @@ func (c *ActiveEntityListCollection) notifyActiveState(
 	}
 }
 
-func (c *ActiveEntityListCollection) checkActiveEntity(entity EntityToken) {
+func (c *ActiveEntityListCollection) checkActiveEntity(entity *EntityToken) {
 
 	for _, watcher := range c.watchers {
 

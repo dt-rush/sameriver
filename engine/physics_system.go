@@ -44,8 +44,8 @@ func (s *PhysicsSystem) Update(dt_ms int64) {
 		// read the position and velocity, using dt to compute dx, dy
 		box := s.em.Components.Box[e.ID]
 		vel := s.em.Components.Velocity[e.ID]
-		dx := int32(vel[0] * float32(dt_ms/4))
-		dy := int32(vel[1] * float32(dt_ms/4))
+		dx := int32(vel.X * float32(dt_ms/4))
+		dy := int32(vel.Y * float32(dt_ms/4))
 		// motion in x
 		if box.X+dx < 0 {
 			// max out on the left
