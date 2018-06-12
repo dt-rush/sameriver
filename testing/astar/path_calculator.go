@@ -12,7 +12,7 @@ type PathCalculator struct {
 func NewPathCalculator(wm *WorldMap) *PathCalculator {
 	c := PathCalculator{
 		wm: wm,
-		q:  NewPathNodePQueue()}
+		q:  NewPathNodePQueue(WORLD_CELLWIDTH * WORLD_CELLHEIGHT)}
 	return &c
 }
 

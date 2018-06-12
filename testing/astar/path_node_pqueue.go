@@ -14,9 +14,9 @@ type PathNodePQueue struct {
 	q []*PathNode
 }
 
-func NewPathNodePQueue() *PathNodePQueue {
+func NewPathNodePQueue(capacity int) *PathNodePQueue {
 	return &PathNodePQueue{
-		make([]*PathNode, 0, WORLD_CELLWIDTH*WORLD_CELLHEIGHT)}
+		make([]*PathNode, 0, capacity)}
 }
 
 func (pq *PathNodePQueue) Clear() {
