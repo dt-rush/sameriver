@@ -1,15 +1,21 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/veandco/go-sdl2/sdl"
+	"log"
 	"math/rand"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"time"
 )
 
+var cpuprofile = flag.String("cpuprofile", "", "if provided, use as filename of prof output")
+
 func init() {
+	flag.Parse()
 	rand.Seed(time.Now().UnixNano())
 }
 
@@ -33,7 +39,8 @@ func handleKeyEvents(w *World, e sdl.Event) {
 		ke := e.(*sdl.KeyboardEvent)
 		if ke.Keysym.Sym == sdl.K_g && ke.Type == sdl.KEYDOWN {
 			w.NewWorldMap()
-			w.ComputeEntityPath()
+			ms := w.ComputeEntityPath()
+			fmt.Printf("path calculation took %.3f ms\n", ms)
 		}
 	}
 }
@@ -53,7 +60,8 @@ func handleMouseEvents(w *World, e sdl.Event) {
 			if me.Button == sdl.BUTTON_RIGHT {
 				if w.e != nil {
 					w.e.moveTarget = &pos
-					w.ComputeEntityPath()
+					ms := w.ComputeEntityPath()
+					fmt.Printf("path calculation took %.3f ms\n", ms)
 				}
 			}
 		}
@@ -103,6 +111,16 @@ func main() {
 	var exitcode int
 	sdl.Main(func() {
 		runtime.LockOSThread()
+		if *cpuprofile != "" {
+			f, err := os.Create(*cpuprofile)
+			if err != nil {
+				log.Fatal("could not create CPU profile: ", err)
+			}
+			if err := pprof.StartCPUProfile(f); err != nil {
+				log.Fatal("could not start CPU profile: ", err)
+			}
+			defer pprof.StopCPUProfile()
+		}
 		exitcode = gameloop()
 	})
 	os.Exit(exitcode)

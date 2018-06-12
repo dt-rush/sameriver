@@ -1,19 +1,18 @@
 package main
 
 import (
-	"fmt"
 	"github.com/beefsack/go-astar"
 	"time"
 )
 
-func (w *World) ComputeEntityPath() {
+func (w *World) ComputeEntityPath() float64 {
+	var t_ms float64
 	if w.e != nil && w.e.moveTarget != nil {
 		t0 := time.Now()
 		path, distance, found := astar.Path(
 			w.m.CellAt(w.e.pos),
 			w.m.CellAt(*w.e.moveTarget))
-		fmt.Printf("path calculation took %.3f ms\n",
-			float64(time.Since(t0).Nanoseconds())/float64(1e6))
+		t_ms = float64(time.Since(t0).Nanoseconds()) / float64(1e6)
 		if found {
 			w.e.distance = distance
 			cellsPath := make([]Position, len(path))
@@ -23,6 +22,7 @@ func (w *World) ComputeEntityPath() {
 			w.e.path = cellsPath
 		}
 	}
+	return t_ms
 }
 
 func (w *World) MoveEntity() {
