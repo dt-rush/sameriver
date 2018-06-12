@@ -47,6 +47,18 @@ func (w *World) ComputeEntityPath() float64 {
 func (w *World) MoveEntity() {
 	if w.e != nil && w.e.moveTarget != nil {
 		last_ix := len(w.e.path) - 1
+		var target Position
+		var validTarget = false
+		for !validTarget {
+			target = w.e.path[last_ix]
+			reached := (w.e.pos == target)
+			if reached {
+				w.e.path = w.e.path[:last_ix]
+				last_ix--
+			} else {
+				validTarget = true
+			}
+		}
 		w.e.pos = w.e.path[last_ix]
 		w.e.path = w.e.path[:last_ix]
 		if len(w.e.path) == 0 {
