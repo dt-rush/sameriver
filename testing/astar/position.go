@@ -1,8 +1,8 @@
 package main
 
 type Position struct {
-	x int
-	y int
+	X int
+	Y int
 }
 
 type PositionPair struct {

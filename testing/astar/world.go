@@ -7,6 +7,14 @@ import (
 type World struct {
 	m *WorldMap
 	e *Entity
+	c *PathCalculator
+}
+
+func NewWorld() *World {
+	w := World{}
+	w.RegenMap()
+	w.c = NewPathCalculator(w.m)
+	return &w
 }
 
 func (w *World) RegenMap() {

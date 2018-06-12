@@ -5,10 +5,10 @@ import (
 )
 
 func drawRect(r *sdl.Renderer, pos *Position, c sdl.Color) {
-	px := int32(float64(pos.x) * WORLD_CELL_PIXEL_WIDTH)
-	py := int32(float64((WORLD_CELLHEIGHT-1)-pos.y) * WORLD_CELL_PIXEL_HEIGHT)
-	px1 := int32(float64(pos.x+1) * WORLD_CELL_PIXEL_WIDTH)
-	py1 := int32(float64((WORLD_CELLHEIGHT-1)-(pos.y-1)) * WORLD_CELL_PIXEL_HEIGHT)
+	px := int32(float64(pos.X) * WORLD_CELL_PIXEL_WIDTH)
+	py := int32(float64((WORLD_CELLHEIGHT-1)-pos.Y) * WORLD_CELL_PIXEL_HEIGHT)
+	px1 := int32(float64(pos.X+1) * WORLD_CELL_PIXEL_WIDTH)
+	py1 := int32(float64((WORLD_CELLHEIGHT-1)-(pos.Y-1)) * WORLD_CELL_PIXEL_HEIGHT)
 	r.SetDrawColor(c.R, c.G, c.B, 255)
 	r.FillRect(&sdl.Rect{
 		px, py,

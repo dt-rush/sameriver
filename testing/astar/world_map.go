@@ -7,7 +7,7 @@ import (
 
 type WorldMap struct {
 	seed  int64
-	cells [WORLD_CELLWIDTH][WORLD_CELLHEIGHT]WorldMapCell
+	cells [WORLD_CELLHEIGHT][WORLD_CELLWIDTH]WorldMapCell
 }
 
 func GenerateWorldMap() *WorldMap {
@@ -54,7 +54,7 @@ func GenerateWorldMap() *WorldMap {
 }
 
 func (m *WorldMap) CellAt(pos Position) *WorldMapCell {
-	return &m.cells[pos.y][pos.x]
+	return &m.cells[pos.Y][pos.X]
 }
 
 func (m *WorldMap) Print() {

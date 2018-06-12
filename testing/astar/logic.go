@@ -5,6 +5,27 @@ import (
 	"time"
 )
 
+func (w *World) ComputePath() float64 {
+	return w.ComputeEntityPathUnrolled()
+}
+
+func (w *World) ComputeEntityPathUnrolled() float64 {
+	var t_ms float64
+	if w.e != nil && w.e.moveTarget != nil {
+		t0 := time.Now()
+		path, distance, found := w.c.Path(
+			w.m.CellAt(w.e.pos),
+			w.m.CellAt(*w.e.moveTarget))
+		t_ms = float64(time.Since(t0).Nanoseconds()) / float64(1e6)
+		if found {
+			w.e.distance = distance
+			w.e.path = path
+		}
+	}
+	w.c.Clear()
+	return t_ms
+}
+
 func (w *World) ComputeEntityPath() float64 {
 	var t_ms float64
 	if w.e != nil && w.e.moveTarget != nil {

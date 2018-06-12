@@ -39,7 +39,7 @@ func handleKeyEvents(w *World, e sdl.Event) {
 		ke := e.(*sdl.KeyboardEvent)
 		if ke.Keysym.Sym == sdl.K_g && ke.Type == sdl.KEYDOWN {
 			w.RegenMap()
-			ms := w.ComputeEntityPath()
+			ms := w.ComputePath()
 			fmt.Printf("path calculation took %.3f ms\n", ms)
 		}
 	}
@@ -60,7 +60,7 @@ func handleMouseEvents(w *World, e sdl.Event) {
 			if me.Button == sdl.BUTTON_RIGHT {
 				if w.e != nil {
 					w.e.moveTarget = &pos
-					ms := w.ComputeEntityPath()
+					ms := w.ComputePath()
 					fmt.Printf("path calculation took %.3f ms\n", ms)
 				}
 			}
@@ -70,8 +70,7 @@ func handleMouseEvents(w *World, e sdl.Event) {
 
 func gameloop() int {
 
-	w := World{}
-	w.RegenMap()
+	w := NewWorld()
 
 	sdl.Init(sdl.INIT_EVERYTHING)
 	r, exitcode := GetRenderer()
@@ -85,8 +84,8 @@ func gameloop() int {
 	for running {
 		for e := sdl.PollEvent(); e != nil; e = sdl.PollEvent() {
 			running = handleQuit(e)
-			handleKeyEvents(&w, e)
-			handleMouseEvents(&w, e)
+			handleKeyEvents(w, e)
+			handleMouseEvents(w, e)
 		}
 		r.SetDrawColor(0, 0, 0, 255)
 		r.Clear()
