@@ -13,12 +13,11 @@ func (w *World) ComputeEntityPathUnrolled() float64 {
 	var t_ms float64
 	if w.e != nil && w.e.moveTarget != nil {
 		t0 := time.Now()
-		path, distance, found := w.c.Path(
+		path, _, found := w.c.Path(
 			w.m.CellAt(w.e.pos),
 			w.m.CellAt(*w.e.moveTarget))
 		t_ms = float64(time.Since(t0).Nanoseconds()) / float64(1e6)
 		if found {
-			w.e.distance = distance
 			w.e.path = path
 		}
 	}
@@ -30,12 +29,11 @@ func (w *World) ComputeEntityPath() float64 {
 	var t_ms float64
 	if w.e != nil && w.e.moveTarget != nil {
 		t0 := time.Now()
-		path, distance, found := astar.Path(
+		path, _, found := astar.Path(
 			w.m.CellAt(w.e.pos),
 			w.m.CellAt(*w.e.moveTarget))
 		t_ms = float64(time.Since(t0).Nanoseconds()) / float64(1e6)
 		if found {
-			w.e.distance = distance
 			cellsPath := make([]Position, len(path))
 			for i, pather := range path {
 				cellsPath[i] = pather.(*WorldMapCell).pos
