@@ -6,20 +6,21 @@ import (
 )
 
 type WorldMap struct {
+	seed  int64
 	cells [WORLD_CELLWIDTH][WORLD_CELLHEIGHT]WorldMapCell
 }
 
 func GenerateWorldMap() *WorldMap {
 	m := WorldMap{}
-	seed := time.Now().UnixNano()
+	m.seed = time.Now().UnixNano()
 	terrain := PerlinNoiseInt2D(
 		WORLD_CELLWIDTH, WORLD_CELLHEIGHT, 16,
 		2.0, 2.0, 3,
-		seed)
+		m.seed)
 	water := PerlinNoiseInt2D(
 		WORLD_CELLWIDTH, WORLD_CELLHEIGHT, 32,
 		4.0, 2.0, 3,
-		seed)
+		m.seed)
 	world := OpPerlins(terrain, water, func(a float64, b float64) float64 {
 		x := (a + (a + 0.3) - b) / 2
 		if x < 0 {

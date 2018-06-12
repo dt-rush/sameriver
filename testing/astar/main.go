@@ -38,7 +38,7 @@ func handleKeyEvents(w *World, e sdl.Event) {
 	case *sdl.KeyboardEvent:
 		ke := e.(*sdl.KeyboardEvent)
 		if ke.Keysym.Sym == sdl.K_g && ke.Type == sdl.KEYDOWN {
-			w.NewWorldMap()
+			w.RegenMap()
 			ms := w.ComputeEntityPath()
 			fmt.Printf("path calculation took %.3f ms\n", ms)
 		}
@@ -70,7 +70,8 @@ func handleMouseEvents(w *World, e sdl.Event) {
 
 func gameloop() int {
 
-	w := World{GenerateWorldMap(), nil}
+	w := World{}
+	w.RegenMap()
 
 	sdl.Init(sdl.INIT_EVERYTHING)
 	r, exitcode := GetRenderer()
