@@ -53,3 +53,12 @@ func (v Vec2D) Scale(r float64) Vec2D {
 func (v Vec2D) Unit() Vec2D {
 	return v.Scale(1 / v.Magnitude())
 }
+
+func (v Vec2D) Truncate(val float64) Vec2D {
+	m := v.Magnitude()
+	if m > val {
+		return v.Scale(val / m)
+	} else {
+		return v
+	}
+}

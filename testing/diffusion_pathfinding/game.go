@@ -17,7 +17,7 @@ type Game struct {
 
 func NewGame(r *sdl.Renderer, f *ttf.Font) *Game {
 	g := &Game{
-		NewWorld(),
+		NewWorld(r),
 		NewControls(),
 		NewUI(r, f),
 		r, f}
@@ -41,7 +41,23 @@ func (g *Game) HandleKeyEvents(e sdl.Event) {
 	}
 }
 
-func (g *Game) HandleMouseEvents(me *sdl.MouseButtonEvent) {
+func (g *Game) HandleMouseMotionEvents(me *sdl.MouseMotionEvent) {
+	p := MouseMotionEventToPoint2D(me)
+	if me.State&sdl.ButtonLMask() != 0 {
+		if g.c.mode == MODE_PLACING_WAYPOINT {
+			g.HandleWayPointInput(sdl.BUTTON_LEFT, p)
+		}
+	}
+	if me.State&sdl.ButtonRMask() != 0 {
+		if g.c.mode == MODE_PLACING_WAYPOINT {
+			g.HandleWayPointInput(sdl.BUTTON_RIGHT, p)
+		} else if g.c.mode == MODE_PLACING_OBSTACLE {
+			g.HandleObstacleInput(sdl.BUTTON_LEFT, p)
+		}
+	}
+}
+
+func (g *Game) HandleMouseButtonEvents(me *sdl.MouseButtonEvent) {
 	p := MouseButtonEventToPoint2D(me)
 	if me.Type == sdl.MOUSEBUTTONDOWN {
 		if g.c.mode == MODE_PLACING_WAYPOINT {
@@ -54,8 +70,7 @@ func (g *Game) HandleMouseEvents(me *sdl.MouseButtonEvent) {
 
 func (g *Game) HandleWayPointInput(button uint8, pos Point2D) {
 	if button == sdl.BUTTON_LEFT {
-		e := Entity{pos: pos}
-		g.w.e = &e
+		g.w.e = NewEntity(pos, g.w)
 	}
 	if button == sdl.BUTTON_RIGHT {
 		if g.w.e != nil {
@@ -66,7 +81,7 @@ func (g *Game) HandleWayPointInput(button uint8, pos Point2D) {
 
 func (g *Game) HandleObstacleInput(button uint8, pos Point2D) {
 	if button == sdl.BUTTON_LEFT {
-		g.w.obstacles = append(g.w.obstacles, pos)
+		g.w.obstacles = append(g.w.obstacles, CenteredSquare(pos, OBSTACLESZ))
 	}
 	if button == sdl.BUTTON_RIGHT {
 
@@ -95,8 +110,10 @@ func (g *Game) HandleEvents() bool {
 		switch e.(type) {
 		case *sdl.KeyboardEvent:
 			g.HandleKeyEvents(e)
+		case *sdl.MouseMotionEvent:
+			g.HandleMouseMotionEvents(e.(*sdl.MouseMotionEvent))
 		case *sdl.MouseButtonEvent:
-			g.HandleMouseEvents(e.(*sdl.MouseButtonEvent))
+			g.HandleMouseButtonEvents(e.(*sdl.MouseButtonEvent))
 		}
 	}
 	return true
@@ -105,49 +122,30 @@ func (g *Game) HandleEvents() bool {
 func (g *Game) gameloop() int {
 
 	fpsTicker := time.NewTicker(time.Millisecond * (1000 / FPS))
-	stopRenderChan := make(chan bool)
-
-	go func() {
-	renderloop:
-		for {
-			select {
-			case _ = <-stopRenderChan:
-				stopRenderChan <- true
-				break renderloop
-			case _ = <-fpsTicker.C:
-				sdl.Do(func() {
-					g.r.Clear()
-					g.w.mutex.Lock()
-					g.DrawWorld()
-					g.DrawUI()
-					g.r.Present()
-					g.w.mutex.Unlock()
-				})
-			}
-		}
-	}()
-
-	moveTicker := time.NewTicker(16 * time.Millisecond)
-	velTicker := time.NewTicker(500 * time.Millisecond)
 
 gameloop:
 	for {
+		// try to draw
+		select {
+		case _ = <-fpsTicker.C:
+			sdl.Do(func() {
+				g.r.Clear()
+				g.DrawWorld()
+				g.DrawUI()
+				g.r.Present()
+			})
+		default:
+		}
+
+		// handle input
 		if !g.HandleEvents() {
 			break gameloop
 		}
 
-		g.w.mutex.Lock()
-		select {
-		case _ = <-moveTicker.C:
-			g.w.MoveEntity()
-		case _ = <-velTicker.C:
-			g.w.UpdateEntityVel()
-		default:
-		}
-		g.w.mutex.Unlock()
+		// update world
+		g.w.Update()
+
 		sdl.Delay(1000 / (2 * FPS))
 	}
-	stopRenderChan <- true
-	<-stopRenderChan
 	return 0
 }

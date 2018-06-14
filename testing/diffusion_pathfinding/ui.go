@@ -3,11 +3,9 @@ package main
 import (
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
-	"sync"
 )
 
 type UI struct {
-	mutex sync.Mutex
 	// renderer
 	r *sdl.Renderer
 	// font
@@ -32,8 +30,6 @@ func NewUI(r *sdl.Renderer, f *ttf.Font) *UI {
 }
 
 func (ui *UI) UpdateMsg(msg string) {
-	ui.mutex.Lock()
-	defer ui.mutex.Unlock()
 	ui.msg = msg
 	ui.renderMsgToST(msg,
 		sdl.Color{255, 255, 255, 255},
