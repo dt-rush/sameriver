@@ -15,7 +15,7 @@ func GetRenderer() (*sdl.Renderer, int) {
 		window, err = sdl.CreateWindow(
 			"WORLDMAP TEST",
 			sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-			WINDOW_WIDTH, WINDOW_HEIGHT, sdl.WINDOW_SHOWN|sdl.WINDOW_OPENGL)
+			WINDOW_WIDTH, WINDOW_HEIGHT, sdl.WINDOW_SHOWN)
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create window: %s\n", err)
@@ -32,6 +32,7 @@ func GetRenderer() (*sdl.Renderer, int) {
 
 	sdl.Do(func() {
 		renderer.Clear()
+		renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
 	})
 
 	return renderer, 0

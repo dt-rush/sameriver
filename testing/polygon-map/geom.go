@@ -9,6 +9,8 @@ func rayIntersectsSegment(p, a, b Point2D) bool {
 		p.X < (b.X-a.X)*(p.Y-a.Y)/(b.Y-a.Y)+a.X
 }
 
+// taken from:
+// github.com/soniakeys/raycast
 func Point2DInPolygon(pt Point2D, pg Polygon) bool {
 	if len(pg) < 3 {
 		return false
