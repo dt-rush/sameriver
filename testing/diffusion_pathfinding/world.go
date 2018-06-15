@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/veandco/go-sdl2/sdl"
+	"fmt"
 	"time"
 )
 
 type World struct {
+	g         *Game
 	e         *Entity
 	obstacles []Rect2D
 
@@ -14,10 +15,10 @@ type World struct {
 	param int
 }
 
-func NewWorld(r *sdl.Renderer) *World {
-	w := World{}
+func NewWorld(g *Game) *World {
+	w := World{g: g}
 	w.param = 0
-	w.dif = NewDiffusionMap(r, &w.obstacles, 100*time.Millisecond)
+	w.dif = NewDiffusionMap(g.r, &w.obstacles, 16*time.Millisecond)
 
 	return &w
 }
@@ -29,7 +30,13 @@ func (w *World) Update() {
 	select {
 	case _ = <-w.dif.tick.C:
 		if w.e != nil {
+			t0 := time.Now()
 			w.dif.Diffuse(w.e.pos)
+
+			msg := fmt.Sprintf("diffusion took %.1f ms",
+				float64(time.Since(t0).Nanoseconds()/1e6)/1000.0)
+			w.g.ui.UpdateMsg(1, msg)
+
 		}
 	default:
 	}

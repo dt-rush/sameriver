@@ -13,7 +13,7 @@ type UI struct {
 	// screen texture
 	st *sdl.Texture
 	// message
-	msg string
+	msgs map[int]string
 }
 
 func NewUI(r *sdl.Renderer, f *ttf.Font) *UI {
@@ -26,23 +26,17 @@ func NewUI(r *sdl.Renderer, f *ttf.Font) *UI {
 	if err != nil {
 		panic(err)
 	}
-	return &UI{r: r, f: f, st: st}
+	return &UI{
+		r:    r,
+		f:    f,
+		st:   st,
+		msgs: make(map[int]string),
+	}
 }
 
-func (ui *UI) UpdateMsg(msg string) {
-	ui.msg = msg
-	ui.renderMsgToST(msg,
-		sdl.Color{255, 255, 255, 255},
-		&sdl.Rect{20, 20,
-			int32(WINDOW_WIDTH / 80 * len(msg)),
-			int32(WINDOW_HEIGHT / 40)})
-}
+func (ui *UI) UpdateMsg(i int, msg string) {
 
-// render message to screen texture
-func (ui *UI) renderMsgToST(
-	msg string,
-	color sdl.Color,
-	dst *sdl.Rect) {
+	ui.msgs[i] = msg
 
 	ui.r.SetRenderTarget(ui.st)
 	defer ui.r.SetRenderTarget(nil)
@@ -50,29 +44,45 @@ func (ui *UI) renderMsgToST(
 	ui.r.SetDrawColor(0, 0, 0, 0)
 	ui.r.Clear()
 
-	// surface & texture to be used in writing the
-	// message to the texture
-	var surface *sdl.Surface
-	var texture *sdl.Texture
-	var err error
-	surface, err = ui.f.RenderUTF8Solid(msg, color)
-	if err != nil {
-		panic(err)
+	ui.renderMsgsToST(sdl.Color{255, 255, 255, 255})
+}
+
+// render message to screen texture
+func (ui *UI) renderMsgsToST(color sdl.Color) {
+
+	for i, msg := range ui.msgs {
+		var surface *sdl.Surface
+		var texture *sdl.Texture
+		var err error
+		surface, err = ui.f.RenderUTF8Blended(msg, color)
+		if err != nil {
+			panic(err)
+		}
+		texture, err = ui.r.CreateTextureFromSurface(
+			surface)
+		if err != nil {
+			panic(err)
+		}
+		// this copies our texture to the *target* texture
+		// (screen_texture)
+		ui.r.SetDrawColor(
+			color.R,
+			color.G,
+			color.B,
+			color.A)
+		w, h, err := ui.f.SizeUTF8(msg)
+		if err == nil {
+			dst := &sdl.Rect{
+				10,
+				int32(FONTSZ + i*FONTSZ),
+				int32(w),
+				int32(h)}
+			ui.r.Copy(texture, nil, dst)
+		}
+
+		// free the resources allocated above
+		surface.Free()
+		texture.Destroy()
 	}
-	texture, err = ui.r.CreateTextureFromSurface(
-		surface)
-	if err != nil {
-		panic(err)
-	}
-	// this copies our texture to the *target* texture
-	// (screen_texture)
-	ui.r.SetDrawColor(
-		color.R,
-		color.G,
-		color.B,
-		color.A)
-	ui.r.Copy(texture, nil, dst)
-	// free the resources allocated above
-	surface.Free()
-	texture.Destroy()
+
 }

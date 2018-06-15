@@ -16,12 +16,13 @@ type Game struct {
 }
 
 func NewGame(r *sdl.Renderer, f *ttf.Font) *Game {
-	g := &Game{
-		NewWorld(r),
-		NewControls(),
-		NewUI(r, f),
-		r, f}
-	g.ui.UpdateMsg(MODENAMES[g.c.mode])
+	g := &Game{r: r, f: f}
+
+	g.w = NewWorld(g)
+	g.c = NewControls()
+	g.ui = NewUI(r, f)
+
+	g.ui.UpdateMsg(0, MODENAMES[g.c.mode])
 	return g
 }
 
@@ -32,7 +33,7 @@ func (g *Game) HandleKeyEvents(e sdl.Event) {
 		if ke.Type == sdl.KEYDOWN {
 			if ke.Keysym.Sym == sdl.K_m {
 				g.c.ToggleMode()
-				g.ui.UpdateMsg(MODENAMES[g.c.mode])
+				g.ui.UpdateMsg(0, MODENAMES[g.c.mode])
 			}
 			if ke.Keysym.Sym == sdl.K_c {
 				g.w.ClearObstacles()

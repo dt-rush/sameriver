@@ -8,7 +8,7 @@ import (
 )
 
 func GetFont() (*ttf.Font, error) {
-	return ttf.OpenFont("test.ttf", 24)
+	return ttf.OpenFont("test.ttf", FONTSZ)
 }
 
 func GetRenderer() (*sdl.Renderer, int) {
