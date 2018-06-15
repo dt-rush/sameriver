@@ -2,17 +2,12 @@ package main
 
 import (
 	"github.com/veandco/go-sdl2/sdl"
-	"math"
-	"sync"
 	"time"
 )
 
 type DiffusionMap struct {
 	// values of the diffusion field
 	d [DIFFUSION_DIM][DIFFUSION_DIM]float64
-	// used in calculating the diffusion map
-	inv      [DIFFUSION_DIM][DIFFUSION_DIM]bool
-	invDirty sync.Mutex
 	// ticker used to time updates to the map (since it can be expensive)
 	tick *time.Ticker
 	// array of obstacles in the world
@@ -23,7 +18,8 @@ type DiffusionMap struct {
 	st *sdl.Texture
 }
 
-func NewDiffusionMap(r *sdl.Renderer, obstacles *[]Rect2D) *DiffusionMap {
+func NewDiffusionMap(
+	r *sdl.Renderer, obstacles *[]Rect2D, tick time.Duration) *DiffusionMap {
 	st, err := r.CreateTexture(
 		sdl.PIXELFORMAT_RGBA8888,
 		sdl.TEXTUREACCESS_TARGET,
@@ -37,7 +33,7 @@ func NewDiffusionMap(r *sdl.Renderer, obstacles *[]Rect2D) *DiffusionMap {
 
 	return &DiffusionMap{
 		obstacles: obstacles,
-		tick:      time.NewTicker(100 * time.Millisecond),
+		tick:      time.NewTicker(tick),
 		r:         r,
 		st:        st}
 }
@@ -51,22 +47,39 @@ func (m *DiffusionMap) UpdateTexture() {
 	for y := 0; y < DIFFUSION_DIM; y++ {
 		for x := 0; x < DIFFUSION_DIM; x++ {
 			val := uint8(255 * m.d[y][x])
+			var c sdl.Color
+			if m.CellHasObstacle(x, y) {
+				c = sdl.Color{R: val, G: 0, B: 0}
+			} else {
+				c = sdl.Color{R: val, G: val, B: val}
+			}
 			drawRect(m.r,
 				Rect2D{
 					float64(x) * DIFFUSION_CELL_W,
 					float64(y) * DIFFUSION_CELL_H,
 					DIFFUSION_CELL_W,
 					DIFFUSION_CELL_H},
-				sdl.Color{R: val, G: val, B: val})
+				c,
+			)
 		}
 	}
 }
 
+func (m *DiffusionMap) CellHasObstacle(x int, y int) bool {
+	r := Rect2D{
+		float64(x) * DIFFUSION_CELL_W,
+		float64(y) * DIFFUSION_CELL_H,
+		DIFFUSION_CELL_W,
+		DIFFUSION_CELL_H}
+	for _, o := range *m.obstacles {
+		if r.Overlaps(o) {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *DiffusionMap) Diffuse(pos Point2D) {
-	m.invDirty.Lock()
-
-	N := DIFFUSION_DIM * DIFFUSION_DIM
-
 	initX := int(pos.X / DIFFUSION_CELL_W)
 	initY := int(pos.Y / DIFFUSION_CELL_H)
 	if initX > DIFFUSION_DIM-1 {
@@ -75,66 +88,44 @@ func (m *DiffusionMap) Diffuse(pos Point2D) {
 	if initY > DIFFUSION_DIM-1 {
 		initY = DIFFUSION_DIM - 1
 	}
+	m.d[initY][initX] = 1.0
 
 	var validNeighbor = func(x int, y int) bool {
 		return x >= 0 && x < DIFFUSION_DIM &&
 			y >= 0 && y < DIFFUSION_DIM
 	}
 
-	var touch = func(x int, y int, d float64) {
-		m.d[y][x] = d
-	}
-
-	frontier := make(map[[2]int]bool)
-	frontier[[2]int{initX, initY}] = true
-	touch(initX, initY, 1.0)
-	for N > 0 {
-		nextFrontier := make(map[[2]int]bool)
-		for cur, _ := range frontier {
-			// get diffusion field value for the popped frontier element
-			d := m.d[cur[1]][cur[0]]
-			// add valid neighbors to frontier, marking their val according to
-			for iy := -1; iy <= 1; iy++ {
-				for ix := -1; ix <= 1; ix++ {
-					// a cell can't be it's own neighbor
-					if ix == 0 && iy == 0 {
-						continue
-					}
-					x := cur[0] + ix
-					y := cur[1] + iy
-					_, inFrontier := frontier[[2]int{x, y}]
-					if !inFrontier && validNeighbor(x, y) {
-						distance := d * math.Pow(0.98, math.Sqrt(float64(ix*ix+iy*iy)))
-						if !m.inv[y][x] {
-							m.inv[y][x] = true
-							N--
-							nextFrontier[[2]int{x, y}] = true
-							touch(x, y, distance)
-						} else if distance < m.d[y][x] {
-							touch(x, y, distance)
-						}
-					}
-				}
+	var avgOfNeighbors = func(x int, y int) float64 {
+		neumann := [][2]int{
+			[2]int{-1, 0},
+			[2]int{1, 0},
+			[2]int{0, -1},
+			[2]int{0, 1},
+		}
+		sum := 0.0
+		n := 0.0
+		for _, neu := range neumann {
+			ox := x + neu[0]
+			oy := y + neu[1]
+			if validNeighbor(ox, oy) {
+				sum += m.d[oy][ox]
+				n++
 			}
 		}
-		for pos, _ := range frontier {
-			delete(frontier, pos)
-		}
-		for pos, _ := range nextFrontier {
-			frontier[pos] = true
+		return sum / n
+	}
+
+	for y := 0; y < DIFFUSION_DIM; y++ {
+		for x := 0; x < DIFFUSION_DIM; x++ {
+			if y == initY && x == initX {
+				continue
+			}
+			m.d[y][x] = avgOfNeighbors(x, y)
+			m.d[y][x] *= 0.998
 		}
 	}
 
 	m.UpdateTexture()
-
-	go func() {
-		for y := 0; y < DIFFUSION_DIM; y++ {
-			for x := 0; x < DIFFUSION_DIM; x++ {
-				m.inv[y][x] = false
-			}
-		}
-		m.invDirty.Unlock()
-	}()
 }
 
 func Subtract() {

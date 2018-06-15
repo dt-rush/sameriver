@@ -22,6 +22,13 @@ func (r Rect2D) ToScreenSpaceSdlRect() sdl.Rect {
 	return sdl.Rect{int32(x), int32(y), int32(w), int32(h)}
 }
 
-func (r Rect2D) contains(p Point2D) bool {
+func (r Rect2D) Contains(p Point2D) bool {
 	return r.X <= p.X && p.X <= (r.X+r.W) && r.Y <= p.Y && p.Y <= (r.Y+r.H)
+}
+
+func (r1 Rect2D) Overlaps(r2 Rect2D) bool {
+	return !(r1.X > r2.X+r2.W ||
+		r1.X+r1.W < r2.X ||
+		r1.Y > r2.Y+r2.H ||
+		r1.Y+r1.H < r2.Y)
 }

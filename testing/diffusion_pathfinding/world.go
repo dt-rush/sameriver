@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/veandco/go-sdl2/sdl"
+	"time"
 )
 
 type World struct {
@@ -16,7 +17,7 @@ type World struct {
 func NewWorld(r *sdl.Renderer) *World {
 	w := World{}
 	w.param = 0
-	w.dif = NewDiffusionMap(r, &w.obstacles)
+	w.dif = NewDiffusionMap(r, &w.obstacles, 100*time.Millisecond)
 
 	return &w
 }

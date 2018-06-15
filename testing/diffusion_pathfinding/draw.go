@@ -35,7 +35,6 @@ func (g *Game) DrawObstacles() {
 
 func (g *Game) DrawDiffusionMap() {
 	g.r.Copy(g.w.dif.st, nil, nil)
-
 }
 
 func (g *Game) DrawUI() {
