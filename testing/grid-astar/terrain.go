@@ -36,27 +36,25 @@ func CellString(val int) (rep string) {
 	return rep
 }
 
-func MakeTerrain(start Position, end Position) [][]int {
-	t := make([][]int, H)
-	for y := 0; y < H; y++ {
-		t[y] = make([]int, W)
-		for x := 0; x < W; x++ {
+func MakeTerrain(w int, h int) Grid {
+	t := make([][]int, w)
+	for x := 0; x < w; x++ {
+		t[x] = make([]int, h)
+		for y := 0; y < h; y++ {
 			if rand.Float64() < DENSITY {
-				t[y][x] = OBSTACLE
+				t[x][y] = OBSTACLE
 			} else {
-				t[y][x] = OPEN
+				t[x][y] = OPEN
 			}
 		}
 	}
-	t[start.X][start.Y] = START
-	t[end.X][end.Y] = END
-	return t
+	return Grid{w, h, t}
 }
 
-func PrintTerrain(t [][]int) {
-	for y := H - 1; y >= 0; y-- {
-		for x := 0; x < W; x++ {
-			fmt.Printf("%s", CellString(t[y][x]))
+func PrintTerrain(g Grid) {
+	for y := g.H - 1; y >= 0; y-- {
+		for x := 0; x < g.W; x++ {
+			fmt.Printf("%s", CellString(g.Cells[y][x]))
 		}
 		fmt.Println()
 	}

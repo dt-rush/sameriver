@@ -14,16 +14,24 @@ func init() {
 
 func main() {
 
+	g := MakeTerrain(W, H)
+
 	start := Position{0, 0}
 	end := Position{W - 1, H - 1}
-	t := MakeTerrain(start, end)
+	g.Cells[start.X][start.Y] = START
+	g.Cells[end.X][end.Y] = END
+
+	pc := NewPathComputer(&g)
 
 	fmt.Println("Finding path...")
 
-	path := FindPath(start, end, t)
+	path := pc.Path(start, end)
 	for _, p := range path {
-		t[p.X][p.Y] = PATH
+		g.Cells[p.X][p.Y] = PATH
+	}
+	if path == nil {
+		fmt.Println("NO PATH")
 	}
 
-	PrintTerrain(t)
+	PrintTerrain(g)
 }
