@@ -124,13 +124,12 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 		H:    0,
 	}
 	pc.OH.Add(&firstNode)
-	fmt.Println(pc.OH.String())
 	// while open heap has elements...
 	for pc.OH.Len() > 0 {
 		// pop from open heap and set as closed
+		fmt.Println(pc.OH.String())
 		cur, err := pc.OH.Pop()
 		fmt.Printf("Popped (%d, %d) with F = %d\n", cur.X, cur.Y, cur.F)
-		fmt.Println(pc.OH.String())
 		pc.C[cur.X][cur.Y] = pc.N
 		// if err, we have exhausted all squares on open heap and found no path
 		// return nil

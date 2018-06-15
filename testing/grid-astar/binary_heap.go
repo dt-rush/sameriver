@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/disiqueira/gotree"
 )
 
@@ -14,18 +13,15 @@ type NodeHeap struct {
 func NewNodeHeap() *NodeHeap {
 	// leaving first position unused so bit shifting works well
 	h := NodeHeap{Arr: []*Node{nil}}
-	fmt.Println(h.Arr)
 	return &h
 }
 
 func (h *NodeHeap) bubbleUp(ix int) int {
 	for ix > 1 && h.Arr[ix].F < h.Arr[ix>>1].F {
-		fmt.Printf("in bubbleUp, swapping %d to %d\n", ix, ix>>1)
 		h.Arr[ix].HeapIX, h.Arr[ix>>1].HeapIX = h.Arr[ix>>1].HeapIX, h.Arr[ix].HeapIX
 		h.Arr[ix], h.Arr[ix>>1] = h.Arr[ix>>1], h.Arr[ix]
 		ix = ix >> 1
 	}
-	fmt.Printf("in bubbleUp, ix was %d\n", ix)
 	return ix
 }
 
@@ -35,9 +31,7 @@ func (h *NodeHeap) Add(x *Node) (ix int) {
 	ix = len(h.Arr) - 1
 	h.Arr[ix].HeapIX = ix
 	ix = h.bubbleUp(ix)
-	fmt.Printf("In Add() for %p, ix was %d\n", x, ix)
 	h.Arr[ix].HeapIX = ix
-	fmt.Println(h.String())
 	return ix
 }
 
@@ -88,7 +82,6 @@ func (h *NodeHeap) Pop() (*Node, error) {
 }
 
 func (h *NodeHeap) Modify(ix int, G int) {
-	fmt.Printf("len: %d, ix for modify: %d\n", len(h.Arr), ix)
 	// get the old F value
 	oldVal := h.Arr[ix].F
 	// set the new G value and calculate the new F value
@@ -119,7 +112,6 @@ func (h *NodeHeap) String() string {
 	// for building string
 	var buffer bytes.Buffer
 	// print array
-	buffer.WriteString(fmt.Sprintf("BHeap{%v}", h.Arr[1:]))
 	// if elements, print tree
 	if len(h.Arr) > 1 {
 		buffer.WriteString("\n")
