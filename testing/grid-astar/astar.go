@@ -127,9 +127,7 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 	// while open heap has elements...
 	for pc.OH.Len() > 0 {
 		// pop from open heap and set as closed
-		fmt.Println(pc.OH.String())
 		cur, err := pc.OH.Pop()
-		fmt.Printf("Popped (%d, %d) with F = %d\n", cur.X, cur.Y, cur.F)
 		pc.C[cur.X][cur.Y] = pc.N
 		// if err, we have exhausted all squares on open heap and found no path
 		// return nil
@@ -163,7 +161,6 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 			obstacle := pc.G.Cells[x][y] == OBSTACLE
 			closed := pc.C[x][y] == pc.N
 			if !obstacle && !closed {
-				fmt.Printf("looking at (%d, %d)\n", x, y)
 				// dist is an integer expression of the distance from
 				// cur to the neighbor cell we're looking at here.
 				// if either x or y offset is 0, we're moving straight,
