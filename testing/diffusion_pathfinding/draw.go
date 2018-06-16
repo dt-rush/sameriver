@@ -21,6 +21,7 @@ func (g *Game) DrawEntityAndPath() {
 			// toward := VecFromPoints(g.w.e.pos, *g.w.e.moveTarget).
 			// Unit().Scale(VECLENGTH)
 			// drawVector(g.r, g.w.e.pos, toward, sdl.Color{R: 255, G: 255, B: 0})
+			drawVector(g.r, g.w.e.pos, g.w.e.vel.Scale(VECLENGTH), sdl.Color{R: 255, G: 0, B: 0})
 		}
 		drawPoint(g.r, g.w.e.pos,
 			sdl.Color{R: 0, G: 255, B: 0}, POINTSZ)
