@@ -3,62 +3,106 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/disiqueira/gotree"
 )
 
 type NodeHeap struct {
-	Arr []*Node
+	PC  *PathComputer
+	Arr []Position
 }
 
-func NewNodeHeap() *NodeHeap {
-	// leaving first position unused so bit shifting works well
-	h := NodeHeap{Arr: []*Node{nil}}
+func NewNodeHeap(pc *PathComputer) *NodeHeap {
+	// 0 is a nil element not considered, because it makes the
+	// array shifting math cleaner
+	h := NodeHeap{PC: pc, Arr: []Position{NOWHERE}}
 	return &h
 }
 
 func (h *NodeHeap) bubbleUp(ix int) int {
-	for ix > 1 && h.Arr[ix].F < h.Arr[ix>>1].F {
-		h.Arr[ix].HeapIX, h.Arr[ix>>1].HeapIX = h.Arr[ix>>1].HeapIX, h.Arr[ix].HeapIX
+	fmt.Println("bubbleUp()")
+	// if ix > 1 and F(ix) < F(ix>>1)
+	for ix > 1 &&
+		h.PC.F[h.Arr[ix].X][h.Arr[ix].Y] <
+			h.PC.F[h.Arr[ix>>1].X][h.Arr[ix>>1].Y] {
+		// swap Nodes in heap
 		h.Arr[ix], h.Arr[ix>>1] = h.Arr[ix>>1], h.Arr[ix]
+		// swap HeapIX for nodes
+		h.PC.HeapIX[h.Arr[ix].X][h.Arr[ix].Y],
+			h.PC.HeapIX[h.Arr[ix>>1].X][h.Arr[ix>>1].Y] =
+			h.PC.HeapIX[h.Arr[ix>>1].X][h.Arr[ix>>1].Y],
+			h.PC.HeapIX[h.Arr[ix].X][h.Arr[ix].Y]
+		// set ix for next iter to be the ix we just swapped to
 		ix = ix >> 1
 	}
 	return ix
 }
 
-func (h *NodeHeap) Add(x *Node) (ix int) {
-	x.F = x.G + x.H
-	h.Arr = append(h.Arr, x)
+func (h *NodeHeap) Add(p Position) (ix int) {
+	fmt.Println("Add()")
+	// compute F = G + H
+	h.PC.F[p.X][p.Y] = h.PC.G[p.X][p.Y] + h.PC.H[p.X][p.Y]
+	// append to array and bubble up (needs to have its HeapIX set initially)
+	h.Arr = append(h.Arr, p)
 	ix = len(h.Arr) - 1
-	h.Arr[ix].HeapIX = ix
+	h.PC.HeapIX[p.X][p.Y] = ix
 	ix = h.bubbleUp(ix)
-	h.Arr[ix].HeapIX = ix
+	// return ix to user
 	return ix
 }
 
 func (h *NodeHeap) bubbleDown(ix int) int {
+	fmt.Println("bubbleDown()")
 	for {
+		// beginning state: greater node is the one we're on
 		greater := ix
+		fmt.Printf("greater = ix = %d\n", greater)
+		// l index, r index
 		lix := (ix << 1)
 		rix := (ix << 1) + 1
+		fmt.Printf("lix = %d, rix = %d\n", lix, rix)
 		// if we've reached the bottom, return
 		if !(lix < len(h.Arr) || rix < len(h.Arr)) {
 			return ix
 		}
-		// check if left node is greater
-		if lix < len(h.Arr) && h.Arr[lix].F < h.Arr[greater].F {
+		// if left child exists and is greater, set greater to lix
+		if lix < len(h.Arr) &&
+			h.PC.F[h.Arr[lix].X][h.Arr[lix].Y] <
+				h.PC.F[h.Arr[greater].X][h.Arr[greater].Y] {
+			fmt.Printf("h[%d][%d, %d] at [%d] was greater (L)\n",
+				h.PC.HeapIX[h.Arr[lix].X][h.Arr[lix].Y],
+				h.Arr[lix].X, h.Arr[lix].Y, lix)
 			greater = lix
 		}
-		// check if right node is greater
-		if rix < len(h.Arr) && h.Arr[rix].F < h.Arr[greater].F {
+		// if left child exists and is greater, set greater to rix
+		if rix < len(h.Arr) &&
+			h.PC.F[h.Arr[rix].X][h.Arr[rix].Y] <
+				h.PC.F[h.Arr[greater].X][h.Arr[greater].Y] {
+			fmt.Printf("h[%d][%d, %d] at [%d] was greater (L)\n",
+				h.PC.HeapIX[h.Arr[rix].X][h.Arr[rix].Y],
+				h.Arr[rix].X, h.Arr[rix].Y, rix)
 			greater = rix
 		}
 		// if one of children was greater, swap and continue bubble down
 		// from that node
 		if greater != ix {
-			h.Arr[ix].HeapIX, h.Arr[greater].HeapIX = h.Arr[greater].HeapIX, h.Arr[ix].HeapIX
+			// swap Nodes in heap
 			h.Arr[ix], h.Arr[greater] = h.Arr[greater], h.Arr[ix]
-			h.bubbleDown(greater)
+			// swap HeapIX for nodes
+			h.PC.HeapIX[h.Arr[ix].X][h.Arr[ix].Y],
+				h.PC.HeapIX[h.Arr[greater].X][h.Arr[greater].Y] =
+				h.PC.HeapIX[h.Arr[greater].X][h.Arr[greater].Y],
+				h.PC.HeapIX[h.Arr[ix].X][h.Arr[ix].Y]
+			fmt.Printf("after swap:\n")
+			fmt.Printf("h[%d][%d, %d] at [%d]\n",
+				h.PC.HeapIX[h.Arr[greater].X][h.Arr[greater].Y],
+				h.Arr[greater].X, h.Arr[greater].Y, greater)
+			fmt.Printf("h[%d][%d, %d] at [%d]\n",
+				h.PC.HeapIX[h.Arr[ix].X][h.Arr[ix].Y],
+				h.Arr[ix].X, h.Arr[ix].Y, ix)
+			// continue to bubble down
 			ix = greater
+			continue
 		} else {
 			// else, no child was greater. we can stop here
 			return ix
@@ -66,38 +110,41 @@ func (h *NodeHeap) bubbleDown(ix int) int {
 	}
 }
 
-func (h *NodeHeap) Pop() (*Node, error) {
+func (h *NodeHeap) Pop() (Position, error) {
+	fmt.Println("Pop()")
 	if h.Len() == 0 {
-		return nil, errors.New("heap empty")
+		return Position{}, errors.New("heap empty")
 	}
 	// get root elem and replace with last element (shrink slice)
-	x := h.Arr[1]
+	p := h.Arr[1]
 	last_ix := len(h.Arr) - 1
 	h.Arr[1] = h.Arr[last_ix]
-	h.Arr[1].HeapIX = 1
+	h.PC.HeapIX[h.Arr[1].X][h.Arr[1].Y] = 1
 	h.Arr = h.Arr[:last_ix]
 	// bubble element down to its place
 	h.bubbleDown(1)
-	return x, nil
+	return p, nil
 }
 
 func (h *NodeHeap) Modify(ix int, G int) {
 	// get the old F value
-	oldVal := h.Arr[ix].F
-	// set the new G value and calculate the new F value
-	h.Arr[ix].G = G
-	h.Arr[ix].F = h.Arr[ix].G + h.Arr[ix].H
-	// we will need to modify the node's HeapIX value once it bubbles
-	var newIX = ix
-	// bubble up if needed
-	if h.Arr[ix].F < oldVal {
-		newIX = h.bubbleUp(ix)
+	fmt.Printf("want to look at ix %d when len == %d\n", ix, len(h.Arr))
+	fmt.Printf("want to modify [%d, %d]\n", h.Arr[ix].X, h.Arr[ix].Y)
+	oldVal := h.PC.F[h.Arr[ix].X][h.Arr[ix].Y]
+	// set the new G
+	h.PC.G[h.Arr[ix].X][h.Arr[ix].Y] = G
+	// calculate the new F value
+	F := G + h.PC.H[h.Arr[ix].X][h.Arr[ix].Y]
+	// assign the new F value
+	h.PC.F[h.Arr[ix].X][h.Arr[ix].Y] = F
+	// bubble up if needed (setting HeapIX)
+	if F < oldVal {
+		h.bubbleUp(ix)
 	}
 	// bubble down if needed
-	if h.Arr[ix].F > oldVal {
-		newIX = h.bubbleDown(ix)
+	if F > oldVal {
+		h.bubbleDown(ix)
 	}
-	h.Arr[newIX].HeapIX = newIX
 }
 
 func (h *NodeHeap) Len() int {
@@ -120,16 +167,19 @@ func (h *NodeHeap) String() string {
 		addChildren = func(node gotree.Tree, ix int) {
 			rix := (ix << 1) + 1
 			if rix < len(h.Arr) {
-				r := node.Add(h.Arr[rix].String())
+				r := node.Add(fmt.Sprintf("[%d]%s",
+					rix, h.Arr[rix].String()))
 				addChildren(r, rix)
 			}
 			lix := (ix << 1)
 			if lix < len(h.Arr) {
-				l := node.Add(h.Arr[lix].String())
+				l := node.Add(fmt.Sprintf("[%d]%s",
+					lix, h.Arr[lix].String()))
 				addChildren(l, lix)
 			}
 		}
-		tree := gotree.New(h.Arr[1].String())
+		tree := gotree.New(fmt.Sprintf("[%d]%s",
+			1, h.Arr[1].String()))
 		addChildren(tree, 1)
 		buffer.WriteString(tree.Print())
 	}

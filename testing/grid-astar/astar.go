@@ -4,71 +4,69 @@ import (
 	"fmt"
 )
 
-// X, Y: 		position in grid
-// From:		link to the next node in path
-// G:	 		path cost
-// H:	 		heuristic
-// F:			G + H
-type Node struct {
-	X, Y   int
-	From   *Node
-	G      int
-	H      int
-	F      int
-	HeapIX int
-}
-
-func (n *Node) String() string {
-	return fmt.Sprintf("[%d]: %p: (%d, %d), from: %p, G: %d, H: %d, F: %d",
-		n.HeapIX, n, n.X, n.Y, n.From, n.G, n.H, n.F)
-}
-
 // G:			reference to the grid of cells we're pathing over
 // OH			NodeHeap ("Open Heap") used to pop off the nodes with the lowest
 //					F during search (open nodes)
-// O:			2d array shadowing Nodes used to keep track of whether the given
-//					cell is on the open heap or not
-// C:			2d Array shadowing Nodes used to keep track of the "closed list",
-//					for the current calculation (the list of cells we have visited
-//					and checked the neighbors of, adding them to the open heap).
-//					We use the value of N to avoid having to clear this.
-//					(Theoretically you could overflow if a cell is not visited
-//					for 2^32-1 passes, lol)
 // N: 			incremented each time we calculate (used to avoid having to
-//					clear values in C)
+//					clear values in various arrays)
+//
+// WhichList:	2d array shadowing used to keep track of which list, open or
+//					closed, the node is on
+// From:		link to the prior node in path
+// G:	 		path cost
+// H:	 		heuristic
+// F:			G + H
+// HeapIX:		keeps track of the heap index of the element at this position
 type PathComputer struct {
-	G  *Grid
-	OH *NodeHeap
-	O  [][]NodeOnOpenHeap
-	C  [][]int
-	N  int
-}
-
-// used to support O above
-type NodeOnOpenHeap struct {
-	Node *Node
+	Grid *Grid
+	OH   *NodeHeap
 	N    int
+	// these 2D arrays store info about each node
+	WhichList [][]int
+	From      [][]Position
+	G         [][]int
+	H         [][]int
+	F         [][]int
+	HeapIX    [][]int
 }
 
-func NewPathComputer(g *Grid) *PathComputer {
-	// make 2d arrays
-	nodes := make([][]Node, g.W)
-	o := make([][]NodeOnOpenHeap, g.W)
-	c := make([][]int, g.W)
-	for x := 0; x < g.W; x++ {
-		nodes[x] = make([]Node, g.H)
-		o[x] = make([]NodeOnOpenHeap, g.H)
-		c[x] = make([]int, g.H)
+// special value used for the "From" of the start node
+var NOWHERE = Position{-1, -1}
+
+func NewPathComputer(grid *Grid) *PathComputer {
+
+	// make 2D array rows
+	// NOTE: in array-speak, the "rows" are columns. It's just nicer to put
+	// X as the first coordinate instead of Y
+	whichList := make([][]int, grid.W)
+	from := make([][]Position, grid.W)
+	g := make([][]int, grid.W)
+	h := make([][]int, grid.W)
+	f := make([][]int, grid.W)
+	heapIX := make([][]int, grid.W)
+	// make 2D array columns
+	for x := 0; x < grid.W; x++ {
+		whichList[x] = make([]int, grid.H)
+		from[x] = make([]Position, grid.H)
+		g[x] = make([]int, grid.H)
+		h[x] = make([]int, grid.H)
+		f[x] = make([]int, grid.H)
+		heapIX[x] = make([]int, grid.H)
 	}
 	// make node heap
-	h := NewNodeHeap()
-	return &PathComputer{
-		G:  g,
-		OH: h,
-		O:  o,
-		C:  c,
-		N:  0,
+	pc := &PathComputer{
+		Grid:      grid,
+		N:         0,
+		WhichList: whichList,
+		From:      from,
+		G:         g,
+		H:         h,
+		F:         f,
+		HeapIX:    heapIX,
 	}
+	oh := NewNodeHeap(pc)
+	pc.OH = oh
+	return pc
 }
 
 // neighbor x, y offsets
@@ -114,21 +112,25 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 	// clear the heap which contains leftover nodes from the last calculation
 	pc.OH.Clear()
 	// increment N (easier than clearing arrays)
-	pc.N++
-	// add first node to open heap
-	firstNode := Node{
-		X:    start.X,
-		Y:    start.Y,
-		From: nil,
-		G:    0,
-		H:    0,
-	}
-	pc.OH.Add(&firstNode)
+	// we increment by 2 since we use WhichList == pc.N for OPEN and
+	// WhichList == pc.N + 1 for CLOSED
+	pc.N += 2
+
+	// add first node to open heap (whichlist == pc.N)
+	pc.WhichList[start.X][start.Y] = pc.N
+	// store a special value for the "From" of the first node
+	pc.From[start.X][start.Y] = NOWHERE
+	pc.G[start.X][start.Y] = 0
+	pc.H[start.X][start.Y] = 0
+	pc.WhichList[start.X][start.Y] = pc.N
+	pc.OH.Add(start)
 	// while open heap has elements...
 	for pc.OH.Len() > 0 {
-		// pop from open heap and set as closed
+		// pop from open heap and set as closed (whichlist == pc.N + 1)
 		cur, err := pc.OH.Pop()
-		pc.C[cur.X][cur.Y] = pc.N
+		pc.WhichList[cur.X][cur.Y] = pc.N + 1
+		fmt.Printf("Popped: [%d][%d, %d]\n",
+			pc.HeapIX[cur.X][cur.Y], cur.X, cur.Y)
 		// if err, we have exhausted all squares on open heap and found no path
 		// return nil
 		if err != nil {
@@ -137,9 +139,9 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 		// if the current cell is the end, we're here. build the return list
 		if cur.X == end.X && cur.Y == end.Y {
 			path = make([]Position, 0)
-			for cur != nil {
+			for cur != NOWHERE {
 				path = append(path, Position{cur.X, cur.Y})
-				cur = cur.From
+				cur = pc.From[cur.X][cur.Y]
 			}
 			// return the path to the user
 			return path
@@ -147,19 +149,21 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 		// else, we have yet to complete the path. So:
 		// for each neighbor
 		for _, neighborIX := range neighborIXs {
+			fmt.Println(pc.OH.String())
+			fmt.Printf("Looking at %d, %d\n", neighborIX[0], neighborIX[1])
 			// get the coordinates of the cell we will check the cost to
 			// by applying an offset to cur's coordinates
 			x := cur.X + neighborIX[0]
 			y := cur.Y + neighborIX[1]
 			// continue loop to next neighbor early if not in grid
-			inGrid := x >= 0 && x < pc.G.W && y >= 0 && y < pc.G.H
+			inGrid := x >= 0 && x < pc.Grid.W && y >= 0 && y < pc.Grid.H
 			if !inGrid {
 				continue
 			}
 			// if neighbor is valid (there is no obstacle and it isn't in the
 			// closed set), then...
-			obstacle := pc.G.Cells[x][y] == OBSTACLE
-			closed := pc.C[x][y] == pc.N
+			obstacle := pc.Grid.Cells[x][y] == OBSTACLE
+			closed := pc.WhichList[x][y] == pc.N+1
 			if !obstacle && !closed {
 				// dist is an integer expression of the distance from
 				// cur to the neighbor cell we're looking at here.
@@ -173,30 +177,33 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 					dist = 14
 				}
 				// compute g, h, f for the current cell
-				g := cur.G + dist
+				g := pc.G[cur.X][cur.Y] + dist
 				h := pc.Heuristic(Position{x, y}, end)
 				// if not on open heap, add it with "From" == cur
-				if pc.O[x][y].N != pc.N {
-					neighbor := Node{
-						X:    x,
-						Y:    y,
-						From: cur,
-						G:    g,
-						H:    h}
-					pc.O[x][y] = NodeOnOpenHeap{&neighbor, pc.N}
-					pc.OH.Add(&neighbor)
+				open := pc.WhichList[x][y] == pc.N
+				if !open {
+					// set From, G, H
+					pc.From[x][y] = cur
+					pc.G[x][y] = g
+					pc.H[x][y] = h
+					// set whichlist == OPEN
+					pc.WhichList[x][y] = pc.N
+					// push to open heap
+					pc.OH.Add(Position{x, y})
 				} else {
 					// if it *is* on the open heap already, check to see if
 					// this is a better path to that square
 					// on -> "open node"
-					on := pc.O[x][y].Node
-					if g < on.G {
+					gAlready := pc.G[x][y]
+					if g < gAlready {
 						// if the open node could be reached better by
 						// this path, set the g to the new lower g, set the
 						// "From" reference to cur and fix up the heap because
 						// we've changed the value of one of its elements
-						on.From = cur
-						pc.OH.Modify(on.HeapIX, g)
+						pc.From[x][y] = cur
+						fmt.Printf("calling Modify() for [%d][%d, %d]\n",
+							pc.HeapIX[x][y], x, y)
+						pc.OH.Modify(pc.HeapIX[x][y], g)
 					}
 				}
 			}
