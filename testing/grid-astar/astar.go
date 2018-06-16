@@ -1,9 +1,5 @@
 package main
 
-import (
-	"fmt"
-)
-
 // G:			reference to the grid of cells we're pathing over
 // OH			NodeHeap ("Open Heap") used to pop off the nodes with the lowest
 //					F during search (open nodes)
@@ -129,12 +125,10 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 		// pop from open heap and set as closed (whichlist == pc.N + 1)
 		cur, err := pc.OH.Pop()
 		pc.WhichList[cur.X][cur.Y] = pc.N + 1
-		fmt.Printf("Popped: [%d][%d, %d]\n",
-			pc.HeapIX[cur.X][cur.Y], cur.X, cur.Y)
 		// if err, we have exhausted all squares on open heap and found no path
-		// return nil
+		// return empty list
 		if err != nil {
-			return nil
+			return []Position{}
 		}
 		// if the current cell is the end, we're here. build the return list
 		if cur.X == end.X && cur.Y == end.Y {
@@ -149,8 +143,6 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 		// else, we have yet to complete the path. So:
 		// for each neighbor
 		for _, neighborIX := range neighborIXs {
-			fmt.Println(pc.OH.String())
-			fmt.Printf("Looking at %d, %d\n", neighborIX[0], neighborIX[1])
 			// get the coordinates of the cell we will check the cost to
 			// by applying an offset to cur's coordinates
 			x := cur.X + neighborIX[0]
@@ -201,8 +193,6 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 						// "From" reference to cur and fix up the heap because
 						// we've changed the value of one of its elements
 						pc.From[x][y] = cur
-						fmt.Printf("calling Modify() for [%d][%d, %d]\n",
-							pc.HeapIX[x][y], x, y)
 						pc.OH.Modify(pc.HeapIX[x][y], g)
 					}
 				}

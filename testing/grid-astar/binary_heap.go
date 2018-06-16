@@ -20,7 +20,6 @@ func NewNodeHeap(pc *PathComputer) *NodeHeap {
 }
 
 func (h *NodeHeap) bubbleUp(ix int) int {
-	fmt.Println("bubbleUp()")
 	// if ix > 1 and F(ix) < F(ix>>1)
 	for ix > 1 &&
 		h.PC.F[h.Arr[ix].X][h.Arr[ix].Y] <
@@ -39,7 +38,6 @@ func (h *NodeHeap) bubbleUp(ix int) int {
 }
 
 func (h *NodeHeap) Add(p Position) (ix int) {
-	fmt.Println("Add()")
 	// compute F = G + H
 	h.PC.F[p.X][p.Y] = h.PC.G[p.X][p.Y] + h.PC.H[p.X][p.Y]
 	// append to array and bubble up (needs to have its HeapIX set initially)
@@ -52,15 +50,12 @@ func (h *NodeHeap) Add(p Position) (ix int) {
 }
 
 func (h *NodeHeap) bubbleDown(ix int) int {
-	fmt.Println("bubbleDown()")
 	for {
 		// beginning state: greater node is the one we're on
 		greater := ix
-		fmt.Printf("greater = ix = %d\n", greater)
 		// l index, r index
 		lix := (ix << 1)
 		rix := (ix << 1) + 1
-		fmt.Printf("lix = %d, rix = %d\n", lix, rix)
 		// if we've reached the bottom, return
 		if !(lix < len(h.Arr) || rix < len(h.Arr)) {
 			return ix
@@ -69,18 +64,12 @@ func (h *NodeHeap) bubbleDown(ix int) int {
 		if lix < len(h.Arr) &&
 			h.PC.F[h.Arr[lix].X][h.Arr[lix].Y] <
 				h.PC.F[h.Arr[greater].X][h.Arr[greater].Y] {
-			fmt.Printf("h[%d][%d, %d] at [%d] was greater (L)\n",
-				h.PC.HeapIX[h.Arr[lix].X][h.Arr[lix].Y],
-				h.Arr[lix].X, h.Arr[lix].Y, lix)
 			greater = lix
 		}
 		// if left child exists and is greater, set greater to rix
 		if rix < len(h.Arr) &&
 			h.PC.F[h.Arr[rix].X][h.Arr[rix].Y] <
 				h.PC.F[h.Arr[greater].X][h.Arr[greater].Y] {
-			fmt.Printf("h[%d][%d, %d] at [%d] was greater (L)\n",
-				h.PC.HeapIX[h.Arr[rix].X][h.Arr[rix].Y],
-				h.Arr[rix].X, h.Arr[rix].Y, rix)
 			greater = rix
 		}
 		// if one of children was greater, swap and continue bubble down
@@ -93,13 +82,6 @@ func (h *NodeHeap) bubbleDown(ix int) int {
 				h.PC.HeapIX[h.Arr[greater].X][h.Arr[greater].Y] =
 				h.PC.HeapIX[h.Arr[greater].X][h.Arr[greater].Y],
 				h.PC.HeapIX[h.Arr[ix].X][h.Arr[ix].Y]
-			fmt.Printf("after swap:\n")
-			fmt.Printf("h[%d][%d, %d] at [%d]\n",
-				h.PC.HeapIX[h.Arr[greater].X][h.Arr[greater].Y],
-				h.Arr[greater].X, h.Arr[greater].Y, greater)
-			fmt.Printf("h[%d][%d, %d] at [%d]\n",
-				h.PC.HeapIX[h.Arr[ix].X][h.Arr[ix].Y],
-				h.Arr[ix].X, h.Arr[ix].Y, ix)
 			// continue to bubble down
 			ix = greater
 			continue
@@ -111,7 +93,6 @@ func (h *NodeHeap) bubbleDown(ix int) int {
 }
 
 func (h *NodeHeap) Pop() (Position, error) {
-	fmt.Println("Pop()")
 	if h.Len() == 0 {
 		return Position{}, errors.New("heap empty")
 	}
@@ -128,8 +109,6 @@ func (h *NodeHeap) Pop() (Position, error) {
 
 func (h *NodeHeap) Modify(ix int, G int) {
 	// get the old F value
-	fmt.Printf("want to look at ix %d when len == %d\n", ix, len(h.Arr))
-	fmt.Printf("want to modify [%d, %d]\n", h.Arr[ix].X, h.Arr[ix].Y)
 	oldVal := h.PC.F[h.Arr[ix].X][h.Arr[ix].Y]
 	// set the new G
 	h.PC.G[h.Arr[ix].X][h.Arr[ix].Y] = G

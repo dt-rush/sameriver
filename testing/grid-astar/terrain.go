@@ -60,3 +60,28 @@ func PrintTerrain(g Grid) {
 	}
 	fmt.Println()
 }
+
+func PrintTerrainWithPath(
+	g Grid, start Position, end Position, path []Position) {
+
+	inPath := make(map[Position]bool)
+	for _, p := range path {
+		inPath[p] = true
+	}
+	for y := g.H - 1; y >= 0; y-- {
+		for x := 0; x < g.W; x++ {
+			p := Position{x, y}
+			if p == start {
+				fmt.Printf("%s", CellString(START))
+			} else if p == end {
+				fmt.Printf("%s", CellString(END))
+			} else if _, ok := inPath[Position{x, y}]; ok {
+				fmt.Printf("%s", CellString(PATH))
+			} else {
+				fmt.Printf("%s", CellString(g.Cells[y][x]))
+			}
+		}
+		fmt.Println()
+	}
+	fmt.Println()
+}
