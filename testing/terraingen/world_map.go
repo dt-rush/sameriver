@@ -13,7 +13,8 @@ type WorldMap struct {
 func GenerateWorldMap() *WorldMap {
 	m := WorldMap{}
 	m.seed = time.Now().UnixNano()
-	m.seed = 1529127452575316215
+	// m.seed = 1529124576499821233 // nice seed
+	// m.seed = 1529127452575316215
 	terrain := PerlinNoiseInt2D(
 		WORLD_CELLWIDTH, WORLD_CELLHEIGHT, 16,
 		2.0, 2.0, 3,

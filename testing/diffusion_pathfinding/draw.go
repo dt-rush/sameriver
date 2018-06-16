@@ -7,9 +7,9 @@ import (
 func (g *Game) DrawWorld() {
 	g.r.SetDrawColor(0, 0, 0, 255)
 	g.r.FillRect(nil)
+	g.DrawDiffusionMap()
 	g.DrawObstacles()
 	g.DrawEntityAndPath()
-	g.DrawDiffusionMap()
 }
 
 func (g *Game) DrawEntityAndPath() {
@@ -18,10 +18,16 @@ func (g *Game) DrawEntityAndPath() {
 		if g.w.e.moveTarget != nil {
 			drawPoint(g.r, *g.w.e.moveTarget,
 				sdl.Color{R: 0, G: 255, B: 255}, POINTSZ)
-			// toward := VecFromPoints(g.w.e.pos, *g.w.e.moveTarget).
-			// Unit().Scale(VECLENGTH)
-			// drawVector(g.r, g.w.e.pos, toward, sdl.Color{R: 255, G: 255, B: 0})
+			toward := VecFromPoints(g.w.e.pos, *g.w.e.moveTarget).
+				Unit().Scale(VECLENGTH)
+			drawVector(g.r, g.w.e.pos, toward, sdl.Color{R: 255, G: 255, B: 0})
 			drawVector(g.r, g.w.e.pos, g.w.e.vel.Scale(VECLENGTH), sdl.Color{R: 255, G: 0, B: 0})
+			for i := 0; i < 3; i++ {
+				future := g.w.e.pos.Add(g.w.e.vel.Scale(float64(10 * (i + 1))))
+				drawPoint(g.r, future,
+					sdl.Color{R: 0, G: 255, B: 0}, POINTSZ/2)
+			}
+
 		}
 		drawPoint(g.r, g.w.e.pos,
 			sdl.Color{R: 0, G: 255, B: 0}, POINTSZ)

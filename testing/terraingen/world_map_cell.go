@@ -17,7 +17,7 @@ var WorldMapCellTransitionCostFuncs = []func(other *WorldMapCell) float64{
 		var cost float64
 		switch other.kind {
 		case CELL_WATER:
-			cost = 5
+			cost = 32
 		case CELL_SAND:
 			cost = 1
 		case CELL_GRASS:
@@ -69,7 +69,7 @@ var WorldMapCellTransitionCostFuncs = []func(other *WorldMapCell) float64{
 			cost = 0.5
 		case CELL_FOREST:
 			densityMult := (1 + other.data.(ForestCellData).density)
-			cost = 2 * densityMult
+			cost = 2 * densityMult * densityMult * densityMult
 		}
 		return cost
 	},

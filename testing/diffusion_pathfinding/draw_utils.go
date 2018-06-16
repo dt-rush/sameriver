@@ -5,7 +5,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-func drawPoint(r *sdl.Renderer, p Point2D, c sdl.Color, sz int) {
+func drawPoint(r *sdl.Renderer, p Vec2D, c sdl.Color, sz int) {
 	sspx, sspy := WorldSpaceToScreenSpace(p)
 	r.SetDrawColor(c.R, c.G, c.B, 255)
 	r.FillRect(&sdl.Rect{
@@ -14,12 +14,11 @@ func drawPoint(r *sdl.Renderer, p Point2D, c sdl.Color, sz int) {
 		int32(sz), int32(sz)})
 }
 
-func drawVector(r *sdl.Renderer, pos Point2D, v Vec2D, c sdl.Color) {
+func drawVector(r *sdl.Renderer, pos Vec2D, v Vec2D, c sdl.Color) {
 	// screen-space position
 	sspx, sspy := WorldSpaceToScreenSpace(pos)
 	// screen-space vector tip
-	ssvtx, ssvty := WorldSpaceToScreenSpace(
-		PointDelta(pos, v.X, v.Y))
+	ssvtx, ssvty := WorldSpaceToScreenSpace(pos.Add(v))
 	gfx.LineColor(r,
 		int32(sspx),
 		int32(sspy),

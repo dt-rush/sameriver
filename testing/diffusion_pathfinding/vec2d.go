@@ -9,11 +9,11 @@ type Vec2D struct {
 	Y float64
 }
 
-func (v Vec2D) ToPoint() Point2D {
-	return Point2D{v.X, v.Y}
+func (v Vec2D) ToPoint() Vec2D {
+	return Vec2D{v.X, v.Y}
 }
 
-func VecFromPoints(p1 Point2D, p2 Point2D) Vec2D {
+func VecFromPoints(p1 Vec2D, p2 Vec2D) Vec2D {
 	return Vec2D{float64(p2.X - p1.X), float64(p2.Y - p1.Y)}
 }
 
@@ -23,6 +23,13 @@ func (v1 Vec2D) Add(v2 Vec2D) Vec2D {
 
 func (v1 Vec2D) Sub(v2 Vec2D) Vec2D {
 	return Vec2D{v1.X - v2.X, v1.Y - v2.Y}
+}
+
+func (v1 Vec2D) Distance(v2 Vec2D) (dx, dy, d float64) {
+	dx = float64(v2.X - v1.X)
+	dy = float64(v2.Y - v1.Y)
+	d = math.Sqrt(dx*dx + dy*dy)
+	return dx, dy, d
 }
 
 func (v1 Vec2D) ScalarCross(v2 Vec2D) float64 {

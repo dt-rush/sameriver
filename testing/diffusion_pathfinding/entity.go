@@ -1,24 +1,23 @@
 package main
 
 import (
-	"fmt"
 	"time"
 )
 
 type Entity struct {
 	w *World
 
-	pos        Point2D
+	pos        Vec2D
 	vel        Vec2D
-	moveTarget *Point2D
+	moveTarget *Vec2D
 
 	moveTicker *time.Ticker
 	velTicker  *time.Ticker
 
-	path []Point2D
+	path []Vec2D
 }
 
-func NewEntity(pos Point2D, w *World) *Entity {
+func NewEntity(pos Vec2D, w *World) *Entity {
 	return &Entity{
 		w:          w,
 		pos:        pos,
@@ -37,10 +36,6 @@ func (e *Entity) Update() {
 	}
 }
 
-func sigma(x float64, m float64) float64 {
-	return 1.0 / ((x*x)/(m*m) + 1)
-}
-
 func (e *Entity) UpdateVel() {
 
 	if e.moveTarget != nil {
@@ -48,19 +43,24 @@ func (e *Entity) UpdateVel() {
 		d := toward.Magnitude()
 		force := toward.Unit().Scale(1)
 		for _, o := range e.w.obstacles {
-			ovec := VecFromPoints(e.pos, Point2D{o.X + o.W/2, o.Y + o.H/2})
-			d := ovec.Magnitude()
-			lv := ovec.PerpendicularUnit().Scale(1)
-			if e.vel.Project(lv) > 0 {
-				fmt.Println("obstacle is to the left")
-				force = force.Add(lv.Scale(8 * e.vel.Magnitude() * sigma(d, 16)))
-			}
-			rv := ovec.PerpendicularUnit().Scale(-1)
-			if e.vel.Project(rv) > 0 {
-				force = force.Add(rv.Scale(8 * e.vel.Magnitude() * sigma(d, 16)))
+			// check if entity is moving toward colliding with obstacle
+			for i := 0; i < 3; i++ {
+				future := e.pos.Add(e.vel.Scale(float64(10 * (i + 1))))
+				if o.Contains(future) {
+					ovec := VecFromPoints(e.pos, Vec2D{o.X + o.W/2, o.Y + o.H/2})
+					d := ovec.Magnitude()
+					lv := ovec.PerpendicularUnit().Scale(1)
+					if e.vel.Project(lv) > 0 {
+						force = force.Add(lv.Scale(2 * e.vel.Magnitude() * sigma4(d, 36)))
+					}
+					rv := ovec.PerpendicularUnit().Scale(-1)
+					if e.vel.Project(rv) > 0 {
+						force = force.Add(rv.Scale(2 * e.vel.Magnitude() * sigma4(d, 36)))
+					}
+				}
 			}
 		}
-		max := MOVESPEED * (1 - sigma(d, 16))
+		max := MOVESPEED * (1 - sigma4(d, 16))
 		e.vel = e.vel.Add(force).Truncate(max)
 	}
 }
@@ -70,7 +70,7 @@ func (e *Entity) Move() {
 		e.pos.X += e.vel.X
 		e.pos.Y += e.vel.Y
 		if e.moveTarget != nil {
-			_, _, d := Distance(e.pos, *e.moveTarget)
+			_, _, d := e.pos.Distance(*e.moveTarget)
 			if d < MOVESPEED*2 {
 				e.pos = *e.moveTarget
 				e.vel = Vec2D{0, 0}

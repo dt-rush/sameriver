@@ -79,7 +79,7 @@ func (m *DiffusionMap) CellHasObstacle(x int, y int) bool {
 	return false
 }
 
-func (m *DiffusionMap) Diffuse(pos Point2D) {
+func (m *DiffusionMap) Diffuse(pos Vec2D) {
 	initX := int(pos.X / DIFFUSION_CELL_W)
 	initY := int(pos.Y / DIFFUSION_CELL_H)
 	if initX > DIFFUSION_DIM-1 {

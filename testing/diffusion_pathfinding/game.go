@@ -43,7 +43,7 @@ func (g *Game) HandleKeyEvents(e sdl.Event) {
 }
 
 func (g *Game) HandleMouseMotionEvents(me *sdl.MouseMotionEvent) {
-	p := MouseMotionEventToPoint2D(me)
+	p := MouseMotionEventToVec2D(me)
 	if me.State&sdl.ButtonLMask() != 0 {
 		if g.c.mode == MODE_PLACING_WAYPOINT {
 			g.HandleWayPointInput(sdl.BUTTON_LEFT, p)
@@ -59,7 +59,7 @@ func (g *Game) HandleMouseMotionEvents(me *sdl.MouseMotionEvent) {
 }
 
 func (g *Game) HandleMouseButtonEvents(me *sdl.MouseButtonEvent) {
-	p := MouseButtonEventToPoint2D(me)
+	p := MouseButtonEventToVec2D(me)
 	if me.Type == sdl.MOUSEBUTTONDOWN {
 		if g.c.mode == MODE_PLACING_WAYPOINT {
 			g.HandleWayPointInput(me.Button, p)
@@ -69,7 +69,7 @@ func (g *Game) HandleMouseButtonEvents(me *sdl.MouseButtonEvent) {
 	}
 }
 
-func (g *Game) HandleWayPointInput(button uint8, pos Point2D) {
+func (g *Game) HandleWayPointInput(button uint8, pos Vec2D) {
 	if button == sdl.BUTTON_LEFT {
 		g.w.e = NewEntity(pos, g.w)
 	}
@@ -80,7 +80,7 @@ func (g *Game) HandleWayPointInput(button uint8, pos Point2D) {
 	}
 }
 
-func (g *Game) HandleObstacleInput(button uint8, pos Point2D) {
+func (g *Game) HandleObstacleInput(button uint8, pos Vec2D) {
 	if button == sdl.BUTTON_LEFT {
 		g.w.obstacles = append(g.w.obstacles, CenteredSquare(pos, OBSTACLESZ))
 	}

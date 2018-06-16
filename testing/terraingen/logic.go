@@ -61,7 +61,7 @@ func (w *World) ComputeEntityPath() float64 {
 }
 
 func (w *World) MoveEntity() {
-	if w.e != nil && w.e.moveTarget != nil {
+	if w.e != nil && w.e.moveTarget != nil && w.e.path != nil && len(w.e.path) > 1 {
 		last_ix := len(w.e.path) - 1
 		var target Position
 		var validTarget = false
