@@ -5,15 +5,17 @@ import (
 )
 
 type World struct {
-	m *WorldMap
-	e *Entity
-	c *PathCalculator
+	m  *WorldMap
+	e  *Entity
+	c  *PathCalculator
+	c2 *PathComputer
 }
 
 func NewWorld() *World {
 	w := World{}
 	w.RegenMap()
 	w.c = NewPathCalculator(w.m)
+	w.c2 = NewPathComputer(w.m)
 	return &w
 }
 

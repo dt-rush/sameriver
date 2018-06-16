@@ -6,7 +6,23 @@ import (
 )
 
 func (w *World) ComputePath() float64 {
-	return w.ComputeEntityPathUnrolled()
+	return w.ComputeEntityPathHandRolled()
+}
+
+func (w *World) ComputeEntityPathHandRolled() float64 {
+	var t_ms float64
+	if w.e != nil && w.e.moveTarget != nil {
+		t0 := time.Now()
+		path := w.c2.Path(
+			w.m.CellAt(w.e.pos).pos,
+			w.m.CellAt(*w.e.moveTarget).pos)
+		t_ms = float64(time.Since(t0).Nanoseconds()) / float64(1e6)
+		if len(path) > 0 {
+			w.e.path = path
+		}
+	}
+	w.c.Clear()
+	return t_ms
 }
 
 func (w *World) ComputeEntityPathUnrolled() float64 {
