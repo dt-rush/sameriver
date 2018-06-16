@@ -17,7 +17,7 @@ var WorldMapCellTransitionCostFuncs = []func(otherKind int) float64{
 		var cost float64
 		switch otherKind {
 		case CELL_WATER:
-			cost = 10
+			cost = 5
 		case CELL_SAND:
 			cost = 1
 		case CELL_GRASS:
@@ -38,7 +38,7 @@ var WorldMapCellTransitionCostFuncs = []func(otherKind int) float64{
 		case CELL_GRASS:
 			cost = 1
 		case CELL_FOREST:
-			cost = 1.5
+			cost = 2.5
 		}
 		return cost
 	},
@@ -53,7 +53,7 @@ var WorldMapCellTransitionCostFuncs = []func(otherKind int) float64{
 		case CELL_GRASS:
 			cost = 1
 		case CELL_FOREST:
-			cost = 1.5
+			cost = 2.5
 		}
 		return cost
 	},
