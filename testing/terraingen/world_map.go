@@ -13,6 +13,7 @@ type WorldMap struct {
 func GenerateWorldMap() *WorldMap {
 	m := WorldMap{}
 	m.seed = time.Now().UnixNano()
+	m.seed = 1529127452575316215
 	terrain := PerlinNoiseInt2D(
 		WORLD_CELLWIDTH, WORLD_CELLHEIGHT, 16,
 		2.0, 2.0, 3,
@@ -43,7 +44,7 @@ func GenerateWorldMap() *WorldMap {
 			} else if v < 0.55 {
 				c = m.GrassCell()
 			} else {
-				density := int((1.0 - v) / 0.1)
+				density := v
 				c = m.ForestCell(density)
 			}
 			c.pos = Position{x, y}

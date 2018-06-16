@@ -11,11 +11,11 @@ const (
 	CELL_FOREST = iota
 )
 
-var WorldMapCellTransitionCostFuncs = []func(otherKind int) float64{
+var WorldMapCellTransitionCostFuncs = []func(other *WorldMapCell) float64{
 	// WATER
-	func(otherKind int) float64 {
+	func(other *WorldMapCell) float64 {
 		var cost float64
-		switch otherKind {
+		switch other.kind {
 		case CELL_WATER:
 			cost = 5
 		case CELL_SAND:
@@ -23,14 +23,14 @@ var WorldMapCellTransitionCostFuncs = []func(otherKind int) float64{
 		case CELL_GRASS:
 			cost = 1
 		case CELL_FOREST:
-			cost = 1.8
+			cost = 1.8 * (1 + other.data.(ForestCellData).density)
 		}
 		return cost
 	},
 	// SAND
-	func(otherKind int) float64 {
+	func(other *WorldMapCell) float64 {
 		var cost float64
-		switch otherKind {
+		switch other.kind {
 		case CELL_WATER:
 			cost = 3
 		case CELL_SAND:
@@ -38,14 +38,14 @@ var WorldMapCellTransitionCostFuncs = []func(otherKind int) float64{
 		case CELL_GRASS:
 			cost = 1
 		case CELL_FOREST:
-			cost = 2.5
+			cost = 2.5 * (1 + other.data.(ForestCellData).density)
 		}
 		return cost
 	},
 	// GRASS
-	func(otherKind int) float64 {
+	func(other *WorldMapCell) float64 {
 		var cost float64
-		switch otherKind {
+		switch other.kind {
 		case CELL_WATER:
 			cost = 3
 		case CELL_SAND:
@@ -53,14 +53,14 @@ var WorldMapCellTransitionCostFuncs = []func(otherKind int) float64{
 		case CELL_GRASS:
 			cost = 1
 		case CELL_FOREST:
-			cost = 2.5
+			cost = 2.5 * (1 + other.data.(ForestCellData).density)
 		}
 		return cost
 	},
 	// FOREST
-	func(otherKind int) float64 {
+	func(other *WorldMapCell) float64 {
 		var cost float64
-		switch otherKind {
+		switch other.kind {
 		case CELL_WATER:
 			cost = 3
 		case CELL_SAND:
@@ -68,7 +68,8 @@ var WorldMapCellTransitionCostFuncs = []func(otherKind int) float64{
 		case CELL_GRASS:
 			cost = 0.5
 		case CELL_FOREST:
-			cost = 1
+			densityMult := (1 + other.data.(ForestCellData).density)
+			cost = 2 * densityMult
 		}
 		return cost
 	},
@@ -107,16 +108,16 @@ func (m *WorldMap) GrassCell() WorldMapCell {
 }
 
 type ForestCellData struct {
-	density int
+	density float64
 }
 
-func (m *WorldMap) ForestCell(density int) WorldMapCell {
+func (m *WorldMap) ForestCell(density float64) WorldMapCell {
 	c := NewWorldMapCell(m, "#", CELL_FOREST,
-		sdl.Color{R: 0, G: uint8(48 + density*16), B: 0})
+		sdl.Color{R: 0, G: uint8(180 - (density/0.1)*16), B: 0})
 	c.data = ForestCellData{density}
 	return c
 }
 
 func (c1 *WorldMapCell) CostToTransitionTo(c2 *WorldMapCell) float64 {
-	return WorldMapCellTransitionCostFuncs[c1.kind](c2.kind)
+	return WorldMapCellTransitionCostFuncs[c1.kind](c2)
 }

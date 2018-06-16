@@ -102,7 +102,7 @@ func (pc *PathComputer) Heuristic(p1 Position, p2 Position) int {
 		dy *= -1
 	}
 	// multiply dist by cell transition cost
-	return 100 * (dx + dy)
+	return 100 * (dx*dx + dy*dy) / ((dx + 1) * (dy + 1))
 }
 
 func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
@@ -167,13 +167,12 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 				} else {
 					dist = 14
 				}
-
+				// multiply distance by terrain cost
+				terrainCost := WorldMapCellTransitionCostFuncs[pc.WM.cells[cur.Y][cur.X].kind](&pc.WM.cells[y][x])
+				dist = (int)(float64(dist) * terrainCost)
 				// compute g, h, f for the current cell
 				g := pc.G[cur.X][cur.Y] + dist
 				h := pc.Heuristic(Position{x, y}, end)
-				// multiply heuristic by terrain cost
-				terrainCost := WorldMapCellTransitionCostFuncs[pc.WM.cells[cur.Y][cur.X].kind](pc.WM.cells[y][x].kind)
-				h = (int)(float64(h) * terrainCost)
 				// if not on open heap, add it with "From" == cur
 				open := pc.WhichList[x][y] == pc.N
 				if !open {

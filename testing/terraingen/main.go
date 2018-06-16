@@ -78,7 +78,7 @@ func gameloop() int {
 		return exitcode
 	}
 
-	moveTicker := time.NewTicker(50 * time.Millisecond)
+	moveTicker := time.NewTicker(200 * time.Millisecond)
 
 	running := true
 	for running {
