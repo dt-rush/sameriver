@@ -59,6 +59,10 @@ func (m *WorldMap) CellAt(pos Position) *WorldMapCell {
 	return &m.cells[pos.Y][pos.X]
 }
 
+func (m *WorldMap) InGrid(x int, y int) bool {
+	return x >= 0 && x < WORLD_CELLWIDTH && y >= 0 && y < WORLD_CELLHEIGHT
+}
+
 func (m *WorldMap) Print() {
 	for y := 0; y < WORLD_CELLHEIGHT; y++ {
 		for x := 0; x < WORLD_CELLWIDTH; x++ {

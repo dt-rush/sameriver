@@ -90,6 +90,11 @@ func (m *DiffusionMap) UpdateTexture() {
 					GRIDCELL_WORLD_H},
 				c,
 			)
+			drawPoint(m.r,
+				Vec2D{float64(x*GRIDCELL_WORLD_W + GRIDCELL_WORLD_W/2),
+					float64(y*GRIDCELL_WORLD_H + GRIDCELL_WORLD_H/2)},
+				sdl.Color{R: 255, G: 255, B: 255}, 1)
+
 		}
 	}
 }

@@ -1,5 +1,9 @@
 package main
 
+import (
+// "math"
+)
+
 // G:			reference to the grid of cells we're pathing over
 // OH			NodeHeap ("Open Heap") used to pop off the nodes with the lowest
 //					F during search (open nodes)
@@ -81,28 +85,24 @@ func NewPathComputer(wm *WorldMap) *PathComputer {
 //
 var neighborIXs = [][2]int{
 	[2]int{-1, 1},
-	[2]int{0, 1},
 	[2]int{1, 1},
+	[2]int{-1, -1},
+	[2]int{1, -1},
+	[2]int{0, 1},
 	[2]int{-1, 0},
 	[2]int{1, 0},
-	[2]int{-1, -1},
 	[2]int{0, -1},
-	[2]int{1, -1},
 }
 
-// manhattan heuristic * 100 (since we use 10 and 14 for one square straight
-// or diagonal)
 func (pc *PathComputer) Heuristic(p1 Position, p2 Position) int {
 	dx := p1.X - p2.X
-	if dx < 0 {
-		dx *= -1
-	}
 	dy := p1.Y - p2.Y
-	if dy < 0 {
-		dy *= -1
+	result := 10 * (dx + dy)
+	if result < 0 {
+		result *= -1
 	}
-	// multiply dist by cell transition cost
-	return 100 * (dx*dx + dy*dy) / ((dx + 1) * (dy + 1))
+	return result
+	// return int(10 * math.Sqrt(float64(dx*dx+dy*dy)))
 }
 
 func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
@@ -118,7 +118,7 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 	// store a special value for the "From" of the first node
 	pc.From[start.X][start.Y] = NOWHERE
 	pc.G[start.X][start.Y] = 0
-	pc.H[start.X][start.Y] = 0
+	pc.H[start.X][start.Y] = pc.Heuristic(start, end)
 	pc.WhichList[start.X][start.Y] = pc.N
 	pc.OH.Add(start)
 	// while open heap has elements...
@@ -149,54 +149,58 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 			x := cur.X + neighborIX[0]
 			y := cur.Y + neighborIX[1]
 			// continue loop to next neighbor early if not in grid
-			inGrid := x >= 0 && x < WORLD_CELLWIDTH && y >= 0 && y < WORLD_CELLHEIGHT
-			if !inGrid {
+			if !pc.WM.InGrid(x, y) {
 				continue
 			}
-			// if neighbor is valid (it isn't in the closed set), then...
+			// dist is an integer expression of the distance from
+			// cur to the neighbor cell we're looking at here.
+			// if either x or y offset is 0, we're moving straight,
+			// so put 10. Otherwise we're moving diagonal, so put 14
+			// (these are 1 and sqrt(2), but made into integers for speed)
+			var dist int
+			if neighborIX[0]*neighborIX[1] == 0 {
+				dist = 10
+			} else {
+				dist = 14
+			}
+			// multiply distance by terrain cost
+			terrainCost := TERRAIN_COSTS[pc.WM.cells[x][y].kind]
+			dist = dist * terrainCost
+
+			// compute g, h, f for the current cell
+			g := pc.G[cur.X][cur.Y] + dist
+			h := pc.Heuristic(Position{x, y}, end)
+
+			// don't consider this neighbor if the neighbor is in the closed
+			// list *and* our g is greater or equal to its g score (we already
+			// have a better way to get to it)
 			closed := pc.WhichList[x][y] == pc.N+1
-			if !closed {
-				// dist is an integer expression of the distance from
-				// cur to the neighbor cell we're looking at here.
-				// if either x or y offset is 0, we're moving straight,
-				// so put 10. Otherwise we're moving diagonal, so put 14
-				// (these are 1 and sqrt(2), but made into integers for speed)
-				var dist int
-				if neighborIX[0]*neighborIX[1] == 0 {
-					dist = 10
-				} else {
-					dist = 14
-				}
-				// multiply distance by terrain cost
-				terrainCost := WorldMapCellTransitionCostFuncs[pc.WM.cells[cur.Y][cur.X].kind](&pc.WM.cells[y][x])
-				dist = (int)(float64(dist) * terrainCost)
-				// compute g, h, f for the current cell
-				g := pc.G[cur.X][cur.Y] + dist
-				h := pc.Heuristic(Position{x, y}, end)
-				// if not on open heap, add it with "From" == cur
-				open := pc.WhichList[x][y] == pc.N
-				if !open {
-					// set From, G, H
+			if closed && g >= pc.G[x][y] {
+				continue
+			}
+
+			// if not on open heap, add it with "From" == cur
+			open := pc.WhichList[x][y] == pc.N
+			if !open {
+				// set From, G, H
+				pc.From[x][y] = cur
+				pc.G[x][y] = g
+				pc.H[x][y] = h
+				// set whichlist == OPEN
+				pc.WhichList[x][y] = pc.N
+				// push to open heap
+				pc.OH.Add(Position{x, y})
+			} else {
+				// if it *is* on the open heap already, check to see if
+				// this is a better path to that square
+				gAlready := pc.G[x][y]
+				if g < gAlready {
+					// if the open node could be reached better by
+					// this path, set the g to the new lower g, set the
+					// "From" reference to cur and fix up the heap because
+					// we've changed the value of one of its elements
 					pc.From[x][y] = cur
-					pc.G[x][y] = g
-					pc.H[x][y] = h
-					// set whichlist == OPEN
-					pc.WhichList[x][y] = pc.N
-					// push to open heap
-					pc.OH.Add(Position{x, y})
-				} else {
-					// if it *is* on the open heap already, check to see if
-					// this is a better path to that square
-					// on -> "open node"
-					gAlready := pc.G[x][y]
-					if g < gAlready {
-						// if the open node could be reached better by
-						// this path, set the g to the new lower g, set the
-						// "From" reference to cur and fix up the heap because
-						// we've changed the value of one of its elements
-						pc.From[x][y] = cur
-						pc.OH.Modify(pc.HeapIX[x][y], g)
-					}
+					pc.OH.Modify(pc.HeapIX[x][y], g)
 				}
 			}
 		}

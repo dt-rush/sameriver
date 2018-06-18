@@ -28,7 +28,7 @@ func (c *WorldMapCell) PathNeighborCost(to astar.Pather) float64 {
 	dx := math.Abs(float64(c.pos.X - to.(*WorldMapCell).pos.X))
 	dy := math.Abs(float64(c.pos.Y - to.(*WorldMapCell).pos.Y))
 	distance := math.Sqrt(dx*dx + dy*dy)
-	return distance * c.CostToTransitionTo(to.(*WorldMapCell))
+	return distance * float64(TERRAIN_COSTS[to.(*WorldMapCell).kind])
 }
 
 func (c *WorldMapCell) PathEstimatedCost(to astar.Pather) float64 {

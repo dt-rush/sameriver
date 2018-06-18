@@ -163,7 +163,7 @@ gameloop:
 		case _ = <-fpsTicker.C:
 			sdl.Do(func() {
 				g.r.Clear()
-				g.DrawGRID()
+				g.DrawGrid()
 				g.DrawUI()
 				g.r.Present()
 			})
@@ -175,7 +175,7 @@ gameloop:
 			break gameloop
 		}
 
-		// update GRID
+		// update grid
 		if !g.paused {
 			g.w.Update()
 		}

@@ -4,7 +4,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-func (g *Game) DrawGRID() {
+func (g *Game) DrawGrid() {
 	g.r.SetDrawColor(0, 0, 0, 255)
 	g.r.FillRect(nil)
 	if g.showData {

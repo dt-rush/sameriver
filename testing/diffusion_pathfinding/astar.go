@@ -101,8 +101,6 @@ var neighborIXs = [][2]int{
 	[2]int{0, -1},
 }
 
-// manhattan heuristic * 100 (since we use 10 and 14 for one square straight
-// or diagonal)
 func (pc *PathComputer) Heuristic(p1 Position, p2 Position) int {
 	dx := p1.X - p2.X
 	dy := p1.Y - p2.Y

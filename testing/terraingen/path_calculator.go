@@ -76,7 +76,8 @@ func (c *PathCalculator) Path(from, to *WorldMapCell) (
 				dx := current.cell.pos.X - neighbor.pos.X
 				dy := current.cell.pos.Y - neighbor.pos.Y
 				distance := math.Sqrt(float64(dx*dx + dy*dy))
-				costToNeighbor := distance * current.cell.CostToTransitionTo(neighbor)
+				terrainCost := float64(TERRAIN_COSTS[neighbor.kind])
+				costToNeighbor := distance * terrainCost
 				cost := current.cost + costToNeighbor
 				if cost < neighborNode.cost {
 					if neighborNode.open {
