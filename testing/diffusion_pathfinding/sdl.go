@@ -18,7 +18,7 @@ func GetRenderer() (*sdl.Renderer, int) {
 
 	sdl.Do(func() {
 		window, err = sdl.CreateWindow(
-			"WORLDMAP TEST",
+			"GRIDMAP TEST",
 			sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 			WINDOW_WIDTH, WINDOW_HEIGHT, sdl.WINDOW_SHOWN)
 	})

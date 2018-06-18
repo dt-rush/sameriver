@@ -13,10 +13,6 @@ func (v Vec2D) ToPoint() Vec2D {
 	return Vec2D{v.X, v.Y}
 }
 
-func VecFromPoints(p1 Vec2D, p2 Vec2D) Vec2D {
-	return Vec2D{float64(p2.X - p1.X), float64(p2.Y - p1.Y)}
-}
-
 func (v1 Vec2D) Add(v2 Vec2D) Vec2D {
 	return Vec2D{v1.X + v2.X, v1.Y + v2.Y}
 }
@@ -68,4 +64,12 @@ func (v Vec2D) Truncate(val float64) Vec2D {
 	} else {
 		return v
 	}
+}
+
+func (v Vec2D) XComponent() Vec2D {
+	return Vec2D{v.X, 0}
+}
+
+func (v Vec2D) YComponent() Vec2D {
+	return Vec2D{0, v.Y}
 }

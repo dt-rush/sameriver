@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
 	"time"
@@ -11,18 +12,23 @@ type Game struct {
 	c  *Controls
 	ui *UI
 
+	showData bool
+
 	r *sdl.Renderer
 	f *ttf.Font
 }
 
 func NewGame(r *sdl.Renderer, f *ttf.Font) *Game {
-	g := &Game{r: r, f: f}
+	g := &Game{r: r, f: f, showData: true}
 
 	g.w = NewWorld(g)
 	g.c = NewControls()
 	g.ui = NewUI(r, f)
 
-	g.ui.UpdateMsg(0, MODENAMES[g.c.mode])
+	g.ui.UpdateMsg(0, "i: show data, m: toggle mode")
+	g.ui.UpdateMsg(1, "g: place random obstacles, c: clear obstacles")
+	g.ui.UpdateMsg(2, fmt.Sprintf("grid dimension: %d", GRID_CELL_DIMENSION))
+	g.ui.UpdateMsg(3, MODENAMES[g.c.mode])
 	return g
 }
 
@@ -33,10 +39,16 @@ func (g *Game) HandleKeyEvents(e sdl.Event) {
 		if ke.Type == sdl.KEYDOWN {
 			if ke.Keysym.Sym == sdl.K_m {
 				g.c.ToggleMode()
-				g.ui.UpdateMsg(0, MODENAMES[g.c.mode])
+				g.ui.UpdateMsg(3, MODENAMES[g.c.mode])
 			}
 			if ke.Keysym.Sym == sdl.K_c {
 				g.w.ClearObstacles()
+			}
+			if ke.Keysym.Sym == sdl.K_g {
+				g.w.RandomObstacles()
+			}
+			if ke.Keysym.Sym == sdl.K_i {
+				g.showData = !g.showData
 			}
 		}
 	}
@@ -76,13 +88,29 @@ func (g *Game) HandleWayPointInput(button uint8, pos Vec2D) {
 	if button == sdl.BUTTON_RIGHT {
 		if g.w.e != nil {
 			g.w.e.moveTarget = &pos
+			startCell := g.w.dm.ToMapSpace(g.w.e.pos)
+			endCell := g.w.dm.ToMapSpace(*g.w.e.moveTarget)
+			t0 := time.Now()
+			path := g.w.pc.Path(startCell, endCell)
+			msg := fmt.Sprintf("path compute took %.3f ms",
+				float64(time.Since(t0).Nanoseconds()/1e6)/1000.0)
+			g.ui.UpdateMsg(5, msg)
+
+			g.w.e.path = g.w.e.path[:0]
+			for _, p := range path {
+				g.w.e.path = append(g.w.e.path, Vec2D{
+					float64(p.X*GRIDCELL_WORLD_W + GRIDCELL_WORLD_W/2),
+					float64(p.Y*GRIDCELL_WORLD_H + GRIDCELL_WORLD_H/2),
+				})
+			}
+			fmt.Println(g.w.e.path)
 		}
 	}
 }
 
 func (g *Game) HandleObstacleInput(button uint8, pos Vec2D) {
 	if button == sdl.BUTTON_LEFT {
-		g.w.obstacles = append(g.w.obstacles, CenteredSquare(pos, OBSTACLESZ))
+		g.w.AddObstacle(pos)
 	}
 	if button == sdl.BUTTON_RIGHT {
 
@@ -131,7 +159,7 @@ gameloop:
 		case _ = <-fpsTicker.C:
 			sdl.Do(func() {
 				g.r.Clear()
-				g.DrawWorld()
+				g.DrawGRID()
 				g.DrawUI()
 				g.r.Present()
 			})
@@ -143,7 +171,7 @@ gameloop:
 			break gameloop
 		}
 
-		// update world
+		// update GRID
 		g.w.Update()
 
 		sdl.Delay(1000 / (2 * FPS))

@@ -6,7 +6,7 @@ import (
 )
 
 func drawPoint(r *sdl.Renderer, p Vec2D, c sdl.Color, sz int) {
-	sspx, sspy := WorldSpaceToScreenSpace(p)
+	sspx, sspy := GRIDSpaceToScreenSpace(p)
 	r.SetDrawColor(c.R, c.G, c.B, 255)
 	r.FillRect(&sdl.Rect{
 		int32(sspx - sz/2),
@@ -16,9 +16,9 @@ func drawPoint(r *sdl.Renderer, p Vec2D, c sdl.Color, sz int) {
 
 func drawVector(r *sdl.Renderer, pos Vec2D, v Vec2D, c sdl.Color) {
 	// screen-space position
-	sspx, sspy := WorldSpaceToScreenSpace(pos)
+	sspx, sspy := GRIDSpaceToScreenSpace(pos)
 	// screen-space vector tip
-	ssvtx, ssvty := WorldSpaceToScreenSpace(pos.Add(v))
+	ssvtx, ssvty := GRIDSpaceToScreenSpace(pos.Add(v))
 	gfx.LineColor(r,
 		int32(sspx),
 		int32(sspy),
