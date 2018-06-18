@@ -12,6 +12,7 @@ type Game struct {
 	c  *Controls
 	ui *UI
 
+	paused   bool
 	showData bool
 
 	r *sdl.Renderer
@@ -25,7 +26,7 @@ func NewGame(r *sdl.Renderer, f *ttf.Font) *Game {
 	g.c = NewControls()
 	g.ui = NewUI(r, f)
 
-	g.ui.UpdateMsg(0, "i: show data, m: toggle mode")
+	g.ui.UpdateMsg(0, "i: show data, m: toggle mode, p: pause")
 	g.ui.UpdateMsg(1, "g: place random obstacles, c: clear obstacles")
 	g.ui.UpdateMsg(2, fmt.Sprintf("grid dimension: %d", GRID_CELL_DIMENSION))
 	g.ui.UpdateMsg(3, MODENAMES[g.c.mode])
@@ -49,6 +50,9 @@ func (g *Game) HandleKeyEvents(e sdl.Event) {
 			}
 			if ke.Keysym.Sym == sdl.K_i {
 				g.showData = !g.showData
+			}
+			if ke.Keysym.Sym == sdl.K_p {
+				g.paused = !g.paused
 			}
 		}
 	}
@@ -95,6 +99,7 @@ func (g *Game) HandleWayPointInput(button uint8, pos Vec2D) {
 			msg := fmt.Sprintf("path compute took %.3f ms",
 				float64(time.Since(t0).Nanoseconds()/1e6)/1000.0)
 			g.ui.UpdateMsg(5, msg)
+			g.ui.UpdateMsg(6, fmt.Sprintf("path length: %d", len(path)))
 
 			g.w.e.path = g.w.e.path[:0]
 			for _, p := range path {
@@ -103,7 +108,6 @@ func (g *Game) HandleWayPointInput(button uint8, pos Vec2D) {
 					float64(p.Y*GRIDCELL_WORLD_H + GRIDCELL_WORLD_H/2),
 				})
 			}
-			fmt.Println(g.w.e.path)
 		}
 	}
 }
@@ -172,7 +176,9 @@ gameloop:
 		}
 
 		// update GRID
-		g.w.Update()
+		if !g.paused {
+			g.w.Update()
+		}
 
 		sdl.Delay(1000 / (2 * FPS))
 	}

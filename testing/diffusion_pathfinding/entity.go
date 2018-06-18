@@ -54,21 +54,21 @@ func (e *Entity) UpdateVel() {
 		toward := (*nextPathPoint).Sub(e.pos)
 		d := toward.Magnitude()
 		force := toward.Unit()
-		avoid := 4.0
+		avoid := 0.2
 		for _, o := range e.w.obstacles {
 			// check if entity is moving toward colliding with obstacle
 			oc := Vec2D{o.X + o.W/2, o.Y + o.H/2}
 			ovec := oc.Sub(e.pos)
-			if d > 4*OBSTACLESZ &&
+			if d > 1*OBSTACLESZ &&
 				e.vel.Project(ovec) > 0 && ovec.Magnitude() < OBSTACLESZ*3 {
 				lv := ovec.PerpendicularUnit().Scale(1)
 				if e.vel.Project(lv) > 0 {
-					force = force.Add(lv.Scale(avoid * OBSTACLESZ *
+					force = force.Add(lv.Scale(avoid * OBSTACLESZ / 2 *
 						sigma4(ovec.Magnitude(), OBSTACLESZ/2)))
 				}
 				rv := ovec.PerpendicularUnit().Scale(-1)
 				if e.vel.Project(rv) > 0 {
-					force = force.Add(rv.Scale(avoid * OBSTACLESZ *
+					force = force.Add(rv.Scale(avoid * OBSTACLESZ / 2 *
 						sigma4(ovec.Magnitude(), OBSTACLESZ/2)))
 				}
 			}
