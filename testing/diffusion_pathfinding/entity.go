@@ -1,7 +1,7 @@
 package main
 
 import (
-	"math"
+	"time"
 )
 
 type Entity struct {
@@ -9,21 +9,30 @@ type Entity struct {
 
 	pos        Vec2D
 	vel        Vec2D
-	steer      Vec2D
 	moveTarget *Vec2D
 	path       []Vec2D
+
+	moveTicker *time.Ticker
+	velTicker  *time.Ticker
 }
 
 func NewEntity(pos Vec2D, w *World) *Entity {
 	return &Entity{
-		w:   w,
-		pos: pos,
+		w:          w,
+		pos:        pos,
+		moveTicker: time.NewTicker(16 * time.Millisecond),
+		velTicker:  time.NewTicker(42 * time.Millisecond),
 	}
 }
 
 func (e *Entity) Update() {
-	e.UpdateVel()
-	e.Move()
+	select {
+	case _ = <-e.moveTicker.C:
+		e.Move()
+	case _ = <-e.velTicker.C:
+		e.UpdateVel()
+	default:
+	}
 }
 
 func (e *Entity) UpdateVel() {
@@ -36,65 +45,80 @@ func (e *Entity) UpdateVel() {
 				break
 			}
 			nextPathPoint = &e.path[len(e.path)-1]
-			if e.pos.Sub(*nextPathPoint).Magnitude() < GRIDCELL_WORLD_W/4 {
+			if e.pos.Sub(*nextPathPoint).Magnitude() < GRIDCELL_WORLD_W {
 				e.path = e.path[:len(e.path)-1]
 				nextPathPoint = nil
 				continue
 			}
 		}
 		toward := (*nextPathPoint).Sub(e.pos)
-		e.steer = toward.Unit()
-		angle := e.vel.AngleBetween(e.steer)
-		max := MOVESPEED * (1 - sigma4(e.moveTarget.Sub(e.pos).Magnitude(), 16)) *
-			(1 - 0.9*(angle/math.Pi))
-		e.vel = e.vel.Add(e.steer).Truncate(max)
+		d := toward.Magnitude()
+		force := toward.Unit()
+		avoid := 0.2
+		for _, o := range e.w.obstacles {
+			// check if entity is moving toward colliding with obstacle
+			oc := Vec2D{o.X + o.W/2, o.Y + o.H/2}
+			ovec := oc.Sub(e.pos)
+			if d > 1*OBSTACLESZ &&
+				e.vel.Project(ovec) > 0 && ovec.Magnitude() < OBSTACLESZ*3 {
+				lv := ovec.PerpendicularUnit().Scale(1)
+				if e.vel.Project(lv) > 0 {
+					force = force.Add(lv.Scale(avoid * OBSTACLESZ / 2 *
+						sigma4(ovec.Magnitude(), OBSTACLESZ/2)))
+				}
+				rv := ovec.PerpendicularUnit().Scale(-1)
+				if e.vel.Project(rv) > 0 {
+					force = force.Add(rv.Scale(avoid * OBSTACLESZ / 2 *
+						sigma4(ovec.Magnitude(), OBSTACLESZ/2)))
+				}
+			}
+		}
+		max := MOVESPEED * (1 - sigma4(e.moveTarget.Sub(e.pos).Magnitude(), 16))
+		e.vel = e.vel.Add(force).Truncate(max)
 	}
 }
 
 func (e *Entity) Move() {
-	vel := e.vel
-	vX := e.vel.XComponent()
-	vY := e.vel.YComponent()
-	for _, o := range e.w.obstacles {
-		orec := Rect2D{
-			float64(GRIDCELL_WORLD_W * o.X),
-			float64(GRIDCELL_WORLD_H * o.Y),
-			GRIDCELL_WORLD_W,
-			GRIDCELL_WORLD_H}
-		erec := Rect2D{
-			e.pos.X - ENTITYSZ/2 - 2, e.pos.Y - ENTITYSZ/2 - 2,
-			ENTITYSZ + 4, ENTITYSZ + 4}
-		erecX := erec.Add(vX)
-		if orec.Overlaps(erecX) {
-			dxL := orec.X - (e.pos.X + ENTITYSZ/2)
-			dxR := e.pos.X - (orec.X + orec.W + ENTITYSZ/2)
-			if dxL > 0 {
-				// we are to the left
-				vX = vX.Truncate(dxL * 0.2)
-			} else if dxR > 0 {
-				// we are to the right
-				vX = vX.Truncate(dxR * 0.2)
+	if e != nil {
+		vel := e.vel
+		vX := e.vel.XComponent()
+		vY := e.vel.YComponent()
+		for _, o := range e.w.obstacles {
+			re := Rect2D{
+				e.pos.X - ENTITYSZ/2 - 2, e.pos.Y - ENTITYSZ/2 - 2,
+				ENTITYSZ + 4, ENTITYSZ + 4}
+			reX := re.Add(vX)
+			if o.Overlaps(reX) {
+				dxL := o.X - (e.pos.X + ENTITYSZ/2)
+				dxR := e.pos.X - (o.X + o.W + ENTITYSZ/2)
+				if dxL > 0 {
+					// we are to the left
+					vX = vX.Truncate(dxL * 0.5)
+				} else if dxR > 0 {
+					// we are to the right
+					vX = vX.Truncate(dxR * 0.5)
+				}
+			}
+			if o.Overlaps(re.Add(vX)) {
+				vX = Vec2D{0, 0}
+			}
+			reY := re.Add(vY)
+			if o.Overlaps(reY) {
+				dyD := o.Y - (e.pos.Y + ENTITYSZ/2)
+				dyU := e.pos.Y - (o.Y + o.H + ENTITYSZ/2)
+				if dyD > 0 {
+					// we are down
+					vY = vY.Truncate(dyD * 0.5)
+				} else if dyU > 0 {
+					// we are up
+					vY = vY.Truncate(dyU * 0.5)
+				}
+			}
+			if o.Overlaps(re.Add(vY)) {
+				vY = Vec2D{0, 0}
 			}
 		}
-		if orec.Overlaps(erec.Add(vX)) {
-			vX = Vec2D{0, 0}
-		}
-		erecY := erec.Add(vY)
-		if orec.Overlaps(erecY) {
-			dyD := orec.Y - (e.pos.Y + ENTITYSZ/2)
-			dyU := e.pos.Y - (orec.Y + orec.H + ENTITYSZ/2)
-			if dyD > 0 {
-				// we are down
-				vY = vY.Truncate(dyD * 0.2)
-			} else if dyU > 0 {
-				// we are up
-				vY = vY.Truncate(dyU * 0.2)
-			}
-		}
-		if orec.Overlaps(erec.Add(vY)) {
-			vY = Vec2D{0, 0}
-		}
+		vel = vX.Add(vY)
+		e.pos = e.pos.Add(vel)
 	}
-	vel = vX.Add(vY)
-	e.pos = e.pos.Add(vel)
 }

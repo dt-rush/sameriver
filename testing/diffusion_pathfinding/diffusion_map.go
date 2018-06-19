@@ -97,8 +97,14 @@ func (m *DiffusionMap) ToGridSpace(p Vec2D) Position {
 	if x > GRID_CELL_DIMENSION-1 {
 		x = GRID_CELL_DIMENSION - 1
 	}
+	if x < 0 {
+		x = 0
+	}
 	if y > GRID_CELL_DIMENSION-1 {
 		y = GRID_CELL_DIMENSION - 1
+	}
+	if y < 0 {
+		y = 0
 	}
 	return Position{x, y}
 }
