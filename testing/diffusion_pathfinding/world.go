@@ -9,7 +9,8 @@ import (
 type World struct {
 	g         *Game
 	e         *Entity
-	obstacles []Rect2D
+	chasers   []*Chaser
+	obstacles []Position
 
 	dm *DiffusionMap
 	pc *PathComputer
@@ -29,6 +30,9 @@ func NewWorld(g *Game) *World {
 func (w *World) Update() {
 	if w.e != nil {
 		w.e.Update()
+		for _, c := range w.chasers {
+			c.Update()
+		}
 	}
 	select {
 	case _ = <-w.dm.tick.C:
@@ -38,14 +42,12 @@ func (w *World) Update() {
 			msg := fmt.Sprintf("diffusion took %.1f ms",
 				float64(time.Since(t0).Nanoseconds()/1e6)/1000.0)
 			w.g.ui.UpdateMsg(4, msg)
-
 		}
 	default:
 	}
 }
 
-func (w *World) AddObstacle(pos Vec2D) {
-	o := CenteredSquare(pos, OBSTACLESZ)
+func (w *World) AddObstacle(o Position) {
 	w.obstacles = append(w.obstacles, o)
 	w.dm.AddObstacle(o)
 }
@@ -57,15 +59,11 @@ func (w *World) ClearObstacles() {
 
 func (w *World) RandomObstacles() {
 	for i := 0; i < 20; i++ {
-		var x, y = -999, -999
-		for !w.dm.InGrid(
-			x/GRIDCELL_WORLD_W,
-			y/GRIDCELL_WORLD_H) {
-			x = rand.Intn(GRID_WORLD_DIMENSION)
-
-			y = rand.Intn(GRID_WORLD_DIMENSION)
+		o := Position{
+			rand.Intn(GRID_CELL_DIMENSION),
+			rand.Intn(GRID_CELL_DIMENSION),
 		}
-		o := CenteredSquare(Vec2D{float64(x), float64(y)}, OBSTACLESZ)
+		fmt.Println(o)
 		w.obstacles = append(w.obstacles, o)
 		w.dm.AddObstacle(o)
 	}

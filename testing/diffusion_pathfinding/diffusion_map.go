@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/veandco/go-sdl2/sdl"
 	"time"
 )
@@ -10,8 +11,8 @@ type DiffusionMap struct {
 	d [GRID_CELL_DIMENSION][GRID_CELL_DIMENSION]float64
 	// ticker used to time updates to the map (since it can be expensive)
 	tick *time.Ticker
-	// array of obstacles in the GRID
-	os [GRID_CELL_DIMENSION][GRID_CELL_DIMENSION][]Rect2D
+	// whether an obstacle exists at that point in the field
+	os [GRID_CELL_DIMENSION][GRID_CELL_DIMENSION]bool
 	// renderer reference
 	r *sdl.Renderer
 	// screen texture
@@ -19,7 +20,7 @@ type DiffusionMap struct {
 }
 
 func NewDiffusionMap(
-	r *sdl.Renderer, obstacles *[]Rect2D, tick time.Duration) *DiffusionMap {
+	r *sdl.Renderer, obstacles *[]Position, tick time.Duration) *DiffusionMap {
 	st, err := r.CreateTexture(
 		sdl.PIXELFORMAT_RGBA8888,
 		sdl.TEXTUREACCESS_TARGET,
@@ -45,26 +46,13 @@ func NewDiffusionMap(
 func (m *DiffusionMap) ClearObstacles() {
 	for x := 0; x < GRID_CELL_DIMENSION; x++ {
 		for y := 0; y < GRID_CELL_DIMENSION; y++ {
-			m.os[x][y] = m.os[x][y][:0]
+			m.os[x][y] = false
 		}
 	}
 }
 
-func (m *DiffusionMap) AddObstacle(o Rect2D) {
-	bottomLeftCell := Position{
-		int(o.X / GRIDCELL_WORLD_W),
-		int(o.Y / GRIDCELL_WORLD_H),
-	}
-	cw := int((o.X+o.W)/GRIDCELL_WORLD_W) - bottomLeftCell.X
-	ch := int((o.Y+o.H)/GRIDCELL_WORLD_H) - bottomLeftCell.Y
-	for ix := 0; ix < cw+1; ix++ {
-		for iy := 0; iy < ch+1; iy++ {
-			if m.InGrid(bottomLeftCell.X+ix, bottomLeftCell.Y+iy) {
-				cellBucket := &m.os[bottomLeftCell.X+ix][bottomLeftCell.Y+iy]
-				*cellBucket = append(*cellBucket, o)
-			}
-		}
-	}
+func (m *DiffusionMap) AddObstacle(o Position) {
+	m.os[o.X][o.Y] = true
 }
 
 func (m *DiffusionMap) UpdateTexture() {
@@ -99,15 +87,11 @@ func (m *DiffusionMap) UpdateTexture() {
 	}
 }
 
-func (m *DiffusionMap) ObstaclesInCell(x int, y int) []Rect2D {
+func (m *DiffusionMap) CellHasObstacle(x int, y int) bool {
 	return m.os[x][y]
 }
 
-func (m *DiffusionMap) CellHasObstacle(x int, y int) bool {
-	return len(m.os[x][y]) > 0
-}
-
-func (m *DiffusionMap) ToMapSpace(p Vec2D) Position {
+func (m *DiffusionMap) ToGridSpace(p Vec2D) Position {
 	x := int(p.X / GRIDCELL_WORLD_W)
 	y := int(p.Y / GRIDCELL_WORLD_H)
 	if x > GRID_CELL_DIMENSION-1 {
@@ -119,6 +103,12 @@ func (m *DiffusionMap) ToMapSpace(p Vec2D) Position {
 	return Position{x, y}
 }
 
+func (m *DiffusionMap) ToWorldSpace(p Position) Vec2D {
+	return Vec2D{
+		float64(p.X*GRIDCELL_WORLD_W + GRIDCELL_WORLD_W/2),
+		float64(p.Y*GRIDCELL_WORLD_H + GRIDCELL_WORLD_H/2)}
+}
+
 func (m *DiffusionMap) InGrid(x int, y int) bool {
 	return x >= 0 && x < GRID_CELL_DIMENSION &&
 		y >= 0 && y < GRID_CELL_DIMENSION
@@ -126,7 +116,8 @@ func (m *DiffusionMap) InGrid(x int, y int) bool {
 
 func (m *DiffusionMap) Diffuse(pos Vec2D) {
 
-	init := m.ToMapSpace(pos)
+	init := m.ToGridSpace(pos)
+	fmt.Println(init)
 	m.d[init.X][init.Y] = 1.0
 
 	var avgOfNeighbors = func(x int, y int) float64 {
@@ -153,6 +144,11 @@ func (m *DiffusionMap) Diffuse(pos Vec2D) {
 		for y := 0; y < GRID_CELL_DIMENSION; y++ {
 			if y == init.Y && x == init.X {
 				// don't diffuse the init point
+				continue
+			}
+			if m.os[x][y] {
+				// obstacles have value zero
+				m.d[x][y] = 0.0
 				continue
 			}
 			m.d[x][y] = avgOfNeighbors(x, y)

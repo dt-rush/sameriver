@@ -73,3 +73,17 @@ func (v Vec2D) XComponent() Vec2D {
 func (v Vec2D) YComponent() Vec2D {
 	return Vec2D{0, v.Y}
 }
+
+func (v1 Vec2D) AngleBetween(v2 Vec2D) float64 {
+	if v1.Magnitude() == 0 || v2.Magnitude() == 0 {
+		return 0.0
+	}
+	d := v1.Dot(v2) / (v1.Magnitude() * v2.Magnitude())
+	if d >= 1.0 {
+		return 0.0
+	} else if d <= -1.0 {
+		return math.Pi
+	} else {
+		return math.Acos(d)
+	}
+}

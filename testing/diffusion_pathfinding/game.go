@@ -81,19 +81,50 @@ func (g *Game) HandleMouseButtonEvents(me *sdl.MouseButtonEvent) {
 			g.HandleWayPointInput(me.Button, p)
 		} else if g.c.mode == MODE_PLACING_OBSTACLE {
 			g.HandleObstacleInput(me.Button, p)
+		} else if g.c.mode == MODE_PLACING_CHASER {
+			g.HandleChaserInput(me.Button, p)
 		}
 	}
 }
 
-func (g *Game) HandleWayPointInput(button uint8, pos Vec2D) {
+func (g *Game) HandleChaserInput(button uint8, p Vec2D) {
+	pos := Position{
+		int(p.X / GRIDCELL_WORLD_W),
+		int(p.Y / GRIDCELL_WORLD_H),
+	}
+	if !g.w.dm.InGrid(pos.X, pos.Y) ||
+		g.w.dm.CellHasObstacle(pos.X, pos.Y) {
+		return
+	}
+	p = Vec2D{
+		float64(pos.X*GRIDCELL_WORLD_W + GRIDCELL_WORLD_W/2),
+		float64(pos.Y*GRIDCELL_WORLD_H + GRIDCELL_WORLD_H/2)}
 	if button == sdl.BUTTON_LEFT {
-		g.w.e = NewEntity(pos, g.w)
+		g.w.chasers = append(g.w.chasers, NewChaser(p, g.w))
+	}
+}
+
+func (g *Game) HandleWayPointInput(button uint8, p Vec2D) {
+	pos := Position{
+		int(p.X / GRIDCELL_WORLD_W),
+		int(p.Y / GRIDCELL_WORLD_H),
+	}
+	if !g.w.dm.InGrid(pos.X, pos.Y) ||
+		g.w.dm.CellHasObstacle(pos.X, pos.Y) {
+		return
+	}
+	p = Vec2D{
+		float64(pos.X*GRIDCELL_WORLD_W + GRIDCELL_WORLD_W/2),
+		float64(pos.Y*GRIDCELL_WORLD_H + GRIDCELL_WORLD_H/2)}
+	if button == sdl.BUTTON_LEFT {
+		g.w.e = NewEntity(p, g.w)
 	}
 	if button == sdl.BUTTON_RIGHT {
 		if g.w.e != nil {
-			g.w.e.moveTarget = &pos
-			startCell := g.w.dm.ToMapSpace(g.w.e.pos)
-			endCell := g.w.dm.ToMapSpace(*g.w.e.moveTarget)
+			g.w.e.moveTarget = &p
+
+			startCell := g.w.dm.ToGridSpace(g.w.e.pos)
+			endCell := g.w.dm.ToGridSpace(*g.w.e.moveTarget)
 			t0 := time.Now()
 			path := g.w.pc.Path(startCell, endCell)
 			msg := fmt.Sprintf("path compute took %.3f ms",
@@ -114,6 +145,13 @@ func (g *Game) HandleWayPointInput(button uint8, pos Vec2D) {
 
 func (g *Game) HandleObstacleInput(button uint8, pos Vec2D) {
 	if button == sdl.BUTTON_LEFT {
+		pos := Position{
+			int(pos.X / GRIDCELL_WORLD_W),
+			int(pos.Y / GRIDCELL_WORLD_H),
+		}
+		if !g.w.dm.InGrid(pos.X, pos.Y) {
+			return
+		}
 		g.w.AddObstacle(pos)
 	}
 	if button == sdl.BUTTON_RIGHT {

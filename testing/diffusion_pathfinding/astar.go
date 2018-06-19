@@ -155,10 +155,18 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 			// by applying an offset to cur's coordinates
 			x := cur.X + neighborIX[0]
 			y := cur.Y + neighborIX[1]
-			// continue loop to next neighbor early if not in grid or obstacle
+			// continue to consider next neighbor early if not in grid or obstacle
 			if !pc.DM.InGrid(x, y) || pc.DM.CellHasObstacle(x, y) {
 				continue
 			}
+			// continue to consider next neighbor if diagonal is flanked by
+			// an obstacle
+			isDiagonal := neighborIX[0]*neighborIX[1] != 0
+			if isDiagonal && (pc.DM.CellHasObstacle(cur.X+neighborIX[0], cur.Y) ||
+				pc.DM.CellHasObstacle(cur.X, cur.Y+neighborIX[1])) {
+				continue
+			}
+
 			// dist is an integer expression of the distance from
 			// cur to the neighbor cell we're looking at here.
 			// if either x or y offset is 0, we're moving straight,
