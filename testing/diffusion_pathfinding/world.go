@@ -63,7 +63,6 @@ func (w *World) RandomObstacles() {
 			rand.Intn(GRID_CELL_DIMENSION),
 			rand.Intn(GRID_CELL_DIMENSION),
 		}
-		fmt.Println(o)
 		w.obstacles = append(w.obstacles, o)
 		w.dm.AddObstacle(o)
 	}

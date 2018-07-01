@@ -123,14 +123,15 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 	pc.OH.Add(start)
 	// while open heap has elements...
 	for pc.OH.Len() > 0 {
-		// pop from open heap and set as closed (whichlist == pc.N + 1)
+		// pop from open heap
 		cur, err := pc.OH.Pop()
-		pc.WhichList[cur.X][cur.Y] = pc.N + 1
 		// if err, we have exhausted all squares on open heap and found no path
 		// return empty list
 		if err != nil {
 			return []Position{}
 		}
+		// set as CLOSED (pc.N + 1)
+		pc.WhichList[cur.X][cur.Y] = pc.N + 1
 		// if the current cell is the end, we're here. build the return list
 		if cur.X == end.X && cur.Y == end.Y {
 			path = make([]Position, 0)

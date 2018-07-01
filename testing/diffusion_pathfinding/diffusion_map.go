@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/veandco/go-sdl2/sdl"
 	"time"
 )
@@ -117,7 +116,6 @@ func (m *DiffusionMap) InGrid(x int, y int) bool {
 func (m *DiffusionMap) Diffuse(pos Vec2D) {
 
 	init := m.ToGridSpace(pos)
-	fmt.Println(init)
 	m.d[init.X][init.Y] = 1.0
 
 	var avgOfNeighbors = func(x int, y int) float64 {
