@@ -4,7 +4,7 @@ test:
 	go test -bench=. -cpuprofile
 
 clean:
-	rm main *.prof
+	rm main terraingen.test *.prof
 
 main: 
 	go build -o main *.go 
