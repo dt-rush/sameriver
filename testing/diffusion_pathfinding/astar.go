@@ -108,8 +108,6 @@ func (pc *PathComputer) Heuristic(p1 Position, p2 Position) int {
 }
 
 func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
-	fmt.Printf("================== Starting pathfinding from %v to %v\n",
-		start, end)
 	// clear the heap which contains leftover nodes from the last calculation
 	pc.OH.Clear()
 	// increment N (easier than clearing arrays)
@@ -127,15 +125,15 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 	pc.OH.Add(start)
 	// while open heap has elements...
 	for pc.OH.Len() > 0 {
-		// pop from open heap and set as closed (whichlist == pc.N + 1)
+		// pop from open heap
 		cur, err := pc.OH.Pop()
-		fmt.Printf("Looking at Open: %s\n", pc.NodeString(cur.X, cur.Y))
-		pc.WhichList[cur.X][cur.Y] = pc.N + 1
 		// if err, we have exhausted all squares on open heap and found no path
 		// return empty list
 		if err != nil {
 			return []Position{}
 		}
+		// set as CLOSED (pc.N + 1)
+		pc.WhichList[cur.X][cur.Y] = pc.N + 1
 		// if the current cell is the end, we're here. build the return list
 		if cur.X == end.X && cur.Y == end.Y {
 			path = make([]Position, 0)
@@ -144,8 +142,6 @@ func (pc *PathComputer) Path(start Position, end Position) (path []Position) {
 				cur = pc.From[cur.X][cur.Y]
 			}
 			// return the path to the user
-			fmt.Printf("================== Ended pathfinding from %v to %v\n",
-				start, end)
 			return path
 		}
 		// else, we have yet to complete the path. So:
