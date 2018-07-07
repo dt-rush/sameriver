@@ -32,17 +32,19 @@ import (
 //     r r r r r r r r r r
 //
 type CollisionRateLimiterArray struct {
-	backingArray []ResettableRateLimiter
-	Arr          [][]ResettableRateLimiter
+	backingArr []ResettableRateLimiter
+	Arr        [][]ResettableRateLimiter
 }
 
 // Construct a new CollisionRateLimiterArray
 func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 	// build the backing array
 	a := CollisionRateLimiterArray{
-		backingArray: make([]ResettableRateLimiter,
+		backingArray: make(
+			[]ResettableRateLimiter,
 			MAX_ENTITIES*(MAX_ENTITIES+1)/2),
-		Arr: make([][]ResettableRateLimiter,
+		Arr: make(
+			[][]ResettableRateLimiter,
 			MAX_ENTITIES),
 	}
 	// build the Arr slices which reference positions in the backing array
@@ -65,24 +67,28 @@ func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 func (a *CollisionRateLimiterArray) GetRateLimiter(
 	i uint16, j uint16) *ResettableRateLimiter {
 
-	// for the i'th array, the id j = i + 1 will be at index 0,
-	// so the index to Arr[i] to yield j's rate limiter should be
-	// j - (i + 1)
+	// for the i'th array,
+	//
+	//     j    |    index
+	// 	 i + 1  |      0
+	//   i + 2  |      1
+	//   i + 3  |      2
+	//    ...         ...
+	//
+	// so in order to map j = i + 1 to 0, j = i + 2 to 1, etc.,
+	// we use j - (i+1) as the index
 	return &a.Arr[i][j-(i+1)]
 }
 
 // Reset all the rate limiters corresponding to an ID in the array (the
 // entity there has been despawned)
-func (a *CollisionRateLimiterArray) ResetAll(entity *EntityToken) {
+func (a *CollisionRateLimiterArray) Reset(entity *EntityToken) {
 	// clear all where i = id
 	for _, r := range a.Arr[entity.ID] {
 		r.Reset()
 	}
 	// clear all where j = id
-	// NOTE: the ID's are also the indexes so i < id makes sense
-	// NOTE: see comment in GetRateLimiter() to see the reasoning behind
-	// (i + 1)
 	for i := 0; i < entity.ID; i++ {
-		a.Arr[i][entity.ID-(i+1)].Reset()
+		a.GetRateLimiter(i, entity.ID).Reset()
 	}
 }
