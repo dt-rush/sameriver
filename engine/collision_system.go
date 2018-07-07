@@ -1,70 +1,38 @@
-/**
-
-The collision detection in this sytem has 4 main parts:
-
-1. a method to check collisions invoked by the game every game loop
-
-2. a goroutine running to read collision events which occur from a buffered
-	channel (basically a queue which is easy for a goroutine to read)
-
-3. an UpdatedEntityList of entities having Position and HitBox
-
-4. a special data structure which holds rate limiters for each possible
-	collision
-
-
-
-Datastructure (4.) - triangular rateLimiters array
-
-The rate limiters data structed is "collision-indexed", meaning it is indexed
-[i][j], where i and j are ID's and i < j. That is, each pairing of ID's
-is produced by matching each ID with all those greater than it.
-
-A collision-indexed data structure of ResettableRateLimiters
-used to avoid notifying of collisions too often. The need for this arises
-from the fact that we want to run the collision-checking logic as often as
-possible, but we don't want to send collision events at 30 times a second.
-These rate limiters rate-limit the sending of messages on a channel when we
-detect collisions, in order to save resources (internally they use a
-sync.Once which can be reset either by a natural delay or externally, in
-a goroutine-safe way)
-
-         j
-
-     0 1 2 3 4
-    0  r r r r
-    1    r r r
- i  2      r r
-    3        r
-    4
-
-
-
-Method: "Detection"
-
-Iterates through the entities in the UpdatedEntityList using a handshake
-pattern, where, given a sorted list of ID's corresponding to collidable
-entities, i is compared with all ID's after i, then i + 1 is compared with
-all entities after i + 1, etc. (basically we iterate through the
-collision-indexed rate-limiter 2d triangular array row by row, left to right)
-
-If a collision is confirmed by checking their positions and bounding boxes,
-we attempt to send a collision event through the channel to be processed
-by goroutine 2 ("Event filtering and sending"), but we rate-limit sending
-events for each possible collision [i][j] using the rate limiter at [i][j]
-in rateLimiters, so if we already sent one within the timeout, we just move on.
-
-
-
-Goroutine: "Event filtering and sending"
-
-This goroutine reads collision events from the buffered channel which the
-"Detection" method wrote to, comparing each event to a list of tests supplied
-by scubscribers to collision events. If a collision event matches a test
-for a subscriber, it get sent to the channel of their CollisionQueryWatcher.
-
-**/
-
+// The collision detection in this sytem has 4 main parts:
+//
+// 1. a method to check collisions invoked by the game every game loop
+//
+// 2. an UpdatedEntityList of entities having Position and HitBox
+//
+// 3. a special data structure which holds rate limiters for each possible
+// 	collision
+//
+//
+//
+// Datastructure (4.) - triangular rateLimiters array
+//
+// The rate limiters data structed is "collision-indexed", meaning it is indexed
+// [i][j], where i and j are ID's and i < j. That is, each pairing of ID's
+// is produced by matching each ID with all those greater than it.
+//
+// A collision-indexed data structure of ResettableRateLimiters
+// used to avoid notifying of collisions too often. The need for this arises
+// from the fact that we want to run the collision-checking logic as often as
+// possible, but we don't want to send collision events at 30 times a second.
+// These rate limiters rate-limit the sending of messages on a channel when we
+// detect collisions, in order to save resources (internally they use a
+// sync.Once which can be reset either by a natural delay or externally, in
+// a goroutine-safe way)
+//
+//          j
+//
+//      0 1 2 3 4
+//     0  r r r r
+//     1    r r r
+//  i  2      r r
+//     3        r
+//     4
+//
 package engine
 
 type CollisionSystem struct {
@@ -116,6 +84,17 @@ func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
 		&s.entityManager.Components.Box[j])
 }
 
+// Iterates through the entities in the UpdatedEntityList using a handshake
+// pattern, where, given a sorted list of ID's corresponding to collidable
+// entities, i is compared with all ID's after i, then i + 1 is compared with
+// all entities after i + 1, etc. (basically we iterate through the
+// collision-indexed rate-limiter 2d triangular array row by row, left to right)
+//
+// If a collision is confirmed by checking their positions and bounding boxes,
+// we attempt to send a collision event through the channel to be processed
+// by goroutine 2 ("Event filtering and sending"), but we rate-limit sending
+// events for each possible collision [i][j] using the rate limiter at [i][j]
+// in rateLimiters, so if we already sent one within the timeout, we just move on.
 func (s *CollisionSystem) Update(dt_ms uint16) {
 
 	entities := s.collidableEntities.Entities
@@ -138,7 +117,9 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 					s.eventBus.Publish(COLLISION_EVENT,
 						CollisionData{EntityA: i, EntityB: j})
 				})
-				// TODO: move both entities away from their common center
+				// TODO: move both entities away from their common center?
+				// generalized callback function probably best (with a set of
+				// predefined ones)
 			}
 		}
 	}
