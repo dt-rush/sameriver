@@ -90,6 +90,17 @@ func (m *EntityManager) GetUpdatedEntityList(
 	return m.activeEntityLists.GetUpdatedEntityList(q)
 }
 
+// get a previously-created UpdatedEntityList by name, or nil if does not exist
+func (m *EntityManager) GetUpdatedEntityListByName(
+	name string) *UpdatedEntityList {
+
+	if list, ok := m.activeEntityLists.lists[name]; ok {
+		return list
+	} else {
+		return nil
+	}
+}
+
 // Gets the first entity with the given tag. Warns to console if the entity is
 // not unique. Returns an error if the entity doesn't exist
 func (m *EntityManager) UniqueTaggedEntity(tag string) (*EntityToken, error) {

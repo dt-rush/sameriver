@@ -1,27 +1,13 @@
 package engine
 
 import (
-	"go.uber.org/atomic"
 	"time"
 )
-
-type WorldLogicFunc func(
-	em *EntityManager,
-	ev *EventBus,
-	wl *WorldLogicManager)
-
-type WorldLogic struct {
-	Name   string
-	sleep  time.Duration
-	f      WorldLogicFunc
-	active atomic.Uint32
-}
 
 type WorldLogicManager struct {
 	em     *EntityManager
 	ev     *EventBus
-	Logics map[string]*WorldLogic
-	lists  map[string]*UpdatedEntityList
+	Logics map[string]*LogicUnit
 }
 
 func (wl *WorldLogicManager) Init(
@@ -47,54 +33,33 @@ func (wl *WorldLogicManager) GetEntitiesFromList(name string) []EntityToken {
 	return copyOfEntities
 }
 
-// NOTE: we make no check of whether the key exists in the map,
-// if used improperly, this will cause panics
 func (wl *WorldLogicManager) ActivateLogic(name string) {
-
-	Logic := wl.Logics[name]
-	Logic.active.Store(1)
-	go wl.run(name)
+	if l, ok := wl.Logics[name]; ok {
+		l.Active = true
+	}
 }
 
-// NOTE: we make no check of whether the key exists in the map,
-// if used improperly, this will cause panics
 func (wl *WorldLogicManager) DeactivateLogic(name string) {
-
-	Logic := wl.Logics[name]
-	Logic.active.Store(0)
+	if l, ok := wl.Logics[name]; ok {
+		l.Active = false
+	}
 }
 
 func (wl *WorldLogicManager) IsActive(name string) bool {
-
-	Logic := wl.Logics[name]
-	return Logic.active.Load() == 1
+	if l, ok := wl.Logics[name]; ok {
+		return l.Active
+	} else {
+		return false
+	}
 }
 
-func (wl *WorldLogicManager) AddLogic(
-	name string, sleep time.Duration, f WorldLogicFunc) {
-
-	wl.Logics[name] = &WorldLogic{
-		Name:  name,
-		sleep: sleep,
-		f:     f}
-
-	go wl.run(name)
+func (wl *WorldLogicManager) AddLogic(Logic *LogicUnit) {
+	wl.Logics[Logic.Name] = Logic
 }
 
-// TODO: revisit how this works in light of the new sync gameloop we're working
-// with
 func (wl *WorldLogicManager) run(name string) {
-	// set the logic active
 	Logic := wl.Logics[name]
-	Logic.active.Store(1)
-
-	worldLogicDebug("running %s...", name)
-
-	// while it's active, invoke the function and sleep in a loop
-	for Logic.active.Load() == 1 {
-		// the WorldLogicFunc wants to be invoked with
-		// (*EntityManager, *EventBus, *WorldLogicManager)
-		Logic.f(wl.em, wl.ev, wl)
-		time.Sleep(Logic.sleep)
+	if Logic.Active {
+		Logic.f()
 	}
 }

@@ -1,6 +1,7 @@
 package engine
 
 type LogicUnit struct {
-	active bool
-	f      func()
+	Name   string
+	Active bool
+	F      func()
 }

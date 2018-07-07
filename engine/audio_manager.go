@@ -22,9 +22,7 @@ type AudioManager struct {
 
 // Init the map which stores the audio chunks
 func (m *AudioManager) Init() {
-	// can be tuned
-	capacity := 4
-	m.audio = make(map[string](*mix.Chunk), capacity)
+	m.audio = make(map[string](*mix.Chunk), 0)
 	// read all audio files in assets/audio
 	files, err := ioutil.ReadDir("assets/audio")
 	if err != nil {

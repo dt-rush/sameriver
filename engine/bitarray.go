@@ -5,6 +5,7 @@ import (
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
+// converts a bitarray to a string like [111101010001]
 func BitArrayToString(arr bitarray.BitArray) string {
 	var buf bytes.Buffer
 	buf.WriteString("[")
