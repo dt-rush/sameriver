@@ -9,15 +9,18 @@ import (
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
+// Provides services related to entities
 type EntityManager struct {
-	// Component data (can be accessed by users (but only safely inside an
-	// AtomicEntit(y|ies)Modify callback)
+	// Component data for entities
 	ComponentsData *ComponentsDataTable
-	// EntityTable stores component bitarrays, a list of allocated EntityTokens,
-	// active states, and a list of available IDs from previous deallocations
+	// EntityTable stores: a list of allocated EntityTokens and a
+	// list of available IDs from previous deallocations
 	entityTable EntityTable
 	// updated entity lists of entities with given tags
 	entitiesWithTag map[string]*UpdatedEntityList
+	// classes stores references to entity classes, which can be
+	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
+	classes map[string]EntityClass
 	// ActiveEntityListCollection is used by GetUpdatedEntityList to
 	// store EntityQueryWatchers and references to UpdatedEntityLists used
 	// to implement GetUpdatedEntityList
@@ -33,11 +36,13 @@ type EntityManager struct {
 	spawnMutex sync.Mutex
 }
 
+// Construct a new entity manager
 func NewEntityManager(eventBus *EventBus) *EntityManager {
 	em := EntityManager{}
 	em.ComponentsData = NewComponentsDataTable(em)
 	em.activeEntityLists = NewActiveEntityListCollection(em)
 	em.entitiesWithTag = make(map[string]*UpdatedEntityList)
+	em.classes = make(map[string]EntityClass)
 	em.eventBus = eventBus
 	em.spawnSubscription = eventBus.Subscribe(
 		"EntityManager::SpawnRequest",
@@ -155,6 +160,16 @@ func (m *EntityManager) UntagEntities(tag string) {
 	for _, entity := range entities {
 		m.UntagEntity(tag, entity)
 	}
+}
+
+// Register an entity class (subsequently retrievable)
+func (m *EntityManager) AddEntityClass(c EntityClass) {
+	m.classes[c.Name()] = c
+}
+
+// Get an entity class by name
+func (m *EntityManager) GetEntityClass(name string) EntityClass {
+	return m.classes[name]
 }
 
 // Somewhat expensive conversion of entire entity list to string, locking
