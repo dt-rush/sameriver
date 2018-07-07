@@ -1,11 +1,5 @@
-/*
- * a list of entities which will be updated by another goroutine maybe,
- * which has a mutex that the user can lock when they wish to look at the
- * current contents. Can be sorted (needed by the data structure / algorithm
- * used in CollisionSystem)
- *
- */
-
+// a list of entities which have active = true, which receives updates to its
+// contents by an EntityQueryWatcher
 package engine
 
 import (
@@ -15,8 +9,6 @@ import (
 	"time"
 )
 
-// A list of entities which is can be regularly updated by one goroutine
-// while another reads and uses it
 type UpdatedEntityList struct {
 	// the query watcher this list is attached to
 	qw EntityQueryWatcher
@@ -34,9 +26,9 @@ type UpdatedEntityList struct {
 	// the case that they're done with the list (by calling Stop())
 	stopUpdateLoopChannel chan bool
 	// whether the entities slice should be sorted
-	Sorted bool
+	sorted bool
 	// a slice of funcs who want to be called *before* the entity gets
-	// added/removed (that is, before the mutex unlocks)
+	// added/removed
 	callbacks []func(EntitySignal)
 }
 
@@ -139,7 +131,7 @@ func (l *UpdatedEntityList) actOnSignal(signal EntitySignal) {
 // adds an entity into the list (private so only called by the update loop)
 func (l *UpdatedEntityList) add(e *EntityToken) {
 	// note: both sorted and regular list add will not double-add an entity
-	if l.Sorted {
+	if l.sorted {
 		SortedEntityTokenSliceInsertIfNotPresent(&l.Entities, e)
 	} else if indexOfEntityTokenInSlice(&l.Entities, e) == -1 {
 		l.Entities = append(l.Entities, e)
@@ -148,7 +140,7 @@ func (l *UpdatedEntityList) add(e *EntityToken) {
 
 // removes an entity from the list (private so only called by the update loop)
 func (l *UpdatedEntityList) remove(e *EntityToken) {
-	if l.Sorted {
+	if l.sorted {
 		SortedEntityTokenSliceRemove(&l.Entities, e)
 	} else {
 		removeEntityTokenFromSlice(&l.Entities, e)
