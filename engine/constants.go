@@ -15,26 +15,11 @@ import (
 const VERSION = "0.4.5"
 const AUDIO_ON = true
 
-const DEBUG_ENTITY_MANAGER = false
-const DEBUG_EVENTS = true
-const DEBUG_UPDATED_ENTITY_LISTS = false
-const DEBUG_GOROUTINES = false
-const DEBUG_ENTITY_MANAGER_UPDATE_TIMING = false
-const DEBUG_SPAWN = false
-const DEBUG_DESPAWN = false
-const DEBUG_ATOMIC_MODIFY = false
-const DEBUG_ENTITY_CLASS = false
-const DEBUG_WORLD_LOGIC = true
-const DEBUG_ENTITY_LOCKS = false
-const DEBUG_TAGS = true
-const DEBUG_FUNCTION_END = false
-const DEBUG_ACTIVE_STATE = false
-
 const FPS = 60
 const FRAME_SLEEP = (1000 / FPS) * time.Millisecond
 const MAX_ENTITIES = 1600
 
-const COLLISION_RATELIMIT_TIMEOUT_MS = 500
+const COLLISION_RATELIMIT_TIMEOUT_MS = 300
 
 const SPAWN_CHANNEL_CAPACITY = 128
 const ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY = MAX_ENTITIES

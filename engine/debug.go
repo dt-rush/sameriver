@@ -22,6 +22,21 @@ func DebugFunction(
 	}
 }
 
+const DEBUG_ENTITY_MANAGER = false
+const DEBUG_EVENTS = true
+const DEBUG_UPDATED_ENTITY_LISTS = false
+const DEBUG_GOROUTINES = false
+const DEBUG_ENTITY_MANAGER_UPDATE_TIMING = false
+const DEBUG_SPAWN = false
+const DEBUG_DESPAWN = false
+const DEBUG_ATOMIC_MODIFY = false
+const DEBUG_ENTITY_CLASS = false
+const DEBUG_WORLD_LOGIC = true
+const DEBUG_ENTITY_LOCKS = false
+const DEBUG_TAGS = true
+const DEBUG_FUNCTION_END = false
+const DEBUG_ACTIVE_STATE = false
+
 var entityManagerDebug = DebugFunction(
 	"EntityManager", DEBUG_ENTITY_MANAGER)
 var eventsDebug = DebugFunction(
