@@ -1,20 +1,20 @@
 /**
 
-The collision detection in this sytem works using a method invoked by the
-game every game loop, a goroutine running to read collision events from a
-buffered channel (basically a queue which is easy for a goroutine to read),
-an UpdatedEntityList of entities having Position and HitBox, and a special
-data structure which holds rate limiters for each possible collision.
+The collision detection in this sytem has 4 main parts:
 
-Collision detection is called after the entity manager has (de)spawned and
-(de)activated entities, after entity-component modifications send by
-various logic goroutines have been processed, and after the physics update,
-so the list of entities in the collidableEntities UpdatedEntityList is valid,
-their positions and hitboxes will not change, and none of them will despawn.
+1. a method to check collisions invoked by the game every game loop
+
+2. a goroutine running to read collision events which occur from a buffered
+	channel (basically a queue which is easy for a goroutine to read)
+
+3. an UpdatedEntityList of entities having Position and HitBox
+
+4. a special data structure which holds rate limiters for each possible
+	collision
 
 
 
-Datastructure: rateLimiters
+Datastructure (4.) - triangular rateLimiters array
 
 The rate limiters data structed is "collision-indexed", meaning it is indexed
 [i][j], where i and j are ID's and i < j. That is, each pairing of ID's
@@ -69,33 +69,32 @@ package engine
 
 type CollisionSystem struct {
 	// Reference to entity manager to reach components
-	em *EntityManager
+	entityManager *EntityManager
 	// targetted entities
 	collidableEntities *UpdatedEntityList
 	// an array of rate limiters to avoid the problem where we send out a
 	// collision event every single loop. we want to check for collisions as
 	// often as possible, but we don't want to send out collision events that
 	// often, as it will put a load on anything reading these events
-	// (used by the event-checker loop)
 	rateLimiterArray CollisionRateLimiterArray
 	// How the collision system communicates collision events
 	ev *EventBus
 }
 
 func (s *CollisionSystem) Init(
-	em *EntityManager,
-	ev *EventBus) {
+	entityManager *EntityManager,
+	eventBus *EventBus) {
 
 	// take down references to em and ev
-	s.em = em
-	s.ev = ev
+	s.entityManager = entityManager
+	s.eventBus = eventBus
 	// get a regularly updated list of the entities which are collidable
 	// (position and hitbox)
 	query := EntityQueryFromComponentBitArray(
 		"collidable",
 		MakeComponentBitArray([]ComponentType{
 			BOX_COMPONENT}))
-	s.collidableEntities = s.em.GetUpdatedEntityList(query)
+	s.collidableEntities = s.entityManager.GetUpdatedEntityList(query)
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
 	// in the collision rate limiter array (to guard against an entity
@@ -113,7 +112,8 @@ func (s *CollisionSystem) Init(
 
 // Test collision between two entities
 func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
-	return s.em.Components.Box[i].HasIntersection(&s.em.Components.Box[j])
+	return s.entityManager.Components.Box[i].HasIntersection(
+		&s.entityManager.Components.Box[j])
 }
 
 func (s *CollisionSystem) Update(dt_ms uint16) {
@@ -135,7 +135,7 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 				s.rateLimiterArray.GetRateLimiter(
 					uint16(i.ID),
 					uint16(j.ID)).Do(func() {
-					s.ev.Publish(COLLISION_EVENT,
+					s.eventBus.Publish(COLLISION_EVENT,
 						CollisionData{EntityA: i, EntityB: j})
 				})
 				// TODO: move both entities away from their common center

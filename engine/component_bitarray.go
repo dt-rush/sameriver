@@ -7,6 +7,8 @@ import (
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
+// builds a bitarray where the bit corresponding to each component in a list
+// of components is set
 func MakeComponentBitArray(components []ComponentType) bitarray.BitArray {
 	b := bitarray.NewBitArray(uint64(N_COMPONENT_TYPES))
 	for _, COMPONENT := range components {
@@ -15,6 +17,8 @@ func MakeComponentBitArray(components []ComponentType) bitarray.BitArray {
 	return b
 }
 
+// prints a string representation of a component bitarray as a set with
+// string representations of each component type whose bit is set
 func ComponentBitArrayToString(b bitarray.BitArray) string {
 	var buf bytes.Buffer
 	buf.WriteString("[")
