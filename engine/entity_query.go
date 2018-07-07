@@ -32,7 +32,7 @@ func EntityQueryFromComponentBitArray(
 		TestFunc: func(entity *EntityToken, em *EntityManager) bool {
 			// determine if q = q&b
 			// that is, if every set bit of q is set in b
-			b := em.entityComponentBitArray(entity.ID)
+			b := em.entityTable.entityComponentBitArrays[entity.ID]
 			return q.Equals(q.And(b))
 		}}
 }

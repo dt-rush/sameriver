@@ -5,9 +5,14 @@ import (
 )
 
 type BaseComponentSet struct {
-	Box            *sdl.Rect
-	Sprite         *Sprite
-	TagList        *TagList
+	TagList *TagList
+
+	Logic *LogicUnit
+
+	Box    *sdl.Rect
+	Sprite *Sprite
+
+	Position       *Vec2D
 	Velocity       *Vec2D
 	MovementTarget *Vec2D
 	Steer          *float32

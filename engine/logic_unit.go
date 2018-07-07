@@ -1,6 +1,6 @@
 package engine
 
-type EntityLogicUnit struct {
+type LogicUnit struct {
 	active bool
 	f      func()
 }

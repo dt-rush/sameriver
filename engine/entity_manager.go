@@ -12,24 +12,18 @@ import (
 type EntityManager struct {
 	// Component data (can be accessed by users (but only safely inside an
 	// AtomicEntit(y|ies)Modify callback)
-	Components ComponentsTable
+	ComponentsData *ComponentsDataTable
 	// EntityTable stores component bitarrays, a list of allocated EntityTokens,
 	// active states, and a list of available IDs from previous deallocations
 	entityTable EntityTable
 	// updated entity lists of entities with given tags
 	entitiesWithTag map[string]*UpdatedEntityList
-	// Logics contains references to logic funcs of the entities, if
-	// they supplied one
-	Logics map[*EntityToken]*EntityLogicUnit
-	// entityClasses stores references to entity classes, which can be
-	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
-	classes map[string]EntityClass
 	// ActiveEntityListCollection is used by GetUpdatedEntityList to
 	// store EntityQueryWatchers and references to UpdatedEntityLists used
 	// to implement GetUpdatedEntityList
-	activeEntityLists ActiveEntityListCollection
+	activeEntityLists *ActiveEntityListCollection
 	// used to communicate with other systems
-	ev *EventBus
+	eventBus *EventBus
 	// Channel for spawn entity requests (processed as a batch each Update())
 	spawnSubscription EventChannel
 	// Channel for despawn entity requests (processed as a batch each Update())
@@ -39,34 +33,23 @@ type EntityManager struct {
 	spawnMutex sync.Mutex
 }
 
-func (m *EntityManager) Init(ev *EventBus) {
-	// take down a reference to the event bus
-	m.ev = ev
-	// set up spawn / despawn channels as listeners on the appropriate
-	// events
-	m.spawnSubscription = ev.Subscribe(
+func NewEntityManager(eventBus *EventBus) *EntityManager {
+	em := EntityManager{}
+	em.ComponentsData = NewComponentsDataTable(em)
+	em.activeEntityLists = NewActiveEntityListCollection(em)
+	em.entitiesWithTag = make(map[string]*UpdatedEntityList)
+	em.eventBus = eventBus
+	em.spawnSubscription = eventBus.Subscribe(
 		"EntityManager::SpawnRequest",
 		NewSimpleEventQuery(SPAWNREQUEST_EVENT))
-	m.despawnSubscription = ev.Subscribe(
+	em.despawnSubscription = eventBus.Subscribe(
 		"EntityManager::DespawnRequest",
 		NewSimpleEventQuery(DESPAWNREQUEST_EVENT))
-	// init ComponentsTable
-	m.Components.Init(m)
-	// init EntityClassTable
-	m.classes = make(map[string]EntityClass)
-	// init ActiveEntityListCollection
-	m.activeEntityLists.Init(m)
-	// init TagTable
-	m.entitiesWithTag = make(map[string]*UpdatedEntityList)
-	// init EntityLogicTable
-	m.Logics = make(map[*EntityToken]*EntityLogicUnit)
+	return &em
 }
 
 // called once per scene Update() for scenes holding an entity manager
 func (m *EntityManager) Update() {
-
-	// proces any requests to spawn new entities queued in the
-	// buffered channel
 	m.processDespawnChannel()
 	m.processSpawnChannel()
 }
@@ -86,9 +69,7 @@ func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
 	// only act if the state is different to that which exists
 	if entity.active != state {
 		// start / stop logic accordingly
-		if logic, ok := m.Logics[entity]; ok {
-			m.Logics[entity].active = state
-		}
+		m.ComponentsData.Logic[entity].active = state
 		// set active state
 		entity.active = state
 		// notify any listening lists
@@ -102,16 +83,6 @@ func (m *EntityManager) GetUpdatedEntityList(
 	q EntityQuery) *UpdatedEntityList {
 
 	return m.activeEntityLists.GetUpdatedEntityList(q)
-}
-
-// Register an entity class (subsequently retrievable)
-func (m *EntityManager) AddEntityClass(c EntityClass) {
-	m.classes[c.Name()] = c
-}
-
-// Get an entity class by name
-func (m *EntityManager) GetEntityClass(name string) EntityClass {
-	return m.classes[name]
 }
 
 // Gets the first entity with the given tag. Warns to console if the entity is
@@ -147,46 +118,42 @@ func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 }
 
 // Boolean check of whether a given entity has a given component
-func (m *EntityManager) EntityHasComponent(id int, COMPONENT int) bool {
+func (m *EntityManager) EntityHasComponent(
+	entity *EntityToken, COMPONENT int) bool {
+
 	b, _ := m.entityTable.componentBitArrays[id].GetBit(uint64(COMPONENT))
 	return b
 }
 
-// Returns the component bit array for an entity
-func (m *EntityManager) entityComponentBitArray(id int) bitarray.BitArray {
-	return m.entityTable.componentBitArrays[id]
-}
-
 // apply the given tag to the given entity
-func (m *EntityManager) TagEntity(t string) func(*EntityToken) {
-	return func(e *EntityToken) {
-
-		// add the tag to the taglist component
-		m.Components.TagList[e.ID].Add(t)
-		// if the entity is active, it has already been checked by all lists,
-		// thus generate a new signal to add it to the list of the tag
-		if e.active {
-			m.createEntitiesWithTagListIfNeeded(t)
-			m.activeEntityLists.checkActiveEntity(e)
-		}
-	}
-}
-
-// remove a tag from an entity
-func (m *EntityManager) UntagEntity(tag string) func(*EntityToken) {
-	return func(entity *EntityToken) {
-		m.Components.TagList[entity.ID].Remove(tag)
+func (m *EntityManager) TagEntity(tag string, entity *EntityToken) {
+	// add the tag to the taglist component
+	m.ComponentsData.TagList[entity.ID].Add(tag)
+	// if the entity is active, it has already been checked by all lists,
+	// thus generate a new signal to add it to the list of the tag
+	if entity.active {
+		m.createEntitiesWithTagListIfNeeded(tag)
 		m.activeEntityLists.checkActiveEntity(entity)
 	}
 }
 
-// Tag each of the entities in the provided array of ID's with the given tag
-func (m *EntityManager) TagEntities(tag string) func([]*EntityToken) {
-	return func(entities []*EntityToken) {
+// Tag each of the entities in the provided list
+func (m *EntityManager) TagEntities(tag string, entities []*EntityToken) {
+	for _, entity := range entities {
+		m.TagEntity(tag, entity)
+	}
+}
 
-		for _, entity := range entities {
-			m.TagEntity(tag)(entity)
-		}
+// Remove a tag from an entity
+func (m *EntityManager) UntagEntity(tag string, entity *EntityToken) {
+	m.ComponentsData.TagList[entity.ID].Remove(tag)
+	m.activeEntityLists.checkActiveEntity(entity)
+}
+
+// Remove a tag from each of the entities in the provided list
+func (m *EntityManager) UntagEntities(tag string) {
+	for _, entity := range entities {
+		m.UntagEntity(tag, entity)
 	}
 }
 
@@ -200,7 +167,7 @@ func (m *EntityManager) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
 	for _, entity := range m.entityTable.currentEntities {
-		tags := m.Components.TagList[entity.ID]
+		tags := m.ComponentsData.TagList[entity.ID]
 		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",
 			entity.ID, tags)
 		buffer.WriteString(entityRepresentation)

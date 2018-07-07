@@ -6,10 +6,14 @@ type ActiveEntityListCollection struct {
 	lists    map[string]*UpdatedEntityList
 }
 
-func (c *ActiveEntityListCollection) Init(em *EntityManager) {
-	c.em = em
-	c.watchers = make(map[string]*EntityQueryWatcher)
-	c.lists = make(map[string]*UpdatedEntityList)
+func NewActiveEntityListCollection(
+	em *EntityManager) *ActiveEntityListCollection {
+
+	return &ActiveEntityListCollection{
+		em:       em,
+		watchers: make(map[string]*EntityQueryWatcher),
+		lists:    make(map[string]*UpdatedEntityList),
+	}
 }
 
 func (c *ActiveEntityListCollection) GetUpdatedEntityList(

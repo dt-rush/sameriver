@@ -28,7 +28,7 @@ func generateComponentsEnumFile(
 		}
 	})
 
-	// write the enum->string function
+	// write the enum->string map
 	f.Var().Id("COMPONENT_NAMES").Op("=").
 		Map(Id("ComponentType")).String().
 		Values(DictFunc(func(d Dict) {
