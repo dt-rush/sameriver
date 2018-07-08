@@ -13,11 +13,6 @@ type UpdatedEntityList struct {
 	Entities []*EntityToken
 	// possibly nil query defining the list
 	Query *EntityQuery
-	// a channel used to receive the entity add / remove signals
-	Channel chan EntitySignal
-	// used to stop the update loop's goroutine in
-	// the case that they're done with the list (by calling Stop())
-	stopUpdateLoopChannel chan bool
 	// whether the entities slice should be sorted
 	sorted bool
 	// a slice of funcs who want to be called *before* the entity gets
@@ -27,24 +22,20 @@ type UpdatedEntityList struct {
 
 // create a new UpdatedEntityList by giving it a channel on which it will
 // receive entity IDs
-func NewUpdatedEntityList(channel chan EntitySignal) *UpdatedEntityList {
+func NewUpdatedEntityList() *UpdatedEntityList {
 	l := UpdatedEntityList{
-		Entities:              make([]*EntityToken, 0),
-		Channel:               channel,
-		stopUpdateLoopChannel: make(chan bool),
-		sorted:                false,
+		Entities: make([]*EntityToken, 0),
+		sorted:   false,
 	}
 	return &l
 }
 
 // create a new SORTED UpdatedEntityList by giving it a channel on which it will
 // receive entity IDs
-func NewSortedUpdatedEntityList(channel chan EntitySignal) *UpdatedEntityList {
+func NewSortedUpdatedEntityList() *UpdatedEntityList {
 	l := UpdatedEntityList{
-		Entities:              make([]*EntityToken, 0),
-		Channel:               channel,
-		stopUpdateLoopChannel: make(chan bool),
-		sorted:                true,
+		Entities: make([]*EntityToken, 0),
+		sorted:   true,
 	}
 	return &l
 }
@@ -70,30 +61,10 @@ func (l *UpdatedEntityList) RandomEntity() (*EntityToken, error) {
 	return l.Entities[rand.Intn(len(l.Entities))], nil
 }
 
-// called during the creation of a list. Starts a goroutine which listens
-// on the channel and either adds or removes entities as appropriate
-func (l *UpdatedEntityList) Start() {
-	go func() {
-	updateloop:
-		for {
-			select {
-			case _ = <-l.stopUpdateLoopChannel:
-				break updateloop
-			case signal := <-l.Channel:
-				l.actOnSignal(signal)
-			}
-		}
-	}()
-}
-
-func (l *UpdatedEntityList) Stop() {
-	l.stopUpdateLoopChannel <- true
-}
-
-func (l *UpdatedEntityList) actOnSignal(signal EntitySignal) {
+func (l *UpdatedEntityList) Signal(signal EntitySignal) {
 	// callbacks list want to be notified of each signal we get
 	for _, callback := range l.callbacks {
-		go callback(signal)
+		callback(signal)
 	}
 	// act on signal
 	switch signal.SignalType {
@@ -106,27 +77,29 @@ func (l *UpdatedEntityList) actOnSignal(signal EntitySignal) {
 
 // adds an entity into the list (private so only called by the update loop)
 func (l *UpdatedEntityList) add(e *EntityToken) {
-	// note: both sorted and regular list add will not double-add an entity
+	// NOTE: idempotent
+	lenBefore := len(l.Entities)
 	if l.sorted {
 		SortedEntityTokenSliceInsertIfNotPresent(&l.Entities, e)
-	} else if indexOfEntityTokenInSlice(&l.Entities, e) == -1 {
-		l.Entities = append(l.Entities, e)
+	} else {
+		if indexOfEntityTokenInSlice(&l.Entities, e) == -1 {
+			l.Entities = append(l.Entities, e)
+		}
 	}
-	e.ListsMutex.Lock()
-	e.Lists = append(e.Lists, l)
-	e.ListsMutex.Unlock()
+	if len(l.Entities) == lenBefore+1 {
+		e.Lists = append(e.Lists, l)
+	}
 }
 
 // removes an entity from the list (private so only called by the update loop)
 func (l *UpdatedEntityList) remove(e *EntityToken) {
+	// NOTE: both idempotent
 	if l.sorted {
 		SortedEntityTokenSliceRemove(&l.Entities, e)
 	} else {
 		removeEntityTokenFromSlice(&l.Entities, e)
 	}
-	e.ListsMutex.Lock()
 	removeUpdatedEntityListFromSlice(&e.Lists, l)
-	e.ListsMutex.Unlock()
 }
 
 // add a callback to the callbacks slice

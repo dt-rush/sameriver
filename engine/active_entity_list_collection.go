@@ -1,18 +1,16 @@
 package engine
 
 type ActiveEntityListCollection struct {
-	em       *EntityManager
-	watchers map[string]*EntityQueryWatcher
-	lists    map[string]*UpdatedEntityList
+	em    *EntityManager
+	lists map[string]*UpdatedEntityList
 }
 
 func NewActiveEntityListCollection(
 	em *EntityManager) *ActiveEntityListCollection {
 
 	return &ActiveEntityListCollection{
-		em:       em,
-		watchers: make(map[string]*EntityQueryWatcher),
-		lists:    make(map[string]*UpdatedEntityList),
+		em:    em,
+		lists: make(map[string]*UpdatedEntityList),
 	}
 }
 
@@ -35,18 +33,15 @@ func (c *ActiveEntityListCollection) getUpdatedEntityList(
 		return list
 	}
 	// register a query watcher for the query given
-	qw := NewEntityQueryWatcher(q)
-	c.watchers[q.Name] = &qw
 	var list *UpdatedEntityList
 	if sorted {
-		list = NewSortedUpdatedEntityList(qw.Channel)
+		list = NewSortedUpdatedEntityList()
 	} else {
-		list = NewUpdatedEntityList(qw.Channel)
+		list = NewUpdatedEntityList()
 	}
 	list.Query = &q
 	c.processBacklog(q, list)
 	c.lists[q.Name] = list
-	list.Start()
 	return list
 }
 
@@ -62,7 +57,7 @@ func (c *ActiveEntityListCollection) processBacklog(
 		entity := backlog[last_ix]
 		backlog = backlog[:last_ix]
 		if q.Test(entity, c.em) {
-			list.actOnSignal(EntitySignal{ENTITY_ADD, entity})
+			list.Signal(EntitySignal{ENTITY_ADD, entity})
 		}
 	}
 }
@@ -70,22 +65,13 @@ func (c *ActiveEntityListCollection) processBacklog(
 func (c *ActiveEntityListCollection) notifyActiveState(
 	entity *EntityToken, active bool) {
 
-	for _, watcher := range c.watchers {
-		if watcher.Query.Test(entity, c.em) {
-			// warn if the channel is full (we will block here if so)
-			// NOTE: this can be very bad indeed, since now whatever
-			// called Activate is blocking
-			if len(watcher.Channel) == ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY {
-				entityManagerDebug("⚠  active entity "+
-					" watcher channel %s is full, causing block in "+
-					" for NotifyActiveState(%d, %v)\n",
-					watcher.Name, entity.ID, active)
-			}
-			// send the signal
+	// send add / remove signal to all lists
+	for _, list := range c.lists {
+		if list.Query.Test(entity, c.em) {
 			if active {
-				watcher.Channel <- EntitySignal{ENTITY_ADD, entity}
+				list.Signal(EntitySignal{ENTITY_ADD, entity})
 			} else {
-				watcher.Channel <- EntitySignal{ENTITY_REMOVE, entity}
+				list.Signal(EntitySignal{ENTITY_REMOVE, entity})
 			}
 		}
 	}
@@ -94,29 +80,19 @@ func (c *ActiveEntityListCollection) notifyActiveState(
 func (c *ActiveEntityListCollection) checkActiveEntity(entity *EntityToken) {
 
 	// check if the entity needs to be added to any lists
-	for _, watcher := range c.watchers {
-		go func(watcher *EntityQueryWatcher) {
-			if watcher.Query.Test(entity, c.em) {
-				// warn if the channel is full (we will block here if so)
-				// NOTE: this can be very bad indeed, since now whatever
-				// called Activate is blocking
-				if len(watcher.Channel) == ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY {
-					entityManagerDebug("⚠  active entity "+
-						" watcher channel %s is full, causing block in "+
-						" for checkActiveEntity(%v)\n",
-						watcher.Name, entity.ID)
-				}
-				// send the signal
-				watcher.Channel <- EntitySignal{ENTITY_ADD, entity}
-			}
-		}(watcher)
-	}
-	// check whether the entity needs to be removed from any lists it's on
-	entity.ListsMutex.RLock()
-	for _, list := range entity.Lists {
-		if list.Query != nil && !list.Query.Test(entity, c.em) {
-			list.Channel <- EntitySignal{ENTITY_REMOVE, entity}
+	for _, list := range c.lists {
+		if list.Query.Test(entity, c.em) {
+			list.Signal(EntitySignal{ENTITY_ADD, entity})
 		}
 	}
-	entity.ListsMutex.RUnlock()
+	// check whether the entity needs to be removed from any lists it's on
+	toRemove := make([]*UpdatedEntityList, 0)
+	for _, list := range entity.Lists {
+		if list.Query != nil && !list.Query.Test(entity, c.em) {
+			toRemove = append(toRemove, list)
+		}
+	}
+	for _, list := range toRemove {
+		list.Signal(EntitySignal{ENTITY_REMOVE, entity})
+	}
 }

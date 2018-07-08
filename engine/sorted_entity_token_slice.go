@@ -51,5 +51,8 @@ func SortedEntityTokenSliceInsert(s *[]*EntityToken, x *EntityToken) {
 
 func SortedEntityTokenSliceRemove(s *[]*EntityToken, x *EntityToken) {
 	i := SortedEntityTokenSliceSearch(*s, x)
-	*s = append((*s)[:i], (*s)[i+1:]...)
+	found := (i != len(*s) && (*s)[i] == x)
+	if found {
+		*s = append((*s)[:i], (*s)[i+1:]...)
+	}
 }

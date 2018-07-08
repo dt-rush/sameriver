@@ -79,7 +79,7 @@ func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
 		// set active state
 		entity.Active = state
 		// notify any listening lists
-		go m.activeEntityLists.notifyActiveState(entity, state)
+		m.activeEntityLists.notifyActiveState(entity, state)
 	}
 }
 
