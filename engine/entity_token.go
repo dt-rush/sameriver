@@ -2,6 +2,7 @@ package engine
 
 import (
 	"github.com/golang-collections/go-datastructures/bitarray"
+	"sync"
 )
 
 type EntityToken struct {
@@ -9,4 +10,6 @@ type EntityToken struct {
 	Active            bool
 	Despawned         bool
 	ComponentBitArray bitarray.BitArray
+	ListsMutex        sync.RWMutex
+	Lists             []*UpdatedEntityList
 }

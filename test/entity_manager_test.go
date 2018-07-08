@@ -88,3 +88,26 @@ func TestEntitySpawnUnique(t *testing.T) {
 		t.Fatal("should not have been allowed to spawn second unique entity")
 	}
 }
+
+func TestTagUntagEntity(t *testing.T) {
+	ev := engine.NewEventBus()
+	em := engine.NewEntityManager(ev)
+	em.Spawn(simpleSpawnRequestData())
+	time.Sleep(16 * time.Millisecond)
+	em.Update()
+	e := em.Entities()[0]
+	tag := "tag1"
+	em.TagEntity(e, tag)
+	time.Sleep(16 * time.Millisecond)
+	tagged := em.EntitiesWithTag(tag)
+	empty := tagged.Length() == 0
+	if empty {
+		t.Fatal("failed to find spawned entity in EntitiesWithTag")
+	}
+	em.UntagEntity(e, tag)
+	time.Sleep(16 * time.Millisecond)
+	empty = tagged.Length() == 0
+	if !empty {
+		t.Fatal("entity was still in EntitiesWithTag after untag")
+	}
+}

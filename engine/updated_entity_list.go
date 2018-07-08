@@ -11,6 +11,8 @@ import (
 type UpdatedEntityList struct {
 	// the entities in the list (tagged with gen)
 	Entities []*EntityToken
+	// possibly nil query defining the list
+	Query *EntityQuery
 	// a channel used to receive the entity add / remove signals
 	Channel chan EntitySignal
 	// used to stop the update loop's goroutine in
@@ -110,6 +112,9 @@ func (l *UpdatedEntityList) add(e *EntityToken) {
 	} else if indexOfEntityTokenInSlice(&l.Entities, e) == -1 {
 		l.Entities = append(l.Entities, e)
 	}
+	e.ListsMutex.Lock()
+	e.Lists = append(e.Lists, l)
+	e.ListsMutex.Unlock()
 }
 
 // removes an entity from the list (private so only called by the update loop)
@@ -119,6 +124,9 @@ func (l *UpdatedEntityList) remove(e *EntityToken) {
 	} else {
 		removeEntityTokenFromSlice(&l.Entities, e)
 	}
+	e.ListsMutex.Lock()
+	removeUpdatedEntityListFromSlice(&e.Lists, l)
+	e.ListsMutex.Unlock()
 }
 
 // add a callback to the callbacks slice

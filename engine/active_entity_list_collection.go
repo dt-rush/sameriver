@@ -43,6 +43,7 @@ func (c *ActiveEntityListCollection) getUpdatedEntityList(
 	} else {
 		list = NewUpdatedEntityList(qw.Channel)
 	}
+	list.Query = &q
 	c.processBacklog(q, list)
 	c.lists[q.Name] = list
 	list.Start()
@@ -92,8 +93,8 @@ func (c *ActiveEntityListCollection) notifyActiveState(
 
 func (c *ActiveEntityListCollection) checkActiveEntity(entity *EntityToken) {
 
+	// check if the entity needs to be added to any lists
 	for _, watcher := range c.watchers {
-
 		go func(watcher *EntityQueryWatcher) {
 			if watcher.Query.Test(entity, c.em) {
 				// warn if the channel is full (we will block here if so)
@@ -110,4 +111,12 @@ func (c *ActiveEntityListCollection) checkActiveEntity(entity *EntityToken) {
 			}
 		}(watcher)
 	}
+	// check whether the entity needs to be removed from any lists it's on
+	entity.ListsMutex.RLock()
+	for _, list := range entity.Lists {
+		if list.Query != nil && !list.Query.Test(entity, c.em) {
+			list.Channel <- EntitySignal{ENTITY_REMOVE, entity}
+		}
+	}
+	entity.ListsMutex.RUnlock()
 }

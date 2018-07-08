@@ -76,9 +76,7 @@ func removeEntityQueryWatcherFromSliceByID(
 	}
 }
 
-func removeEventChannelFromSlice(
-	slice *[]EventChannel, x EventChannel) {
-
+func removeEventChannelFromSlice(slice *[]EventChannel, x EventChannel) {
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {
 		if v.C == x.C {
@@ -86,6 +84,21 @@ func removeEventChannelFromSlice(
 			// set the last element to the zero value (for same reasons
 			// as above)
 			(*slice)[last_ix] = EventChannel{}
+			*slice = (*slice)[:last_ix]
+			break
+		}
+	}
+}
+
+func removeUpdatedEntityListFromSlice(
+	slice *[]*UpdatedEntityList, x *UpdatedEntityList) {
+	last_ix := len(*slice) - 1
+	for i, v := range *slice {
+		if v == x {
+			(*slice)[i] = (*slice)[last_ix]
+			// set the last element to the zero value (for same reasons
+			// as above)
+			(*slice)[last_ix] = nil
 			*slice = (*slice)[:last_ix]
 			break
 		}
