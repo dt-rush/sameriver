@@ -71,3 +71,20 @@ func TestEntitiesWithTagList(t *testing.T) {
 		t.Fatal("failed to find spawned entity in EntitiesWithTag")
 	}
 }
+
+func TestEntitySpawnUnique(t *testing.T) {
+	ev := engine.NewEventBus()
+	em := engine.NewEntityManager(ev)
+	req := simpleTaggedSpawnRequestData()
+	_, err := em.SpawnUnique("the chosen one", req)
+	if err != nil {
+		t.Fatal("failed to spawn FIRST unique entity")
+	}
+	time.Sleep(16 * time.Millisecond)
+	em.Update()
+	time.Sleep(16 * time.Millisecond)
+	_, err = em.SpawnUnique("the chosen one", req)
+	if err == nil {
+		t.Fatal("should not have been allowed to spawn second unique entity")
+	}
+}

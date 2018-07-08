@@ -16,6 +16,8 @@ type EntityManager struct {
 	entityTable EntityTable
 	// updated entity lists of entities with given tags
 	entitiesWithTag map[string]*UpdatedEntityList
+	// entities which have been tagged uniquely
+	uniqueEntities map[string]*EntityToken
 	// classes stores references to entity classes, which can be
 	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
 	classes map[string]EntityClass
@@ -40,6 +42,7 @@ func NewEntityManager(eventBus *EventBus) *EntityManager {
 	em.ComponentsData = NewComponentsDataTable(em)
 	em.activeEntityLists = NewActiveEntityListCollection(em)
 	em.entitiesWithTag = make(map[string]*UpdatedEntityList)
+	em.uniqueEntities = make(map[string]*EntityToken)
 	em.classes = make(map[string]EntityClass)
 	em.eventBus = eventBus
 	em.spawnSubscription = eventBus.Subscribe(
@@ -108,18 +111,13 @@ func (m *EntityManager) GetUpdatedEntityListByName(
 // Gets the first entity with the given tag. Warns to console if the entity is
 // not unique. Returns an error if the entity doesn't exist
 func (m *EntityManager) UniqueTaggedEntity(tag string) (*EntityToken, error) {
-	list := m.EntitiesWithTag(tag)
-	if list.Length() == 0 {
+	if e, ok := m.uniqueEntities[tag]; ok {
+		return e, nil
+	} else {
 		errorMsg := fmt.Sprintf("tried to fetch unique entity %s, but did "+
 			"not exist", tag)
 		return nil, errors.New(errorMsg)
 	}
-	if list.Length() > 1 {
-		tagsDebug("⚠ more than one entity tagged with %s, but "+
-			"GetUniqueTaggedEntity was called. This is a logic error. "+
-			"Returning the first entity.", tag)
-	}
-	return list.FirstEntity()
 }
 
 func (m *EntityManager) EntitiesWithTag(tag string) *UpdatedEntityList {

@@ -33,14 +33,17 @@ func (m *EntityManager) Spawn(r SpawnRequestData) {
 
 func (m *EntityManager) SpawnUnique(
 	tag string, r SpawnRequestData) (*EntityToken, error) {
-	// if the spawn request has a unique tag, return error if tag already
-	// has an entity
-	if m.EntitiesWithTag(tag).Length() != 0 {
+
+	if _, ok := m.uniqueEntities[tag]; ok {
 		return nil, errors.New(fmt.Sprintf("requested to spawn unique "+
 			"entity for %s, but %s already exists", tag))
 	}
 	r.UniqueTag = tag
-	return m.processSpawn(r)
+	e, err := m.processSpawn(r)
+	if err == nil {
+		m.uniqueEntities[tag] = e
+	}
+	return e, err
 }
 
 // given a list of components, spawn an entity with the default values
