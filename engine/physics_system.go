@@ -42,31 +42,32 @@ func (s *PhysicsSystem) Update(dt_ms int64) {
 	// be preempted while computin physics (this is very good, get it over with)
 	for _, e := range s.physicsEntities.Entities {
 		// read the position and velocity, using dt to compute dx, dy
-		box := s.em.Components.Box[e.ID]
-		vel := s.em.Components.Velocity[e.ID]
-		dx := int32(vel.X * float32(dt_ms/4))
-		dy := int32(vel.Y * float32(dt_ms/4))
+		pos := s.em.ComponentsData.Position[e.ID]
+		box := s.em.ComponentsData.Box[e.ID]
+		vel := s.em.ComponentsData.Velocity[e.ID]
+		dx := vel.X * float64(dt_ms)
+		dy := vel.Y * float64(dt_ms)
 		// motion in x
-		if box.X+dx < 0 {
+		if pos.X+dx < 0 {
 			// max out on the left
-			box.X = 0
-		} else if box.X+dx > s.WORLD_WIDTH-box.W {
+			pos.X = 0
+		} else if pos.X+dx > float64(s.WORLD_WIDTH-box.W) {
 			// max out on the right
-			box.X = s.WORLD_WIDTH - box.W
+			pos.X = float64(s.WORLD_WIDTH - box.W)
 		} else {
 			// otherwise move in x freely
-			box.X += dx
+			pos.X += dx
 		}
 		// motion in y
-		if box.Y+dy < box.H {
+		if pos.Y+dy < float64(box.H) {
 			// max out on the bottom
-			box.Y = 0
-		} else if box.Y+dy > s.WORLD_HEIGHT {
+			pos.Y = 0
+		} else if pos.Y+dy > float64(s.WORLD_HEIGHT) {
 			// max out on the top
-			box.Y = s.WORLD_HEIGHT
+			pos.Y = float64(s.WORLD_HEIGHT)
 		} else {
 			// otherwise move in y freely
-			box.Y += dy
+			pos.Y += dy
 		}
 	}
 }

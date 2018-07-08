@@ -32,8 +32,8 @@ import (
 //     r r r r r r r r r r
 //
 type CollisionRateLimiterArray struct {
-	backingArr []ResettableRateLimiter
-	Arr        [][]ResettableRateLimiter
+	backingArray []ResettableRateLimiter
+	Arr          [][]ResettableRateLimiter
 }
 
 // Construct a new CollisionRateLimiterArray
@@ -65,7 +65,7 @@ func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 
 // Get the rate limiter for an i, j pair
 func (a *CollisionRateLimiterArray) GetRateLimiter(
-	i uint16, j uint16) *ResettableRateLimiter {
+	i int, j int) *ResettableRateLimiter {
 
 	// for the i'th array,
 	//

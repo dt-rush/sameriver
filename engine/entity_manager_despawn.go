@@ -43,24 +43,15 @@ func (m *EntityManager) Despawn(entity *EntityToken) {
 	// despawn is idempotent
 	if m.entityTable.despawnFlags[entity.ID] == 0 {
 		m.entityTable.despawnFlags[entity.ID] = 1
-		m.ev.Publish(DESPAWNREQUEST_EVENT, DespawnRequestData{entity})
+		m.eventBus.Publish(DESPAWNREQUEST_EVENT, DespawnRequestData{entity})
 	}
 }
 
-// internal despawn function which assumes the EntityTable is locked
+// internal despawn function processes the despawn
+// (frees the ID and deactivates the entity)
 func (m *EntityManager) processDespawn(entity *EntityToken) {
-
-	// decrement the entity count
 	m.entityTable.numEntities--
-	// add the ID to the list of available IDs
 	m.entityTable.availableIDs = append(m.entityTable.availableIDs, entity.ID)
-	// remove the entityfrom the list of current entities
 	removeEntityTokenFromSlice(&m.entityTable.currentEntities, entity)
-
-	//  and notify
 	m.setActiveState(entity, false)
-	// delete the entity's logic
-	if _, exists := m.Logics[entity]; exists {
-		delete(m.Logics, entity)
-	}
 }

@@ -38,6 +38,8 @@ package engine
 type CollisionSystem struct {
 	// Reference to entity manager to reach components
 	entityManager *EntityManager
+	// Reference to event bus to publish collisions
+	eventBus *EventBus
 	// targetted entities
 	collidableEntities *UpdatedEntityList
 	// an array of rate limiters to avoid the problem where we send out a
@@ -73,15 +75,15 @@ func (s *CollisionSystem) Init(
 			entity := signal.entity
 			if entity.ID < 0 {
 				entity.ID = -(entity.ID + 1)
-				s.rateLimiterArray.ResetAll(entity)
+				s.rateLimiterArray.Reset(entity)
 			}
 		})
 }
 
 // Test collision between two entities
 func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
-	return s.entityManager.Components.Box[i].HasIntersection(
-		&s.entityManager.Components.Box[j])
+	return s.entityManager.ComponentsData.Box[i].HasIntersection(
+		&s.entityManager.ComponentsData.Box[j])
 }
 
 // Iterates through the entities in the UpdatedEntityList using a handshake
@@ -111,12 +113,12 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 			// check the collision
 			if s.TestCollision(uint16(i.ID), uint16(j.ID)) {
 				// if colliding, send the message (rate-limited)
-				s.rateLimiterArray.GetRateLimiter(
-					uint16(i.ID),
-					uint16(j.ID)).Do(func() {
-					s.eventBus.Publish(COLLISION_EVENT,
-						CollisionData{EntityA: i, EntityB: j})
-				})
+				s.rateLimiterArray.
+					GetRateLimiter(i.ID, j.ID).
+					Do(func() {
+						s.eventBus.Publish(COLLISION_EVENT,
+							CollisionData{EntityA: i, EntityB: j})
+					})
 				// TODO: move both entities away from their common center?
 				// generalized callback function probably best (with a set of
 				// predefined ones)

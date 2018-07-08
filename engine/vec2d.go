@@ -7,8 +7,8 @@ import (
 )
 
 type Vec2D struct {
-	X float32
-	Y float32
+	X float64
+	Y float64
 }
 
 func RandomUnitVec2D() Vec2D {

@@ -1,9 +1,5 @@
 package engine
 
-import (
-	"time"
-)
-
 type WorldLogicManager struct {
 	em     *EntityManager
 	ev     *EventBus
@@ -16,19 +12,16 @@ func (wl *WorldLogicManager) Init(
 
 	wl.em = em
 	wl.ev = ev
-	wl.Logics = make(map[string]*WorldLogic)
-	wl.lists = make(map[string]*UpdatedEntityList)
+	wl.Logics = make(map[string]*LogicUnit)
 }
 
-func (wl *WorldLogicManager) AddList(query EntityQuery) {
-
-	wl.lists[query.Name] = wl.em.GetUpdatedEntityList(query)
-}
-
-func (wl *WorldLogicManager) GetEntitiesFromList(name string) []EntityToken {
-
-	entities := wl.lists[name].Entities
-	copyOfEntities := make([]EntityToken, len(entities))
+func (wl *WorldLogicManager) GetEntitiesFromList(name string) []*EntityToken {
+	var entities []*EntityToken
+	list := wl.em.GetUpdatedEntityListByName(name)
+	if list != nil {
+		entities = list.Entities
+	}
+	copyOfEntities := make([]*EntityToken, len(entities))
 	copy(copyOfEntities, entities)
 	return copyOfEntities
 }
@@ -60,6 +53,6 @@ func (wl *WorldLogicManager) AddLogic(Logic *LogicUnit) {
 func (wl *WorldLogicManager) run(name string) {
 	Logic := wl.Logics[name]
 	if Logic.Active {
-		Logic.f()
+		Logic.F()
 	}
 }

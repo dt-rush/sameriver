@@ -7,7 +7,7 @@ type EventQuery struct {
 
 // for simple event queries, predicate is never tested
 func (q EventQuery) Test(e Event) bool {
-	return q.Type == e.Type && q.Predicate(e)
+	return q.Type == e.Type && (q.Predicate == nil || q.Predicate(e))
 }
 
 // Construct a new EventQuery which only asks about

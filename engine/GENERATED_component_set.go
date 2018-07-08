@@ -22,7 +22,7 @@ type ComponentSet struct {
 	MovementTarget *Vec2D
 	Position       *Vec2D
 	Sprite         *Sprite
-	Steer          *float32
+	Steer          *float64
 	TagList        *TagList
 	Velocity       *Vec2D
 }
@@ -59,28 +59,28 @@ func (cs *ComponentSet) ToBitArray() bitarray.BitArray {
 func (em *EntityManager) ApplyComponentSet(cs ComponentSet) func(*EntityToken) {
 	return func(entity *EntityToken) {
 		if cs.Box != nil {
-			em.Components.Box[entity.ID] = *cs.Box
+			em.ComponentsData.Box[entity.ID] = *cs.Box
 		}
 		if cs.Logic != nil {
-			em.Components.Logic[entity.ID] = *cs.Logic
+			em.ComponentsData.Logic[entity.ID] = *cs.Logic
 		}
 		if cs.MovementTarget != nil {
-			em.Components.MovementTarget[entity.ID] = *cs.MovementTarget
+			em.ComponentsData.MovementTarget[entity.ID] = *cs.MovementTarget
 		}
 		if cs.Position != nil {
-			em.Components.Position[entity.ID] = *cs.Position
+			em.ComponentsData.Position[entity.ID] = *cs.Position
 		}
 		if cs.Sprite != nil {
-			em.Components.Sprite[entity.ID] = *cs.Sprite
+			em.ComponentsData.Sprite[entity.ID] = *cs.Sprite
 		}
 		if cs.Steer != nil {
-			em.Components.Steer[entity.ID] = *cs.Steer
+			em.ComponentsData.Steer[entity.ID] = *cs.Steer
 		}
 		if cs.TagList != nil {
-			em.Components.TagList[entity.ID] = *cs.TagList
+			em.ComponentsData.TagList[entity.ID] = *cs.TagList
 		}
 		if cs.Velocity != nil {
-			em.Components.Velocity[entity.ID] = *cs.Velocity
+			em.ComponentsData.Velocity[entity.ID] = *cs.Velocity
 		}
 	}
 }

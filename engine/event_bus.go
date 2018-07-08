@@ -6,10 +6,6 @@
 
 package engine
 
-import (
-	"sync"
-)
-
 type SubscriberList struct {
 	// subscriberLists is a list of lists of EventChannels
 	// where the outer list is indexed by the EventType (type aliased
@@ -18,13 +14,15 @@ type SubscriberList struct {
 	// that are published for the matching type (and thus the predicates
 	// can safely assert the type of the Data member of the event)
 	channels [N_EVENT_TYPES][]EventChannel
-	// Mutex to protect the modification of the above
-	mutex sync.RWMutex
 }
 
 type EventBus struct {
 	subscriberList SubscriberList
 	publishChannel chan Event
+}
+
+func NewEventBus() *EventBus {
+	return &EventBus{}
 }
 
 func (ev *EventBus) Publish(Type EventType, Data interface{}) {
@@ -34,10 +32,6 @@ func (ev *EventBus) Publish(Type EventType, Data interface{}) {
 // Subscribe to listen for game events defined by a query
 func (ev *EventBus) Subscribe(
 	name string, q EventQuery) EventChannel {
-
-	// Lock the subscriber slice while we modify it
-	ev.subscriberList.mutex.Lock()
-	defer ev.subscriberList.mutex.Unlock()
 
 	// Create a channel to return to the user
 	c := NewEventChannel(name, q)
@@ -50,15 +44,11 @@ func (ev *EventBus) Subscribe(
 
 // Remove a subscriber
 func (ev *EventBus) Unsubscribe(c EventChannel) {
-	ev.subscriberList.mutex.Lock()
-	defer ev.subscriberList.mutex.Unlock()
 	removeEventChannelFromSlice(&ev.subscriberList.channels[c.Query.Type], c)
 }
 
 // notify subscribers to a certain event
 func (ev *EventBus) notifySubscribers(e Event) {
-	ev.subscriberList.mutex.RLock()
-	defer ev.subscriberList.mutex.RUnlock()
 
 	// TODO: generate a means of printing events and create a special
 	// system which listens on *all* events, printing them

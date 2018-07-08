@@ -21,14 +21,14 @@ func (m *EntityManager) processSpawnChannel() {
 		if err != nil {
 			go func() {
 				time.Sleep(5 * time.Second)
-				m.ev.Publish(SPAWNREQUEST_EVENT, e.Data)
+				m.eventBus.Publish(SPAWNREQUEST_EVENT, e.Data)
 			}()
 		}
 	}
 }
 
 func (m *EntityManager) Spawn(req SpawnRequestData) {
-	m.ev.Publish(SPAWNREQUEST_EVENT, req)
+	m.eventBus.Publish(SPAWNREQUEST_EVENT, req)
 }
 
 // given a list of components, spawn an entity with the default values
@@ -58,7 +58,7 @@ func (m *EntityManager) processSpawn(r SpawnRequestData) (*EntityToken, error) {
 	}
 	// print a debug message
 	// set the bitarray for this entity
-	m.entityTable.componentBitArrays[entity.ID] = r.Components.ToBitArray()
+	entity.ComponentBitArray = r.Components.ToBitArray()
 	// copy the data inNto the component storage for each component
 	// (note: we dereference the pointers, this is a real copy, so it's good
 	// that component values are either small pieces of data like [2]uint16
@@ -73,15 +73,11 @@ func (m *EntityManager) processSpawn(r SpawnRequestData) (*EntityToken, error) {
 	m.ApplyComponentSet(r.Components)(entity)
 	// apply the tags
 	for _, tag := range r.Tags {
-		m.TagEntity(tag)(entity)
+		m.TagEntity(entity, tag)
 	}
 	// apply the unique tag if provided
 	if r.UniqueTag != "" {
-		m.TagEntity(r.UniqueTag)(entity)
-	}
-	// start the logic goroutine if supplied
-	if r.Logic != nil {
-		m.Logics[entity] = &EntityLogicUnit{true, r.Logic}
+		m.TagEntity(entity, r.UniqueTag)
 	}
 	// set entity active and notify entity is active
 	m.setActiveState(entity, true)

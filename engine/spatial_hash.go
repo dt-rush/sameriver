@@ -224,7 +224,7 @@ func (h *SpatialHash) scanner(offset int, partition_size int) {
 	for i := 0; i < partition_size; i++ {
 		// get the entity's box
 		entity := h.spatialEntities.Entities[offset+i]
-		box := h.em.Components.Box[entity.ID]
+		box := h.em.ComponentsData.Box[entity.ID]
 		// find out how many grids the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)

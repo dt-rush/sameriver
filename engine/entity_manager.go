@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-
-	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
 // Provides services related to entities
@@ -38,7 +36,7 @@ type EntityManager struct {
 
 // Construct a new entity manager
 func NewEntityManager(eventBus *EventBus) *EntityManager {
-	em := EntityManager{}
+	em := &EntityManager{}
 	em.ComponentsData = NewComponentsDataTable(em)
 	em.activeEntityLists = NewActiveEntityListCollection(em)
 	em.entitiesWithTag = make(map[string]*UpdatedEntityList)
@@ -50,7 +48,7 @@ func NewEntityManager(eventBus *EventBus) *EntityManager {
 	em.despawnSubscription = eventBus.Subscribe(
 		"EntityManager::DespawnRequest",
 		NewSimpleEventQuery(DESPAWNREQUEST_EVENT))
-	return &em
+	return em
 }
 
 // called once per scene Update() for scenes holding an entity manager
@@ -74,7 +72,7 @@ func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
 	// only act if the state is different to that which exists
 	if entity.active != state {
 		// start / stop logic accordingly
-		m.ComponentsData.Logic[entity].active = state
+		m.ComponentsData.Logic[entity.ID].Active = state
 		// set active state
 		entity.active = state
 		// notify any listening lists
@@ -137,12 +135,12 @@ func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 func (m *EntityManager) EntityHasComponent(
 	entity *EntityToken, COMPONENT int) bool {
 
-	b, _ := m.entityTable.componentBitArrays[id].GetBit(uint64(COMPONENT))
+	b, _ := m.entityTable.componentBitArrays[entity.ID].GetBit(uint64(COMPONENT))
 	return b
 }
 
 // apply the given tag to the given entity
-func (m *EntityManager) TagEntity(tag string, entity *EntityToken) {
+func (m *EntityManager) TagEntity(entity *EntityToken, tag string) {
 	// add the tag to the taglist component
 	m.ComponentsData.TagList[entity.ID].Add(tag)
 	// if the entity is active, it has already been checked by all lists,
@@ -154,22 +152,22 @@ func (m *EntityManager) TagEntity(tag string, entity *EntityToken) {
 }
 
 // Tag each of the entities in the provided list
-func (m *EntityManager) TagEntities(tag string, entities []*EntityToken) {
+func (m *EntityManager) TagEntities(entities []*EntityToken, tag string) {
 	for _, entity := range entities {
-		m.TagEntity(tag, entity)
+		m.TagEntity(entity, tag)
 	}
 }
 
 // Remove a tag from an entity
-func (m *EntityManager) UntagEntity(tag string, entity *EntityToken) {
+func (m *EntityManager) UntagEntity(entity *EntityToken, tag string) {
 	m.ComponentsData.TagList[entity.ID].Remove(tag)
 	m.activeEntityLists.checkActiveEntity(entity)
 }
 
 // Remove a tag from each of the entities in the provided list
-func (m *EntityManager) UntagEntities(tag string) {
+func (m *EntityManager) UntagEntities(entities []*EntityToken, tag string) {
 	for _, entity := range entities {
-		m.UntagEntity(tag, entity)
+		m.UntagEntity(entity, tag)
 	}
 }
 

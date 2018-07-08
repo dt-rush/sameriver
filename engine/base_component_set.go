@@ -15,5 +15,5 @@ type BaseComponentSet struct {
 	Position       *Vec2D
 	Velocity       *Vec2D
 	MovementTarget *Vec2D
-	Steer          *float32
+	Steer          *float64
 }
