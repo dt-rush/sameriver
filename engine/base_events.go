@@ -9,7 +9,6 @@ type CollisionData struct {
 // the EntityManager is requested to spawn an entity
 type SpawnRequestData struct {
 	Components ComponentSet
-	Logic      func()
 	Tags       []string
 	UniqueTag  string
 }

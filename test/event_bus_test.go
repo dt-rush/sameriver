@@ -88,3 +88,19 @@ func TestCollisionEventQueryNonMatching(t *testing.T) {
 		break
 	}
 }
+
+func TestUnsubscribe(t *testing.T) {
+	ev := engine.NewEventBus()
+	ec := ev.Subscribe(
+		"SimpleCollisionQuery",
+		engine.NewSimpleEventQuery(engine.COLLISION_EVENT))
+	ev.Unsubscribe(ec)
+	ev.Publish(engine.COLLISION_EVENT, nil)
+	time.Sleep(16 * time.Millisecond)
+	select {
+	case _ = <-ec.C:
+		t.Fatal("received event on unsubscribed channel")
+	default:
+		break
+	}
+}

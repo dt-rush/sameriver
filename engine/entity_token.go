@@ -6,7 +6,7 @@ import (
 
 type EntityToken struct {
 	ID                int
-	active            bool
-	despawned         bool
+	Active            bool
+	Despawned         bool
 	ComponentBitArray bitarray.BitArray
 }

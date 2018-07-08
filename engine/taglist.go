@@ -1,16 +1,11 @@
 package engine
 
-import (
-	"sync"
-)
-
 type TagList struct {
-	tags  []string
-	Mutex sync.RWMutex
+	Tags []string
 }
 
 func (l *TagList) Has(tag string) bool {
-	for _, t := range l.tags {
+	for _, t := range l.Tags {
 		if t == tag {
 			return true
 		}
@@ -18,16 +13,18 @@ func (l *TagList) Has(tag string) bool {
 	return false
 }
 
+// TODO: ensure idempotent
 func (l *TagList) Add(tag string) {
-	l.tags = append(l.tags, tag)
+	l.Tags = append(l.Tags, tag)
 }
 
+// TODO: ensure idempotent
 func (l *TagList) Remove(tag string) {
-	removeStringFromSlice(&l.tags, tag)
+	removeStringFromSlice(&l.Tags, tag)
 }
 
-func (l *TagList) Copy() TagList {
-	tagsCopy := make([]string, len(l.tags))
-	copy(tagsCopy, l.tags)
-	return TagList{tags: tagsCopy}
+func (l *TagList) Copy() *TagList {
+	tagsCopy := make([]string, len(l.Tags))
+	copy(tagsCopy, l.Tags)
+	return &TagList{Tags: tagsCopy}
 }

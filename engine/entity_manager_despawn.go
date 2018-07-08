@@ -41,8 +41,8 @@ func (m *EntityManager) DespawnAll() {
 
 func (m *EntityManager) Despawn(entity *EntityToken) {
 	// despawn is idempotent
-	if m.entityTable.despawnFlags[entity.ID] == 0 {
-		m.entityTable.despawnFlags[entity.ID] = 1
+	if !entity.Despawned {
+		entity.Despawned = true
 		m.eventBus.Publish(DESPAWNREQUEST_EVENT, DespawnRequestData{entity})
 	}
 }

@@ -27,8 +27,20 @@ func (m *EntityManager) processSpawnChannel() {
 	}
 }
 
-func (m *EntityManager) Spawn(req SpawnRequestData) {
-	m.eventBus.Publish(SPAWNREQUEST_EVENT, req)
+func (m *EntityManager) Spawn(r SpawnRequestData) {
+	m.eventBus.Publish(SPAWNREQUEST_EVENT, r)
+}
+
+func (m *EntityManager) SpawnUnique(
+	tag string, r SpawnRequestData) (*EntityToken, error) {
+	// if the spawn request has a unique tag, return error if tag already
+	// has an entity
+	if m.EntitiesWithTag(tag).Length() != 0 {
+		return nil, errors.New(fmt.Sprintf("requested to spawn unique "+
+			"entity for %s, but %s already exists", tag))
+	}
+	r.UniqueTag = tag
+	return m.processSpawn(r)
 }
 
 // given a list of components, spawn an entity with the default values
@@ -71,20 +83,20 @@ func (m *EntityManager) processSpawn(r SpawnRequestData) (*EntityToken, error) {
 	// goroutine could be also writing to this entity, due to the
 	// AtomicEntityModify pattern
 	m.ApplyComponentSet(r.Components)(entity)
-	// apply the tags
-	for _, tag := range r.Tags {
-		m.TagEntity(entity, tag)
+	// create (if doesn't exist) entitiesWithTag lists for each tag
+	if r.Components.TagList != nil {
+		for _, tag := range r.Components.TagList.Tags {
+			m.createEntitiesWithTagListIfNeeded(tag)
+		}
 	}
 	// apply the unique tag if provided
 	if r.UniqueTag != "" {
-		m.TagEntity(entity, r.UniqueTag)
+		m.createEntitiesWithTagListIfNeeded(r.UniqueTag)
 	}
 	// set entity active and notify entity is active
 	m.setActiveState(entity, true)
 	// add the entity to the list of current entities
 	m.entityTable.addToCurrentEntities(entity)
-	// set despawnFlag to 0 for the entity
-	m.entityTable.despawnFlags[entity.ID] = 0
 	// return EntityToken
 	return entity, nil
 }

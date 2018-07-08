@@ -18,9 +18,6 @@ type EntityTable struct {
 	// (indexes are IDs, bitarrays have bit set if entity has the
 	// component corresponding to that index)
 	componentBitArrays [MAX_ENTITIES]bitarray.BitArray
-	// despawnFlag is set for an entity when Despawn() starts, and is set to 0
-	// when an entity is spawned on that ID
-	despawnFlags [MAX_ENTITIES]int
 }
 
 // get the ID for a new entity. Only called by SpawnEntity, which locks
@@ -51,7 +48,7 @@ func (t *EntityTable) allocateID() (*EntityToken, error) {
 		id = t.numEntities - 1
 	}
 	// return the token
-	entity := EntityToken{ID: id, active: false, despawned: false}
+	entity := EntityToken{ID: id, Active: false, Despawned: false}
 	return &entity, nil
 }
 
@@ -60,7 +57,6 @@ func (t *EntityTable) addToCurrentEntities(entity *EntityToken) {
 }
 
 func (t *EntityTable) snapshotAllocatedEntities() []*EntityToken {
-
 	snapshot := make([]*EntityToken, len(t.currentEntities))
 	copy(snapshot, t.currentEntities)
 	return snapshot

@@ -70,11 +70,11 @@ func (m *EntityManager) Deactivate(entity *EntityToken) {
 // sets the active state on an entity and notifies all watchers
 func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
 	// only act if the state is different to that which exists
-	if entity.active != state {
+	if entity.Active != state {
 		// start / stop logic accordingly
 		m.ComponentsData.Logic[entity.ID].Active = state
 		// set active state
-		entity.active = state
+		entity.Active = state
 		// notify any listening lists
 		m.activeEntityLists.notifyActiveState(entity, state)
 	}
@@ -145,7 +145,7 @@ func (m *EntityManager) TagEntity(entity *EntityToken, tag string) {
 	m.ComponentsData.TagList[entity.ID].Add(tag)
 	// if the entity is active, it has already been checked by all lists,
 	// thus generate a new signal to add it to the list of the tag
-	if entity.active {
+	if entity.Active {
 		m.createEntitiesWithTagListIfNeeded(tag)
 		m.activeEntityLists.checkActiveEntity(entity)
 	}
@@ -179,6 +179,16 @@ func (m *EntityManager) AddEntityClass(c EntityClass) {
 // Get an entity class by name
 func (m *EntityManager) GetEntityClass(name string) EntityClass {
 	return m.classes[name]
+}
+
+// Get the number of allocated entities (not number of active, mind you)
+func (m *EntityManager) NumEntities() int {
+	return len(m.entityTable.currentEntities)
+}
+
+// Get list of current allocated entities (not number of active, mind you)
+func (m *EntityManager) Entities() []*EntityToken {
+	return m.entityTable.currentEntities
 }
 
 // Somewhat expensive conversion of entire entity list to string, locking
