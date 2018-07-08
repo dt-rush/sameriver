@@ -19,6 +19,6 @@ clean:
 	mv engine/CUSTOM_* /tmp/sameriver/ 2>/dev/null || true
 	cp engine/GENERATED_* /tmp/sameriver
 	git checkout HEAD -- engine/GENERATED_*
-	rm sameriver-generate
+	rm sameriver-generate 2>/dev/null || true
 
 
