@@ -111,5 +111,5 @@ func (l *UpdatedEntityList) addCallback(
 
 // For printing the list
 func (l *UpdatedEntityList) String() string {
-	return fmt.Sprintf("%s", l.Entities)
+	return fmt.Sprintf("%v", l.Entities)
 }

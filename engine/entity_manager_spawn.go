@@ -42,7 +42,7 @@ func (m *EntityManager) Spawn(r SpawnRequestData) (*EntityToken, error) {
 	if r.UniqueTag != "" &&
 		m.EntitiesWithTag(r.UniqueTag).Length() != 0 {
 		return fail(fmt.Sprintf("requested to spawn unique entity for %s, "+
-			"but %s already exists", r.UniqueTag))
+			"but %s already exists", r.UniqueTag, r.UniqueTag))
 	}
 
 	// get an ID for the entity
@@ -90,7 +90,7 @@ func (m *EntityManager) SpawnUnique(
 
 	if _, ok := m.uniqueEntities[tag]; ok {
 		return nil, errors.New(fmt.Sprintf("requested to spawn unique "+
-			"entity for %s, but %s already exists", tag))
+			"entity for %s, but %s already exists", tag, tag))
 	}
 	r.UniqueTag = tag
 	e, err := m.Spawn(r)
