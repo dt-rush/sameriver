@@ -33,3 +33,21 @@ func TestCollision(t *testing.T) {
 		break
 	}
 }
+
+func TestCollisionRateLimit(t *testing.T) {
+	ev := NewEventBus()
+	em := NewEntityManager(ev)
+	cs := NewCollisionSystem(em, ev)
+	ec := ev.Subscribe(
+		"SimpleCollisionQuery",
+		NewSimpleEventQuery(COLLISION_EVENT))
+	em.Spawn(collisionSpawnRequestData())
+	em.Spawn(collisionSpawnRequestData())
+	em.Update()
+	cs.Update()
+	cs.Update()
+	time.Sleep(16 * time.Millisecond)
+	if len(ec.C) != 1 {
+		t.Fatal("collision rate-limiter didn't prevent collision duplication")
+	}
+}
