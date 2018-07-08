@@ -43,7 +43,7 @@ type CollisionSystem struct {
 	// Reference to entity manager to reach components
 	em *EntityManager
 	// Reference to event bus to publish collisions
-	eventBus *EventBus
+	ev *EventBus
 	// targetted entities
 	collidableEntities *UpdatedEntityList
 	// an array of rate limiters to avoid the problem where we send out a
@@ -51,35 +51,41 @@ type CollisionSystem struct {
 	// often as possible, but we don't want to send out collision events that
 	// often, as it will put a load on anything reading these events
 	rateLimiterArray CollisionRateLimiterArray
-	// How the collision system communicates collision events
-	ev *EventBus
 }
 
-func (s *CollisionSystem) Init(
-	em *EntityManager,
-	eventBus *EventBus) {
-
-	// take down references to em and ev
-	s.em = em
-	s.eventBus = eventBus
-	// get a regularly updated list of the entities which are collidable
+func NewCollisionSystem(em *EntityManager, ev *EventBus) *CollisionSystem {
+	// construct the rateLimiterArray
+	rateLimiterArray := NewCollisionRateLimiterArray()
+	// query a regularly updated list of the entities which are collidable
 	// (position and hitbox)
 	query := EntityQueryFromComponentBitArray(
 		"collidable",
 		MakeComponentBitArray([]ComponentType{
 			BOX_COMPONENT}))
-	s.collidableEntities = s.em.GetSortedUpdatedEntityList(query)
+	collidableEntities := em.GetSortedUpdatedEntityList(query)
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
 	// in the collision rate limiter array (to guard against an entity
 	// despawning, a new entity spawning with its ID, and failing a collision
 	// test (rare prehaps, but an edge case we nonetheless want to avoid)
-	s.collidableEntities.addCallback(
+	collidableEntities.addCallback(
 		func(signal EntitySignal) {
 			if signal.SignalType == ENTITY_REMOVE {
-				s.rateLimiterArray.Reset(signal.Entity)
+				rateLimiterArray.Reset(signal.Entity)
 			}
 		})
+	// build the basic struct
+	return &CollisionSystem{em, ev, collidableEntities, rateLimiterArray}
+}
+
+func (s *CollisionSystem) Init(
+	em *EntityManager,
+	ev *EventBus) {
+
+	// take down references to em and ev
+	s.em = em
+	s.ev = ev
+
 }
 
 // Test collision between two entities
@@ -112,7 +118,7 @@ func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
 // by goroutine 2 ("Event filtering and sending"), but we rate-limit sending
 // events for each possible collision [i][j] using the rate limiter at [i][j]
 // in rateLimiters, so if we already sent one within the timeout, we just move on.
-func (s *CollisionSystem) Update(dt_ms uint16) {
+func (s *CollisionSystem) Update() {
 
 	entities := s.collidableEntities.Entities
 
@@ -128,10 +134,9 @@ func (s *CollisionSystem) Update(dt_ms uint16) {
 			// check the collision
 			if s.TestCollision(uint16(i.ID), uint16(j.ID)) {
 				// if colliding, send the message (rate-limited)
-				s.rateLimiterArray.
-					GetRateLimiter(i.ID, j.ID).
-					Do(func() {
-						s.eventBus.Publish(COLLISION_EVENT,
+				s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Do(
+					func() {
+						s.ev.Publish(COLLISION_EVENT,
 							CollisionData{EntityA: i, EntityB: j})
 					})
 				// TODO: move both entities away from their common center?
