@@ -1,6 +1,8 @@
 sameriver
 ===
 
+[![Build Status](https://travis-ci.com/dt-rush/sameriver.svg?branch=master)](https://travis-ci.com/dt-rush/sameriver)
+
     ##XxxxxXXx:;;;;;;;;;xo;;;;;;;;;;;;;;:::::::::::ooooooooxxXX#X##X
     ###00OO0OOo:,,,,,,;:OO;;;;;;;;;;;;;;;;;::::::::::ooxoooxx00X####
     ###XOOx0xxxo,,,,,,;xO0o:x;,,,,,,;;;;;;;;;;;;;:::oO0#oxx0x00X####
