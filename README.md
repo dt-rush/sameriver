@@ -53,14 +53,11 @@ A game engine which takes advantage of go's language features to define
 concurrently-executing entity behaviour and world logic relative to a 
 traditional synchronous game loop ("input, update, draw").
 
-**NOTE: The engine is in heavy development by a single developer, and so is
-probably not in a very readable state at any given time until this comment is
-removed from the README. Comments in code files have not been reviewed
-thoroughly. Do not believe their lies.**
+### 1. Development
 
-### 1. Dependencies
+Just run `make`.
 
-#### 1.a. linux
+### 2. Dependencies
 
 apt:
 
@@ -70,7 +67,7 @@ pacman:
 
 * `sdl2{,_mixer,_image,_ttf,_gfx}`
 
-#### 1.b. windows: mingw env packages (install from source)
+windows: mingw env packages (install from source)
 
 * `SDL2-devel-2.0.5-mingw.tar.gz`
 * `SDL2_image-devel-2.0.1-mingw.tar.gz`
@@ -78,20 +75,11 @@ pacman:
 * `SDL2_ttf-devel-2.0.14-mingw.tar.gz`
 
 
-#### 1.c. go packages (go get)
+### 3. Technical details
 
-* `github.com/veandco/go-sdl2/sdl`
-* `github.com/veandco/go-sdl2/mix`
-* `github.com/veandco/go-sdl2/img`
-* `github.com/veandco/go-sdl2/ttf`
-* `github.com/golang-collections/go-datastructures/bitarray`
-* `go.uber.org/atomic`
+#### 3.a. General engine design
 
-### 2. Technical details
-
-#### 2.a. General engine design
-
-##### 2.a.i. entity component system
+##### 3.a.i. entity component system
 
 The engine is built on an "entity-component-system" architecture, in which:
 
@@ -105,7 +93,7 @@ There are also some **Managers** which are sort of like the glue holding the eng
 
 The **`EntityManager`** is a particularly important central part of the engine.
 
-##### 2.a.ii. scenes
+##### 3.a.ii. scenes
 
 The engine is also built on a "scene-based" architecture, in which:
 
