@@ -21,4 +21,5 @@ clean:
 	git checkout HEAD -- engine/GENERATED_*
 	rm sameriver-generate 2>/dev/null || true
 
-
+install:
+	./install_deps.sh 
