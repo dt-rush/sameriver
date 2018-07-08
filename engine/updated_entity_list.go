@@ -95,10 +95,10 @@ func (l *UpdatedEntityList) actOnSignal(signal EntitySignal) {
 	}
 	// act on signal
 	switch signal.SignalType {
-	case ENTITY_REMOVE:
-		l.remove(signal.Entity)
 	case ENTITY_ADD:
 		l.add(signal.Entity)
+	case ENTITY_REMOVE:
+		l.remove(signal.Entity)
 	}
 }
 

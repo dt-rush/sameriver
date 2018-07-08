@@ -65,7 +65,9 @@ func TestEntitiesWithTagList(t *testing.T) {
 	time.Sleep(16 * time.Millisecond)
 	em.Update()
 	tagged := em.EntitiesWithTag(tag)
-	if tagged.Length() == 0 {
+	time.Sleep(16 * time.Millisecond)
+	empty := tagged.Length() == 0
+	if empty {
 		t.Fatal("failed to find spawned entity in EntitiesWithTag")
 	}
 }

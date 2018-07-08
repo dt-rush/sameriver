@@ -93,10 +93,10 @@ func (m *EntityManager) processSpawn(r SpawnRequestData) (*EntityToken, error) {
 	if r.UniqueTag != "" {
 		m.createEntitiesWithTagListIfNeeded(r.UniqueTag)
 	}
-	// set entity active and notify entity is active
-	m.setActiveState(entity, true)
 	// add the entity to the list of current entities
 	m.entityTable.addToCurrentEntities(entity)
+	// set entity active and notify entity is active
+	m.setActiveState(entity, true)
 	// return EntityToken
 	return entity, nil
 }

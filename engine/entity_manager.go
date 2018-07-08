@@ -82,9 +82,7 @@ func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
 
 // Get a list of entities which will be updated whenever an entity becomes
 // active / inactive
-func (m *EntityManager) GetUpdatedEntityList(
-	q EntityQuery) *UpdatedEntityList {
-
+func (m *EntityManager) GetUpdatedEntityList(q EntityQuery) *UpdatedEntityList {
 	return m.activeEntityLists.GetUpdatedEntityList(q)
 }
 
@@ -122,10 +120,8 @@ func (m *EntityManager) EntitiesWithTag(tag string) *UpdatedEntityList {
 }
 
 func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
-	_, exists := m.entitiesWithTag[tag]
-	if !exists {
-		m.entitiesWithTag[tag] =
-			m.GetUpdatedEntityList(EntityQueryFromTag(tag))
+	if _, exists := m.entitiesWithTag[tag]; !exists {
+		m.entitiesWithTag[tag] = m.GetUpdatedEntityList(EntityQueryFromTag(tag))
 	}
 }
 

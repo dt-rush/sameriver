@@ -18,7 +18,6 @@ func NewActiveEntityListCollection(
 
 func (c *ActiveEntityListCollection) GetUpdatedEntityList(
 	q EntityQuery) *UpdatedEntityList {
-
 	// return the list if it already exists (this is why query names should
 	// be unique if they expect to be unique!)
 	// TODO: document this requirement
