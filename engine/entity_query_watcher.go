@@ -9,15 +9,14 @@ const (
 )
 
 type EntitySignal struct {
-	signalType EntitySignalType
-	entity     *EntityToken
+	SignalType EntitySignalType
+	Entity     *EntityToken
 }
 
 type EntityQueryWatcher struct {
-	Name  string
-	ID    int
-	Query EntityQuery
-	// A channel along which entity signals will be sent
+	Name    string
+	ID      int
+	Query   EntityQuery
 	Channel chan EntitySignal
 }
 

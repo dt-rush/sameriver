@@ -76,7 +76,7 @@ func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
 		// set active state
 		entity.Active = state
 		// notify any listening lists
-		m.activeEntityLists.notifyActiveState(entity, state)
+		go m.activeEntityLists.notifyActiveState(entity, state)
 	}
 }
 
@@ -116,9 +116,7 @@ func (m *EntityManager) UniqueTaggedEntity(tag string) (*EntityToken, error) {
 	return list.FirstEntity()
 }
 
-func (m *EntityManager) EntitiesWithTag(
-	tag string) *UpdatedEntityList {
-
+func (m *EntityManager) EntitiesWithTag(tag string) *UpdatedEntityList {
 	m.createEntitiesWithTagListIfNeeded(tag)
 	return m.entitiesWithTag[tag]
 }

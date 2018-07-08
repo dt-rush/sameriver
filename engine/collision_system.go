@@ -72,10 +72,8 @@ func (s *CollisionSystem) Init(
 	// test (rare prehaps, but an edge case we nonetheless want to avoid)
 	s.collidableEntities.addCallback(
 		func(signal EntitySignal) {
-			entity := signal.entity
-			if entity.ID < 0 {
-				entity.ID = -(entity.ID + 1)
-				s.rateLimiterArray.Reset(entity)
+			if signal.SignalType == ENTITY_REMOVE {
+				s.rateLimiterArray.Reset(signal.Entity)
 			}
 		})
 }

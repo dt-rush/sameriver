@@ -6,22 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"time"
 )
 
 type UpdatedEntityList struct {
-	// the query watcher this list is attached to
-	qw EntityQueryWatcher
 	// the entities in the list (tagged with gen)
 	Entities []*EntityToken
-	// a list of ID's the channel has yet to check in being created
-	backlog []*EntityToken
-	// a function used to test if an entity belongs in the list
-	// (supplied by EntityManager, it will have a reference to the EntityManager
-	// and will run a query's Test() function against the entity)
-	backlogTester func(entity *EntityToken) bool
-	// set to true while we're processing the backlog
-	processingBacklog bool
+	// a channel used to receive the entity add / remove signals
+	Channel chan EntitySignal
 	// used to stop the update loop's goroutine in
 	// the case that they're done with the list (by calling Stop())
 	stopUpdateLoopChannel chan bool
@@ -34,18 +25,25 @@ type UpdatedEntityList struct {
 
 // create a new UpdatedEntityList by giving it a channel on which it will
 // receive entity IDs
-func NewUpdatedEntityList(
-	qw EntityQueryWatcher,
-	backlog []*EntityToken,
-	backlogTester func(entity *EntityToken) bool) *UpdatedEntityList {
+func NewUpdatedEntityList(channel chan EntitySignal) *UpdatedEntityList {
+	l := UpdatedEntityList{
+		Entities:              make([]*EntityToken, 0),
+		Channel:               channel,
+		stopUpdateLoopChannel: make(chan bool),
+		sorted:                false,
+	}
+	return &l
+}
 
-	l := UpdatedEntityList{}
-	l.Entities = make([]*EntityToken, 0)
-	l.qw = qw
-	l.backlog = backlog
-	l.backlogTester = backlogTester
-	l.processingBacklog = len(backlog) > 0
-	l.stopUpdateLoopChannel = make(chan (bool))
+// create a new SORTED UpdatedEntityList by giving it a channel on which it will
+// receive entity IDs
+func NewSortedUpdatedEntityList(channel chan EntitySignal) *UpdatedEntityList {
+	l := UpdatedEntityList{
+		Entities:              make([]*EntityToken, 0),
+		Channel:               channel,
+		stopUpdateLoopChannel: make(chan bool),
+		sorted:                true,
+	}
 	return &l
 }
 
@@ -72,59 +70,35 @@ func (l *UpdatedEntityList) RandomEntity() (*EntityToken, error) {
 
 // called during the creation of a list. Starts a goroutine which listens
 // on the channel and either adds or removes entities as appropriate
-func (l *UpdatedEntityList) start() {
+func (l *UpdatedEntityList) Start() {
 	go func() {
 	updateloop:
 		for {
 			select {
 			case _ = <-l.stopUpdateLoopChannel:
 				break updateloop
-			case signal := <-l.qw.Channel:
+			case signal := <-l.Channel:
 				l.actOnSignal(signal)
-			default:
-				if l.processingBacklog {
-					l.popBacklog()
-				}
-				time.Sleep(100 * time.Millisecond)
 			}
 		}
 	}()
 }
 
-func (l *UpdatedEntityList) popBacklog() {
-
-	if len(l.backlog) == 0 {
-		l.processingBacklog = false
-		l.backlogTester = nil
-		return
-	}
-
-	last_ix := len(l.backlog) - 1
-	entity := l.backlog[last_ix]
-	l.backlog = l.backlog[:last_ix]
-	if l.backlogTester(entity) {
-		l.actOnSignal(EntitySignal{ENTITY_ADD, entity})
-	}
-}
-
-func (l *UpdatedEntityList) stop() {
+func (l *UpdatedEntityList) Stop() {
 	l.stopUpdateLoopChannel <- true
 }
 
 func (l *UpdatedEntityList) actOnSignal(signal EntitySignal) {
-
 	// callbacks list want to be notified of each signal we get
 	for _, callback := range l.callbacks {
 		go callback(signal)
 	}
 	// act on signal
-	switch signal.signalType {
+	switch signal.SignalType {
 	case ENTITY_REMOVE:
-		removeEntityTokenFromSlice(&l.backlog, signal.entity)
-		l.remove(signal.entity)
+		l.remove(signal.Entity)
 	case ENTITY_ADD:
-		removeEntityTokenFromSlice(&l.backlog, signal.entity)
-		l.add(signal.entity)
+		l.add(signal.Entity)
 	}
 }
 

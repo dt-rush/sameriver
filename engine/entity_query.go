@@ -15,7 +15,6 @@ func (q EntityQuery) Test(entity *EntityToken, em *EntityManager) bool {
 }
 
 func EntityQueryFromTag(tag string) EntityQuery {
-
 	return EntityQuery{
 		Name: tag,
 		TestFunc: func(entity *EntityToken, em *EntityManager) bool {
@@ -24,9 +23,7 @@ func EntityQueryFromTag(tag string) EntityQuery {
 }
 
 func EntityQueryFromComponentBitArray(
-	name string,
-	q bitarray.BitArray) EntityQuery {
-
+	name string, q bitarray.BitArray) EntityQuery {
 	return EntityQuery{
 		Name: name,
 		TestFunc: func(entity *EntityToken, em *EntityManager) bool {

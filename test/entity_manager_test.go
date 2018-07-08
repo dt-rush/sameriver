@@ -6,23 +6,6 @@ import (
 	"time"
 )
 
-func simpleSpawnRequestData() engine.SpawnRequestData {
-	return engine.SpawnRequestData{
-		Components: engine.ComponentSet{
-			Position: &engine.Vec2D{0, 0},
-		},
-	}
-}
-
-func simpleTaggedSpawnRequestData() engine.SpawnRequestData {
-	return engine.SpawnRequestData{
-		Components: engine.ComponentSet{
-			Position: &engine.Vec2D{0, 0},
-			TagList:  &engine.TagList{Tags: []string{"tag1"}},
-		},
-	}
-}
-
 func TestSpawn(t *testing.T) {
 	ev := engine.NewEventBus()
 	em := engine.NewEntityManager(ev)
@@ -38,7 +21,27 @@ func TestSpawn(t *testing.T) {
 	}
 }
 
-func TestTagListSpawnInserted(t *testing.T) {
+func TestEntityQuery(t *testing.T) {
+	ev := engine.NewEventBus()
+	em := engine.NewEntityManager(ev)
+	req := simpleSpawnRequestData()
+	pos := req.Components.Position
+	em.Spawn(req)
+	time.Sleep(16 * time.Millisecond)
+	em.Update()
+	e := em.Entities()[0]
+	q := engine.EntityQuery{
+		"positionQuery",
+		func(e *engine.EntityToken, em *engine.EntityManager) bool {
+			return em.ComponentsData.Position[e.ID] == *pos
+		},
+	}
+	if !q.Test(e, em) {
+		t.Fatal("query did not return true")
+	}
+}
+
+func TestEntityQueryFromTag(t *testing.T) {
 	ev := engine.NewEventBus()
 	em := engine.NewEntityManager(ev)
 	req := simpleTaggedSpawnRequestData()
@@ -46,11 +49,23 @@ func TestTagListSpawnInserted(t *testing.T) {
 	em.Spawn(req)
 	time.Sleep(16 * time.Millisecond)
 	em.Update()
-	if em.NumEntities() == 0 {
-		t.Fatal("failed to spawn simple tagged entity")
+	e := em.Entities()[0]
+	q := engine.EntityQueryFromTag(tag)
+	if !q.Test(e, em) {
+		t.Fatal("query did not return true")
 	}
+}
+
+func TestEntitiesWithTagList(t *testing.T) {
+	ev := engine.NewEventBus()
+	em := engine.NewEntityManager(ev)
+	req := simpleTaggedSpawnRequestData()
+	tag := req.Components.TagList.Tags[0]
+	em.Spawn(req)
+	time.Sleep(16 * time.Millisecond)
+	em.Update()
 	tagged := em.EntitiesWithTag(tag)
 	if tagged.Length() == 0 {
-		t.Fatal("failed to put spawned entity in list of entities with tag")
+		t.Fatal("failed to find spawned entity in EntitiesWithTag")
 	}
 }
