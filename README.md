@@ -85,14 +85,7 @@ pacman:
 * `github.com/golang-collections/go-datastructures/bitarray`
 * `go.uber.org/atomic`
 
-#### NOTE on `go.uber.org/atomic`
-
-Yes, we use a dependency from the open source go libraries at Uber. As a taxi company, they're awful and exploitative. As a taxi company that employs go programmers, they're still awful and exploitative. Those programmers made an improvement to how go handle's atomic primitives by enforcing that those primitives be accessed atomically if they are meant to be, and that's cool. It improves readability and ensures that atomic primitives are always handled atomically.
-
-
 ### 2. Technical details
-
-See the [wiki](https://github.com/dt-rush/donkeys-qquest/wiki) for diagrams.
 
 #### 2.a. General engine design
 
