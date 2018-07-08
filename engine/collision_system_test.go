@@ -23,4 +23,13 @@ func TestCollision(t *testing.T) {
 	default:
 		t.Fatal("collision event wasn't received within 16 ms")
 	}
+	em.Components.Position[em.Entities()[0].ID] = Vec2D{100000, 100000}
+	cs.Update()
+	time.Sleep(16 * time.Millisecond)
+	select {
+	case _ = <-ec.C:
+		t.Fatal("collision event occurred but entities were not overlapping")
+	default:
+		break
+	}
 }
