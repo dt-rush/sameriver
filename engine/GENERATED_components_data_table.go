@@ -11,13 +11,9 @@
 
 package engine
 
-import (
-	"github.com/veandco/go-sdl2/sdl"
-)
-
-type ComponentsDataTable struct {
+type ComponentsTable struct {
 	em             *EntityManager
-	Box            [MAX_ENTITIES]sdl.Rect
+	Box            [MAX_ENTITIES]Vec2D
 	Logic          [MAX_ENTITIES]LogicUnit
 	MovementTarget [MAX_ENTITIES]Vec2D
 	Position       [MAX_ENTITIES]Vec2D
@@ -27,6 +23,6 @@ type ComponentsDataTable struct {
 	Velocity       [MAX_ENTITIES]Vec2D
 }
 
-func NewComponentsDataTable(em *EntityManager) *ComponentsDataTable {
-	return &ComponentsDataTable{em: em}
+func NewComponentsTable(em *EntityManager) *ComponentsTable {
+	return &ComponentsTable{em: em}
 }

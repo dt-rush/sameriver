@@ -5,7 +5,7 @@ Game Engine taking advantage of go's concurrency
 
 > **Heraclitus** of Ephesus (/ˌhɛrəˈklaɪtəs/; Greek: Ἡράκλειτος ὁ Ἐφέσιος
 > Hērákleitos ho Ephésios; c. 535 – c. 475 BC) was a pre-Socratic Greek
-> philosopher, and a native of the city of Ephesus, then part of the
+> philosopher, and a native of the city of Ephesus, then part of the 
 > Persian Empire. Little is known about his early life and education, but 
 > he regarded himself as self-taught and a pioneer of wisdom.
 > 

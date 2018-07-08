@@ -6,14 +6,13 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/veandco/go-sdl2/sdl"
 	"go.uber.org/atomic"
 )
 
 // used to store an entity with a position in a grid cell
 type EntityPosition struct {
 	entity   *EntityToken
-	position sdl.Rect
+	position Vec2D
 }
 
 // the actual cell data structure is a GRID x GRID array of []EntityPosition
@@ -224,12 +223,12 @@ func (h *SpatialHash) scanner(offset int, partition_size int) {
 	for i := 0; i < partition_size; i++ {
 		// get the entity's box
 		entity := h.spatialEntities.Entities[offset+i]
-		box := h.em.ComponentsData.Box[entity.ID]
+		box := h.em.Components.Box[entity.ID]
 		// find out how many grids the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)
-		gridsHigh := int(box.H) / (h.WORLD_HEIGHT / h.GRID)
-		gridsWide := int(box.W) / (h.WORLD_WIDTH / h.GRID)
+		gridsHigh := int(box.X) / (h.WORLD_HEIGHT / h.GRID)
+		gridsWide := int(box.Y) / (h.WORLD_WIDTH / h.GRID)
 		// figure out which cell the topleft corner is in
 		topLeftCellX, topLeftCellY := h.cellForPoint(int(box.X), int(box.Y))
 		// walk through each cell the entity touches by starting in the top-left

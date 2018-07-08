@@ -35,9 +35,13 @@
 //
 package engine
 
+import (
+	"github.com/veandco/go-sdl2/sdl"
+)
+
 type CollisionSystem struct {
 	// Reference to entity manager to reach components
-	entityManager *EntityManager
+	em *EntityManager
 	// Reference to event bus to publish collisions
 	eventBus *EventBus
 	// targetted entities
@@ -52,11 +56,11 @@ type CollisionSystem struct {
 }
 
 func (s *CollisionSystem) Init(
-	entityManager *EntityManager,
+	em *EntityManager,
 	eventBus *EventBus) {
 
 	// take down references to em and ev
-	s.entityManager = entityManager
+	s.em = em
 	s.eventBus = eventBus
 	// get a regularly updated list of the entities which are collidable
 	// (position and hitbox)
@@ -64,7 +68,7 @@ func (s *CollisionSystem) Init(
 		"collidable",
 		MakeComponentBitArray([]ComponentType{
 			BOX_COMPONENT}))
-	s.collidableEntities = s.entityManager.GetSortedUpdatedEntityList(query)
+	s.collidableEntities = s.em.GetSortedUpdatedEntityList(query)
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
 	// in the collision rate limiter array (to guard against an entity
@@ -80,8 +84,21 @@ func (s *CollisionSystem) Init(
 
 // Test collision between two entities
 func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
-	return s.entityManager.ComponentsData.Box[i].HasIntersection(
-		&s.entityManager.ComponentsData.Box[j])
+	iPos := s.em.Components.Position[i]
+	iBox := s.em.Components.Box[i]
+	jPos := s.em.Components.Position[j]
+	jBox := s.em.Components.Box[j]
+	iRect := sdl.Rect{
+		int32(iPos.X),
+		int32(iPos.Y),
+		int32(iBox.X),
+		int32(iBox.Y)}
+	jRect := sdl.Rect{
+		int32(jPos.X),
+		int32(jPos.Y),
+		int32(jBox.X),
+		int32(jBox.Y)}
+	return iRect.HasIntersection(&jRect)
 }
 
 // Iterates through the entities in the UpdatedEntityList using a handshake

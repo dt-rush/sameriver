@@ -18,7 +18,7 @@ func EntityQueryFromTag(tag string) EntityQuery {
 	return EntityQuery{
 		Name: tag,
 		TestFunc: func(entity *EntityToken, em *EntityManager) bool {
-			return em.ComponentsData.TagList[entity.ID].Has(tag)
+			return em.Components.TagList[entity.ID].Has(tag)
 		}}
 }
 

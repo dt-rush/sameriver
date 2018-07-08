@@ -50,7 +50,7 @@ func generateComponentSetFile(
 				BlockFunc(func(g *Group) {
 					for _, component := range components {
 						g.If(Id("cs").Dot(component.Name).Op("!=").Nil()).Block(
-							Id("em").Dot("ComponentsData").Dot(component.Name).
+							Id("em").Dot("Components").Dot(component.Name).
 								Index(Id("entity").Dot("ID")).Op("=").
 								Op("*").Id("cs").Dot(component.Name),
 						)

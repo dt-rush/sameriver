@@ -1,17 +1,16 @@
-package main
+package engine
 
 import (
-	"github.com/dt-rush/sameriver/engine"
 	"testing"
 	"time"
 )
 
 func TestSimpleEventQueryMatching(t *testing.T) {
-	ev := engine.NewEventBus()
+	ev := NewEventBus()
 	ec := ev.Subscribe(
 		"SimpleCollisionQuery",
-		engine.NewSimpleEventQuery(engine.COLLISION_EVENT))
-	ev.Publish(engine.COLLISION_EVENT, nil)
+		NewSimpleEventQuery(COLLISION_EVENT))
+	ev.Publish(COLLISION_EVENT, nil)
 	time.Sleep(16 * time.Millisecond)
 	select {
 	case _ = <-ec.C:
@@ -23,11 +22,11 @@ func TestSimpleEventQueryMatching(t *testing.T) {
 }
 
 func TestSimpleEventQueryNonMatching(t *testing.T) {
-	ev := engine.NewEventBus()
+	ev := NewEventBus()
 	ec := ev.Subscribe(
 		"SimpleCollisionQuery",
-		engine.NewSimpleEventQuery(engine.COLLISION_EVENT))
-	ev.Publish(engine.SPAWNREQUEST_EVENT, nil)
+		NewSimpleEventQuery(COLLISION_EVENT))
+	ev.Publish(SPAWNREQUEST_EVENT, nil)
 	time.Sleep(16 * time.Millisecond)
 	select {
 	case _ = <-ec.C:
@@ -38,20 +37,20 @@ func TestSimpleEventQueryNonMatching(t *testing.T) {
 }
 
 func TestCollisionEventQueryMatching(t *testing.T) {
-	ev := engine.NewEventBus()
-	collision := engine.CollisionData{
-		EntityA: &engine.EntityToken{ID: 0},
-		EntityB: &engine.EntityToken{ID: 1},
+	ev := NewEventBus()
+	collision := CollisionData{
+		EntityA: &EntityToken{ID: 0},
+		EntityB: &EntityToken{ID: 1},
 	}
 	ec := ev.Subscribe(
 		"PredicateCollisionQuery",
-		engine.NewPredicateEventQuery(
-			engine.COLLISION_EVENT,
-			func(e engine.Event) bool {
-				return e.Data.(engine.CollisionData) == collision
+		NewPredicateEventQuery(
+			COLLISION_EVENT,
+			func(e Event) bool {
+				return e.Data.(CollisionData) == collision
 			}),
 	)
-	ev.Publish(engine.COLLISION_EVENT, collision)
+	ev.Publish(COLLISION_EVENT, collision)
 	time.Sleep(16 * time.Millisecond)
 	select {
 	case _ = <-ec.C:
@@ -62,23 +61,23 @@ func TestCollisionEventQueryMatching(t *testing.T) {
 }
 
 func TestCollisionEventQueryNonMatching(t *testing.T) {
-	ev := engine.NewEventBus()
-	collision := engine.CollisionData{
-		EntityA: &engine.EntityToken{ID: 0},
-		EntityB: &engine.EntityToken{ID: 1},
+	ev := NewEventBus()
+	collision := CollisionData{
+		EntityA: &EntityToken{ID: 0},
+		EntityB: &EntityToken{ID: 1},
 	}
 	ec := ev.Subscribe(
 		"PredicateCollisionQuery",
-		engine.NewPredicateEventQuery(
-			engine.COLLISION_EVENT,
-			func(e engine.Event) bool {
-				return e.Data.(engine.CollisionData) == collision
+		NewPredicateEventQuery(
+			COLLISION_EVENT,
+			func(e Event) bool {
+				return e.Data.(CollisionData) == collision
 			}),
 	)
-	ev.Publish(engine.COLLISION_EVENT,
-		engine.CollisionData{
-			EntityA: &engine.EntityToken{ID: 7},
-			EntityB: &engine.EntityToken{ID: 9},
+	ev.Publish(COLLISION_EVENT,
+		CollisionData{
+			EntityA: &EntityToken{ID: 7},
+			EntityB: &EntityToken{ID: 9},
 		})
 	time.Sleep(16 * time.Millisecond)
 	select {
@@ -90,12 +89,12 @@ func TestCollisionEventQueryNonMatching(t *testing.T) {
 }
 
 func TestUnsubscribe(t *testing.T) {
-	ev := engine.NewEventBus()
+	ev := NewEventBus()
 	ec := ev.Subscribe(
 		"SimpleCollisionQuery",
-		engine.NewSimpleEventQuery(engine.COLLISION_EVENT))
+		NewSimpleEventQuery(COLLISION_EVENT))
 	ev.Unsubscribe(ec)
-	ev.Publish(engine.COLLISION_EVENT, nil)
+	ev.Publish(COLLISION_EVENT, nil)
 	time.Sleep(16 * time.Millisecond)
 	select {
 	case _ = <-ec.C:

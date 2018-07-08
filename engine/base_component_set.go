@@ -1,15 +1,11 @@
 package engine
 
-import (
-	"github.com/veandco/go-sdl2/sdl"
-)
-
 type BaseComponentSet struct {
 	TagList *TagList
 
 	Logic *LogicUnit
 
-	Box    *sdl.Rect
+	Box    *Vec2D
 	Sprite *Sprite
 
 	Position       *Vec2D

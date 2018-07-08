@@ -10,7 +10,7 @@ import (
 // Provides services related to entities
 type EntityManager struct {
 	// Component data for entities
-	ComponentsData *ComponentsDataTable
+	Components *ComponentsTable
 	// EntityTable stores: a list of allocated EntityTokens and a
 	// list of available IDs from previous deallocations
 	entityTable EntityTable
@@ -39,7 +39,7 @@ type EntityManager struct {
 // Construct a new entity manager
 func NewEntityManager(eventBus *EventBus) *EntityManager {
 	em := &EntityManager{}
-	em.ComponentsData = NewComponentsDataTable(em)
+	em.Components = NewComponentsTable(em)
 	em.activeEntityLists = NewActiveEntityListCollection(em)
 	em.entitiesWithTag = make(map[string]*UpdatedEntityList)
 	em.uniqueEntities = make(map[string]*EntityToken)
@@ -75,7 +75,7 @@ func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
 	// only act if the state is different to that which exists
 	if entity.Active != state {
 		// start / stop logic accordingly
-		m.ComponentsData.Logic[entity.ID].Active = state
+		m.Components.Logic[entity.ID].Active = state
 		// set active state
 		entity.Active = state
 		// notify any listening lists
@@ -142,7 +142,7 @@ func (m *EntityManager) EntityHasComponent(
 // apply the given tag to the given entity
 func (m *EntityManager) TagEntity(entity *EntityToken, tag string) {
 	// add the tag to the taglist component
-	m.ComponentsData.TagList[entity.ID].Add(tag)
+	m.Components.TagList[entity.ID].Add(tag)
 	// if the entity is active, it has already been checked by all lists,
 	// thus generate a new signal to add it to the list of the tag
 	if entity.Active {
@@ -160,7 +160,7 @@ func (m *EntityManager) TagEntities(entities []*EntityToken, tag string) {
 
 // Remove a tag from an entity
 func (m *EntityManager) UntagEntity(entity *EntityToken, tag string) {
-	m.ComponentsData.TagList[entity.ID].Remove(tag)
+	m.Components.TagList[entity.ID].Remove(tag)
 	m.activeEntityLists.checkActiveEntity(entity)
 }
 
@@ -201,7 +201,7 @@ func (m *EntityManager) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
 	for _, entity := range m.entityTable.currentEntities {
-		tags := m.ComponentsData.TagList[entity.ID]
+		tags := m.Components.TagList[entity.ID]
 		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",
 			entity.ID, tags)
 		buffer.WriteString(entityRepresentation)

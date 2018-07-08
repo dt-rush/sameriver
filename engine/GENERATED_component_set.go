@@ -13,11 +13,10 @@ package engine
 
 import (
 	"github.com/golang-collections/go-datastructures/bitarray"
-	"github.com/veandco/go-sdl2/sdl"
 )
 
 type ComponentSet struct {
-	Box            *sdl.Rect
+	Box            *Vec2D
 	Logic          *LogicUnit
 	MovementTarget *Vec2D
 	Position       *Vec2D
@@ -59,28 +58,28 @@ func (cs *ComponentSet) ToBitArray() bitarray.BitArray {
 func (em *EntityManager) ApplyComponentSet(cs ComponentSet) func(*EntityToken) {
 	return func(entity *EntityToken) {
 		if cs.Box != nil {
-			em.ComponentsData.Box[entity.ID] = *cs.Box
+			em.Components.Box[entity.ID] = *cs.Box
 		}
 		if cs.Logic != nil {
-			em.ComponentsData.Logic[entity.ID] = *cs.Logic
+			em.Components.Logic[entity.ID] = *cs.Logic
 		}
 		if cs.MovementTarget != nil {
-			em.ComponentsData.MovementTarget[entity.ID] = *cs.MovementTarget
+			em.Components.MovementTarget[entity.ID] = *cs.MovementTarget
 		}
 		if cs.Position != nil {
-			em.ComponentsData.Position[entity.ID] = *cs.Position
+			em.Components.Position[entity.ID] = *cs.Position
 		}
 		if cs.Sprite != nil {
-			em.ComponentsData.Sprite[entity.ID] = *cs.Sprite
+			em.Components.Sprite[entity.ID] = *cs.Sprite
 		}
 		if cs.Steer != nil {
-			em.ComponentsData.Steer[entity.ID] = *cs.Steer
+			em.Components.Steer[entity.ID] = *cs.Steer
 		}
 		if cs.TagList != nil {
-			em.ComponentsData.TagList[entity.ID] = *cs.TagList
+			em.Components.TagList[entity.ID] = *cs.TagList
 		}
 		if cs.Velocity != nil {
-			em.ComponentsData.Velocity[entity.ID] = *cs.Velocity
+			em.Components.Velocity[entity.ID] = *cs.Velocity
 		}
 	}
 }

@@ -42,24 +42,24 @@ func (s *PhysicsSystem) Update(dt_ms int64) {
 	// be preempted while computin physics (this is very good, get it over with)
 	for _, e := range s.physicsEntities.Entities {
 		// read the position and velocity, using dt to compute dx, dy
-		pos := s.em.ComponentsData.Position[e.ID]
-		box := s.em.ComponentsData.Box[e.ID]
-		vel := s.em.ComponentsData.Velocity[e.ID]
+		pos := s.em.Components.Position[e.ID]
+		box := s.em.Components.Box[e.ID]
+		vel := s.em.Components.Velocity[e.ID]
 		dx := vel.X * float64(dt_ms)
 		dy := vel.Y * float64(dt_ms)
 		// motion in x
 		if pos.X+dx < 0 {
 			// max out on the left
 			pos.X = 0
-		} else if pos.X+dx > float64(s.WORLD_WIDTH-box.W) {
+		} else if pos.X+dx > float64(s.WORLD_WIDTH)-box.X {
 			// max out on the right
-			pos.X = float64(s.WORLD_WIDTH - box.W)
+			pos.X = float64(s.WORLD_WIDTH) - box.X
 		} else {
 			// otherwise move in x freely
 			pos.X += dx
 		}
 		// motion in y
-		if pos.Y+dy < float64(box.H) {
+		if pos.Y+dy < float64(box.X) {
 			// max out on the bottom
 			pos.Y = 0
 		} else if pos.Y+dy > float64(s.WORLD_HEIGHT) {

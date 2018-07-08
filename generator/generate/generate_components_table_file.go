@@ -4,13 +4,13 @@ import (
 	. "github.com/dave/jennifer/jen"
 )
 
-func generateComponentsDataTableFile(
+func generateComponentsTableFile(
 	components []ComponentSpec) *File {
 
 	f := NewFile("engine")
 
-	// build the ComponentsDataTable struct declaration
-	f.Type().Id("ComponentsDataTable").StructFunc(func(g *Group) {
+	// build the ComponentsTable struct declaration
+	f.Type().Id("ComponentsTable").StructFunc(func(g *Group) {
 		g.Id("em").Op("*").Id("EntityManager")
 		for _, component := range components {
 			g.Id(component.Name).
@@ -20,11 +20,11 @@ func generateComponentsDataTableFile(
 
 	// write the Init method
 	f.Func().
-		Id("NewComponentsDataTable").
+		Id("NewComponentsTable").
 		Params(Id("em").Op("*").Id("EntityManager")).
-		Op("*").Id("ComponentsDataTable").
+		Op("*").Id("ComponentsTable").
 		Block(
-			Return(Op("&").Id("ComponentsDataTable").
+			Return(Op("&").Id("ComponentsTable").
 				Values(DictFunc(func(d Dict) {
 					d[Id("em")] = Id("em")
 				}))),

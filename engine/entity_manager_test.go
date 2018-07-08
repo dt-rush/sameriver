@@ -1,13 +1,12 @@
-package main
+package engine
 
 import (
-	"github.com/dt-rush/sameriver/engine"
 	"testing"
 )
 
 func TestSpawn(t *testing.T) {
-	ev := engine.NewEventBus()
-	em := engine.NewEntityManager(ev)
+	ev := NewEventBus()
+	em := NewEntityManager(ev)
 	em.Spawn(simpleSpawnRequestData())
 	em.Update()
 	if em.NumEntities() == 0 {
@@ -20,17 +19,17 @@ func TestSpawn(t *testing.T) {
 }
 
 func TestEntityQuery(t *testing.T) {
-	ev := engine.NewEventBus()
-	em := engine.NewEntityManager(ev)
+	ev := NewEventBus()
+	em := NewEntityManager(ev)
 	req := simpleSpawnRequestData()
 	pos := req.Components.Position
 	em.Spawn(req)
 	em.Update()
 	e := em.Entities()[0]
-	q := engine.EntityQuery{
+	q := EntityQuery{
 		"positionQuery",
-		func(e *engine.EntityToken, em *engine.EntityManager) bool {
-			return em.ComponentsData.Position[e.ID] == *pos
+		func(e *EntityToken, em *EntityManager) bool {
+			return em.Components.Position[e.ID] == *pos
 		},
 	}
 	if !q.Test(e, em) {
@@ -39,22 +38,22 @@ func TestEntityQuery(t *testing.T) {
 }
 
 func TestEntityQueryFromTag(t *testing.T) {
-	ev := engine.NewEventBus()
-	em := engine.NewEntityManager(ev)
+	ev := NewEventBus()
+	em := NewEntityManager(ev)
 	req := simpleTaggedSpawnRequestData()
 	tag := req.Components.TagList.Tags[0]
 	em.Spawn(req)
 	em.Update()
 	e := em.Entities()[0]
-	q := engine.EntityQueryFromTag(tag)
+	q := EntityQueryFromTag(tag)
 	if !q.Test(e, em) {
 		t.Fatal("query did not return true")
 	}
 }
 
 func TestEntitiesWithTagList(t *testing.T) {
-	ev := engine.NewEventBus()
-	em := engine.NewEntityManager(ev)
+	ev := NewEventBus()
+	em := NewEntityManager(ev)
 	req := simpleTaggedSpawnRequestData()
 	tag := req.Components.TagList.Tags[0]
 	em.Spawn(req)
@@ -67,8 +66,8 @@ func TestEntitiesWithTagList(t *testing.T) {
 }
 
 func TestEntitySpawnUnique(t *testing.T) {
-	ev := engine.NewEventBus()
-	em := engine.NewEntityManager(ev)
+	ev := NewEventBus()
+	em := NewEntityManager(ev)
 	req := simpleTaggedSpawnRequestData()
 	_, err := em.SpawnUnique("the chosen one", req)
 	if err != nil {
@@ -82,8 +81,8 @@ func TestEntitySpawnUnique(t *testing.T) {
 }
 
 func TestTagUntagEntity(t *testing.T) {
-	ev := engine.NewEventBus()
-	em := engine.NewEntityManager(ev)
+	ev := NewEventBus()
+	em := NewEntityManager(ev)
 	em.Spawn(simpleSpawnRequestData())
 	em.Update()
 	e := em.Entities()[0]
@@ -102,8 +101,8 @@ func TestTagUntagEntity(t *testing.T) {
 }
 
 func TestDeactivateActivateEntity(t *testing.T) {
-	ev := engine.NewEventBus()
-	em := engine.NewEntityManager(ev)
+	ev := NewEventBus()
+	em := NewEntityManager(ev)
 	em.Spawn(simpleSpawnRequestData())
 	em.Update()
 	e := em.Entities()[0]

@@ -1,16 +1,15 @@
-package main
+package engine
 
 import (
-	"github.com/dt-rush/sameriver/engine"
 	"testing"
 )
 
 func TestConstructEvEm(t *testing.T) {
-	ev := engine.NewEventBus()
+	ev := NewEventBus()
 	if ev == nil {
 		t.Fatal("Could not construct NewEventBus()")
 	}
-	em := engine.NewEntityManager(ev)
+	em := NewEntityManager(ev)
 	if em == nil {
 		t.Fatal("Could not construct NewEntityManager()")
 	}
