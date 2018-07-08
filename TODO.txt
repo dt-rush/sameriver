@@ -1,7 +1,5 @@
 [GENERAL]
 
-review variable names - I'm somewhat won over by Pike's style context argument 
-
 review comments
 
 find syntax improvements for user-facing code (some kind of promise chain thing? the error checking is nasty)
@@ -18,6 +16,8 @@ research behaviour trees
 https://www.reddit.com/r/gamedev/comments/2b7w5y/behavior_trees_for_ai_explained_by_chris_simpson/
 
 named sets of behaviour which can be added or removed, like layers (this may be a subset of the above)
+
+goal-oriented action planning seems best, actually
 
 
 [GRAPHICS]
