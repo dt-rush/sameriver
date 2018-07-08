@@ -109,4 +109,13 @@ func TestDeactivateActivateEntity(t *testing.T) {
 	e := em.Entities()[0]
 	tag := "tag1"
 	em.TagEntity(e, tag)
+	tagged := em.EntitiesWithTag(tag)
+	em.Deactivate(e)
+	if tagged.Length() != 0 {
+		t.Fatal("entity was not removed from list after Deactivate()")
+	}
+	em.Activate(e)
+	if tagged.Length() == 0 {
+		t.Fatal("entity was not reinserted to list after Activate()")
+	}
 }
