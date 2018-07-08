@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/dt-rush/sameriver/generate"
+	"github.com/dt-rush/sameriver/generator/generate"
 	"os"
 	"os/user"
 	"path/filepath"

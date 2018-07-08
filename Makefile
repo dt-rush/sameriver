@@ -9,7 +9,7 @@ test:
 	go test ./test
 
 sameriver-generate:
-	go build sameriver-generate.go
+	go build -o sameriver-generate ./generator/main
 
 dirty:
 	cp /tmp/sameriver/* engine/
