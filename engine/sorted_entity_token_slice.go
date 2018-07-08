@@ -33,10 +33,12 @@ func SortedEntityTokenSliceSearch(s []*EntityToken, x *EntityToken) int {
 
 func SortedEntityTokenSliceInsertIfNotPresent(s *[]*EntityToken, x *EntityToken) {
 	i := SortedEntityTokenSliceSearch(*s, x)
-	if (*s)[i].ID != x.ID {
-		*s = append(*s, &EntityToken{})
-		copy((*s)[i+1:], (*s)[i:])
-		(*s)[i] = x
+	*s = append(*s, &EntityToken{})
+	if i != len(*s) {
+		if (*s)[i].ID != x.ID {
+			copy((*s)[i+1:], (*s)[i:])
+			(*s)[i] = x
+		}
 	}
 }
 

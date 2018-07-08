@@ -18,6 +18,16 @@ func NewActiveEntityListCollection(
 
 func (c *ActiveEntityListCollection) GetUpdatedEntityList(
 	q EntityQuery) *UpdatedEntityList {
+	return c.getUpdatedEntityList(q, false)
+}
+
+func (c *ActiveEntityListCollection) GetSortedUpdatedEntityList(
+	q EntityQuery) *UpdatedEntityList {
+	return c.getUpdatedEntityList(q, true)
+}
+
+func (c *ActiveEntityListCollection) getUpdatedEntityList(
+	q EntityQuery, sorted bool) *UpdatedEntityList {
 	// return the list if it already exists (this is why query names should
 	// be unique if they expect to be unique!)
 	// TODO: document this requirement
@@ -27,7 +37,12 @@ func (c *ActiveEntityListCollection) GetUpdatedEntityList(
 	// register a query watcher for the query given
 	qw := NewEntityQueryWatcher(q)
 	c.watchers[q.Name] = &qw
-	list := NewUpdatedEntityList(qw.Channel)
+	var list *UpdatedEntityList
+	if sorted {
+		list = NewSortedUpdatedEntityList(qw.Channel)
+	} else {
+		list = NewUpdatedEntityList(qw.Channel)
+	}
 	c.processBacklog(q, list)
 	c.lists[q.Name] = list
 	list.Start()

@@ -64,7 +64,7 @@ func (s *CollisionSystem) Init(
 		"collidable",
 		MakeComponentBitArray([]ComponentType{
 			BOX_COMPONENT}))
-	s.collidableEntities = s.entityManager.GetUpdatedEntityList(query)
+	s.collidableEntities = s.entityManager.GetSortedUpdatedEntityList(query)
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
 	// in the collision rate limiter array (to guard against an entity
