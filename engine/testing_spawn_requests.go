@@ -8,6 +8,15 @@ func simpleSpawnRequestData() SpawnRequestData {
 	}
 }
 
+func spatialSpawnRequestData(pos Vec2D, box Vec2D) SpawnRequestData {
+	return SpawnRequestData{
+		Components: ComponentSet{
+			Position: &pos,
+			Box:      &box,
+		},
+	}
+}
+
 func simpleTaggedSpawnRequestData() SpawnRequestData {
 	return SpawnRequestData{
 		Components: ComponentSet{

@@ -10,21 +10,24 @@ import (
 )
 
 // used to store an entity with a position in a grid cell
-type EntityPosition struct {
-	entity   *EntityToken
-	position Vec2D
+type EntityGridPosition struct {
+	entity *EntityToken
+	x, y   int
 }
 
-// the actual cell data structure is a GRID x GRID array of []EntityPosition
-type SpatialHashTable [][][]EntityPosition
+// the actual cell data structure is a gridDimension x gridDimension array of []EntityGridPosition
+type SpatialHashTable [][][]EntityGridPosition
 
 // used to compute the spatial hash tables given a list of entities
 type SpatialHash struct {
+	// the world entities live in
+	w *World
+	// spatialEntities is an UpdatedEntityList of entities who have position
+	// and hitbox components
+	spatialEntities *UpdatedEntityList
 	// basic data members needed to divide the world into cells and
 	// store the entity data in each cell
-	WORLD_WIDTH  int
-	WORLD_HEIGHT int
-	GRID         int
+	gridDimension int
 	// we double-buffer the data structure by atomically incrementing this
 	// Uint32 every time we finish computing a new one, taking its
 	// (value - 1) % 2 to return the index of the latest completed cell
@@ -42,7 +45,7 @@ type SpatialHash struct {
 	// (not double-buffered since we exclude two
 	// ComputeSpatialHash() instances from running at the same time using
 	// the computeInProgress flag)
-	cellChannels [][]chan EntityPosition
+	cellChannels [][]chan EntityGridPosition
 	// used to signal that the compute is done from one of the receive()
 	// workers
 	computeDoneChannel chan bool
@@ -55,46 +58,33 @@ type SpatialHash struct {
 	// each call was spawned in a goroutine and was consistently failing
 	// to execute before the next call)
 	canEnterCompute atomic.Uint32
-	// spatialEntities is an UpdatedEntityList of entities who have position
-	// and hitbox components
-	spatialEntities *UpdatedEntityList
-	// entityManager is used to acquire locks on entities
-	em *EntityManager
 }
 
-func NewSpatialHash(
-	WORLD_WIDTH int,
-	WORLD_HEIGHT int,
-	GRID int,
-	em *EntityManager) *SpatialHash {
-
-	h := SpatialHash{computeDoneChannel: make(chan bool)}
-	h.WORLD_WIDTH = WORLD_WIDTH
-	h.WORLD_HEIGHT = WORLD_HEIGHT
-	h.GRID = GRID
-	h.tables[0] = make([][][]EntityPosition, GRID)
-	h.tables[1] = make([][][]EntityPosition, GRID)
-	h.cellChannels = make([][]chan EntityPosition, GRID)
-	// for each row in the grid
-	for y := 0; y < GRID; y++ {
-		h.tables[0][y] = make([][]EntityPosition, GRID)
-		h.tables[1][y] = make([][]EntityPosition, GRID)
-		h.cellChannels[y] = make([]chan EntityPosition, GRID)
-		// for each cell in the row
-		for x := 0; x < GRID; x++ {
-			h.tables[0][y][x] = make([]EntityPosition, MAX_ENTITIES)
-			h.tables[1][y][x] = make([]EntityPosition, MAX_ENTITIES)
-			h.cellChannels[y][x] = make(chan EntityPosition, MAX_ENTITIES)
+func NewSpatialHash(w *World, gridDimension int) *SpatialHash {
+	h := SpatialHash{w: w, computeDoneChannel: make(chan bool)}
+	h.gridDimension = gridDimension
+	h.tables[0] = make([][][]EntityGridPosition, gridDimension)
+	h.tables[1] = make([][][]EntityGridPosition, gridDimension)
+	h.cellChannels = make([][]chan EntityGridPosition, gridDimension)
+	// for each column (x) in the grid
+	for x := 0; x < gridDimension; x++ {
+		h.tables[0][x] = make([][]EntityGridPosition, gridDimension)
+		h.tables[1][x] = make([][]EntityGridPosition, gridDimension)
+		h.cellChannels[x] = make([]chan EntityGridPosition, gridDimension)
+		// for each cell in the row (y)
+		for y := 0; y < gridDimension; y++ {
+			h.tables[0][x][y] = make([]EntityGridPosition, MAX_ENTITIES)
+			h.tables[1][x][y] = make([]EntityGridPosition, MAX_ENTITIES)
+			h.cellChannels[x][y] = make(chan EntityGridPosition, MAX_ENTITIES)
 			// start the receiver for this cell
-			go h.receiver(y, x, h.cellChannels[y][x])
+			go h.receiver(x, y, h.cellChannels[x][y])
 		}
 	}
 	// get a list of spatial entities
-	h.spatialEntities = em.GetUpdatedEntityList(
+	h.spatialEntities = w.em.GetUpdatedEntityList(
 		EntityQueryFromComponentBitArray("spatial",
-			MakeComponentBitArray([]ComponentType{BOX_COMPONENT})))
-	// take down references needed during compute
-	h.em = em
+			MakeComponentBitArray(
+				[]ComponentType{POSITION_COMPONENT, BOX_COMPONENT})))
 	// canEnterCompute is expressed in the traditional sense that 1 = true,
 	// so we have to initialize it
 	h.canEnterCompute.Store(1)
@@ -126,12 +116,12 @@ func (h *SpatialHash) CurrentTablePointer() *SpatialHashTable {
 // get a *copy* of the current table which is safe to hold onto, mutate, etc.
 func (h *SpatialHash) CurrentTableCopy() SpatialHashTable {
 	var t = h.CurrentTablePointer()
-	t2 := make([][][]EntityPosition, h.GRID)
-	for y := 0; y < h.GRID; y++ {
-		t2[y] = make([][]EntityPosition, h.GRID)
-		for x := 0; x < h.GRID; x++ {
-			t2[y][x] = make([]EntityPosition, len((*t)[y][x]))
-			copy(t2[y][x], (*t)[y][x])
+	t2 := make([][][]EntityGridPosition, h.gridDimension)
+	for y := 0; y < h.gridDimension; y++ {
+		t2[y] = make([][]EntityGridPosition, h.gridDimension)
+		for x := 0; x < h.gridDimension; x++ {
+			t2[x][y] = make([]EntityGridPosition, len((*t)[x][y]))
+			copy(t2[x][y], (*t)[x][y])
 
 		}
 	}
@@ -163,9 +153,9 @@ func (h *SpatialHash) ComputeSpatialHash() {
 	// , so this is why a quadtree is a better structure if we'
 	// re going to have entities clustering all into one place then
 	// fanning out or clustering somewhere else
-	for y := 0; y < h.GRID; y++ {
-		for x := 0; x < h.GRID; x++ {
-			cell := &((*h.computingTable)[y][x])
+	for y := 0; y < h.gridDimension; y++ {
+		for x := 0; x < h.gridDimension; x++ {
+			cell := &((*h.computingTable)[x][y])
 			*cell = (*cell)[:0]
 		}
 	}
@@ -196,14 +186,14 @@ func (h *SpatialHash) ComputeSpatialHash() {
 	h.canEnterCompute.Store(1)
 }
 
-// used to receive EntityPositions and put them into the right cell
+// used to receive EntityGridPositions and put them into the right cell
 func (h *SpatialHash) receiver(
-	y int, x int,
-	channel chan EntityPosition) {
+	x int, y int,
+	channel chan EntityGridPosition) {
 
 	for {
 		entityPosition := <-channel
-		cell := &((*h.computingTable)[y][x])
+		cell := &((*h.computingTable)[x][y])
 		*cell = append(*cell, entityPosition)
 		if h.entitiesRemaining.Dec() == 0 {
 			h.computeDoneChannel <- true
@@ -213,7 +203,7 @@ func (h *SpatialHash) receiver(
 
 // helper function for hashing
 func (h *SpatialHash) cellForPoint(x int, y int) (cellX int, cellY int) {
-	return x / (h.WORLD_HEIGHT / h.GRID), y / (h.WORLD_WIDTH / h.GRID)
+	return x / (h.w.Height / h.gridDimension), y / (h.w.Width / h.gridDimension)
 }
 
 // used to iterate the entities and send them to the right cell's channels
@@ -223,21 +213,22 @@ func (h *SpatialHash) scanner(offset int, partition_size int) {
 	for i := 0; i < partition_size; i++ {
 		// get the entity's box
 		entity := h.spatialEntities.Entities[offset+i]
-		box := h.em.Components.Box[entity.ID]
+		pos := h.w.em.Components.Position[entity.ID]
+		box := h.w.em.Components.Box[entity.ID]
 		// find out how many grids the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)
-		gridsHigh := int(box.X) / (h.WORLD_HEIGHT / h.GRID)
-		gridsWide := int(box.Y) / (h.WORLD_WIDTH / h.GRID)
+		gridsWide := int(box.X) / (h.w.Height / h.gridDimension)
+		gridsHigh := int(box.Y) / (h.w.Width / h.gridDimension)
 		// figure out which cell the topleft corner is in
-		topLeftCellX, topLeftCellY := h.cellForPoint(int(box.X), int(box.Y))
+		topLeftCellX, topLeftCellY := h.cellForPoint(int(pos.X), int(pos.Y))
 		// walk through each cell the entity touches by starting in the top-left
 		// and walking according to gridsHigh and gridsWide
-		for iy := 0; iy < gridsHigh+1; iy++ {
-			for ix := 0; ix < gridsWide+1; ix++ {
-				y := topLeftCellY + iy
+		for ix := 0; ix < gridsWide+1; ix++ {
+			for iy := 0; iy < gridsHigh+1; iy++ {
 				x := topLeftCellX + ix
-				h.cellChannels[y][x] <- EntityPosition{entity, box}
+				y := topLeftCellY + iy
+				h.cellChannels[x][y] <- EntityGridPosition{entity, x, y}
 			}
 		}
 	}
@@ -253,14 +244,14 @@ func (h *SpatialHash) String(table *SpatialHashTable) string {
 	var buffer bytes.Buffer
 	size := int(unsafe.Sizeof(*table))
 	buffer.WriteString("[\n")
-	for y := 0; y < h.GRID; y++ {
-		for x := 0; x < h.GRID; x++ {
-			cell := (*table)[y][x]
-			size += int(unsafe.Sizeof(EntityPosition{})) * len(cell)
+	for y := 0; y < h.gridDimension; y++ {
+		for x := 0; x < h.gridDimension; x++ {
+			cell := (*table)[x][y]
+			size += int(unsafe.Sizeof(EntityGridPosition{})) * len(cell)
 			buffer.WriteString(fmt.Sprintf(
 				"CELL(%d, %d): %.64s...", x, y,
 				fmt.Sprintf("%+v", cell)))
-			if !(y == h.GRID-1 && x == h.GRID-1) {
+			if !(y == h.gridDimension-1 && x == h.gridDimension-1) {
 				buffer.WriteString(",\n")
 			}
 		}

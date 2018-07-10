@@ -20,6 +20,8 @@ const FRAME_SLEEP = (1000 / FPS) * time.Millisecond
 const FRAME_SLEEP_MS = (1000 / FPS)
 const MAX_ENTITIES = 1600
 
+const GRID = 32
+
 const COLLISION_RATELIMIT_TIMEOUT_MS = 300
 
 const SPAWN_CHANNEL_CAPACITY = 128

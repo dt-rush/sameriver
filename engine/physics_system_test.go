@@ -24,13 +24,16 @@ func TestPhysicsSystemBounds(t *testing.T) {
 		Vec2D{0, 1},
 		Vec2D{0, -1},
 	}
+	pos := &w.em.Components.Position[e.ID]
+	box := &w.em.Components.Box[e.ID]
+	vel := &w.em.Components.Velocity[e.ID]
 	for _, d := range directions {
-		w.em.Components.Position[e.ID] = Vec2D{512, 512}
-		w.em.Components.Velocity[e.ID] = d
+		*pos = Vec2D{512, 512}
+		*vel = d
 		for i := 0; i < 2048; i++ {
 			w.ps.Update(FRAME_SLEEP_MS)
 		}
-		if !w.EntityIsWithinRect(e, Vec2D{0, 0}, Vec2D{1024, 1024}) {
+		if !RectWithinRect(*pos, *box, Vec2D{0, 0}, Vec2D{1024, 1024}) {
 			t.Fatal("Update() placed entity outside world")
 		}
 	}

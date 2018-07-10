@@ -52,12 +52,12 @@ func (s *PhysicsSystem) Update(dt_ms int64) {
 			pos.X += dx
 		}
 		// motion in y
-		if pos.Y+dy < box.Y {
+		if pos.Y+dy < 0 {
 			// max out on the bottom
-			pos.Y = box.Y
-		} else if pos.Y+dy > float64(s.w.Height) {
+			pos.Y = 0
+		} else if pos.Y+box.Y+dy > float64(s.w.Height) {
 			// max out on the top
-			pos.Y = float64(s.w.Height)
+			pos.Y = float64(s.w.Height) - box.Y
 		} else {
 			// otherwise move in y freely
 			pos.Y += dy
