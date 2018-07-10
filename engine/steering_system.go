@@ -1,11 +1,11 @@
 package engine
 
 type SteeringSystem struct {
-	em               *EntityManager
+	w                *World
 	movementEntities *UpdatedEntityList
 }
 
-func NewSteeringSystem(em *EntityManager) *SteeringSystem {
+func NewSteeringSystem(w *World) *SteeringSystem {
 	query := EntityQueryFromComponentBitArray(
 		"steering",
 		MakeComponentBitArray([]ComponentType{
@@ -16,17 +16,17 @@ func NewSteeringSystem(em *EntityManager) *SteeringSystem {
 			MASS_COMPONENT,
 		}))
 	return &SteeringSystem{
-		em:               em,
-		movementEntities: em.GetUpdatedEntityList(query),
+		w:                w,
+		movementEntities: w.em.GetUpdatedEntityList(query),
 	}
 }
 
 func (s *SteeringSystem) Seek(e *EntityToken) {
-	p0 := s.em.Components.Position[e.ID]
-	p1 := s.em.Components.MovementTarget[e.ID]
-	v := &s.em.Components.Velocity[e.ID]
-	maxV := s.em.Components.MaxVelocity[e.ID]
-	st := &s.em.Components.Steer[e.ID]
+	p0 := s.w.em.Components.Position[e.ID]
+	p1 := s.w.em.Components.MovementTarget[e.ID]
+	v := &s.w.em.Components.Velocity[e.ID]
+	maxV := s.w.em.Components.MaxVelocity[e.ID]
+	st := &s.w.em.Components.Steer[e.ID]
 	desired := p1.Sub(p0)
 	distance := desired.Magnitude()
 	desired = desired.Unit()
@@ -43,10 +43,10 @@ func (s *SteeringSystem) Seek(e *EntityToken) {
 }
 
 func (s *SteeringSystem) Apply(e *EntityToken) {
-	v := &s.em.Components.Velocity[e.ID]
-	maxV := s.em.Components.MaxVelocity[e.ID]
-	st := &s.em.Components.Steer[e.ID]
-	mass := s.em.Components.Mass[e.ID]
+	v := &s.w.em.Components.Velocity[e.ID]
+	maxV := s.w.em.Components.MaxVelocity[e.ID]
+	st := &s.w.em.Components.Steer[e.ID]
+	mass := s.w.em.Components.Mass[e.ID]
 	// TODO: define this properly
 	maxSteerForce := 3.0
 	*st = st.Truncate(maxSteerForce)

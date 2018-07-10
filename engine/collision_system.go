@@ -8,8 +8,7 @@
 // 	collision
 //
 //
-//
-// Datastructure (4.) - triangular rateLimiters array
+// Datastructure (3.) - triangular rateLimiters array
 //
 // The rate limiters data structed is "collision-indexed", meaning it is indexed
 // [i][j], where i and j are ID's and i < j. That is, each pairing of ID's
@@ -40,20 +39,12 @@ import (
 )
 
 type CollisionSystem struct {
-	// Reference to entity manager to reach components
-	em *EntityManager
-	// Reference to event bus to publish collisions
-	ev *EventBus
-	// targetted entities
+	w                  *World
 	collidableEntities *UpdatedEntityList
-	// an array of rate limiters to avoid the problem where we send out a
-	// collision event every single loop. we want to check for collisions as
-	// often as possible, but we don't want to send out collision events that
-	// often, as it will put a load on anything reading these events
-	rateLimiterArray CollisionRateLimiterArray
+	rateLimiterArray   CollisionRateLimiterArray
 }
 
-func NewCollisionSystem(em *EntityManager, ev *EventBus) *CollisionSystem {
+func NewCollisionSystem(w *World) *CollisionSystem {
 	// construct the rateLimiterArray
 	rateLimiterArray := NewCollisionRateLimiterArray()
 	// query a regularly updated list of the entities which are collidable
@@ -62,7 +53,7 @@ func NewCollisionSystem(em *EntityManager, ev *EventBus) *CollisionSystem {
 		"collidable",
 		MakeComponentBitArray([]ComponentType{
 			BOX_COMPONENT}))
-	collidableEntities := em.GetSortedUpdatedEntityList(query)
+	collidableEntities := w.em.GetSortedUpdatedEntityList(query)
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
 	// in the collision rate limiter array (to guard against an entity
@@ -75,25 +66,15 @@ func NewCollisionSystem(em *EntityManager, ev *EventBus) *CollisionSystem {
 			}
 		})
 	// build the basic struct
-	return &CollisionSystem{em, ev, collidableEntities, rateLimiterArray}
-}
-
-func (s *CollisionSystem) Init(
-	em *EntityManager,
-	ev *EventBus) {
-
-	// take down references to em and ev
-	s.em = em
-	s.ev = ev
-
+	return &CollisionSystem{w, collidableEntities, rateLimiterArray}
 }
 
 // Test collision between two entities
 func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
-	iPos := s.em.Components.Position[i]
-	iBox := s.em.Components.Box[i]
-	jPos := s.em.Components.Position[j]
-	jBox := s.em.Components.Box[j]
+	iPos := s.w.em.Components.Position[i]
+	iBox := s.w.em.Components.Box[i]
+	jPos := s.w.em.Components.Position[j]
+	jBox := s.w.em.Components.Box[j]
 	iRect := sdl.Rect{
 		int32(iPos.X),
 		int32(iPos.Y),
@@ -136,7 +117,7 @@ func (s *CollisionSystem) Update() {
 				// if colliding, send the message (rate-limited)
 				s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Do(
 					func() {
-						s.ev.Publish(COLLISION_EVENT,
+						s.w.ev.Publish(COLLISION_EVENT,
 							CollisionData{EntityA: i, EntityB: j})
 					})
 				// TODO: move both entities away from their common center?

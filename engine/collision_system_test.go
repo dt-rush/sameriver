@@ -6,16 +6,14 @@ import (
 )
 
 func TestCollisionSystem(t *testing.T) {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
-	cs := NewCollisionSystem(em, ev)
-	ec := ev.Subscribe(
+	w := NewWorld(1024, 1024)
+	ec := w.ev.Subscribe(
 		"SimpleCollisionQuery",
 		NewSimpleEventQuery(COLLISION_EVENT))
-	em.spawn(collisionSpawnRequestData())
-	em.spawn(collisionSpawnRequestData())
-	em.Update()
-	cs.Update()
+	w.em.spawn(collisionSpawnRequestData())
+	w.em.spawn(collisionSpawnRequestData())
+	w.em.Update()
+	w.cs.Update()
 	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
@@ -23,8 +21,8 @@ func TestCollisionSystem(t *testing.T) {
 	default:
 		t.Fatal("collision event wasn't received within 16 ms")
 	}
-	em.Components.Position[em.Entities()[0].ID] = Vec2D{100000, 100000}
-	cs.Update()
+	w.em.Components.Position[w.em.Entities()[0].ID] = Vec2D{100000, 100000}
+	w.cs.Update()
 	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
@@ -35,17 +33,15 @@ func TestCollisionSystem(t *testing.T) {
 }
 
 func TestCollisionRateLimit(t *testing.T) {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
-	cs := NewCollisionSystem(em, ev)
-	ec := ev.Subscribe(
+	w := NewWorld(1024, 1024)
+	ec := w.ev.Subscribe(
 		"SimpleCollisionQuery",
 		NewSimpleEventQuery(COLLISION_EVENT))
-	em.spawn(collisionSpawnRequestData())
-	em.spawn(collisionSpawnRequestData())
-	em.Update()
-	cs.Update()
-	cs.Update()
+	w.em.spawn(collisionSpawnRequestData())
+	w.em.spawn(collisionSpawnRequestData())
+	w.em.Update()
+	w.cs.Update()
+	w.cs.Update()
 	time.Sleep(FRAME_SLEEP)
 	if len(ec.C) != 1 {
 		t.Fatal("collision rate-limiter didn't prevent collision duplication")

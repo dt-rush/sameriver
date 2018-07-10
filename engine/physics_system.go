@@ -8,32 +8,25 @@
 package engine
 
 type PhysicsSystem struct {
-	// to filter, lookup entities
-	em *EntityManager
-	// targetted entities
+	w               *World
 	physicsEntities *UpdatedEntityList
-	// world dimensions
-	WORLD_WIDTH  int32
-	WORLD_HEIGHT int32
 }
 
-func (s *PhysicsSystem) Init(
-	WORLD_WIDTH int,
-	WORLD_HEIGHT int,
-	em *EntityManager) {
-	// take down a reference to entity manager
-	s.em = em
+func NewPhysicsSystem(w *World) *PhysicsSystem {
 	// get a regularly updated list of the entities which have physics
-	// (position, velocity and hitbox)
 	query := EntityQueryFromComponentBitArray(
 		"physical",
 		MakeComponentBitArray([]ComponentType{
+			POSITION_COMPONENT,
+			VELOCITY_COMPONENT,
 			BOX_COMPONENT,
-			VELOCITY_COMPONENT}))
-	s.physicsEntities = s.em.GetUpdatedEntityList(query)
-	// set world dimensions
-	s.WORLD_WIDTH = int32(WORLD_WIDTH)
-	s.WORLD_HEIGHT = int32(WORLD_HEIGHT)
+			// TODO: make use of mass?
+			MASS_COMPONENT,
+		}))
+	return &PhysicsSystem{
+		w:               w,
+		physicsEntities: w.em.GetUpdatedEntityList(query),
+	}
 }
 
 func (s *PhysicsSystem) Update(dt_ms int64) {
@@ -42,29 +35,29 @@ func (s *PhysicsSystem) Update(dt_ms int64) {
 	// be preempted while computin physics (this is very good, get it over with)
 	for _, e := range s.physicsEntities.Entities {
 		// read the position and velocity, using dt to compute dx, dy
-		pos := s.em.Components.Position[e.ID]
-		box := s.em.Components.Box[e.ID]
-		vel := s.em.Components.Velocity[e.ID]
+		pos := &s.w.em.Components.Position[e.ID]
+		box := s.w.em.Components.Box[e.ID]
+		vel := s.w.em.Components.Velocity[e.ID]
 		dx := vel.X * float64(dt_ms)
 		dy := vel.Y * float64(dt_ms)
 		// motion in x
 		if pos.X+dx < 0 {
 			// max out on the left
 			pos.X = 0
-		} else if pos.X+dx > float64(s.WORLD_WIDTH)-box.X {
+		} else if pos.X+box.X+dx > float64(s.w.Width) {
 			// max out on the right
-			pos.X = float64(s.WORLD_WIDTH) - box.X
+			pos.X = float64(s.w.Width) - box.X
 		} else {
 			// otherwise move in x freely
 			pos.X += dx
 		}
 		// motion in y
-		if pos.Y+dy < float64(box.X) {
+		if pos.Y+dy < box.Y {
 			// max out on the bottom
-			pos.Y = 0
-		} else if pos.Y+dy > float64(s.WORLD_HEIGHT) {
+			pos.Y = box.Y
+		} else if pos.Y+dy > float64(s.w.Height) {
 			// max out on the top
-			pos.Y = float64(s.WORLD_HEIGHT)
+			pos.Y = float64(s.w.Height)
 		} else {
 			// otherwise move in y freely
 			pos.Y += dy

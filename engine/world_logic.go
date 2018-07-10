@@ -1,23 +1,20 @@
 package engine
 
 type WorldLogicManager struct {
-	em     *EntityManager
-	ev     *EventBus
+	w      *World
 	Logics map[string]*LogicUnit
 }
 
-func (wl *WorldLogicManager) Init(
-	em *EntityManager,
-	ev *EventBus) {
-
-	wl.em = em
-	wl.ev = ev
-	wl.Logics = make(map[string]*LogicUnit)
+func NewWorldLogicManager(w *World) *WorldLogicManager {
+	return &WorldLogicManager{
+		w:      w,
+		Logics: make(map[string]*LogicUnit),
+	}
 }
 
 func (wl *WorldLogicManager) GetEntitiesFromList(name string) []*EntityToken {
 	var entities []*EntityToken
-	list := wl.em.GetUpdatedEntityListByName(name)
+	list := wl.w.em.GetUpdatedEntityListByName(name)
 	if list != nil {
 		entities = list.Entities
 	}

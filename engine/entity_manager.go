@@ -135,7 +135,7 @@ func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 func (m *EntityManager) EntityHasComponent(
 	entity *EntityToken, COMPONENT int) bool {
 
-	b, _ := m.entityTable.componentBitArrays[entity.ID].GetBit(uint64(COMPONENT))
+	b, _ := entity.ComponentBitArray.GetBit(uint64(COMPONENT))
 	return b
 }
 

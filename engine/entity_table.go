@@ -3,7 +3,6 @@ package engine
 import (
 	"errors"
 	"fmt"
-	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
 // used by the EntityManager to hold info about the allocated entities
@@ -14,10 +13,6 @@ type EntityTable struct {
 	currentEntities []*EntityToken
 	// list of available entity ID's which have previously been deallocated
 	availableIDs []int
-	// bitarray used to keep track of which entities have which components
-	// (indexes are IDs, bitarrays have bit set if entity has the
-	// component corresponding to that index)
-	componentBitArrays [MAX_ENTITIES]bitarray.BitArray
 }
 
 // get the ID for a new entity. Only called by SpawnEntity, which locks
