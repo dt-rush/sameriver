@@ -8,7 +8,7 @@ func (m *EntityManager) processDespawnChannel() {
 	n := len(m.despawnSubscription.C)
 	for i := 0; i < n; i++ {
 		e := <-m.despawnSubscription.C
-		m.processDespawn(e.Data.(DespawnRequestData).Entity)
+		m.Despawn(e.Data.(DespawnRequestData).Entity)
 	}
 }
 
@@ -30,7 +30,7 @@ func (m *EntityManager) DespawnAll() {
 		// from a user which would only be able to proceed after we
 		// released the entityTable lock, and would then exit since gen
 		// had changed
-		m.processDespawn(m.entityTable.currentEntities[0])
+		m.Despawn(m.entityTable.currentEntities[0])
 	}
 	// drain the spawn channel
 	for len(m.spawnSubscription.C) > 0 {
@@ -39,17 +39,10 @@ func (m *EntityManager) DespawnAll() {
 	}
 }
 
-func (m *EntityManager) Despawn(entity *EntityToken) {
-	// despawn is idempotent
-	if !entity.Despawned {
-		entity.Despawned = true
-		m.eventBus.Publish(DESPAWNREQUEST_EVENT, DespawnRequestData{entity})
-	}
-}
-
 // internal despawn function processes the despawn
 // (frees the ID and deactivates the entity)
-func (m *EntityManager) processDespawn(entity *EntityToken) {
+func (m *EntityManager) Despawn(entity *EntityToken) {
+	entity.Despawned = true
 	m.entityTable.numEntities--
 	m.entityTable.availableIDs = append(m.entityTable.availableIDs, entity.ID)
 	removeEntityTokenFromSlice(&m.entityTable.currentEntities, entity)

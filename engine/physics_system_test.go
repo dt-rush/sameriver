@@ -6,7 +6,7 @@ import (
 
 func TestPhysicsSystemMotion(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	e, _ := w.em.spawn(physicsSpawnRequestData())
+	e, _ := w.em.Spawn(physicsSpawnRequestData())
 	w.em.Components.Velocity[e.ID] = Vec2D{1, 1}
 	pos := w.em.Components.Position[e.ID]
 	w.ps.Update(FRAME_SLEEP_MS)
@@ -17,7 +17,7 @@ func TestPhysicsSystemMotion(t *testing.T) {
 
 func TestPhysicsSystemBounds(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	e, _ := w.em.spawn(physicsSpawnRequestData())
+	e, _ := w.em.Spawn(physicsSpawnRequestData())
 	directions := []Vec2D{
 		Vec2D{1, 0},
 		Vec2D{-1, 0},

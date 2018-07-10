@@ -20,7 +20,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 	}
 	entityCells := make(map[*EntityToken][][2]int)
 	for posbox, cells := range testData {
-		e, _ := w.em.spawn(spatialSpawnRequestData(posbox[0], posbox[1]))
+		e, _ := w.em.Spawn(spatialSpawnRequestData(posbox[0], posbox[1]))
 		entityCells[e] = cells
 	}
 	w.sh.ComputeSpatialHash()

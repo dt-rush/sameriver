@@ -4,96 +4,102 @@ import (
 	"testing"
 )
 
-func Testspawn(t *testing.T) {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
-	em.spawn(simpleSpawnRequestData())
-	em.Update()
-	if em.NumEntities() == 0 {
-		t.Fatal("failed to spawn simple spawn request entity")
+func TestSpawn(t *testing.T) {
+	w := NewWorld(1024, 1024)
+
+	w.em.Spawn(simpleSpawnRequestData())
+	if w.em.NumEntities() == 0 {
+		t.Fatal("failed to Spawn simple Spawn request entity")
 	}
-	e := em.Entities()[0]
+	e := w.em.Entities()[0]
 	if !e.Active {
-		t.Fatal("spawned entity was not active")
+		t.Fatal("Spawned entity was not active")
+	}
+	w.em.Despawn(e)
+	if e.Active {
+		t.Fatal("deSpawn did not deactivate entity")
+	}
+	if !e.Despawned {
+		t.Fatal("deSpawn did not set DeSpawned flag")
 	}
 }
 
 func TestEntityQuery(t *testing.T) {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
+	w := NewWorld(1024, 1024)
+
 	req := simpleSpawnRequestData()
 	pos := req.Components.Position
-	em.spawn(req)
-	em.Update()
-	e := em.Entities()[0]
+	w.em.Spawn(req)
+	w.em.Update()
+	e := w.em.Entities()[0]
 	q := EntityQuery{
 		"positionQuery",
 		func(e *EntityToken, em *EntityManager) bool {
-			return em.Components.Position[e.ID] == *pos
+			return w.em.Components.Position[e.ID] == *pos
 		},
 	}
-	if !q.Test(e, em) {
+	if !q.Test(e, w.em) {
 		t.Fatal("query did not return true")
 	}
 }
 
 func TestEntityQueryFromTag(t *testing.T) {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
+	w := NewWorld(1024, 1024)
+
 	req := simpleTaggedSpawnRequestData()
 	tag := req.Components.TagList.Tags[0]
-	em.spawn(req)
-	em.Update()
-	e := em.Entities()[0]
+	w.em.Spawn(req)
+	w.em.Update()
+	e := w.em.Entities()[0]
 	q := EntityQueryFromTag(tag)
-	if !q.Test(e, em) {
+	if !q.Test(e, w.em) {
 		t.Fatal("query did not return true")
 	}
 }
 
 func TestEntitiesWithTagList(t *testing.T) {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
+	w := NewWorld(1024, 1024)
+
 	req := simpleTaggedSpawnRequestData()
 	tag := req.Components.TagList.Tags[0]
-	em.spawn(req)
-	em.Update()
-	tagged := em.EntitiesWithTag(tag)
+	w.em.Spawn(req)
+	w.em.Update()
+	tagged := w.em.EntitiesWithTag(tag)
 	empty := tagged.Length() == 0
 	if empty {
-		t.Fatal("failed to find spawned entity in EntitiesWithTag")
+		t.Fatal("failed to find Spawned entity in EntitiesWithTag")
 	}
 }
 
 func TestEntitySpawnUnique(t *testing.T) {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
+	w := NewWorld(1024, 1024)
+
 	req := simpleTaggedSpawnRequestData()
-	_, err := em.SpawnUnique("the chosen one", req)
+	_, err := w.em.SpawnUnique("the chosen one", req)
 	if err != nil {
-		t.Fatal("failed to spawn FIRST unique entity")
+		t.Fatal("failed to Spawn FIRST unique entity")
 	}
-	em.Update()
-	_, err = em.SpawnUnique("the chosen one", req)
+	w.em.Update()
+	_, err = w.em.SpawnUnique("the chosen one", req)
 	if err == nil {
-		t.Fatal("should not have been allowed to spawn second unique entity")
+		t.Fatal("should not have been allowed to Spawn second unique entity")
 	}
 }
 
 func TestTagUntagEntity(t *testing.T) {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
-	em.spawn(simpleSpawnRequestData())
-	em.Update()
-	e := em.Entities()[0]
+	w := NewWorld(1024, 1024)
+
+	w.em.Spawn(simpleSpawnRequestData())
+	w.em.Update()
+	e := w.em.Entities()[0]
 	tag := "tag1"
-	em.TagEntity(e, tag)
-	tagged := em.EntitiesWithTag(tag)
+	w.em.TagEntity(e, tag)
+	tagged := w.em.EntitiesWithTag(tag)
 	empty := tagged.Length() == 0
 	if empty {
-		t.Fatal("failed to find spawned entity in EntitiesWithTag")
+		t.Fatal("failed to find Spawned entity in EntitiesWithTag")
 	}
-	em.UntagEntity(e, tag)
+	w.em.UntagEntity(e, tag)
 	empty = tagged.Length() == 0
 	if !empty {
 		t.Fatal("entity was still in EntitiesWithTag after untag")
@@ -101,19 +107,19 @@ func TestTagUntagEntity(t *testing.T) {
 }
 
 func TestDeactivateActivateEntity(t *testing.T) {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
-	em.spawn(simpleSpawnRequestData())
-	em.Update()
-	e := em.Entities()[0]
+	w := NewWorld(1024, 1024)
+
+	w.em.Spawn(simpleSpawnRequestData())
+	w.em.Update()
+	e := w.em.Entities()[0]
 	tag := "tag1"
-	em.TagEntity(e, tag)
-	tagged := em.EntitiesWithTag(tag)
-	em.Deactivate(e)
+	w.em.TagEntity(e, tag)
+	tagged := w.em.EntitiesWithTag(tag)
+	w.em.Deactivate(e)
 	if tagged.Length() != 0 {
 		t.Fatal("entity was not removed from list after Deactivate()")
 	}
-	em.Activate(e)
+	w.em.Activate(e)
 	if tagged.Length() == 0 {
 		t.Fatal("entity was not reinserted to list after Activate()")
 	}

@@ -6,7 +6,7 @@ import (
 
 func TestSteeringSystem(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	e, err := w.em.spawn(steeringSpawnRequestData())
+	e, err := w.em.Spawn(steeringSpawnRequestData())
 	vel := w.em.Components.Velocity[e.ID]
 	if err != nil {
 		t.Fatal(err)

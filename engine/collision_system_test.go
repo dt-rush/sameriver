@@ -10,8 +10,8 @@ func TestCollisionSystem(t *testing.T) {
 	ec := w.ev.Subscribe(
 		"SimpleCollisionQuery",
 		NewSimpleEventQuery(COLLISION_EVENT))
-	w.em.spawn(collisionSpawnRequestData())
-	w.em.spawn(collisionSpawnRequestData())
+	w.em.Spawn(collisionSpawnRequestData())
+	w.em.Spawn(collisionSpawnRequestData())
 	w.em.Update()
 	w.cs.Update()
 	time.Sleep(FRAME_SLEEP)
@@ -37,8 +37,8 @@ func TestCollisionRateLimit(t *testing.T) {
 	ec := w.ev.Subscribe(
 		"SimpleCollisionQuery",
 		NewSimpleEventQuery(COLLISION_EVENT))
-	w.em.spawn(collisionSpawnRequestData())
-	w.em.spawn(collisionSpawnRequestData())
+	w.em.Spawn(collisionSpawnRequestData())
+	w.em.Spawn(collisionSpawnRequestData())
 	w.em.Update()
 	w.cs.Update()
 	w.cs.Update()

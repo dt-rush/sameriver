@@ -17,7 +17,7 @@ func (m *EntityManager) processSpawnChannel() {
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		e := <-m.spawnSubscription.C
-		_, err := m.spawn(e.Data.(SpawnRequestData))
+		_, err := m.Spawn(e.Data.(SpawnRequestData))
 		if err != nil {
 			go func() {
 				time.Sleep(5 * time.Second)
@@ -27,29 +27,41 @@ func (m *EntityManager) processSpawnChannel() {
 	}
 }
 
+func (m *EntityManager) Spawn(r SpawnRequestData) (*EntityToken, error) {
+	return m.spawn(r, "")
+}
+
+func (m *EntityManager) SpawnUnique(
+	tag string, r SpawnRequestData) (*EntityToken, error) {
+
+	if _, ok := m.uniqueEntities[tag]; ok {
+		return nil, errors.New(fmt.Sprintf("requested to spawn unique "+
+			"entity for %s, but %s already exists", tag, tag))
+	}
+	e, err := m.spawn(r, tag)
+	if err == nil {
+		m.uniqueEntities[tag] = e
+	}
+	return e, err
+}
+
 // given a list of components, spawn an entity with the default values
 // returns the EntityToken (used to spawn an entity for which we *want* the
 // token back)
-func (m *EntityManager) spawn(r SpawnRequestData) (*EntityToken, error) {
+
+func (m *EntityManager) spawn(r SpawnRequestData, uniqueTag string) (
+	*EntityToken, error) {
 
 	// used if spawn is impossible for various reasons
 	var fail = func(msg string) (*EntityToken, error) {
 		return nil, errors.New(msg)
 	}
 
-	// if the spawn request has a unique tag, return error if tag already
-	// has an entity
-	if r.UniqueTag != "" &&
-		m.EntitiesWithTag(r.UniqueTag).Length() != 0 {
-		return fail(fmt.Sprintf("requested to spawn unique entity for %s, "+
-			"but %s already exists", r.UniqueTag, r.UniqueTag))
-	}
-
 	// get an ID for the entity
 	entity, err := m.entityTable.allocateID()
 	if err != nil {
 		errorMsg := fmt.Sprintf("⚠ Error in allocateID(): %s. Will not spawn "+
-			"entity with tags: %v\n", err, r.Tags)
+			"entity with tags: %v\n", err, r.Components.TagList.Tags)
 		return fail(errorMsg)
 	}
 	// print a debug message
@@ -74,8 +86,8 @@ func (m *EntityManager) spawn(r SpawnRequestData) (*EntityToken, error) {
 		}
 	}
 	// apply the unique tag if provided
-	if r.UniqueTag != "" {
-		m.createEntitiesWithTagListIfNeeded(r.UniqueTag)
+	if uniqueTag != "" {
+		m.createEntitiesWithTagListIfNeeded(uniqueTag)
 	}
 	// add the entity to the list of current entities
 	m.entityTable.addToCurrentEntities(entity)
@@ -83,19 +95,4 @@ func (m *EntityManager) spawn(r SpawnRequestData) (*EntityToken, error) {
 	m.setActiveState(entity, true)
 	// return EntityToken
 	return entity, nil
-}
-
-func (m *EntityManager) SpawnUnique(
-	tag string, r SpawnRequestData) (*EntityToken, error) {
-
-	if _, ok := m.uniqueEntities[tag]; ok {
-		return nil, errors.New(fmt.Sprintf("requested to spawn unique "+
-			"entity for %s, but %s already exists", tag, tag))
-	}
-	r.UniqueTag = tag
-	e, err := m.spawn(r)
-	if err == nil {
-		m.uniqueEntities[tag] = e
-	}
-	return e, err
 }
