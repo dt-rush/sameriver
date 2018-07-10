@@ -18,10 +18,12 @@ import (
 type ComponentSet struct {
 	Box            *Vec2D
 	Logic          *LogicUnit
+	Mass           *float64
+	MaxVelocity    *float64
 	MovementTarget *Vec2D
 	Position       *Vec2D
 	Sprite         *Sprite
-	Steer          *float64
+	Steer          *Vec2D
 	TagList        *TagList
 	Velocity       *Vec2D
 }
@@ -33,6 +35,12 @@ func (cs *ComponentSet) ToBitArray() bitarray.BitArray {
 	}
 	if cs.Logic != nil {
 		b.SetBit(uint64(LOGIC_COMPONENT))
+	}
+	if cs.Mass != nil {
+		b.SetBit(uint64(MASS_COMPONENT))
+	}
+	if cs.MaxVelocity != nil {
+		b.SetBit(uint64(MAXVELOCITY_COMPONENT))
 	}
 	if cs.MovementTarget != nil {
 		b.SetBit(uint64(MOVEMENTTARGET_COMPONENT))
@@ -62,6 +70,12 @@ func (em *EntityManager) ApplyComponentSet(cs ComponentSet) func(*EntityToken) {
 		}
 		if cs.Logic != nil {
 			em.Components.Logic[entity.ID] = *cs.Logic
+		}
+		if cs.Mass != nil {
+			em.Components.Mass[entity.ID] = *cs.Mass
+		}
+		if cs.MaxVelocity != nil {
+			em.Components.MaxVelocity[entity.ID] = *cs.MaxVelocity
 		}
 		if cs.MovementTarget != nil {
 			em.Components.MovementTarget[entity.ID] = *cs.MovementTarget

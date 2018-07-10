@@ -8,8 +8,10 @@ type BaseComponentSet struct {
 	Box    *Vec2D
 	Sprite *Sprite
 
+	Mass           *float64
 	Position       *Vec2D
 	Velocity       *Vec2D
+	MaxVelocity    *float64
 	MovementTarget *Vec2D
-	Steer          *float64
+	Steer          *Vec2D
 }

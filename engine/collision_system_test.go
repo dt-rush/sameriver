@@ -5,18 +5,18 @@ import (
 	"time"
 )
 
-func TestCollision(t *testing.T) {
+func TestCollisionSystem(t *testing.T) {
 	ev := NewEventBus()
 	em := NewEntityManager(ev)
 	cs := NewCollisionSystem(em, ev)
 	ec := ev.Subscribe(
 		"SimpleCollisionQuery",
 		NewSimpleEventQuery(COLLISION_EVENT))
-	em.Spawn(collisionSpawnRequestData())
-	em.Spawn(collisionSpawnRequestData())
+	em.spawn(collisionSpawnRequestData())
+	em.spawn(collisionSpawnRequestData())
 	em.Update()
 	cs.Update()
-	time.Sleep(16 * time.Millisecond)
+	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
 		break
@@ -25,7 +25,7 @@ func TestCollision(t *testing.T) {
 	}
 	em.Components.Position[em.Entities()[0].ID] = Vec2D{100000, 100000}
 	cs.Update()
-	time.Sleep(16 * time.Millisecond)
+	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
 		t.Fatal("collision event occurred but entities were not overlapping")
@@ -41,12 +41,12 @@ func TestCollisionRateLimit(t *testing.T) {
 	ec := ev.Subscribe(
 		"SimpleCollisionQuery",
 		NewSimpleEventQuery(COLLISION_EVENT))
-	em.Spawn(collisionSpawnRequestData())
-	em.Spawn(collisionSpawnRequestData())
+	em.spawn(collisionSpawnRequestData())
+	em.spawn(collisionSpawnRequestData())
 	em.Update()
 	cs.Update()
 	cs.Update()
-	time.Sleep(16 * time.Millisecond)
+	time.Sleep(FRAME_SLEEP)
 	if len(ec.C) != 1 {
 		t.Fatal("collision rate-limiter didn't prevent collision duplication")
 	}

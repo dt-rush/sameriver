@@ -17,7 +17,7 @@ func (m *EntityManager) processSpawnChannel() {
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		e := <-m.spawnSubscription.C
-		_, err := m.Spawn(e.Data.(SpawnRequestData))
+		_, err := m.spawn(e.Data.(SpawnRequestData))
 		if err != nil {
 			go func() {
 				time.Sleep(5 * time.Second)
@@ -30,7 +30,7 @@ func (m *EntityManager) processSpawnChannel() {
 // given a list of components, spawn an entity with the default values
 // returns the EntityToken (used to spawn an entity for which we *want* the
 // token back)
-func (m *EntityManager) Spawn(r SpawnRequestData) (*EntityToken, error) {
+func (m *EntityManager) spawn(r SpawnRequestData) (*EntityToken, error) {
 
 	// used if spawn is impossible for various reasons
 	var fail = func(msg string) (*EntityToken, error) {
@@ -93,7 +93,7 @@ func (m *EntityManager) SpawnUnique(
 			"entity for %s, but %s already exists", tag, tag))
 	}
 	r.UniqueTag = tag
-	e, err := m.Spawn(r)
+	e, err := m.spawn(r)
 	if err == nil {
 		m.uniqueEntities[tag] = e
 	}

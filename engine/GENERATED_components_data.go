@@ -15,10 +15,12 @@ type ComponentsTable struct {
 	em             *EntityManager
 	Box            [MAX_ENTITIES]Vec2D
 	Logic          [MAX_ENTITIES]LogicUnit
+	Mass           [MAX_ENTITIES]float64
+	MaxVelocity    [MAX_ENTITIES]float64
 	MovementTarget [MAX_ENTITIES]Vec2D
 	Position       [MAX_ENTITIES]Vec2D
 	Sprite         [MAX_ENTITIES]Sprite
-	Steer          [MAX_ENTITIES]float64
+	Steer          [MAX_ENTITIES]Vec2D
 	TagList        [MAX_ENTITIES]TagList
 	Velocity       [MAX_ENTITIES]Vec2D
 }

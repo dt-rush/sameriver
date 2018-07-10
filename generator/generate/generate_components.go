@@ -95,7 +95,7 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 		File:    generateComponentSetFile(components),
 		Imports: importStrings,
 	}
-	sourceFiles["components_data_table.go"] = GenerateFile{
+	sourceFiles["components_data.go"] = GenerateFile{
 		File:    generateComponentsTableFile(components),
 		Imports: importStrings,
 	}

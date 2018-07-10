@@ -18,6 +18,11 @@ func RandomUnitVec2D() Vec2D {
 	}.Unit()
 }
 
+func (v1 *Vec2D) Inc(v2 Vec2D) {
+	v1.X += v2.X
+	v1.Y += v2.Y
+}
+
 func (v1 Vec2D) Add(v2 Vec2D) Vec2D {
 	return Vec2D{v1.X + v2.X, v1.Y + v2.Y}
 }

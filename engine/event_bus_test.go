@@ -11,7 +11,7 @@ func TestSimpleEventQueryMatching(t *testing.T) {
 		"SimpleCollisionQuery",
 		NewSimpleEventQuery(COLLISION_EVENT))
 	ev.Publish(COLLISION_EVENT, nil)
-	time.Sleep(16 * time.Millisecond)
+	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
 		break
@@ -27,7 +27,7 @@ func TestSimpleEventQueryNonMatching(t *testing.T) {
 		"SimpleCollisionQuery",
 		NewSimpleEventQuery(COLLISION_EVENT))
 	ev.Publish(SPAWNREQUEST_EVENT, nil)
-	time.Sleep(16 * time.Millisecond)
+	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
 		t.Fatal("simple event query sent event to wrong type channel")
@@ -51,7 +51,7 @@ func TestCollisionEventQueryMatching(t *testing.T) {
 			}),
 	)
 	ev.Publish(COLLISION_EVENT, collision)
-	time.Sleep(16 * time.Millisecond)
+	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
 		break
@@ -79,7 +79,7 @@ func TestCollisionEventQueryNonMatching(t *testing.T) {
 			EntityA: &EntityToken{ID: 7},
 			EntityB: &EntityToken{ID: 9},
 		})
-	time.Sleep(16 * time.Millisecond)
+	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
 		t.Fatal("collision event query matched for wrong event data")
@@ -95,7 +95,7 @@ func TestUnsubscribe(t *testing.T) {
 		NewSimpleEventQuery(COLLISION_EVENT))
 	ev.Unsubscribe(ec)
 	ev.Publish(COLLISION_EVENT, nil)
-	time.Sleep(16 * time.Millisecond)
+	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
 		t.Fatal("received event on unsubscribed channel")

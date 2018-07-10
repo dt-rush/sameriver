@@ -4,10 +4,10 @@ import (
 	"testing"
 )
 
-func TestSpawn(t *testing.T) {
+func Testspawn(t *testing.T) {
 	ev := NewEventBus()
 	em := NewEntityManager(ev)
-	em.Spawn(simpleSpawnRequestData())
+	em.spawn(simpleSpawnRequestData())
 	em.Update()
 	if em.NumEntities() == 0 {
 		t.Fatal("failed to spawn simple spawn request entity")
@@ -23,7 +23,7 @@ func TestEntityQuery(t *testing.T) {
 	em := NewEntityManager(ev)
 	req := simpleSpawnRequestData()
 	pos := req.Components.Position
-	em.Spawn(req)
+	em.spawn(req)
 	em.Update()
 	e := em.Entities()[0]
 	q := EntityQuery{
@@ -42,7 +42,7 @@ func TestEntityQueryFromTag(t *testing.T) {
 	em := NewEntityManager(ev)
 	req := simpleTaggedSpawnRequestData()
 	tag := req.Components.TagList.Tags[0]
-	em.Spawn(req)
+	em.spawn(req)
 	em.Update()
 	e := em.Entities()[0]
 	q := EntityQueryFromTag(tag)
@@ -56,7 +56,7 @@ func TestEntitiesWithTagList(t *testing.T) {
 	em := NewEntityManager(ev)
 	req := simpleTaggedSpawnRequestData()
 	tag := req.Components.TagList.Tags[0]
-	em.Spawn(req)
+	em.spawn(req)
 	em.Update()
 	tagged := em.EntitiesWithTag(tag)
 	empty := tagged.Length() == 0
@@ -83,7 +83,7 @@ func TestEntitySpawnUnique(t *testing.T) {
 func TestTagUntagEntity(t *testing.T) {
 	ev := NewEventBus()
 	em := NewEntityManager(ev)
-	em.Spawn(simpleSpawnRequestData())
+	em.spawn(simpleSpawnRequestData())
 	em.Update()
 	e := em.Entities()[0]
 	tag := "tag1"
@@ -103,7 +103,7 @@ func TestTagUntagEntity(t *testing.T) {
 func TestDeactivateActivateEntity(t *testing.T) {
 	ev := NewEventBus()
 	em := NewEntityManager(ev)
-	em.Spawn(simpleSpawnRequestData())
+	em.spawn(simpleSpawnRequestData())
 	em.Update()
 	e := em.Entities()[0]
 	tag := "tag1"

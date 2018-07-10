@@ -17,6 +17,7 @@ const AUDIO_ON = true
 
 const FPS = 60
 const FRAME_SLEEP = (1000 / FPS) * time.Millisecond
+const FRAME_SLEEP_MS = (1000 / FPS)
 const MAX_ENTITIES = 1600
 
 const COLLISION_RATELIMIT_TIMEOUT_MS = 300

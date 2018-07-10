@@ -25,3 +25,18 @@ func collisionSpawnRequestData() SpawnRequestData {
 		},
 	}
 }
+
+func movementSpawnRequestData() SpawnRequestData {
+	mass := 3.0
+	maxV := 3.0
+	return SpawnRequestData{
+		Components: ComponentSet{
+			Position:       &Vec2D{0, 0},
+			Velocity:       &Vec2D{0, 0},
+			MaxVelocity:    &maxV,
+			MovementTarget: &Vec2D{1, 1},
+			Steer:          &Vec2D{0, 0},
+			Mass:           &mass,
+		},
+	}
+}
