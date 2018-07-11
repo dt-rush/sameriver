@@ -7,7 +7,8 @@ import (
 
 func TestSpatialHashInsertion(t *testing.T) {
 	w := NewWorld(100, 100)
-	w.sh = NewSpatialHash(w, 10)
+	sh := NewSpatialHashSystem(10, 10)
+	w.AddSystem(sh)
 	testData := map[[2]Vec2D][][2]int{
 		[2]Vec2D{Vec2D{0, 0}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
 		[2]Vec2D{Vec2D{1, 1}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
@@ -23,10 +24,10 @@ func TestSpatialHashInsertion(t *testing.T) {
 		e, _ := w.em.Spawn(spatialSpawnRequestData(posbox[0], posbox[1]))
 		entityCells[e] = cells
 	}
-	w.sh.ComputeSpatialHash()
+	w.Update(FRAME_SLEEP_MS)
 	for e, cells := range entityCells {
 		for _, cell := range cells {
-			table := w.sh.CurrentTablePointer()
+			table := sh.CurrentTablePointer()
 			inCell := false
 			for _, entityGridPosition := range (*table)[cell[0]][cell[1]] {
 				if e == entityGridPosition.entity {

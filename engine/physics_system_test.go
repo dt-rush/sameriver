@@ -6,10 +6,12 @@ import (
 
 func TestPhysicsSystemMotion(t *testing.T) {
 	w := NewWorld(1024, 1024)
+	ps := NewPhysicsSystem()
+	w.AddSystem(ps)
 	e, _ := w.em.Spawn(physicsSpawnRequestData())
 	w.em.Components.Velocity[e.ID] = Vec2D{1, 1}
 	pos := w.em.Components.Position[e.ID]
-	w.ps.Update(FRAME_SLEEP_MS)
+	w.Update(FRAME_SLEEP_MS)
 	if w.em.Components.Position[e.ID] == pos {
 		t.Fatal("failed to update position")
 	}
@@ -17,6 +19,8 @@ func TestPhysicsSystemMotion(t *testing.T) {
 
 func TestPhysicsSystemBounds(t *testing.T) {
 	w := NewWorld(1024, 1024)
+	ps := NewPhysicsSystem()
+	w.AddSystem(ps)
 	e, _ := w.em.Spawn(physicsSpawnRequestData())
 	directions := []Vec2D{
 		Vec2D{1, 0},
@@ -31,7 +35,7 @@ func TestPhysicsSystemBounds(t *testing.T) {
 		*pos = Vec2D{512, 512}
 		*vel = d
 		for i := 0; i < 2048; i++ {
-			w.ps.Update(FRAME_SLEEP_MS)
+			w.Update(FRAME_SLEEP_MS)
 		}
 		if !RectWithinRect(*pos, *box, Vec2D{0, 0}, Vec2D{1024, 1024}) {
 			t.Fatal("Update() placed entity outside world")

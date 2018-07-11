@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"runtime"
+	"sync"
 	"unsafe"
 
 	"go.uber.org/atomic"
@@ -19,7 +20,7 @@ type EntityGridPosition struct {
 type SpatialHashTable [][][]EntityGridPosition
 
 // used to compute the spatial hash tables given a list of entities
-type SpatialHash struct {
+type SpatialHashSystem struct {
 	// the world entities live in
 	w *World
 	// spatialEntities is an UpdatedEntityList of entities who have position
@@ -27,143 +28,168 @@ type SpatialHash struct {
 	spatialEntities *UpdatedEntityList
 	// basic data members needed to divide the world into cells and
 	// store the entity data in each cell
-	gridDimension int
+	gridX int
+	gridY int
 	// we double-buffer the data structure by atomically incrementing this
 	// Uint32 every time we finish computing a new one, taking its
 	// (value - 1) % 2 to return the index of the latest completed cell
 	// structure
 	tableBufIndex atomic.Uint32
 	// tables is a double-buffer for holding SpatialHashTable results
-	// computed during ComputeSpatialHash
+	// computed during Update
 	tables [2]SpatialHashTable
-	// an unsafe pointer used by receiver() workers in the compute stage
+	// an unsafe pointer used by cellReceiver() workers in the compute stage
 	// to find the table we're currently building
 	computingTable *SpatialHashTable
 	computedTable  *SpatialHashTable
 	// channels (one per grid square) used to receive successfully-read
 	// positions from the goroutines which scan the entities
 	// (not double-buffered since we exclude two
-	// ComputeSpatialHash() instances from running at the same time using
+	// Update() instances from running at the same time using
 	// the computeInProgress flag)
 	cellChannels [][]chan EntityGridPosition
-	// used to signal that the compute is done from one of the receive()
+	// used to signal that the compute is done from one of the cellReceiver()
 	// workers
 	computeDoneChannel chan bool
+	// used for the cellReceiver() worker to signal it is ending, because it
+	// noticed there are no more entities to scan in the current computation
+	cellReceiverStopChannel chan bool
+	// used for the computation to wait for all cell receivers to end before
+	// allowing a new computation to start
+	cellReceiverWaitGroup sync.WaitGroup
 	// how many entities are yet to store in the current computation
 	entitiesRemaining atomic.Uint32
-	// a lock to ensure that we never enter ComputeSpatialHash while
+	// a lock to ensure that we never enter Update while
 	// another instance of the function is still running (we return early,
 	// while a mutex would freeze the goroutine of the caller if called
 	// in sync, or at least lead to leaked goroutines stacking up if
 	// each call was spawned in a goroutine and was consistently failing
 	// to execute before the next call)
-	canEnterCompute atomic.Uint32
+	ComputeRunning atomic.Uint32
 }
 
-func NewSpatialHash(w *World, gridDimension int) *SpatialHash {
-	h := SpatialHash{w: w, computeDoneChannel: make(chan bool)}
-	h.gridDimension = gridDimension
-	h.tables[0] = make([][][]EntityGridPosition, gridDimension)
-	h.tables[1] = make([][][]EntityGridPosition, gridDimension)
-	h.cellChannels = make([][]chan EntityGridPosition, gridDimension)
+func NewSpatialHashSystem(gridX int, gridY int) *SpatialHashSystem {
+	h := SpatialHashSystem{
+		cellReceiverStopChannel: make(chan bool),
+		computeDoneChannel:      make(chan bool),
+	}
+	h.gridX = gridX
+	h.gridY = gridY
+	h.tables[0] = make([][][]EntityGridPosition, gridX)
+	h.tables[1] = make([][][]EntityGridPosition, gridX)
+	h.cellChannels = make([][]chan EntityGridPosition, gridX)
 	// for each column (x) in the grid
-	for x := 0; x < gridDimension; x++ {
-		h.tables[0][x] = make([][]EntityGridPosition, gridDimension)
-		h.tables[1][x] = make([][]EntityGridPosition, gridDimension)
-		h.cellChannels[x] = make([]chan EntityGridPosition, gridDimension)
+	for x := 0; x < gridX; x++ {
+		h.tables[0][x] = make([][]EntityGridPosition, gridY)
+		h.tables[1][x] = make([][]EntityGridPosition, gridY)
+		h.cellChannels[x] = make([]chan EntityGridPosition, gridY)
 		// for each cell in the row (y)
-		for y := 0; y < gridDimension; y++ {
+		for y := 0; y < gridY; y++ {
 			h.tables[0][x][y] = make([]EntityGridPosition, MAX_ENTITIES)
 			h.tables[1][x][y] = make([]EntityGridPosition, MAX_ENTITIES)
 			h.cellChannels[x][y] = make(chan EntityGridPosition, MAX_ENTITIES)
-			// start the receiver for this cell
-			go h.receiver(x, y, h.cellChannels[x][y])
+
 		}
 	}
-	// get a list of spatial entities
-	h.spatialEntities = w.em.GetUpdatedEntityList(
-		EntityQueryFromComponentBitArray("spatial",
-			MakeComponentBitArray(
-				[]ComponentType{POSITION_COMPONENT, BOX_COMPONENT})))
-	// canEnterCompute is expressed in the traditional sense that 1 = true,
-	// so we have to initialize it
-	h.canEnterCompute.Store(1)
 	return &h
 }
 
-// returns the double-buffer index of the current spatial hash table (the one
-// that callers will want). We subtract 1 since we increment tableBufIndex
-// atomically once the computation completes
-func (h *SpatialHash) computedBufIndex() uint32 {
-	return (h.tableBufIndex.Load() - 1) % 2
-}
-
-// returns the double-buffer index of the *next* spatial hash table (the one
-// we will be / we are computing)
-func (h *SpatialHash) nextBufIndex() uint32 {
-	return h.tableBufIndex.Load() % 2
-}
-
-// get the pointer to the current spatial hash data structure
-// NOTE: this pointer is only safe to use until you've called ComputeSpatialHash
-// at *most* one time more. If you can't ensure that it won't be called, and
-// want to do something outside of the main game loop with a spatial hash
-// result, use CurrentTableCopy()
-func (h *SpatialHash) CurrentTablePointer() *SpatialHashTable {
-	return &h.tables[h.computedBufIndex()]
-}
-
-// get a *copy* of the current table which is safe to hold onto, mutate, etc.
-func (h *SpatialHash) CurrentTableCopy() SpatialHashTable {
-	var t = h.CurrentTablePointer()
-	t2 := make([][][]EntityGridPosition, h.gridDimension)
-	for y := 0; y < h.gridDimension; y++ {
-		t2[y] = make([][]EntityGridPosition, h.gridDimension)
-		for x := 0; x < h.gridDimension; x++ {
-			t2[x][y] = make([]EntityGridPosition, len((*t)[x][y]))
-			copy(t2[x][y], (*t)[x][y])
-
-		}
-	}
-	return t2
+func (s *SpatialHashSystem) LinkWorld(w *World) {
+	s.w = w
+	// get a list of spatial entities
+	s.spatialEntities = w.em.GetUpdatedEntityList(
+		EntityQueryFromComponentBitArray("spatial",
+			MakeComponentBitArray(
+				[]ComponentType{POSITION_COMPONENT, BOX_COMPONENT})))
 }
 
 // spawns a certain number of goroutines to iterate through entities, trying
 // to lock them and get their position and send the entities and their
 // positions to another set of goroutines handling the building of the
 // list for each grid cell
-func (h *SpatialHash) ComputeSpatialHash() {
+func (h *SpatialHashSystem) Update(dt_ms float64) {
 
-	// this lock prevents another call to ComputeSpatialHash()
+	// this lock prevents another call to Update()
 	// entering while we are currently calculating (this ensures robustness
 	// if for some reason it is called too often)
-	if !h.canEnterCompute.CAS(1, 0) {
+	if !h.ComputeRunning.CAS(0, 1) {
 		return
 	}
 
-	// set the computingTable pointer used by the receiver() workers to point
+	// set the computingTable pointer used by the cellReceiver() workers to point
 	// to the table we're building
 	h.computingTable = &h.tables[h.nextBufIndex()]
 
-	// set the number of entities remaining (used by receiver workers to
+	// set the number of entities remaining (used by cellReceiver workers to
 	// notify that computation is done)
 	h.entitiesRemaining.Store(uint32(len(h.spatialEntities.Entities)))
-	// clear the table data
+	// clear any old data and run the computation
+	h.clearComputingTable()
+	h.startCellReceivers()
+	h.startEntityScanners()
+	// wait for computation to finish
+	<-h.computeDoneChannel
+	// if we're here, the computation has completed.
+	// this increment, due to the modulo logic, is equivalent to setting
+	// computedBufIndex = nextBufIndex
+	h.tableBufIndex.Inc()
+	h.cellReceiverWaitGroup.Wait()
+	h.ComputeRunning.Store(0)
+}
+
+func (h *SpatialHashSystem) clearComputingTable() {
 	// NOTE: we "clear" the slice by setting its length to 0 (capacity remains
-	// , so this is why a quadtree is a better structure if we'
-	// re going to have entities clustering all into one place then
-	// fanning out or clustering somewhere else
-	for y := 0; y < h.gridDimension; y++ {
-		for x := 0; x < h.gridDimension; x++ {
+	// allocated, this will cause a negligible memory "waste" if entities
+	// cluster in a cell but never somewhere else. Maybe this could matter if
+	// MAX_ENTITIES eventually clustered in each cell, but that's unlikely)
+	for x := 0; x < h.gridX; x++ {
+		for y := 0; y < h.gridY; y++ {
 			cell := &((*h.computingTable)[x][y])
 			*cell = (*cell)[:0]
 		}
 	}
+}
+
+func (h *SpatialHashSystem) startCellReceivers() {
+	// start the cellReceiver for this cell
+	for x := 0; x < h.gridX; x++ {
+		for y := 0; y < h.gridY; y++ {
+			h.cellReceiverWaitGroup.Add(1)
+			go h.cellReceiver(x, y, h.cellChannels[x][y])
+		}
+	}
+}
+
+// used to receive EntityGridPositions and put them into the right cell
+func (h *SpatialHashSystem) cellReceiver(x int, y int, c chan EntityGridPosition) {
+	defer h.cellReceiverWaitGroup.Done()
+	for {
+		select {
+		case _ = <-h.cellReceiverStopChannel:
+			return
+		case entityPosition := <-c:
+			h.storeEntity(x, y, entityPosition)
+			if h.entitiesRemaining.Dec() == 0 {
+				for i := 0; i < (h.gridX*h.gridY)-1; i++ {
+					h.cellReceiverStopChannel <- true
+				}
+				h.computeDoneChannel <- true
+				return
+			}
+		}
+	}
+}
+
+func (h *SpatialHashSystem) storeEntity(
+	x int, y int, entityPosition EntityGridPosition) {
+
+	cell := &((*h.computingTable)[x][y])
+	*cell = append(*cell, entityPosition)
+}
+
+func (h *SpatialHashSystem) startEntityScanners() {
 	// Divide the list of entities into a certain number of partitions
-	// which will be scanned by scanner() instances.
-	// TODO: have the goroutines
-	// already running, ready to be activated given a
-	// range of entities to scan, each one pinned to a CPU
+	// which will be scanned by entityScanner() instances.
 	nScanPartitions := runtime.NumCPU()
 	partition_size := len(h.spatialEntities.Entities) / nScanPartitions
 	// only compute if there is at least 1 entity
@@ -174,41 +200,13 @@ func (h *SpatialHash) ComputeSpatialHash() {
 				// the last partition includes the remainder
 				partition_size = len(h.spatialEntities.Entities) - offset
 			}
-			go h.scanner(offset, partition_size)
-		}
-		<-h.computeDoneChannel
-	}
-	// if we're here, the computation has completed.
-	// this increment, due to the modulo logic, is equivalent to setting
-	// computedBufIndex = nextBufIndex
-	h.tableBufIndex.Inc()
-	// set canEnterCompute to 1 so the next call can enter and write
-	h.canEnterCompute.Store(1)
-}
-
-// used to receive EntityGridPositions and put them into the right cell
-func (h *SpatialHash) receiver(
-	x int, y int,
-	channel chan EntityGridPosition) {
-
-	for {
-		entityPosition := <-channel
-		cell := &((*h.computingTable)[x][y])
-		*cell = append(*cell, entityPosition)
-		if h.entitiesRemaining.Dec() == 0 {
-			h.computeDoneChannel <- true
+			go h.entityScanner(offset, partition_size)
 		}
 	}
-}
-
-// helper function for hashing
-func (h *SpatialHash) cellForPoint(x int, y int) (cellX int, cellY int) {
-	return x / (h.w.Height / h.gridDimension), y / (h.w.Width / h.gridDimension)
 }
 
 // used to iterate the entities and send them to the right cell's channels
-func (h *SpatialHash) scanner(offset int, partition_size int) {
-
+func (h *SpatialHashSystem) entityScanner(offset int, partition_size int) {
 	// iterate each entity in the partition
 	for i := 0; i < partition_size; i++ {
 		// get the entity's box
@@ -218,8 +216,8 @@ func (h *SpatialHash) scanner(offset int, partition_size int) {
 		// find out how many grids the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)
-		gridsWide := int(box.X) / (h.w.Height / h.gridDimension)
-		gridsHigh := int(box.Y) / (h.w.Width / h.gridDimension)
+		gridsWide := int(box.X) / (h.w.Height / h.gridX)
+		gridsHigh := int(box.Y) / (h.w.Width / h.gridY)
 		// figure out which cell the topleft corner is in
 		topLeftCellX, topLeftCellY := h.cellForPoint(int(pos.X), int(pos.Y))
 		// walk through each cell the entity touches by starting in the top-left
@@ -234,24 +232,66 @@ func (h *SpatialHash) scanner(offset int, partition_size int) {
 	}
 }
 
+// helper function for hashing
+func (h *SpatialHashSystem) cellForPoint(x int, y int) (cellX int, cellY int) {
+	return x / (h.w.Width / h.gridX), y / (h.w.Height / h.gridY)
+}
+
+// returns the double-buffer index of the current spatial hash table (the one
+// that callers will want). We subtract 1 since we increment tableBufIndex
+// atomically once the computation completes
+func (h *SpatialHashSystem) computedBufIndex() uint32 {
+	return (h.tableBufIndex.Load() - 1) % 2
+}
+
+// returns the double-buffer index of the *next* spatial hash table (the one
+// we will be / we are computing)
+func (h *SpatialHashSystem) nextBufIndex() uint32 {
+	return h.tableBufIndex.Load() % 2
+}
+
+// get the pointer to the current spatial hash data structure
+// NOTE: this pointer is only safe to use until you've called Update
+// at *most* one time more. If you can't ensure that it won't be called, and
+// want to do something outside of the main game loop with a spatial hash
+// result, use CurrentTableCopy()
+func (h *SpatialHashSystem) CurrentTablePointer() *SpatialHashTable {
+	return &h.tables[h.computedBufIndex()]
+}
+
+// get a *copy* of the current table which is safe to hold onto, mutate, etc.
+func (h *SpatialHashSystem) CurrentTableCopy() SpatialHashTable {
+	var t = h.CurrentTablePointer()
+	t2 := make([][][]EntityGridPosition, h.gridX)
+	for x := 0; x < h.gridX; x++ {
+		t2[x] = make([][]EntityGridPosition, h.gridX)
+		for y := 0; y < h.gridY; y++ {
+			t2[x][y] = make([]EntityGridPosition, len((*t)[x][y]))
+			copy(t2[x][y], (*t)[x][y])
+
+		}
+	}
+	return t2
+}
+
 // turn a SpatialHashTable into a String representation (NOTE: do *NOT* call
 // this on a pointer returned from CurrentTablePointer unless you can be sure
-// that you have not called ComputeSpatialHash more than once - it does not
-// lock the table it reads, and if you call ComputeSpatialHash twice, you may
+// that you have not called Update more than once - it does not
+// lock the table it reads, and if you call Update twice, you may
 // start to write to the table as this function reads it). Usually best to call
 // on a Copy()
-func (h *SpatialHash) String(table *SpatialHashTable) string {
+func (h *SpatialHashSystem) String(table *SpatialHashTable) string {
 	var buffer bytes.Buffer
 	size := int(unsafe.Sizeof(*table))
 	buffer.WriteString("[\n")
-	for y := 0; y < h.gridDimension; y++ {
-		for x := 0; x < h.gridDimension; x++ {
+	for x := 0; x < h.gridX; x++ {
+		for y := 0; y < h.gridY; y++ {
 			cell := (*table)[x][y]
 			size += int(unsafe.Sizeof(EntityGridPosition{})) * len(cell)
 			buffer.WriteString(fmt.Sprintf(
 				"CELL(%d, %d): %.64s...", x, y,
 				fmt.Sprintf("%+v", cell)))
-			if !(y == h.gridDimension-1 && x == h.gridDimension-1) {
+			if !(y == h.gridY-1 && x == h.gridX-1) {
 				buffer.WriteString(",\n")
 			}
 		}

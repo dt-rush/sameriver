@@ -1,15 +1,12 @@
 package engine
 
 type World struct {
-	Width  int
-	Height int
-	ev     *EventBus
-	em     *EntityManager
-	wl     *WorldLogicManager
-	sh     *SpatialHash
-	ps     *PhysicsSystem
-	ss     *SteeringSystem
-	cs     *CollisionSystem
+	Width   int
+	Height  int
+	ev      *EventBus
+	em      *EntityManager
+	wl      *WorldLogicManager
+	systems []System
 }
 
 func NewWorld(width int, height int) *World {
@@ -22,9 +19,16 @@ func NewWorld(width int, height int) *World {
 		em:     em,
 	}
 	w.wl = NewWorldLogicManager(&w)
-	w.sh = NewSpatialHash(&w, GRID)
-	w.ps = NewPhysicsSystem(&w)
-	w.ss = NewSteeringSystem(&w)
-	w.cs = NewCollisionSystem(&w)
 	return &w
+}
+
+func (w *World) AddSystem(s System) {
+	w.systems = append(w.systems, s)
+	s.LinkWorld(w)
+}
+
+func (w *World) Update(dt_ms float64) {
+	for _, s := range w.systems {
+		s.Update(dt_ms)
+	}
 }

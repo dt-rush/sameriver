@@ -1,10 +1,4 @@
-/**
-  *
-  *
-  *
-  *
-**/
-
+// moves entities according to their velocity
 package engine
 
 type PhysicsSystem struct {
@@ -12,34 +6,32 @@ type PhysicsSystem struct {
 	physicsEntities *UpdatedEntityList
 }
 
-func NewPhysicsSystem(w *World) *PhysicsSystem {
-	// get a regularly updated list of the entities which have physics
-	query := EntityQueryFromComponentBitArray(
-		"physical",
-		MakeComponentBitArray([]ComponentType{
-			POSITION_COMPONENT,
-			VELOCITY_COMPONENT,
-			BOX_COMPONENT,
-			// TODO: make use of mass?
-			MASS_COMPONENT,
-		}))
-	return &PhysicsSystem{
-		w:               w,
-		physicsEntities: w.em.GetUpdatedEntityList(query),
-	}
+func NewPhysicsSystem() *PhysicsSystem {
+	return &PhysicsSystem{}
 }
 
-func (s *PhysicsSystem) Update(dt_ms int64) {
+func (s *PhysicsSystem) LinkWorld(w *World) {
+	s.w = w
+	s.physicsEntities = w.em.GetUpdatedEntityList(
+		EntityQueryFromComponentBitArray(
+			"physical",
+			MakeComponentBitArray([]ComponentType{
+				POSITION_COMPONENT,
+				VELOCITY_COMPONENT,
+				BOX_COMPONENT,
+				MASS_COMPONENT, // TODO: make some use of mass?
+			})))
+}
 
+func (s *PhysicsSystem) Update(dt_ms float64) {
 	// note: there are no function calls in the below, so we won't
 	// be preempted while computin physics (this is very good, get it over with)
 	for _, e := range s.physicsEntities.Entities {
-		// read the position and velocity, using dt to compute dx, dy
 		pos := &s.w.em.Components.Position[e.ID]
 		box := s.w.em.Components.Box[e.ID]
 		vel := s.w.em.Components.Velocity[e.ID]
-		dx := vel.X * float64(dt_ms)
-		dy := vel.Y * float64(dt_ms)
+		dx := vel.X * dt_ms
+		dy := vel.Y * dt_ms
 		// motion in x
 		if pos.X+dx < 0 {
 			// max out on the left

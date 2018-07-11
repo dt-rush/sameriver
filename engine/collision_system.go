@@ -44,48 +44,30 @@ type CollisionSystem struct {
 	rateLimiterArray   CollisionRateLimiterArray
 }
 
-func NewCollisionSystem(w *World) *CollisionSystem {
-	// construct the rateLimiterArray
-	rateLimiterArray := NewCollisionRateLimiterArray()
+func NewCollisionSystem() *CollisionSystem {
+	return &CollisionSystem{rateLimiterArray: NewCollisionRateLimiterArray()}
+}
+
+func (s *CollisionSystem) LinkWorld(w *World) {
+	s.w = w
 	// query a regularly updated list of the entities which are collidable
 	// (position and hitbox)
-	query := EntityQueryFromComponentBitArray(
-		"collidable",
-		MakeComponentBitArray([]ComponentType{
-			BOX_COMPONENT}))
-	collidableEntities := w.em.GetSortedUpdatedEntityList(query)
+	s.collidableEntities = w.em.GetSortedUpdatedEntityList(
+		EntityQueryFromComponentBitArray(
+			"collidable",
+			MakeComponentBitArray([]ComponentType{
+				BOX_COMPONENT})))
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
 	// in the collision rate limiter array (to guard against an entity
 	// despawning, a new entity spawning with its ID, and failing a collision
 	// test (rare prehaps, but an edge case we nonetheless want to avoid)
-	collidableEntities.addCallback(
+	s.collidableEntities.addCallback(
 		func(signal EntitySignal) {
 			if signal.SignalType == ENTITY_REMOVE {
-				rateLimiterArray.Reset(signal.Entity)
+				s.rateLimiterArray.Reset(signal.Entity)
 			}
 		})
-	// build the basic struct
-	return &CollisionSystem{w, collidableEntities, rateLimiterArray}
-}
-
-// Test collision between two entities
-func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
-	iPos := s.w.em.Components.Position[i]
-	iBox := s.w.em.Components.Box[i]
-	jPos := s.w.em.Components.Position[j]
-	jBox := s.w.em.Components.Box[j]
-	iRect := sdl.Rect{
-		int32(iPos.X),
-		int32(iPos.Y),
-		int32(iBox.X),
-		int32(iBox.Y)}
-	jRect := sdl.Rect{
-		int32(jPos.X),
-		int32(jPos.Y),
-		int32(jBox.X),
-		int32(jBox.Y)}
-	return iRect.HasIntersection(&jRect)
 }
 
 // Iterates through the entities in the UpdatedEntityList using a handshake
@@ -99,7 +81,7 @@ func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
 // by goroutine 2 ("Event filtering and sending"), but we rate-limit sending
 // events for each possible collision [i][j] using the rate limiter at [i][j]
 // in rateLimiters, so if we already sent one within the timeout, we just move on.
-func (s *CollisionSystem) Update() {
+func (s *CollisionSystem) Update(dt_ms float64) {
 
 	entities := s.collidableEntities.Entities
 
@@ -126,4 +108,23 @@ func (s *CollisionSystem) Update() {
 			}
 		}
 	}
+}
+
+// Test collision between two entities
+func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
+	iPos := s.w.em.Components.Position[i]
+	iBox := s.w.em.Components.Box[i]
+	jPos := s.w.em.Components.Position[j]
+	jBox := s.w.em.Components.Box[j]
+	iRect := sdl.Rect{
+		int32(iPos.X),
+		int32(iPos.Y),
+		int32(iBox.X),
+		int32(iBox.Y)}
+	jRect := sdl.Rect{
+		int32(jPos.X),
+		int32(jPos.Y),
+		int32(jBox.X),
+		int32(jBox.Y)}
+	return iRect.HasIntersection(&jRect)
 }

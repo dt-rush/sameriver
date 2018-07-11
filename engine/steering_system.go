@@ -5,19 +5,28 @@ type SteeringSystem struct {
 	movementEntities *UpdatedEntityList
 }
 
-func NewSteeringSystem(w *World) *SteeringSystem {
-	query := EntityQueryFromComponentBitArray(
-		"steering",
-		MakeComponentBitArray([]ComponentType{
-			POSITION_COMPONENT,
-			VELOCITY_COMPONENT,
-			MOVEMENTTARGET_COMPONENT,
-			STEER_COMPONENT,
-			MASS_COMPONENT,
-		}))
-	return &SteeringSystem{
-		w:                w,
-		movementEntities: w.em.GetUpdatedEntityList(query),
+func NewSteeringSystem() *SteeringSystem {
+	return &SteeringSystem{}
+}
+
+func (s *SteeringSystem) LinkWorld(w *World) {
+	s.w = w
+	s.movementEntities = w.em.GetUpdatedEntityList(
+		EntityQueryFromComponentBitArray(
+			"steering",
+			MakeComponentBitArray([]ComponentType{
+				POSITION_COMPONENT,
+				VELOCITY_COMPONENT,
+				MOVEMENTTARGET_COMPONENT,
+				STEER_COMPONENT,
+				MASS_COMPONENT,
+			})))
+}
+
+func (s *SteeringSystem) Update(dt_ms float64) {
+	for _, e := range s.movementEntities.Entities {
+		s.Seek(e)
+		s.Apply(e)
 	}
 }
 
@@ -52,11 +61,4 @@ func (s *SteeringSystem) Apply(e *EntityToken) {
 	*st = st.Truncate(maxSteerForce)
 	*st = st.Scale(1 / mass)
 	*v = v.Add(*st).Truncate(maxV)
-}
-
-func (s *SteeringSystem) Update(dt_ms int64) {
-	for _, e := range s.movementEntities.Entities {
-		s.Seek(e)
-		s.Apply(e)
-	}
 }
