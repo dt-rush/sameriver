@@ -58,7 +58,7 @@ func NewGenerateProcess(
 	g.engineDir = engineDir
 	g.gameDir = gameDir
 	g.outputDir = outputDir
-	g.sourceFiles = make(map[string]GenerateFile)
+	g.sourceFiles = make(map[string]GeneratedFile)
 	g.messages = make(map[string]string)
 	g.errors = make(map[string]string)
 	return &g
@@ -141,7 +141,7 @@ func (g *GenerateProcess) OutputFiles() {
 			} else {
 				// replace the import statement/block of the generated file with
 				// our own import block containing what was already there plus what
-				// was part of the specifications of the GenerateFile (usually the
+				// was part of the specifications of the GeneratedFile (usually the
 				// imports from the custom files)
 				var importStatementRegexp *regexp.Regexp
 				if nImportsAlready == 1 {

@@ -48,7 +48,6 @@ func runGenerate() {
 	g.Run(generate.TargetsCollection{
 		"events":     g.GenerateEventFiles,
 		"components": g.GenerateComponentFiles,
-		"world":      g.GenerateWorldFiles,
 	})
 	g.PrintReport()
 	if g.HadErrors() {
