@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"github.com/dt-rush/sameriver/engine/utils"
 	"time"
 )
 
@@ -32,8 +33,8 @@ import (
 //     r r r r r r r r r r
 //
 type CollisionRateLimiterArray struct {
-	backingArray []ResettableRateLimiter
-	Arr          [][]ResettableRateLimiter
+	backingArray []*utils.ResettableRateLimiter
+	Arr          [][]*utils.ResettableRateLimiter
 }
 
 // Construct a new CollisionRateLimiterArray
@@ -41,10 +42,10 @@ func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 	// build the backing array
 	a := CollisionRateLimiterArray{
 		backingArray: make(
-			[]ResettableRateLimiter,
+			[]*utils.ResettableRateLimiter,
 			MAX_ENTITIES*(MAX_ENTITIES+1)/2),
 		Arr: make(
-			[][]ResettableRateLimiter,
+			[][]*utils.ResettableRateLimiter,
 			MAX_ENTITIES),
 	}
 	// build the Arr slices which reference positions in the backing array
@@ -56,8 +57,8 @@ func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 	}
 	// create the rate limiters
 	for i := 0; i < len(a.backingArray); i++ {
-		a.backingArray[i] = ResettableRateLimiter{
-			delay: COLLISION_RATELIMIT_TIMEOUT_MS * time.Millisecond}
+		a.backingArray[i] = utils.NewResettableRateLimiter(
+			COLLISION_RATELIMIT_TIMEOUT_MS * time.Millisecond)
 	}
 	// return the object we've built
 	return a
@@ -65,7 +66,7 @@ func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 
 // Get the rate limiter for an i, j pair
 func (a *CollisionRateLimiterArray) GetRateLimiter(
-	i int, j int) *ResettableRateLimiter {
+	i int, j int) *utils.ResettableRateLimiter {
 
 	// for the i'th array,
 	//
@@ -77,7 +78,7 @@ func (a *CollisionRateLimiterArray) GetRateLimiter(
 	//
 	// so in order to map j = i + 1 to 0, j = i + 2 to 1, etc.,
 	// we use j - (i+1) as the index
-	return &a.Arr[i][j-(i+1)]
+	return a.Arr[i][j-(i+1)]
 }
 
 // Reset all the rate limiters corresponding to an ID in the array (the

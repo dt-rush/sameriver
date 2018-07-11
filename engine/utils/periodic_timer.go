@@ -5,7 +5,7 @@
  *
  */
 
-package engine
+package utils
 
 // private struct
 type PeriodicTimer struct {

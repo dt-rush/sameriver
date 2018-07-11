@@ -1,4 +1,4 @@
-package engine
+package utils
 
 import (
 	"go.uber.org/atomic"
@@ -11,6 +11,10 @@ type RateLimiter struct {
 	once  sync.Once
 	mutex sync.RWMutex
 	delay time.Duration
+}
+
+func NewRateLimiter(delay time.Duration) *RateLimiter {
+	return &RateLimiter{delay: delay}
 }
 
 func (r *RateLimiter) Do(f func()) {
@@ -34,6 +38,10 @@ type ResettableRateLimiter struct {
 	// another goroutine also had called Reset() while it slept. If so,
 	// do not reset as we would if nothing happened during sleep.
 	resetCounter atomic.Uint32
+}
+
+func NewResettableRateLimiter(delay time.Duration) *ResettableRateLimiter {
+	return &ResettableRateLimiter{delay: delay}
 }
 
 func (r *ResettableRateLimiter) Do(f func()) {
