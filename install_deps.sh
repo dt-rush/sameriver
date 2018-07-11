@@ -26,7 +26,7 @@ apt_check() {
 
 apt_install() {
 	sudo apt-get update && \
-	sudo apt-get install libsdl2{,-mixer,-image,-ttf,-gfx}-dev
+	sudo apt-get install ${needed[@]}
 }
 
 pacman_check() {
@@ -40,7 +40,7 @@ pacman_check() {
 
 pacman_install() {
 	sudo pacman -Sy && \
-	sudo pacman -S sdl2{,_mixer,_image,_ttf,_gfx}
+	sudo pacman -S ${needed[@]}
 }
 
 detect_pkgsystem() {
@@ -54,12 +54,12 @@ detect_pkgsystem() {
 }
 
 detect_pkgsystem
-($pkg_check)
+eval $pkg_check
 if [ ${#needed[@]} -ne 0 ]; then
 	echo "######################################################"
 	echo -e "need to install:\n\n${needed[@]}\n"
 	echo "######################################################"
-	($pkg_install)
+	eval $pkg_install
 else
 	echo "all needed apt packages installed"
 fi
