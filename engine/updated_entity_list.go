@@ -94,7 +94,7 @@ func (l *UpdatedEntityList) Length() int {
 }
 
 // get the contents via copy
-func (l *UpdatedEntityList) Getentities() []*EntityToken {
+func (l *UpdatedEntityList) GetEntities() []*EntityToken {
 	copyOfentities := make([]*EntityToken, len(l.entities))
 	copy(copyOfentities, l.entities)
 	return copyOfentities
