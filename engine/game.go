@@ -8,7 +8,6 @@
 package engine
 
 import (
-	"runtime"
 	"time"
 
 	"github.com/veandco/go-sdl2/mix"
@@ -17,48 +16,34 @@ import (
 )
 
 type Game struct {
-	// a channel (buffer size 1) through which appears (as if by magic)
-	// the next scene
-	NextSceneChan chan (Scene)
-	// a channel through which a signal can be sent (true or false
-	// doesn't matter) to end the currently running scene.
-	currentSceneEndGameLoopChan chan (bool)
-	// channel to end the loading scene
-	endLoadingSceneGameLoopChan chan (bool)
-	// the scene to play while the next scene is running Init()
-	loadingScene Scene
-	// Map of scenes by ints (constants) so scenes can identify each other
-	// without import cycles
-	SceneMap SceneMap
-	// to allow scenes to store data somewhere that other scenes
-	// can access it (TODO: currently unused - refactor?)
-	GameState map[string]string
-	// SDL resources to pass as references to each scene
 	Window   *sdl.Window
 	Renderer *sdl.Renderer
+
+	currentScene                Scene
+	currentSceneEndGameLoopChan chan bool
+
+	loadingScene                Scene
+	loadingSceneEndGameLoopChan chan bool
 }
 
-func (g *Game) Init(WINDOW_TITLE string,
-	WINDOW_WIDTH int32,
-	WINDOW_HEIGHT int32) {
-
-	// init systems
-	g.InitSDL(WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT)
-	// initialize the scene map
-	g.SceneMap.Map = make(map[int]Scene)
-	// initialized the next scene channel
-	g.NextSceneChan = make(chan (Scene), 1)
-	// set up game state
-	g.GameState = make(map[string]string)
+func NewGame() *Game {
+	return &Game{
+		currentSceneEndGameLoopChan: make(chan bool),
+		loadingSceneEndGameLoopChan: make(chan bool),
+	}
 }
 
-func (g *Game) InitSDL(WINDOW_TITLE string,
-	WINDOW_WIDTH int32,
-	WINDOW_HEIGHT int32) {
+func (g *Game) Init(
+	windowTitle string, windowWidth, windowHeight int32, scene Scene) {
 
-	Logger.Println("[Game] Starting to init SDL")
+	g.currentScene = scene
+	g.InitSDL(windowTitle, windowWidth, windowHeight)
+}
+
+func (g *Game) InitSDL(windowTitle string, windowWidth, windowHeight int32) {
+	Logger.Println("Starting to init SDL")
 	defer func() {
-		Logger.Println("[Game] Finished init of SDL")
+		Logger.Println("Finished init of SDL")
 	}()
 	var err error
 	// init SDL
@@ -81,9 +66,7 @@ func (g *Game) InitSDL(WINDOW_TITLE string,
 	}
 	sdl.ShowCursor(0)
 	g.Window, g.Renderer = BuildWindowAndRenderer(
-		WINDOW_TITLE,
-		WINDOW_WIDTH,
-		WINDOW_HEIGHT)
+		windowTitle, windowWidth, windowHeight)
 }
 
 func (g *Game) Destroy() {
@@ -95,7 +78,7 @@ func (g *Game) Destroy() {
 }
 
 func (g *Game) AsyncEnd() {
-	Logger.Println("[Game] in Game.End()")
+	Logger.Println("in Game.End()")
 	go func() {
 		g.currentSceneEndGameLoopChan <- true
 	}()
@@ -106,14 +89,13 @@ func (g *Game) SetLoadingScene(scene Scene) {
 }
 
 func (g *Game) handleKeyboard(scene Scene) {
-
 	// poll for events
 	sdl.PumpEvents()
 	var event sdl.Event
 	for event = sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch t := event.(type) {
 		case *sdl.QuitEvent:
-			Logger.Printf("[Game] sdl.QuitEvent received: %v", t)
+			Logger.Printf("sdl.QuitEvent received: %v", t)
 			// notice we use a nonblocking goroutine
 			g.AsyncEnd()
 			return
@@ -137,81 +119,37 @@ func (g *Game) blankScreen() {
 	g.Renderer.Clear()
 }
 
-func (g *Game) destroyScene(scene Scene) {
-	Logger.Printf("[Game] destroying scene: %s\n", scene.Name())
-	go scene.Destroy()
-}
-
-func (g *Game) logGameLoopStarted(scene Scene) {
-	// print log message to notify scene starting
-	Logger.Printf("[Game] started: %s ▷",
-		scene.Name())
-}
-
-func (g *Game) logGameLoopEnded(scene Scene) {
-	// Scene has ended. Print a summary
-	Logger.Printf("[Game] ended: %s ■",
-		scene.Name())
-}
-
-func (g *Game) RunScene(scene Scene, endGameLoopChan chan (bool)) {
-	if DEBUG_GOROUTINES {
-		Logger.Printf("[Game] Before running %s, NumGoroutine = %d",
-			scene.Name(),
-			runtime.NumGoroutine())
-	}
-
-	scene.StartLogic()
-	g.runGameLoopOnScene(scene, endGameLoopChan)
-	scene.StopLogic()
-	if scene.IsTransient() {
-		g.destroyScene(scene)
-	}
-
-	if DEBUG_GOROUTINES {
-		Logger.Printf("[Game] After running %s, NumGoroutine = %d",
-			scene.Name(),
-			runtime.NumGoroutine())
-	}
-}
-
 func (g *Game) AsyncRunLoadingScene() chan bool {
-	g.endLoadingSceneGameLoopChan = make(chan (bool), 1)
-	g.loadingScene.Init(g, nil, g.endLoadingSceneGameLoopChan)
+	g.loadingScene.Init(g, nil)
 	loading_scene_stopped_signal_chan := make(chan (bool))
 	go func() {
-		g.RunScene(g.loadingScene, g.endLoadingSceneGameLoopChan)
+		g.RunScene(g.loadingScene, g.loadingSceneEndGameLoopChan)
 		loading_scene_stopped_signal_chan <- true
 	}()
 	return loading_scene_stopped_signal_chan
 }
 
-func (g *Game) runGameLoopOnScene(scene Scene, endGameLoopChan chan (bool)) {
-
-	g.logGameLoopStarted(scene)
-	defer g.logGameLoopEnded(scene)
-
-	// Actual gameloop code:
+func (g *Game) RunScene(scene Scene, endGameLoopChan chan bool) Scene {
+	Logger.Printf("started: %s ▷", scene.Name())
+	defer Logger.Printf("ended: %s ■", scene.Name())
 	fpsTicker := time.NewTicker(FRAME_SLEEP)
 	lastUpdate := time.Now()
-	// gameloop
+gameloop:
 	for {
 		loopStart := time.Now()
 		// break the game loop when the end game loop channel gets a signal
-		if len(endGameLoopChan) > 0 {
-			Logger.Printf("[Game] len (endGameLoopChan) > 0 for %s\n",
-				scene.Name())
-			break
-		} else {
-			// else, run an iteration of the game loop
-			// handle input
+		select {
+		case _ = <-endGameLoopChan:
+			break gameloop
+		default:
+			if scene.IsDone() {
+				break gameloop
+			}
 			sdl.Do(func() {
 				g.handleKeyboard(scene)
 			})
-			// update scene
-			scene.Update(time.Since(lastUpdate).Nanoseconds() / 1e6)
+			scene.Update(float64(time.Since(lastUpdate).Nanoseconds()) / 1e6)
 			lastUpdate = time.Now()
-			// draw scene at framerate
 			select {
 			case _ = <-fpsTicker.C:
 				sdl.Do(func() {
@@ -230,32 +168,21 @@ func (g *Game) runGameLoopOnScene(scene Scene, endGameLoopChan chan (bool)) {
 			sdl.Delay(uint32((FRAME_SLEEP - elapsed) / time.Millisecond))
 		}
 	}
+	// once gameloop ends, get next scene and destroy scene if transient
+	nextScene := scene.NextScene()
+	if scene.IsTransient() {
+		Logger.Printf("destroying scene: %s\n", scene.Name())
+		go scene.Destroy()
+	}
+	return nextScene
 }
 
 func (g *Game) Run() {
-
-sceneloop:
-	for {
-		select {
-		case scene := <-g.NextSceneChan:
-			Logger.Printf("[Game] wanting to run %s\n", scene.Name())
-			loadingSceneStoppedChan := g.AsyncRunLoadingScene()
-			g.currentSceneEndGameLoopChan = make(chan (bool), 1)
-			// TODO: nil below could be a config - how do we get the config
-			// for the incoming scene? Is it attached to what comes through
-			// the channel?
-			scene.Init(g, nil, g.currentSceneEndGameLoopChan)
-			Logger.Printf("[Game] %s.Init() finished\n", scene.Name())
-			g.endLoadingSceneGameLoopChan <- true
-			Logger.Printf("[Game] sent signal to stop loading scene\n")
-			<-loadingSceneStoppedChan
-			Logger.Printf("[Game] got loading scene stopped signal\n")
-			Logger.Printf("[Game] calling g.RunScene (%s)\n",
-				scene.Name())
-			g.RunScene(scene, g.currentSceneEndGameLoopChan)
-		default:
-			Logger.Println("[Game] Last scene finished with no next scene. Game ending.")
-			break sceneloop
-		}
+	for g.currentScene != nil {
+		loadingSceneStoppedChan := g.AsyncRunLoadingScene()
+		g.currentScene.Init(g, nil)
+		g.loadingSceneEndGameLoopChan <- true
+		<-loadingSceneStoppedChan
+		g.currentScene = g.RunScene(g.currentScene, g.currentSceneEndGameLoopChan)
 	}
 }

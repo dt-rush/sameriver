@@ -15,7 +15,7 @@ func BuildWindowAndRenderer(window_title string, width int32, height int32) (*sd
 		sdl.WINDOWPOS_UNDEFINED,
 		sdl.WINDOWPOS_UNDEFINED,
 		0, 0,
-		sdl.WINDOW_SHOWN|sdl.WINDOW_FULLSCREEN_DESKTOP)
+		sdl.WINDOW_SHOWN)
 	if err != nil {
 		panic(err)
 	}
