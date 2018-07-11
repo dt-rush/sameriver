@@ -24,7 +24,7 @@ func (s *SteeringSystem) LinkWorld(w *World) {
 }
 
 func (s *SteeringSystem) Update(dt_ms float64) {
-	for _, e := range s.movementEntities.Entities {
+	for _, e := range s.movementEntities.entities {
 		s.Seek(e)
 		s.Apply(e)
 	}

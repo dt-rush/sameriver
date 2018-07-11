@@ -10,7 +10,7 @@ import (
 
 type UpdatedEntityList struct {
 	// the entities in the list (tagged with gen)
-	Entities []*EntityToken
+	entities []*EntityToken
 	// possibly nil query defining the list
 	Query *EntityQuery
 	// whether the entities slice should be sorted
@@ -24,7 +24,7 @@ type UpdatedEntityList struct {
 // receive entity IDs
 func NewUpdatedEntityList() *UpdatedEntityList {
 	l := UpdatedEntityList{
-		Entities: make([]*EntityToken, 0),
+		entities: make([]*EntityToken, 0),
 		sorted:   false,
 	}
 	return &l
@@ -34,31 +34,10 @@ func NewUpdatedEntityList() *UpdatedEntityList {
 // receive entity IDs
 func NewSortedUpdatedEntityList() *UpdatedEntityList {
 	l := UpdatedEntityList{
-		Entities: make([]*EntityToken, 0),
+		entities: make([]*EntityToken, 0),
 		sorted:   true,
 	}
 	return &l
-}
-
-// get the length of the list
-func (l *UpdatedEntityList) Length() int {
-	return len(l.Entities)
-}
-
-// get the first element of the list
-func (l *UpdatedEntityList) FirstEntity() (*EntityToken, error) {
-	if len(l.Entities) == 0 {
-		return nil, errors.New("list is empty, no first element")
-	}
-	return l.Entities[0], nil
-}
-
-// get a random element of the list
-func (l *UpdatedEntityList) RandomEntity() (*EntityToken, error) {
-	if len(l.Entities) == 0 {
-		return nil, errors.New("list is empty, can't get random element")
-	}
-	return l.Entities[rand.Intn(len(l.Entities))], nil
 }
 
 func (l *UpdatedEntityList) Signal(signal EntitySignal) {
@@ -78,15 +57,15 @@ func (l *UpdatedEntityList) Signal(signal EntitySignal) {
 // adds an entity into the list (private so only called by the update loop)
 func (l *UpdatedEntityList) add(e *EntityToken) {
 	// NOTE: idempotent
-	lenBefore := len(l.Entities)
+	lenBefore := len(l.entities)
 	if l.sorted {
-		SortedEntityTokenSliceInsertIfNotPresent(&l.Entities, e)
+		SortedEntityTokenSliceInsertIfNotPresent(&l.entities, e)
 	} else {
-		if indexOfEntityTokenInSlice(&l.Entities, e) == -1 {
-			l.Entities = append(l.Entities, e)
+		if indexOfEntityTokenInSlice(&l.entities, e) == -1 {
+			l.entities = append(l.entities, e)
 		}
 	}
-	if len(l.Entities) == lenBefore+1 {
+	if len(l.entities) == lenBefore+1 {
 		e.Lists = append(e.Lists, l)
 	}
 }
@@ -95,21 +74,49 @@ func (l *UpdatedEntityList) add(e *EntityToken) {
 func (l *UpdatedEntityList) remove(e *EntityToken) {
 	// NOTE: both idempotent
 	if l.sorted {
-		SortedEntityTokenSliceRemove(&l.Entities, e)
+		SortedEntityTokenSliceRemove(&l.entities, e)
 	} else {
-		removeEntityTokenFromSlice(&l.Entities, e)
+		removeEntityTokenFromSlice(&l.entities, e)
 	}
 	removeUpdatedEntityListFromSlice(&e.Lists, l)
 }
 
 // add a callback to the callbacks slice
-func (l *UpdatedEntityList) addCallback(
+func (l *UpdatedEntityList) AddCallback(
 	callback func(EntitySignal)) {
 
 	l.callbacks = append(l.callbacks, callback)
 }
 
+// get the length of the list
+func (l *UpdatedEntityList) Length() int {
+	return len(l.entities)
+}
+
+// get the contents via copy
+func (l *UpdatedEntityList) Getentities() []*EntityToken {
+	copyOfentities := make([]*EntityToken, len(l.entities))
+	copy(copyOfentities, l.entities)
+	return copyOfentities
+}
+
+// get the first element of the list
+func (l *UpdatedEntityList) FirstEntity() (*EntityToken, error) {
+	if len(l.entities) == 0 {
+		return nil, errors.New("list is empty, no first element")
+	}
+	return l.entities[0], nil
+}
+
+// get a random element of the list
+func (l *UpdatedEntityList) RandomEntity() (*EntityToken, error) {
+	if len(l.entities) == 0 {
+		return nil, errors.New("list is empty, can't get random element")
+	}
+	return l.entities[rand.Intn(len(l.entities))], nil
+}
+
 // For printing the list
 func (l *UpdatedEntityList) String() string {
-	return fmt.Sprintf("%v", l.Entities)
+	return fmt.Sprintf("%v", l.entities)
 }

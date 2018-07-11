@@ -26,7 +26,7 @@ func (s *PhysicsSystem) LinkWorld(w *World) {
 func (s *PhysicsSystem) Update(dt_ms float64) {
 	// note: there are no function calls in the below, so we won't
 	// be preempted while computin physics (this is very good, get it over with)
-	for _, e := range s.physicsEntities.Entities {
+	for _, e := range s.physicsEntities.entities {
 		pos := &s.w.em.Components.Position[e.ID]
 		box := s.w.em.Components.Box[e.ID]
 		vel := s.w.em.Components.Velocity[e.ID]

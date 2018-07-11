@@ -62,7 +62,7 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 	// in the collision rate limiter array (to guard against an entity
 	// despawning, a new entity spawning with its ID, and failing a collision
 	// test (rare prehaps, but an edge case we nonetheless want to avoid)
-	s.collidableEntities.addCallback(
+	s.collidableEntities.AddCallback(
 		func(signal EntitySignal) {
 			if signal.SignalType == ENTITY_REMOVE {
 				s.rateLimiterArray.Reset(signal.Entity)
@@ -83,7 +83,7 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 // in rateLimiters, so if we already sent one within the timeout, we just move on.
 func (s *CollisionSystem) Update(dt_ms float64) {
 
-	entities := s.collidableEntities.Entities
+	entities := s.collidableEntities.entities
 
 	// NOTE: The ID's in collidableEntities are in sorted order,
 	// so the rateLimiterArray access condition that i < j is respected

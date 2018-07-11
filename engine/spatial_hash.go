@@ -122,11 +122,12 @@ func (h *SpatialHashSystem) Update(dt_ms float64) {
 
 	// set the number of entities remaining (used by cellReceiver workers to
 	// notify that computation is done)
-	h.entitiesRemaining.Store(uint32(len(h.spatialEntities.Entities)))
+	entities := h.spatialEntities.entities
+	h.entitiesRemaining.Store(uint32(len(entities)))
 	// clear any old data and run the computation
 	h.clearComputingTable()
 	h.startCellReceivers()
-	h.startEntityScanners()
+	h.startEntityScanners(entities)
 	// wait for computation to finish
 	<-h.computeDoneChannel
 	// if we're here, the computation has completed.
@@ -187,30 +188,29 @@ func (h *SpatialHashSystem) storeEntity(
 	*cell = append(*cell, entityPosition)
 }
 
-func (h *SpatialHashSystem) startEntityScanners() {
+func (h *SpatialHashSystem) startEntityScanners(entities []*EntityToken) {
 	// Divide the list of entities into a certain number of partitions
 	// which will be scanned by entityScanner() instances.
 	nScanPartitions := runtime.NumCPU()
-	partition_size := len(h.spatialEntities.Entities) / nScanPartitions
+	partition_size := len(entities) / nScanPartitions
 	// only compute if there is at least 1 entity
-	if len(h.spatialEntities.Entities) > 0 {
+	if len(entities) > 0 {
 		for partition := 0; partition < nScanPartitions; partition++ {
 			offset := partition * partition_size
 			if partition == nScanPartitions-1 {
 				// the last partition includes the remainder
-				partition_size = len(h.spatialEntities.Entities) - offset
+				partition_size = len(entities) - offset
 			}
-			go h.entityScanner(offset, partition_size)
+			go h.entityScanner(entities[offset : offset+partition_size])
 		}
 	}
 }
 
 // used to iterate the entities and send them to the right cell's channels
-func (h *SpatialHashSystem) entityScanner(offset int, partition_size int) {
+func (h *SpatialHashSystem) entityScanner(partition []*EntityToken) {
+
 	// iterate each entity in the partition
-	for i := 0; i < partition_size; i++ {
-		// get the entity's box
-		entity := h.spatialEntities.Entities[offset+i]
+	for _, entity := range partition {
 		pos := h.w.em.Components.Position[entity.ID]
 		box := h.w.em.Components.Box[entity.ID]
 		// find out how many grids the entity spans in x and y (almost always 0,
