@@ -6,7 +6,7 @@ generate: sameriver-generate
 	./sameriver-generate  -outputdir=./engine
 
 test:
-	go test ./engine
+	go test -v -cover -race ./engine
 
 sameriver-generate:
 	go build -o sameriver-generate ./generator/main
