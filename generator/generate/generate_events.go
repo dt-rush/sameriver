@@ -10,13 +10,11 @@ import (
 	"sort"
 )
 
-func (g *GenerateProcess) GenerateEventFiles(target string) (
-	message string,
-	err error,
-	sourceFiles map[string]GenerateFile) {
+func (g *GenerateProcess) GenerateEventFiles(target string) GenerateOutput {
 
-	// generate source files
-	sourceFiles = make(map[string]GenerateFile)
+	output := GenerateOutput{
+		generatedSourceFiles: make(map[string]GeneratedFile),
+	}
 
 	// seed file is the file in ${gameDir}/sameriver that we'll generate
 	// engine code from
@@ -40,7 +38,7 @@ func (g *GenerateProcess) GenerateEventFiles(target string) (
 					msg := fmt.Sprintf("event name collision between engine "+
 						"and game custom code: %s appears twice\n",
 						baseEventName)
-					return msg, errors.New(msg), nil
+					return GenerateOutput{msg, errors.New(msg), nil}
 				}
 			}
 		}
@@ -72,12 +70,12 @@ func (g *GenerateProcess) GenerateEventFiles(target string) (
 	}
 
 	// generate enum source file
-	sourceFiles["events_enum.go"] = GenerateFile{
+	output.generatedSourceFiles["events_enum.go"] = GeneratedFile{
 		File:    generateEventsEnumFile(eventNames),
 		Imports: importStrings,
 	}
 	// return
-	return "generated", nil, sourceFiles
+	return output
 }
 
 func (g *GenerateProcess) getEventNames(srcFileName string) (

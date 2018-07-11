@@ -18,18 +18,15 @@ import (
 )
 
 type ComponentSpec struct {
-	Name               string
-	Type               string
-	HasDeepCopyMethod  bool
-	DeepCopyMethodFile string
+	Name string
+	Type string
 }
 
-func (g *GenerateProcess) GenerateComponentFiles(target string) (
-	message string,
-	err error,
-	sourceFiles map[string]GenerateFile) {
+func (g *GenerateProcess) GenerateComponentFiles(target string) GenerateOutput {
 
-	sourceFiles = make(map[string]GenerateFile)
+	output := GenerateOutput{
+		generatedSourceFiles: make(map[string]GeneratedFile),
+	}
 
 	// seed file is the file in ${gameDir}/sameriver that we'll generate engine
 	// code from
@@ -54,7 +51,7 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 					msg := fmt.Sprintf("component name collision between "+
 						"engine and game custom code: %s appears twice\n",
 						baseComponent.Name)
-					return msg, errors.New(msg), nil
+					return GenerateOutput{msg, errors.New(msg), nil}
 				}
 			}
 		}
@@ -87,20 +84,21 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) (
 	}
 
 	// generate source files
-	sourceFiles["components_enum.go"] = GenerateFile{
+	output.generatedSourceFiles["components_enum.go"] = GeneratedFile{
 		File:    generateComponentsEnumFile(components),
 		Imports: make([]string, 0),
 	}
-	sourceFiles["component_set.go"] = GenerateFile{
+	output.generatedSourceFiles["component_set.go"] = GeneratedFile{
 		File:    generateComponentSetFile(components),
 		Imports: importStrings,
 	}
-	sourceFiles["components_data.go"] = GenerateFile{
+	output.generatedSourceFiles["components_data.go"] = GeneratedFile{
 		File:    generateComponentsTableFile(components),
 		Imports: importStrings,
 	}
 	// return
-	return "generated", nil, sourceFiles
+	output.message = "generated"
+	return output
 }
 
 func componentStructName(componentName string) string {
@@ -147,14 +145,10 @@ func (g *GenerateProcess) getComponentSpecs(
 				componentType = strings.Replace(componentType, "*", "", 1)
 				fmt.Printf("found component: %s: %s\n",
 					componentName, componentType)
-				hasDeepCopyMethod, deepCopyMethodFile :=
-					g.getDeepCopyMethod(componentName)
 				components = append(components,
 					ComponentSpec{
 						componentName,
-						componentType,
-						hasDeepCopyMethod,
-						deepCopyMethodFile})
+						componentType})
 			}
 			return components
 		}

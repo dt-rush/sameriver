@@ -13,14 +13,16 @@ import (
 )
 
 // type definitions used by the generate process
-type GenerateFile struct {
+type GeneratedFile struct {
 	File    *jen.File
 	Imports []string
 }
-type GenerateFunc func(target string) (
-	message string,
-	err error,
-	sourceFiles map[string]GenerateFile)
+type GenerateFunc func(target string) GenerateOutput
+type GenerateOutput struct {
+	message              string
+	err                  error
+	generatedSourceFiles map[string]GeneratedFile
+}
 type TargetsCollection map[string]GenerateFunc
 
 // struct to hold data related to the generation
@@ -28,7 +30,7 @@ type GenerateProcess struct {
 	engineDir        string
 	gameDir          string
 	outputDir        string
-	sourceFiles      map[string]GenerateFile
+	sourceFiles      map[string]GeneratedFile
 	messages         map[string]string
 	errors           map[string]string
 	rootTargets      TargetsCollection
@@ -66,13 +68,13 @@ func NewGenerateProcess(
 func (g *GenerateProcess) Run(targets TargetsCollection) {
 	for target, f := range targets {
 		fmt.Printf("----- running target: %s -----\n", target)
-		message, err, generateFiles := f(target)
-		g.messages[target] = message
-		if err != nil {
-			g.errors[target] = fmt.Sprintf("%v", err)
+		output := f(target)
+		g.messages[target] = output.message
+		if output.err != nil {
+			g.errors[target] = fmt.Sprintf("%v", output.err)
 		}
-		for filename, generateFile := range generateFiles {
-			g.sourceFiles[filename] = generateFile
+		for filename, generatedSourceFile := range output.generatedSourceFiles {
+			g.sourceFiles[filename] = generatedSourceFile
 		}
 		g.targetsProcessed = append(g.targetsProcessed, target)
 	}
