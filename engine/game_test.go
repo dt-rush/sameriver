@@ -119,7 +119,12 @@ func TestGameLoadingSceneGameScene(t *testing.T) {
 		loadingScene := testingLoadingScene{}
 		g.SetLoadingScene(&loadingScene)
 		gameScene := testingGameScene{}
-		g.Init("testing game", 100, 100, &gameScene)
+		g.Init(WindowSpec{
+			Title:      "testing game",
+			Width:      100,
+			Height:     100,
+			Fullscreen: false},
+			&gameScene)
 		g.Run()
 		if !(expectedLoadingScene.initRan == loadingScene.initRan &&
 			expectedLoadingScene.updateRan == loadingScene.updateRan &&

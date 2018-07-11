@@ -33,14 +33,12 @@ func NewGame() *Game {
 	}
 }
 
-func (g *Game) Init(
-	windowTitle string, windowWidth, windowHeight int32, scene Scene) {
-
-	g.currentScene = scene
-	g.InitSDL(windowTitle, windowWidth, windowHeight)
+func (g *Game) Init(windowSpec WindowSpec, firstScene Scene) {
+	g.currentScene = firstScene
+	g.InitSDL(windowSpec)
 }
 
-func (g *Game) InitSDL(windowTitle string, windowWidth, windowHeight int32) {
+func (g *Game) InitSDL(windowSpec WindowSpec) {
 	Logger.Println("Starting to init SDL")
 	defer func() {
 		Logger.Println("Finished init of SDL")
@@ -65,8 +63,7 @@ func (g *Game) InitSDL(windowTitle string, windowWidth, windowHeight int32) {
 		}
 	}
 	sdl.ShowCursor(0)
-	g.Window, g.Renderer = BuildWindowAndRenderer(
-		windowTitle, windowWidth, windowHeight)
+	g.Window, g.Renderer = BuildWindowAndRenderer(windowSpec)
 }
 
 func (g *Game) Destroy() {
