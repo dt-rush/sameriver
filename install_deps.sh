@@ -1,9 +1,11 @@
 #!/bin/bash
 
-go get "github.com/golang-collections/go-datastructures/bitarray"
-go get "github.com/veandco/go-sdl2/img"
-go get "github.com/veandco/go-sdl2/mix"
-go get "github.com/veandco/go-sdl2/sdl"
-go get "github.com/veandco/go-sdl2/ttf"
-go get "github.com/dave/jennifer"
-go get "go.uber.org/atomic"
+if [ "$(grep -Ei 'debian|buntu|mint' /etc/*release)" ]; then
+	echo "running apt-get update && apt-get install libsdl2{,-mixer,-image,-ttf,-gfx}-dev"
+	sudo apt-get update && \
+	sudo apt-get install libsdl2{,-mixer,-image,-ttf,-gfx}-dev
+elif [ "$(grep -i 'arch' /etc/issue)" ]; then
+	echo "running pacman -Sy && pacman -S sdl2{,_mixer,_image,_ttf,_gfx}"
+	sudo pacman -Sy && \
+	sudo pacman -S sdl2{,_mixer,_image,_ttf,_gfx}
+fi

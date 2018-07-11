@@ -22,4 +22,5 @@ clean:
 	rm sameriver-generate 2>/dev/null || true
 
 deps:
+	./install_deps.sh
 	./install_godeps.sh 
