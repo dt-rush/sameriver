@@ -132,3 +132,18 @@ func TestDeactivateActivateEntity(t *testing.T) {
 		t.Fatal("entity was not reinserted to list after Activate()")
 	}
 }
+
+func TestGetUpdatedEntityListByName(t *testing.T) {
+	w := NewWorld(1024, 1024)
+
+	name := "ILoveLily"
+	query := EntityQuery{
+		Name: name,
+		TestFunc: func(entity *EntityToken, em *EntityManager) bool {
+			return false
+		}}
+	list := w.em.GetUpdatedEntityList(query)
+	if w.em.GetUpdatedEntityListByName(name) != list {
+		t.Fatal("GetUpdatedEntityListByName did not find list")
+	}
+}
