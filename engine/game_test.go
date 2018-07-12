@@ -7,8 +7,6 @@ import (
 
 // test functions
 func TestGameLoadingSceneGameScene(t *testing.T) {
-	// skip if CI (needs video device)
-	skipCI(t)
 	sdl.Main(func() {
 		expectedLoadingScene := testingLoadingScene{
 			initRan:                true,

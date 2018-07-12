@@ -6,7 +6,7 @@ generate: sameriver-generate
 	./sameriver-generate  -outputdir=./engine
 
 test:
-	go test -v -coverprofile=coverage.txt -covermode=atomic -race ./engine
+	go test -v -coverprofile=coverage.txt -race ./engine
 
 sameriver-generate:
 	go build -o sameriver-generate ./generator/main
