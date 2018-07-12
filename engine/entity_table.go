@@ -23,12 +23,10 @@ func (t *EntityTable) allocateID() (*EntityToken, error) {
 	// if maximum entity count reached, fail with message
 	if t.numEntities == MAX_ENTITIES {
 		msg := fmt.Sprintf("Reached max entity count: %d. "+
-			"Will not allocate ID.\n", MAX_ENTITIES)
+			"Will not allocate ID.", MAX_ENTITIES)
 		Logger.Println(msg)
 		return nil, errors.New(msg)
 	}
-	// Increment the entity count
-	t.numEntities++
 	// if there is a deallocated entity somewhere in the table before the
 	// highest ID, return that ID to the caller
 	n_avail := len(t.availableIDs)
@@ -40,19 +38,11 @@ func (t *EntityTable) allocateID() (*EntityToken, error) {
 		t.availableIDs = t.availableIDs[:n_avail-1]
 	} else {
 		// every slot in the table before the highest ID is filled
-		id = t.numEntities - 1
+		id = t.numEntities
 	}
+	// Increment the entity count
+	t.numEntities++
 	// return the token
 	entity := EntityToken{ID: id, Active: false, Despawned: false}
 	return &entity, nil
-}
-
-func (t *EntityTable) addToCurrentEntities(entity *EntityToken) {
-	t.currentEntities = append(t.currentEntities, entity)
-}
-
-func (t *EntityTable) snapshotAllocatedEntities() []*EntityToken {
-	snapshot := make([]*EntityToken, len(t.currentEntities))
-	copy(snapshot, t.currentEntities)
-	return snapshot
 }

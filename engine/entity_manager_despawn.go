@@ -45,6 +45,6 @@ func (m *EntityManager) Despawn(entity *EntityToken) {
 	entity.Despawned = true
 	m.entityTable.numEntities--
 	m.entityTable.availableIDs = append(m.entityTable.availableIDs, entity.ID)
-	removeEntityTokenFromSlice(&m.entityTable.currentEntities, entity)
+	m.Entities[entity.ID] = nil
 	m.setActiveState(entity, false)
 }

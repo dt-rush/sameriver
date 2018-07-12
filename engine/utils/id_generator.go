@@ -1,11 +1,4 @@
-/**
-  *
-  *
-  *
-  *
-**/
-
-package engine
+package utils
 
 import (
 	"go.uber.org/atomic"

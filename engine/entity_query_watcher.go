@@ -1,5 +1,9 @@
 package engine
 
+import (
+	"github.com/dt-rush/sameriver/engine/utils"
+)
+
 // used to communicate insert / remove events
 type EntitySignalType int
 
@@ -26,7 +30,7 @@ func NewEntityQueryWatcher(q EntityQuery) EntityQueryWatcher {
 
 	return EntityQueryWatcher{
 		q.Name,
-		IDGEN(),
+		utils.IDGEN(),
 		q,
 		make(chan EntitySignal, ENTITY_QUERY_WATCHER_CHANNEL_CAPACITY)}
 }

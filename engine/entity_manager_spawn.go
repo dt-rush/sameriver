@@ -64,6 +64,8 @@ func (m *EntityManager) spawn(r SpawnRequestData, uniqueTag string) (
 			"entity with tags: %v\n", err, r.Components.TagList.Tags)
 		return fail(errorMsg)
 	}
+	// add the entity to the list of current entities
+	m.Entities[entity.ID] = entity
 	// print a debug message
 	// set the bitarray for this entity
 	entity.ComponentBitArray = r.Components.ToBitArray()
@@ -89,8 +91,6 @@ func (m *EntityManager) spawn(r SpawnRequestData, uniqueTag string) (
 	if uniqueTag != "" {
 		m.createEntitiesWithTagListIfNeeded(uniqueTag)
 	}
-	// add the entity to the list of current entities
-	m.entityTable.addToCurrentEntities(entity)
 	// set entity active and notify entity is active
 	m.setActiveState(entity, true)
 	// return EntityToken

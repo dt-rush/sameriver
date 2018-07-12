@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+func TestConstructEventBus(t *testing.T) {
+	ev := NewEventBus()
+	if ev == nil {
+		t.Fatal("Could not construct NewEventBus()")
+	}
+}
+
 func TestSimpleEventQueryMatching(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(

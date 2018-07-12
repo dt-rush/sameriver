@@ -9,6 +9,8 @@ import (
 
 // Provides services related to entities
 type EntityManager struct {
+	// list of entities currently spawned (whether active or not)
+	Entities [MAX_ENTITIES]*EntityToken
 	// Component data for entities
 	Components *ComponentsTable
 	// EntityTable stores: a list of allocated EntityTokens and a
@@ -183,12 +185,20 @@ func (m *EntityManager) GetEntityClass(name string) EntityClass {
 
 // Get the number of allocated entities (not number of active, mind you)
 func (m *EntityManager) NumEntities() int {
-	return len(m.entityTable.currentEntities)
+	return m.entityTable.numEntities
 }
 
-// Get list of current allocated entities (not number of active, mind you)
-func (m *EntityManager) Entities() []*EntityToken {
-	return m.entityTable.currentEntities
+// Returns the Entities field, copied. Notice that this is of size MAX_ENTITIES
+// and can have many nil elements, so the caller must checka and discard
+// nil elements as they iterate
+func (m *EntityManager) GetCurrentEntities() []*EntityToken {
+	entities := make([]*EntityToken, 0, m.entityTable.numEntities)
+	for _, e := range m.Entities {
+		if e != nil {
+			entities = append(entities, e)
+		}
+	}
+	return entities
 }
 
 // Somewhat expensive conversion of entire entity list to string, locking
@@ -200,7 +210,10 @@ func (m *EntityManager) String() string {
 
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
-	for _, entity := range m.entityTable.currentEntities {
+	for _, entity := range m.Entities {
+		if m == nil {
+			continue
+		}
 		tags := m.Components.TagList[entity.ID]
 		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",
 			entity.ID, tags)

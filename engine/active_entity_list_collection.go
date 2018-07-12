@@ -49,15 +49,9 @@ func (c *ActiveEntityListCollection) processBacklog(
 	q EntityQuery,
 	list *UpdatedEntityList) {
 
-	// a list of ID's list has yet to check in being created
-	backlog := c.em.entityTable.snapshotAllocatedEntities()
-	for len(backlog) > 0 {
-		// pop last element, test, and send if match
-		last_ix := len(backlog) - 1
-		entity := backlog[last_ix]
-		backlog = backlog[:last_ix]
-		if q.Test(entity, c.em) {
-			list.Signal(EntitySignal{ENTITY_ADD, entity})
+	for _, e := range c.em.GetCurrentEntities() {
+		if q.Test(e, c.em) {
+			list.Signal(EntitySignal{ENTITY_ADD, e})
 		}
 	}
 }

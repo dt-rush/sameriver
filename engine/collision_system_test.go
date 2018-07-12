@@ -22,7 +22,7 @@ func TestCollisionSystem(t *testing.T) {
 	default:
 		t.Fatal("collision event wasn't received within 16 ms")
 	}
-	w.em.Components.Position[w.em.Entities()[0].ID] = Vec2D{100000, 100000}
+	w.em.Components.Position[w.em.Entities[0].ID] = Vec2D{100000, 100000}
 	w.Update(FRAME_SLEEP_MS)
 	time.Sleep(FRAME_SLEEP)
 	select {
