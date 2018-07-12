@@ -5,13 +5,13 @@ go:
   - "1.8"
   - "1.10.x"
 
-env:
-  - AUDIODEV=null
+# env: 
+#   - AUDIODEV=null
 
 before_install:
   - sudo apt-get install -y libgles2-mesa-dev
 
-script: xvfb-run make
+# script: xvfb-run make
 
 after_success:
    - bash <(curl -s https://codecov.io/bash)
