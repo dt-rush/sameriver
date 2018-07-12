@@ -5,6 +5,9 @@ go:
   - "1.8"
   - "1.10.x"
 
+env:
+  - AUDIODEV=null
+
 before_install:
   - sudo apt-get install -y libgles2-mesa-dev
 
