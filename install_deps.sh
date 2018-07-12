@@ -31,10 +31,10 @@ apt_install() {
 
 pacman_check() {
 	packages=("sdl2" \
-		"sdl_mixer" \
-		"sdl_image" \
-		"sdl_ttf" \
-		"sdl_gfx")
+		"sdl2_mixer" \
+		"sdl2_image" \
+		"sdl2_ttf" \
+		"sdl2_gfx")
 	do_pkg_check "pacman -Qs"
 }
 
@@ -59,6 +59,8 @@ if [ ${#needed[@]} -ne 0 ]; then
 	echo "######################################################"
 	echo -e "need to install:\n\n${needed[@]}\n"
 	echo "######################################################"
+	set -x
+	echo "\$pkg_install is $pkg_install"
 	eval $pkg_install
 else
 	echo "all needed apt packages installed"
