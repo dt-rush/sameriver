@@ -87,15 +87,15 @@ func TestWorldRunLogicTiming(t *testing.T) {
 		w.AddLogic(LogicUnit{
 			Name:   "logic",
 			Active: true,
-			F:      func() { time.Sleep(4 * time.Millisecond) },
+			F:      func() { time.Sleep(100 * time.Millisecond) },
 		})
 	}
-	overrun_ms := w.RunLogic(2)
-	if overrun_ms != 2 {
+	overrun_ms := w.RunLogic(150)
+	if !(overrun_ms >= 50) {
 		t.Fatal("overrun time not calculated")
 	}
-	overrun_ms = w.RunLogic(12)
-	if overrun_ms != 0 {
+	overrun_ms = w.RunLogic(300)
+	if !(overrun_ms >= 0 && overrun_ms <= 50) {
 		t.Fatal("overrun time not calculated")
 	}
 	w = NewWorld(1024, 1024)
