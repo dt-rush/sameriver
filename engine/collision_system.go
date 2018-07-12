@@ -42,6 +42,7 @@ type CollisionSystem struct {
 	w                  *World
 	collidableEntities *UpdatedEntityList
 	rateLimiterArray   CollisionRateLimiterArray
+	sh                 *SpatialHashSystem `sameriver-system-dependency:"-"`
 }
 
 func NewCollisionSystem() *CollisionSystem {

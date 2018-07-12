@@ -1,7 +1,11 @@
 package engine
 
 import (
+	"fmt"
+	"reflect"
+	"regexp"
 	"time"
+	"unsafe"
 )
 
 type World struct {
@@ -28,9 +32,96 @@ func NewWorld(width int, height int) *World {
 	return &w
 }
 
-func (w *World) AddSystem(s System) {
+func (w *World) AddSystems(systems ...System) {
+	// add all systems
+	for _, s := range systems {
+		w.addSystem(s)
+	}
+	// link up all systems' dependencies
+	for _, s := range systems {
+		w.linkSystemDependencies(s)
+	}
+}
+
+func (w *World) addSystem(s System) {
 	w.systems = append(w.systems, s)
 	s.LinkWorld(w)
+}
+
+func (w *World) linkSystemDependencies(s System) {
+	// foreach field of the underlying struct,
+	// check if it has the tag `sameriver-system-dependency`
+	// if it does, search for the system with the same type as that
+	// field and assign it as a pointer, cast to the expected type,
+	// to that field
+	//
+	// if TypeOf yields *CollisionSystem
+	if reflect.TypeOf(s).Kind() != reflect.Ptr {
+		panic("Implementers of engine.System must be pointer-receivers")
+	}
+	sType := reflect.TypeOf(s).Elem()
+	systemInterface := reflect.TypeOf((*System)(nil)).Elem()
+	for i := 0; i < sType.NumField(); i++ {
+		// for each field of the struct
+		// f would be something like sh *SpatialHashSystem, possibly with a tag
+		f := sType.Field(i)
+		if f.Tag.Get("sameriver-system-dependency") != "" {
+			// check conditions for struct field
+			isPointer := f.Type.Kind() == reflect.Ptr
+			if !isPointer {
+				panic(fmt.Sprintf("fields tagged sameriver-system-dependency "+
+					"must be to pointer types "+
+					"(field %s %v of %s did not pass this requirement)",
+					f.Name, f.Type, sType.Name()))
+			}
+			// typeName is something like SpatialHashSystem
+			typeName := f.Type.Elem().Name()
+			validName, _ := regexp.MatchString(".+System", typeName)
+			if !validName {
+				panic(fmt.Sprintf("fields tagged sameriver-system-dependency "+
+					"must match regexp \".+System\" "+
+					"(field %s %v of %s did not pass this requirement)",
+					f.Name, f.Type, sType.Name()))
+			}
+			isSystem := f.Type.Implements(systemInterface)
+			if !isSystem {
+				panic(fmt.Sprintf("fields tagged sameriver-system-dependency "+
+					"must implement engine.System "+
+					"(field %s %v of %s did not pass this requirement",
+					f.Name, f.Type, sType.Name()))
+			}
+			// iterate through the other systems and find one whose type matches
+			// the field's type
+			var foundSystem System
+			for _, otherSystem := range w.systems {
+				if otherSystem == s {
+					continue
+				}
+				if reflect.TypeOf(otherSystem) == f.Type {
+					foundSystem = otherSystem
+					break
+				}
+			}
+			if foundSystem == nil {
+				panic(fmt.Sprintf("%s %v of %s dependency could not be "+
+					"resolved. No system found of type %v.",
+					f.Name, f.Type, sType.Elem().Name(), f.Type))
+			}
+			// now that we have found the system which corresponds to the
+			// dependency, we will assign it to the place it should be
+			//
+			// thank you to feilengcui008 from golang-nuts for this method of
+			// assigning to an unexported pointer field whose value is nil
+			//
+			// since vf is nil value, vf.Elem() will be the zero value, and
+			// since the zero value is not addressable or settable, we
+			// need to allocate a new settable value at the same address
+			v := reflect.Indirect(reflect.ValueOf(s))
+			vf := v.Field(i)
+			vf = reflect.NewAt(vf.Type(), unsafe.Pointer(vf.UnsafeAddr())).Elem()
+			vf.Set(reflect.ValueOf(foundSystem))
+		}
+	}
 }
 
 func (w *World) Update(dt_ms float64) {

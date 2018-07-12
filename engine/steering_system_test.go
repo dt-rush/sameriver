@@ -7,7 +7,7 @@ import (
 func TestSteeringSystem(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	ss := NewSteeringSystem()
-	w.AddSystem(ss)
+	w.AddSystems(ss)
 	e, err := w.em.Spawn(steeringSpawnRequestData())
 	vel := w.em.Components.Velocity[e.ID]
 	if err != nil {

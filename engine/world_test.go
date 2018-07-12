@@ -12,27 +12,27 @@ func TestCanConstructWorld(t *testing.T) {
 	}
 }
 
-type testSystem struct {
-	x float64
-}
-
-func newTestSystem() *testSystem {
-	return &testSystem{}
-}
-func (s *testSystem) LinkWorld(w *World) {}
-func (s *testSystem) Update(dt_ms float64) {
-	s.x += dt_ms
-}
-
-func TestWorldAddSystem(t *testing.T) {
+func TestWorldAddSystems(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	w.AddSystem(newTestSystem())
+	w.AddSystems(newTestSystem())
+}
+
+func TestWorldAddDependentSystems(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	dep := newTestDependentSystem()
+	w.AddSystems(
+		newTestSystem(),
+		dep,
+	)
+	if dep.ts == nil {
+		t.Fatal("system dependency not injected")
+	}
 }
 
 func TestWorldUpdate(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	ts := newTestSystem()
-	w.AddSystem(ts)
+	w.AddSystems(ts)
 	w.Update(FRAME_SLEEP_MS)
 	if ts.x != FRAME_SLEEP_MS {
 		t.Fatal("didn't update world.systems")

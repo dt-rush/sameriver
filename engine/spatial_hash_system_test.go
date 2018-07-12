@@ -8,7 +8,7 @@ import (
 func TestSpatialHashInsertion(t *testing.T) {
 	w := NewWorld(100, 100)
 	sh := NewSpatialHashSystem(10, 10)
-	w.AddSystem(sh)
+	w.AddSystems(sh)
 	testData := map[[2]Vec2D][][2]int{
 		[2]Vec2D{Vec2D{0, 0}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
 		[2]Vec2D{Vec2D{1, 1}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},

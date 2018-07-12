@@ -8,7 +8,13 @@ import (
 func TestCollisionSystem(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	cs := NewCollisionSystem()
-	w.AddSystem(cs)
+	w.AddSystems(
+		NewSpatialHashSystem(128, 128),
+		cs,
+	)
+	if cs.sh == nil {
+		t.Fatal("failed to inject *SpatialHashSystem to CollisionSystem.sh")
+	}
 	ec := w.ev.Subscribe(
 		"SimpleCollisionQuery",
 		NewSimpleEventQuery(COLLISION_EVENT))
@@ -22,7 +28,7 @@ func TestCollisionSystem(t *testing.T) {
 	default:
 		t.Fatal("collision event wasn't received within 16 ms")
 	}
-	w.em.Components.Position[w.em.Entities[0].ID] = Vec2D{100000, 100000}
+	w.em.Components.Position[w.em.Entities[0].ID] = Vec2D{100, 100}
 	w.Update(FRAME_SLEEP_MS)
 	time.Sleep(FRAME_SLEEP)
 	select {
@@ -36,7 +42,10 @@ func TestCollisionSystem(t *testing.T) {
 func TestCollisionRateLimit(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	cs := NewCollisionSystem()
-	w.AddSystem(cs)
+	w.AddSystems(
+		NewSpatialHashSystem(128, 128),
+		cs,
+	)
 	ec := w.ev.Subscribe(
 		"SimpleCollisionQuery",
 		NewSimpleEventQuery(COLLISION_EVENT))
