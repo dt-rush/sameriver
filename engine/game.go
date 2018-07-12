@@ -66,14 +66,6 @@ func (g *Game) InitSDL(windowSpec WindowSpec) {
 	g.Window, g.Renderer = BuildWindowAndRenderer(windowSpec)
 }
 
-func (g *Game) Destroy() {
-	// free anything else that needs to be destroyed (happens once)
-	// do we even need to do this, since the whole program exits
-	// when the game does? anyways...
-	// TODO: make sure this is actually a proper and complete destroy method
-	g.Renderer.Destroy()
-}
-
 func (g *Game) AsyncEnd() {
 	Logger.Println("in Game.End()")
 	go func() {
@@ -182,4 +174,13 @@ func (g *Game) Run() {
 		<-loadingSceneStoppedChan
 		g.currentScene = g.RunScene(g.currentScene, g.currentSceneEndGameLoopChan)
 	}
+}
+
+func (g *Game) Destroy() {
+	// free anything else that needs to be destroyed (happens once)
+	// do we even need to do this, since the whole program exits
+	// when the game does? anyways...
+	// TODO: make sure this is actually a proper and complete destroy method
+	g.Renderer.Destroy()
+	g.Window.Destroy()
 }

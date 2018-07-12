@@ -126,6 +126,7 @@ func TestGameLoadingSceneGameScene(t *testing.T) {
 			Fullscreen: false},
 			&gameScene)
 		g.Run()
+		g.Destroy()
 		if !(expectedLoadingScene.initRan == loadingScene.initRan &&
 			expectedLoadingScene.updateRan == loadingScene.updateRan &&
 			expectedLoadingScene.drawRan == loadingScene.drawRan &&
