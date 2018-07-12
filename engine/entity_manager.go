@@ -20,9 +20,6 @@ type EntityManager struct {
 	entitiesWithTag map[string]*UpdatedEntityList
 	// entities which have been tagged uniquely
 	uniqueEntities map[string]*EntityToken
-	// classes stores references to entity classes, which can be
-	// retrieved by string ("crow", "turtle", "bear") in GetEntityClass()
-	classes map[string]EntityClass
 	// ActiveEntityListCollection is used by GetUpdatedEntityList to
 	// store EntityQueryWatchers and references to UpdatedEntityLists used
 	// to implement GetUpdatedEntityList
@@ -45,7 +42,6 @@ func NewEntityManager(eventBus *EventBus) *EntityManager {
 	em.activeEntityLists = NewActiveEntityListCollection(em)
 	em.entitiesWithTag = make(map[string]*UpdatedEntityList)
 	em.uniqueEntities = make(map[string]*EntityToken)
-	em.classes = make(map[string]EntityClass)
 	em.eventBus = eventBus
 	em.spawnSubscription = eventBus.Subscribe(
 		"EntityManager::SpawnRequest",
@@ -171,16 +167,6 @@ func (m *EntityManager) UntagEntities(entities []*EntityToken, tag string) {
 	for _, entity := range entities {
 		m.UntagEntity(entity, tag)
 	}
-}
-
-// Register an entity class (subsequently retrievable)
-func (m *EntityManager) AddEntityClass(c EntityClass) {
-	m.classes[c.Name()] = c
-}
-
-// Get an entity class by name
-func (m *EntityManager) GetEntityClass(name string) EntityClass {
-	return m.classes[name]
 }
 
 // Get the number of allocated entities (not number of active, mind you)
