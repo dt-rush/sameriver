@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -24,10 +23,6 @@ func TestSortedUpdatedEntityListAddRemove(t *testing.T) {
 	e0 := &EntityToken{ID: 0, Active: true, Despawned: false}
 	list.Signal(EntitySignal{ENTITY_ADD, e8})
 	list.Signal(EntitySignal{ENTITY_ADD, e0})
-	if list.Length() != 2 {
-		t.Fatal(fmt.Sprintf("entities were not added to list "+
-			"(size should be %d, was %d)", 2, list.Length()))
-	}
 	if list.entities[0].ID != 0 {
 		t.Fatal("didn't insert in order")
 	}
@@ -43,5 +38,41 @@ func TestUpdatedEntityListCallback(t *testing.T) {
 	list.Signal(EntitySignal{ENTITY_ADD, e})
 	if !ran {
 		t.Fatal("callback didn't run")
+	}
+}
+
+func TestUpdatedEntityListAccess(t *testing.T) {
+	list := NewUpdatedEntityList()
+	e0 := &EntityToken{ID: 0, Active: true, Despawned: false}
+	list.Signal(EntitySignal{ENTITY_ADD, e0})
+	entities := list.GetEntities()
+	if len(entities) != 1 {
+		t.Fatal("GetEntities() didn't contain the spawned entity")
+	}
+	e1 := &EntityToken{ID: 1, Active: true, Despawned: false}
+	list.Signal(EntitySignal{ENTITY_ADD, e1})
+	e, err := list.FirstEntity()
+	if err != nil {
+		t.Fatal("FirstEntity() returned err when there were 2 entities")
+	}
+	if e.ID != 0 {
+		t.Fatal("FirstEntity() did not return first entity")
+	}
+	e, err = list.RandomEntity()
+	if err != nil {
+		t.Fatal("RandomEntity() returned err when there were 2 entities")
+	}
+	if !(e.ID == 0 || e.ID == 1) {
+		t.Fatal("RandomEntity() did not return entity in list")
+	}
+	list.Signal(EntitySignal{ENTITY_REMOVE, e0})
+	list.Signal(EntitySignal{ENTITY_REMOVE, e1})
+	_, err = list.FirstEntity()
+	if err == nil {
+		t.Fatal("Should have returned err when list empty for FirstEntity()")
+	}
+	_, err = list.RandomEntity()
+	if err == nil {
+		t.Fatal("Should have returned err when list empty for RandomEntity()")
 	}
 }
