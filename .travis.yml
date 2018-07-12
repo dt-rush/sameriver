@@ -6,4 +6,8 @@ go:
   - "1.10.x"
 
 before_install:
-  - sudo apt-get install -y libgles2-mesa-dev libsdl2{,-mixer,-image,-ttf,-gfx}-dev
+  - sudo apt-get install -y libgles2-mesa-dev
+
+script:
+  - make deps
+  - make test

@@ -20,6 +20,7 @@ bin/*
 # ignore executables and profiling data created by testing
 test.out
 test.prof
+coverage.txt
 
 # generate binary
 sameriver-generate
