@@ -29,8 +29,8 @@ func TestSpatialHashInsertion(t *testing.T) {
 		for _, cell := range cells {
 			table := sh.CurrentTablePointer()
 			inCell := false
-			for _, entityGridPosition := range (*table)[cell[0]][cell[1]] {
-				if e == entityGridPosition.entity {
+			for _, entity := range (*table)[cell[0]][cell[1]] {
+				if entity == e {
 					inCell = true
 				}
 			}

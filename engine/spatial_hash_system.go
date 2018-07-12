@@ -3,21 +3,14 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"runtime"
-	"sync"
 	"unsafe"
 
 	"go.uber.org/atomic"
 )
 
-// used to store an entity with a position in a grid cell
-type EntityGridPosition struct {
-	entity *EntityToken
-	x, y   int
-}
-
-// the actual cell data structure is a gridDimension x gridDimension array of []EntityGridPosition
-type SpatialHashTable [][][]EntityGridPosition
+// the actual cell data structure is a gridDimension x gridDimension array of
+// entities
+type SpatialHashTable [][][]*EntityToken
 
 // used to compute the spatial hash tables given a list of entities
 type SpatialHashSystem struct {
@@ -42,23 +35,6 @@ type SpatialHashSystem struct {
 	// to find the table we're currently building
 	computingTable *SpatialHashTable
 	computedTable  *SpatialHashTable
-	// channels (one per grid square) used to receive successfully-read
-	// positions from the goroutines which scan the entities
-	// (not double-buffered since we exclude two
-	// Update() instances from running at the same time using
-	// the computeInProgress flag)
-	cellChannels [][]chan EntityGridPosition
-	// used to signal that the compute is done from one of the cellReceiver()
-	// workers
-	computeDoneChannel chan bool
-	// used for the cellReceiver() worker to signal it is ending, because it
-	// noticed there are no more entities to scan in the current computation
-	cellReceiverStopChannel chan bool
-	// used for the computation to wait for all cell receivers to end before
-	// allowing a new computation to start
-	cellReceiverWaitGroup sync.WaitGroup
-	// how many entities are yet to store in the current computation
-	entitiesRemaining atomic.Uint32
 	// a lock to ensure that we never enter Update while
 	// another instance of the function is still running (we return early,
 	// while a mutex would freeze the goroutine of the caller if called
@@ -70,25 +46,19 @@ type SpatialHashSystem struct {
 
 func NewSpatialHashSystem(gridX int, gridY int) *SpatialHashSystem {
 	h := SpatialHashSystem{
-		cellReceiverStopChannel: make(chan bool),
-		computeDoneChannel:      make(chan bool),
+		gridX: gridX,
+		gridY: gridY,
 	}
-	h.gridX = gridX
-	h.gridY = gridY
-	h.tables[0] = make([][][]EntityGridPosition, gridX)
-	h.tables[1] = make([][][]EntityGridPosition, gridX)
-	h.cellChannels = make([][]chan EntityGridPosition, gridX)
+	h.tables[0] = make([][][]*EntityToken, gridX)
+	h.tables[1] = make([][][]*EntityToken, gridX)
 	// for each column (x) in the grid
 	for x := 0; x < gridX; x++ {
-		h.tables[0][x] = make([][]EntityGridPosition, gridY)
-		h.tables[1][x] = make([][]EntityGridPosition, gridY)
-		h.cellChannels[x] = make([]chan EntityGridPosition, gridY)
+		h.tables[0][x] = make([][]*EntityToken, gridY)
+		h.tables[1][x] = make([][]*EntityToken, gridY)
 		// for each cell in the row (y)
 		for y := 0; y < gridY; y++ {
-			h.tables[0][x][y] = make([]EntityGridPosition, MAX_ENTITIES)
-			h.tables[1][x][y] = make([]EntityGridPosition, MAX_ENTITIES)
-			h.cellChannels[x][y] = make(chan EntityGridPosition, MAX_ENTITIES)
-
+			h.tables[0][x][y] = make([]*EntityToken, MAX_ENTITIES)
+			h.tables[1][x][y] = make([]*EntityToken, MAX_ENTITIES)
 		}
 	}
 	return &h
@@ -116,25 +86,15 @@ func (h *SpatialHashSystem) Update(dt_ms float64) {
 		return
 	}
 
-	// set the computingTable pointer used by the cellReceiver() workers to point
-	// to the table we're building
-	h.computingTable = &h.tables[h.nextBufIndex()]
-
-	// set the number of entities remaining (used by cellReceiver workers to
-	// notify that computation is done)
 	entities := h.spatialEntities.entities
-	h.entitiesRemaining.Store(uint32(len(entities)))
+	// we will write to the table indicated by nextBufIndex
+	h.computingTable = &h.tables[h.nextBufIndex()]
 	// clear any old data and run the computation
 	h.clearComputingTable()
-	h.startCellReceivers()
-	h.startEntityScanners(entities)
-	// wait for computation to finish
-	<-h.computeDoneChannel
-	// if we're here, the computation has completed.
-	// this increment, due to the modulo logic, is equivalent to setting
+	h.scanAndInsertEntities(entities)
+	// this increment, due to the modulo 2 logic, is equivalent to setting
 	// computedBufIndex = nextBufIndex
 	h.tableBufIndex.Inc()
-	h.cellReceiverWaitGroup.Wait()
 	h.ComputeRunning.Store(0)
 }
 
@@ -151,66 +111,11 @@ func (h *SpatialHashSystem) clearComputingTable() {
 	}
 }
 
-func (h *SpatialHashSystem) startCellReceivers() {
-	// start the cellReceiver for this cell
-	for x := 0; x < h.gridX; x++ {
-		for y := 0; y < h.gridY; y++ {
-			h.cellReceiverWaitGroup.Add(1)
-			go h.cellReceiver(x, y, h.cellChannels[x][y])
-		}
-	}
-}
-
-// used to receive EntityGridPositions and put them into the right cell
-func (h *SpatialHashSystem) cellReceiver(x int, y int, c chan EntityGridPosition) {
-	defer h.cellReceiverWaitGroup.Done()
-	for {
-		select {
-		case _ = <-h.cellReceiverStopChannel:
-			return
-		case entityPosition := <-c:
-			h.storeEntity(x, y, entityPosition)
-			if h.entitiesRemaining.Dec() == 0 {
-				for i := 0; i < (h.gridX*h.gridY)-1; i++ {
-					h.cellReceiverStopChannel <- true
-				}
-				h.computeDoneChannel <- true
-				return
-			}
-		}
-	}
-}
-
-func (h *SpatialHashSystem) storeEntity(
-	x int, y int, entityPosition EntityGridPosition) {
-
-	cell := &((*h.computingTable)[x][y])
-	*cell = append(*cell, entityPosition)
-}
-
-func (h *SpatialHashSystem) startEntityScanners(entities []*EntityToken) {
-	// Divide the list of entities into a certain number of partitions
-	// which will be scanned by entityScanner() instances.
-	nScanPartitions := runtime.NumCPU()
-	partition_size := len(entities) / nScanPartitions
-	// only compute if there is at least 1 entity
-	if len(entities) > 0 {
-		for partition := 0; partition < nScanPartitions; partition++ {
-			offset := partition * partition_size
-			if partition == nScanPartitions-1 {
-				// the last partition includes the remainder
-				partition_size = len(entities) - offset
-			}
-			go h.entityScanner(entities[offset : offset+partition_size])
-		}
-	}
-}
-
-// used to iterate the entities and send them to the right cell's channels
-func (h *SpatialHashSystem) entityScanner(partition []*EntityToken) {
+// used to iterate the entities and send them to the right cells
+func (h *SpatialHashSystem) scanAndInsertEntities(entities []*EntityToken) {
 
 	// iterate each entity in the partition
-	for _, entity := range partition {
+	for _, entity := range entities {
 		pos := h.w.em.Components.Position[entity.ID]
 		box := h.w.em.Components.Box[entity.ID]
 		// find out how many grids the entity spans in x and y (almost always 0,
@@ -226,10 +131,15 @@ func (h *SpatialHashSystem) entityScanner(partition []*EntityToken) {
 			for iy := 0; iy < gridsHigh+1; iy++ {
 				x := topLeftCellX + ix
 				y := topLeftCellY + iy
-				h.cellChannels[x][y] <- EntityGridPosition{entity, x, y}
+				h.storeEntity(x, y, entity)
 			}
 		}
 	}
+}
+
+func (h *SpatialHashSystem) storeEntity(x int, y int, entity *EntityToken) {
+	cell := &((*h.computingTable)[x][y])
+	*cell = append(*cell, entity)
 }
 
 // helper function for hashing
@@ -262,11 +172,11 @@ func (h *SpatialHashSystem) CurrentTablePointer() *SpatialHashTable {
 // get a *copy* of the current table which is safe to hold onto, mutate, etc.
 func (h *SpatialHashSystem) CurrentTableCopy() SpatialHashTable {
 	var t = h.CurrentTablePointer()
-	t2 := make([][][]EntityGridPosition, h.gridX)
+	t2 := make([][][]*EntityToken, h.gridX)
 	for x := 0; x < h.gridX; x++ {
-		t2[x] = make([][]EntityGridPosition, h.gridX)
+		t2[x] = make([][]*EntityToken, h.gridX)
 		for y := 0; y < h.gridY; y++ {
-			t2[x][y] = make([]EntityGridPosition, len((*t)[x][y]))
+			t2[x][y] = make([]*EntityToken, len((*t)[x][y]))
 			copy(t2[x][y], (*t)[x][y])
 
 		}
@@ -287,7 +197,7 @@ func (h *SpatialHashSystem) String(table *SpatialHashTable) string {
 	for x := 0; x < h.gridX; x++ {
 		for y := 0; y < h.gridY; y++ {
 			cell := (*table)[x][y]
-			size += int(unsafe.Sizeof(EntityGridPosition{})) * len(cell)
+			size += int(unsafe.Sizeof(&EntityToken{})) * len(cell)
 			buffer.WriteString(fmt.Sprintf(
 				"CELL(%d, %d): %.64s...", x, y,
 				fmt.Sprintf("%+v", cell)))
