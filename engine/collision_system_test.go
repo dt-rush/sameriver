@@ -9,7 +9,7 @@ func TestCollisionSystem(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	cs := NewCollisionSystem()
 	w.AddSystems(
-		NewSpatialHashSystem(128, 128),
+		NewSpatialHashSystem(10, 10),
 		cs,
 	)
 	if cs.sh == nil {
@@ -43,7 +43,7 @@ func TestCollisionRateLimit(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	cs := NewCollisionSystem()
 	w.AddSystems(
-		NewSpatialHashSystem(128, 128),
+		NewSpatialHashSystem(10, 10),
 		cs,
 	)
 	ec := w.ev.Subscribe(
