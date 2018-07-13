@@ -27,7 +27,7 @@ type SpatialHashSystem struct {
 	// Uint32 every time we finish computing a new one, taking its
 	// (value - 1) % 2 to return the index of the latest completed cell
 	// structure
-	tableBufIndex atomic.Uint32
+	timesComputed atomic.Uint32
 	// tables is a double-buffer for holding SpatialHashTable results
 	// computed during Update
 	tables [2]SpatialHashTable
@@ -73,12 +73,7 @@ func (s *SpatialHashSystem) LinkWorld(w *World) {
 				[]ComponentType{POSITION_COMPONENT, BOX_COMPONENT})))
 }
 
-// spawns a certain number of goroutines to iterate through entities, trying
-// to lock them and get their position and send the entities and their
-// positions to another set of goroutines handling the building of the
-// list for each grid cell
 func (h *SpatialHashSystem) Update(dt_ms float64) {
-
 	// this lock prevents another call to Update()
 	// entering while we are currently calculating (this ensures robustness
 	// if for some reason it is called too often)
@@ -94,7 +89,7 @@ func (h *SpatialHashSystem) Update(dt_ms float64) {
 	h.scanAndInsertEntities(entities)
 	// this increment, due to the modulo 2 logic, is equivalent to setting
 	// computedBufIndex = nextBufIndex
-	h.tableBufIndex.Inc()
+	h.timesComputed.Inc()
 	h.ComputeRunning.Store(0)
 }
 
@@ -148,16 +143,18 @@ func (h *SpatialHashSystem) cellForPoint(x int, y int) (cellX int, cellY int) {
 }
 
 // returns the double-buffer index of the current spatial hash table (the one
-// that callers will want). We subtract 1 since we increment tableBufIndex
+// that callers will want). We subtract 1 since we increment timesComputed
 // atomically once the computation completes
 func (h *SpatialHashSystem) computedBufIndex() uint32 {
-	return (h.tableBufIndex.Load() - 1) % 2
+	// - 1 + 2 to avoid taking modulo of negative after overflow of uint32
+	// if timesComputed == 0
+	return ((h.timesComputed.Load() - 1) + 2) % 2
 }
 
 // returns the double-buffer index of the *next* spatial hash table (the one
 // we will be / we are computing)
 func (h *SpatialHashSystem) nextBufIndex() uint32 {
-	return h.tableBufIndex.Load() % 2
+	return h.timesComputed.Load() % 2
 }
 
 // get the pointer to the current spatial hash data structure

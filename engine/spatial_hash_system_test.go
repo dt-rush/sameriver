@@ -2,7 +2,9 @@ package engine
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
+	"time"
 )
 
 func TestSpatialHashInsertion(t *testing.T) {
@@ -41,5 +43,63 @@ func TestSpatialHashInsertion(t *testing.T) {
 					cell))
 			}
 		}
+	}
+}
+
+func TestSpatialHashLargeEntity(t *testing.T) {
+	w := NewWorld(100, 100)
+	sh := NewSpatialHashSystem(10, 10)
+	w.AddSystems(sh)
+	pos := Vec2D{0, 0}
+	box := Vec2D{25, 25}
+	cells := [][2]int{
+		[2]int{0, 0},
+		[2]int{1, 1},
+		[2]int{1, 2},
+		[2]int{2, 1},
+		[2]int{2, 2},
+	}
+	e, _ := w.em.Spawn(spatialSpawnRequestData(pos, box))
+	w.Update(FRAME_SLEEP_MS)
+	table := sh.CurrentTablePointer()
+	for _, cell := range cells {
+		inCell := false
+		for _, entity := range (*table)[cell[0]][cell[1]] {
+			if entity == e {
+				inCell = true
+			}
+		}
+		if !inCell {
+			t.Fatal(fmt.Sprintf("%v,%v was not mapped to cell %v",
+				w.em.Components.Position[e.ID],
+				w.em.Components.Box[e.ID],
+				cell))
+		}
+	}
+
+}
+
+// testing that the spatial hash will not double-compute while one calculation
+// is already running
+func TestSpatialHashDoubleCompute(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	w := NewWorld(100, 100)
+	sh := NewSpatialHashSystem(10, 10)
+	w.AddSystems(sh)
+	// spawn a lot of entities
+	for i := 0; i < MAX_ENTITIES; i++ {
+		pos := Vec2D{100 * rand.Float64(), 100 * rand.Float64()}
+		w.em.Spawn(spatialSpawnRequestData(Vec2D{1, 1}, pos))
+	}
+	N := 512
+	// update the world numerous times at the same time
+	for i := 0; i < N; i++ {
+		go func() {
+			sh.Update(FRAME_SLEEP_MS)
+		}()
+	}
+	if sh.timesComputed.Load() == 512 {
+		t.Fatal("spatial hash did not guard against starting compute while " +
+			"already in progress")
 	}
 }
