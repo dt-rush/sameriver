@@ -34,6 +34,44 @@ func TestEntityManagerSpawn(t *testing.T) {
 	}
 }
 
+func TestEntityManagerSpawnFail(t *testing.T) {
+	w := NewWorld(1024, 1024)
+
+	for i := 0; i < MAX_ENTITIES; i++ {
+		w.em.entityTable.allocateID()
+	}
+	_, err := w.em.Spawn(simpleSpawnRequestData())
+	if err == nil {
+		t.Fatal("should have thrown error on spawnrequest when entity table full")
+	}
+}
+
+func TestEntityManagerSpawnRequest(t *testing.T) {
+	w := NewWorld(1024, 1024)
+
+	w.em.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, simpleSpawnRequestData()}
+	w.Update(FRAME_SLEEP_MS)
+	total, _ := w.em.NumEntities()
+	if total != 1 {
+		t.Fatal("should have spawned an entity after processing spawn subscription")
+	}
+}
+
+func TestEntityManagerDespawnRequest(t *testing.T) {
+	w := NewWorld(1024, 1024)
+
+	e, _ := w.em.Spawn(simpleSpawnRequestData())
+	w.em.despawnSubscription.C <- Event{
+		DESPAWNREQUEST_EVENT,
+		DespawnRequestData{Entity: e}}
+	w.Update(FRAME_SLEEP_MS)
+	total, _ := w.em.NumEntities()
+	if total != 0 {
+		t.Fatal("should have despawned an entity after processing despawn subscription")
+	}
+
+}
+
 func TestEntityManagerSpawnWithComponent(t *testing.T) {
 	w := NewWorld(1024, 1024)
 

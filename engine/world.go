@@ -123,6 +123,7 @@ func (w *World) linkSystemDependencies(s System) {
 }
 
 func (w *World) Update(dt_ms float64) {
+	w.em.Update()
 	for _, s := range w.systems {
 		s.Update(dt_ms)
 	}
