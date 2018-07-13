@@ -169,13 +169,12 @@ func (h *SpatialHashSystem) CurrentTablePointer() *SpatialHashTable {
 // get a *copy* of the current table which is safe to hold onto, mutate, etc.
 func (h *SpatialHashSystem) CurrentTableCopy() SpatialHashTable {
 	var t = h.CurrentTablePointer()
-	t2 := make([][][]*EntityToken, h.gridX)
+	t2 := make(SpatialHashTable, h.gridX)
 	for x := 0; x < h.gridX; x++ {
 		t2[x] = make([][]*EntityToken, h.gridX)
 		for y := 0; y < h.gridY; y++ {
 			t2[x][y] = make([]*EntityToken, len((*t)[x][y]))
 			copy(t2[x][y], (*t)[x][y])
-
 		}
 	}
 	return t2
@@ -187,18 +186,20 @@ func (h *SpatialHashSystem) CurrentTableCopy() SpatialHashTable {
 // lock the table it reads, and if you call Update twice, you may
 // start to write to the table as this function reads it). Usually best to call
 // on a Copy()
-func (h *SpatialHashSystem) String(table *SpatialHashTable) string {
+func (table *SpatialHashTable) String() string {
 	var buffer bytes.Buffer
+	w := len(*table)
+	h := len((*table)[0])
 	size := int(unsafe.Sizeof(*table))
 	buffer.WriteString("[\n")
-	for x := 0; x < h.gridX; x++ {
-		for y := 0; y < h.gridY; y++ {
+	for x := 0; x < w; x++ {
+		for y := 0; y < h; y++ {
 			cell := (*table)[x][y]
 			size += int(unsafe.Sizeof(&EntityToken{})) * len(cell)
 			buffer.WriteString(fmt.Sprintf(
 				"CELL(%d, %d): %.64s...", x, y,
 				fmt.Sprintf("%+v", cell)))
-			if !(y == h.gridY-1 && x == h.gridX-1) {
+			if !(y == h-1 && x == w-1) {
 				buffer.WriteString(",\n")
 			}
 		}

@@ -197,7 +197,7 @@ func (m *EntityManager) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
 	for _, entity := range m.Entities {
-		if m == nil {
+		if entity == nil {
 			continue
 		}
 		tags := m.Components.TagList[entity.ID]

@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestConstructEntityManager(t *testing.T) {
+func TestEntityManagerConstruct(t *testing.T) {
 	ev := NewEventBus()
 	em := NewEntityManager(ev)
 	if em == nil {
@@ -12,7 +12,7 @@ func TestConstructEntityManager(t *testing.T) {
 	}
 }
 
-func TestSpawn(t *testing.T) {
+func TestEntityManagerSpawn(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
 	w.em.Spawn(simpleSpawnRequestData())
@@ -32,40 +32,7 @@ func TestSpawn(t *testing.T) {
 	}
 }
 
-func TestEntityQuery(t *testing.T) {
-	w := NewWorld(1024, 1024)
-
-	req := simpleSpawnRequestData()
-	pos := req.Components.Position
-	w.em.Spawn(req)
-	w.em.Update()
-	e := w.em.Entities[0]
-	q := EntityQuery{
-		"positionQuery",
-		func(e *EntityToken, em *EntityManager) bool {
-			return w.em.Components.Position[e.ID] == *pos
-		},
-	}
-	if !q.Test(e, w.em) {
-		t.Fatal("query did not return true")
-	}
-}
-
-func TestEntityQueryFromTag(t *testing.T) {
-	w := NewWorld(1024, 1024)
-
-	req := simpleTaggedSpawnRequestData()
-	tag := req.Components.TagList.Tags[0]
-	w.em.Spawn(req)
-	w.em.Update()
-	e := w.em.Entities[0]
-	q := EntityQueryFromTag(tag)
-	if !q.Test(e, w.em) {
-		t.Fatal("query did not return true")
-	}
-}
-
-func TestEntitiesWithTagList(t *testing.T) {
+func TestEntityManagerEntitiesWithTagList(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
 	req := simpleTaggedSpawnRequestData()
@@ -79,7 +46,7 @@ func TestEntitiesWithTagList(t *testing.T) {
 	}
 }
 
-func TestEntitySpawnUnique(t *testing.T) {
+func TestEntityManagerSpawnUnique(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
 	req := simpleTaggedSpawnRequestData()
@@ -94,7 +61,7 @@ func TestEntitySpawnUnique(t *testing.T) {
 	}
 }
 
-func TestTagUntagEntity(t *testing.T) {
+func TestEntityManagerTagUntagEntity(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
 	w.em.Spawn(simpleSpawnRequestData())
@@ -114,7 +81,7 @@ func TestTagUntagEntity(t *testing.T) {
 	}
 }
 
-func TestDeactivateActivateEntity(t *testing.T) {
+func TestEntityManagerDeactivateActivateEntity(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
 	w.em.Spawn(simpleSpawnRequestData())
@@ -133,7 +100,7 @@ func TestDeactivateActivateEntity(t *testing.T) {
 	}
 }
 
-func TestGetUpdatedEntityListByName(t *testing.T) {
+func TestEntityManagerGetUpdatedEntityListByName(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
 	name := "ILoveLily"
@@ -146,4 +113,9 @@ func TestGetUpdatedEntityListByName(t *testing.T) {
 	if w.em.GetUpdatedEntityListByName(name) != list {
 		t.Fatal("GetUpdatedEntityListByName did not find list")
 	}
+}
+
+func TestEntityManagerToString(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	w.em.String()
 }

@@ -6,3 +6,4 @@ ignore:
   - "engine/logger.go"
   - "engine/math.go"
   - "engine/sdl.go"
+  - "engine/spatial_hash_table_to_string.go"

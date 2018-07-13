@@ -76,7 +76,6 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 				cell))
 		}
 	}
-
 }
 
 // testing that the spatial hash will not double-compute while one calculation
@@ -102,4 +101,25 @@ func TestSpatialHashDoubleCompute(t *testing.T) {
 		t.Fatal("spatial hash did not guard against starting compute while " +
 			"already in progress")
 	}
+}
+
+func TestSpatialHashTableCopy(t *testing.T) {
+	w := NewWorld(100, 100)
+	sh := NewSpatialHashSystem(10, 10)
+	w.AddSystems(sh)
+	w.em.Spawn(spatialSpawnRequestData(Vec2D{0, 0}, Vec2D{1, 1}))
+	w.Update(FRAME_SLEEP_MS)
+	table := sh.CurrentTablePointer()
+	tableCopy := sh.CurrentTableCopy()
+	if (*table)[0][0][0] != tableCopy[0][0][0] {
+		t.Fatal("CurrentTableCopy() doesn't return a copy")
+	}
+}
+
+func TestSpatialHashTableToString(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	sh := NewSpatialHashSystem(10, 10)
+	w.AddSystems(sh)
+	table := sh.CurrentTablePointer()
+	table.String()
 }
