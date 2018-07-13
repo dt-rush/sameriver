@@ -1,10 +1,3 @@
-/*
-  *
-  *
-  *
-  *
-**/
-
 package engine
 
 import (
@@ -16,20 +9,18 @@ import (
 )
 
 type Game struct {
+	running  bool
 	Window   *sdl.Window
 	Renderer *sdl.Renderer
 
-	currentScene                Scene
-	currentSceneEndGameLoopChan chan bool
-
-	loadingScene                Scene
-	loadingSceneEndGameLoopChan chan bool
+	loadingScene Scene
+	currentScene Scene
+	endScene     chan bool
 }
 
 func NewGame() *Game {
 	return &Game{
-		currentSceneEndGameLoopChan: make(chan bool),
-		loadingSceneEndGameLoopChan: make(chan bool),
+		endScene: make(chan bool),
 	}
 }
 
@@ -66,11 +57,14 @@ func (g *Game) InitSDL(windowSpec WindowSpec) {
 	g.Window, g.Renderer = BuildWindowAndRenderer(windowSpec)
 }
 
-func (g *Game) AsyncEnd() {
+func (g *Game) GoEndGame() {
 	Logger.Println("in Game.End()")
-	go func() {
-		g.currentSceneEndGameLoopChan <- true
-	}()
+	if g.running {
+		go func() {
+			g.running = false
+			g.endScene <- true
+		}()
+	}
 }
 
 func (g *Game) SetLoadingScene(scene Scene) {
@@ -86,13 +80,14 @@ func (g *Game) handleKeyboard(scene Scene) {
 		case *sdl.QuitEvent:
 			Logger.Printf("sdl.QuitEvent received: %v", t)
 			// notice we use a nonblocking goroutine
-			g.AsyncEnd()
+			g.GoEndGame()
 			return
 		case *sdl.KeyboardEvent:
 			keyboard_event := event.(*sdl.KeyboardEvent)
 			// if escape, exit immediately, else pass to the scene
 			if keyboard_event.Keysym.Sym == sdl.K_ESCAPE {
-				g.AsyncEnd()
+				g.GoEndGame()
+				return
 			} else {
 				scene.HandleKeyboardEvent(keyboard_event)
 			}
@@ -108,19 +103,8 @@ func (g *Game) blankScreen() {
 	g.Renderer.Clear()
 }
 
-func (g *Game) AsyncRunLoadingScene() chan bool {
-	g.loadingScene.Init(g, nil)
-	loading_scene_stopped_signal_chan := make(chan (bool))
-	go func() {
-		g.RunScene(g.loadingScene, g.loadingSceneEndGameLoopChan)
-		loading_scene_stopped_signal_chan <- true
-	}()
-	return loading_scene_stopped_signal_chan
-}
-
-func (g *Game) RunScene(scene Scene, endGameLoopChan chan bool) Scene {
+func (g *Game) RunScene(scene Scene, endScene chan bool) Scene {
 	Logger.Printf("started: %s ▷", scene.Name())
-	defer Logger.Printf("ended: %s ■", scene.Name())
 	fpsTicker := time.NewTicker(FRAME_SLEEP)
 	lastUpdate := time.Now()
 gameloop:
@@ -128,7 +112,7 @@ gameloop:
 		loopStart := time.Now()
 		// break the game loop when the end game loop channel gets a signal
 		select {
-		case _ = <-endGameLoopChan:
+		case _ = <-endScene:
 			break gameloop
 		default:
 			if scene.IsDone() {
@@ -163,23 +147,36 @@ gameloop:
 		Logger.Printf("destroying scene: %s\n", scene.Name())
 		go scene.Destroy()
 	}
+	Logger.Printf("ended: %s ■", scene.Name())
+	endScene <- true
 	return nextScene
 }
 
 func (g *Game) Run() {
-	for g.currentScene != nil {
-		loadingSceneStoppedChan := g.AsyncRunLoadingScene()
+	g.running = true
+	stopLoading := make(chan (bool))
+	for g.running {
+		if g.currentScene == nil {
+			Logger.Println("next scene is nil, ending game")
+			break
+		}
+		go func() {
+			g.loadingScene.Init(g, nil)
+			g.RunScene(g.loadingScene, stopLoading)
+			stopLoading <- true
+		}()
 		g.currentScene.Init(g, nil)
-		g.loadingSceneEndGameLoopChan <- true
-		<-loadingSceneStoppedChan
-		g.currentScene = g.RunScene(g.currentScene, g.currentSceneEndGameLoopChan)
+		stopLoading <- true
+		<-stopLoading
+		go func() {
+			g.currentScene = g.RunScene(g.currentScene, g.endScene)
+		}()
+		<-g.endScene
 	}
+	g.Destroy()
 }
 
 func (g *Game) Destroy() {
-	// free anything else that needs to be destroyed (happens once)
-	// do we even need to do this, since the whole program exits
-	// when the game does? anyways...
 	// TODO: make sure this is actually a proper and complete destroy method
 	g.Renderer.Destroy()
 	g.Window.Destroy()

@@ -37,7 +37,6 @@ func TestGameLoadingSceneGameScene(t *testing.T) {
 			Fullscreen: false},
 			&gameScene)
 		g.Run()
-		g.Destroy()
 		if !(expectedLoadingScene.initRan == loadingScene.initRan &&
 			expectedLoadingScene.updateRan == loadingScene.updateRan &&
 			expectedLoadingScene.drawRan == loadingScene.drawRan &&
@@ -46,12 +45,12 @@ func TestGameLoadingSceneGameScene(t *testing.T) {
 			expectedLoadingScene.nextSceneRan == loadingScene.nextSceneRan) {
 			t.Fatal("pattern of method calls did not match expected for loadingscene")
 		}
-		if !(expectedGameScene.initRan == loadingScene.initRan &&
-			expectedGameScene.updateRan == loadingScene.updateRan &&
-			expectedGameScene.drawRan == loadingScene.drawRan &&
-			expectedGameScene.handleKeyboardStateRan == loadingScene.handleKeyboardStateRan &&
-			expectedGameScene.handleKeyboardEventRan == loadingScene.handleKeyboardEventRan &&
-			expectedGameScene.nextSceneRan == loadingScene.nextSceneRan) {
+		if !(expectedGameScene.initRan == gameScene.initRan &&
+			expectedGameScene.updateRan == gameScene.updateRan &&
+			expectedGameScene.drawRan == gameScene.drawRan &&
+			expectedGameScene.handleKeyboardStateRan == gameScene.handleKeyboardStateRan &&
+			expectedGameScene.handleKeyboardEventRan == gameScene.handleKeyboardEventRan &&
+			expectedGameScene.nextSceneRan == gameScene.nextSceneRan) {
 			t.Fatal("pattern of method calls did not match expected for loadingscene")
 		}
 	})
