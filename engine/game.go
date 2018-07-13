@@ -3,9 +3,7 @@ package engine
 import (
 	"time"
 
-	"github.com/veandco/go-sdl2/mix"
 	"github.com/veandco/go-sdl2/sdl"
-	"github.com/veandco/go-sdl2/ttf"
 )
 
 type Game struct {
@@ -18,89 +16,48 @@ type Game struct {
 	endScene     chan bool
 }
 
-func NewGame() *Game {
-	return &Game{
-		endScene: make(chan bool),
-	}
+type GameInitSpec struct {
+	windowSpec   WindowSpec
+	loadingScene Scene
+	firstScene   Scene
 }
 
-func (g *Game) Init(windowSpec WindowSpec, firstScene Scene) {
-	g.currentScene = firstScene
-	g.InitSDL(windowSpec)
-}
-
-func (g *Game) InitSDL(windowSpec WindowSpec) {
-	Logger.Println("Starting to init SDL")
-	defer func() {
-		Logger.Println("Finished init of SDL")
-	}()
-	var err error
-	// init SDL
-	sdl.Init(sdl.INIT_EVERYTHING)
-	// init SDL TTF
-	err = ttf.Init()
-	if err != nil {
-		panic(err)
-	}
-	// init SDL Audio
-	if AUDIO_ON {
-		err = sdl.Init(sdl.INIT_AUDIO)
-		if err != nil {
-			panic(err)
+func RunGame(spec GameInitSpec) {
+	MainMediaThread(func() {
+		InitMediaLayer()
+		g := &Game{
+			loadingScene: spec.loadingScene,
+			currentScene: spec.firstScene,
+			endScene:     make(chan bool),
 		}
-		err = mix.OpenAudio(22050, mix.DEFAULT_FORMAT, 2, 4096)
-		if err != nil {
-			panic(err)
-		}
-	}
-	sdl.ShowCursor(0)
-	g.Window, g.Renderer = BuildWindowAndRenderer(windowSpec)
-}
-
-func (g *Game) GoEndGame() {
-	Logger.Println("in Game.End()")
-	if g.running {
-		go func() {
-			g.running = false
-			g.endScene <- true
-		}()
-	}
+		g.Window, g.Renderer = BuildWindowAndRenderer(spec.windowSpec)
+		g.run()
+	})
 }
 
 func (g *Game) SetLoadingScene(scene Scene) {
 	g.loadingScene = scene
 }
 
-func (g *Game) handleKeyboard(scene Scene) {
-	// poll for events
-	sdl.PumpEvents()
-	var event sdl.Event
-	for event = sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-		switch t := event.(type) {
-		case *sdl.QuitEvent:
-			Logger.Printf("sdl.QuitEvent received: %v", t)
-			// notice we use a nonblocking goroutine
-			g.GoEndGame()
-			return
-		case *sdl.KeyboardEvent:
-			keyboard_event := event.(*sdl.KeyboardEvent)
-			// if escape, exit immediately, else pass to the scene
-			if keyboard_event.Keysym.Sym == sdl.K_ESCAPE {
-				g.GoEndGame()
-				return
-			} else {
-				scene.HandleKeyboardEvent(keyboard_event)
-			}
+func (g *Game) run() {
+	g.running = true
+	stopLoading := make(chan (bool))
+	for g.running {
+		if g.currentScene == nil {
+			Logger.Println("next scene is nil, ending game")
+			break
 		}
+		go func() {
+			g.loadingScene.Init(g, nil)
+			g.RunScene(g.loadingScene, stopLoading)
+			stopLoading <- true
+		}()
+		g.currentScene.Init(g, nil)
+		stopLoading <- true
+		<-stopLoading
+		g.currentScene = g.RunScene(g.currentScene, g.endScene)
 	}
-	// pass keyboard state to scene
-	keyboard_state := sdl.GetKeyboardState()
-	scene.HandleKeyboardState(keyboard_state)
-}
-
-func (g *Game) blankScreen() {
-	g.Renderer.SetDrawColor(0, 0, 0, 255)
-	g.Renderer.Clear()
+	g.Destroy()
 }
 
 func (g *Game) RunScene(scene Scene, endScene chan bool) Scene {
@@ -151,25 +108,46 @@ gameloop:
 	return nextScene
 }
 
-func (g *Game) Run() {
-	g.running = true
-	stopLoading := make(chan (bool))
-	for g.running {
-		if g.currentScene == nil {
-			Logger.Println("next scene is nil, ending game")
-			break
+func (g *Game) blankScreen() {
+	g.Renderer.SetDrawColor(0, 0, 0, 255)
+	g.Renderer.Clear()
+}
+
+func (g *Game) handleKeyboard(scene Scene) {
+	// poll for events
+	sdl.PumpEvents()
+	var event sdl.Event
+	for event = sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+		switch t := event.(type) {
+		case *sdl.QuitEvent:
+			Logger.Printf("sdl.QuitEvent received: %v", t)
+			// notice we use a nonblocking goroutine
+			g.GoEndGame()
+			return
+		case *sdl.KeyboardEvent:
+			keyboard_event := event.(*sdl.KeyboardEvent)
+			// if escape, exit immediately, else pass to the scene
+			if keyboard_event.Keysym.Sym == sdl.K_ESCAPE {
+				g.GoEndGame()
+				return
+			} else {
+				scene.HandleKeyboardEvent(keyboard_event)
+			}
 		}
-		go func() {
-			g.loadingScene.Init(g, nil)
-			g.RunScene(g.loadingScene, stopLoading)
-			stopLoading <- true
-		}()
-		g.currentScene.Init(g, nil)
-		stopLoading <- true
-		<-stopLoading
-		g.currentScene = g.RunScene(g.currentScene, g.endScene)
 	}
-	g.Destroy()
+	// pass keyboard state to scene
+	keyboard_state := sdl.GetKeyboardState()
+	scene.HandleKeyboardState(keyboard_state)
+}
+
+func (g *Game) GoEndGame() {
+	Logger.Println("in Game.End()")
+	if g.running {
+		go func() {
+			g.running = false
+			g.endScene <- true
+		}()
+	}
 }
 
 func (g *Game) Destroy() {

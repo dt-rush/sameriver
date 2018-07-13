@@ -1,13 +1,42 @@
 package engine
 
 import (
+	"github.com/veandco/go-sdl2/mix"
 	"github.com/veandco/go-sdl2/sdl"
+	"github.com/veandco/go-sdl2/ttf"
 )
 
-/*
- * Builds and returns an SDL window and renderer object
- * for the game to use
- */
+func MainMediaThread(f func()) {
+	sdl.Main(f)
+}
+
+func InitMediaLayer() {
+	Logger.Println("Starting to init SDL")
+	defer func() {
+		Logger.Println("Finished init of SDL")
+	}()
+	var err error
+	// init SDL
+	sdl.Init(sdl.INIT_EVERYTHING)
+	// init SDL TTF
+	err = ttf.Init()
+	if err != nil {
+		panic(err)
+	}
+	// init SDL Audio
+	if AUDIO_ON {
+		err = sdl.Init(sdl.INIT_AUDIO)
+		if err != nil {
+			panic(err)
+		}
+		err = mix.OpenAudio(22050, mix.DEFAULT_FORMAT, 2, 4096)
+		if err != nil {
+			panic(err)
+		}
+	}
+	sdl.ShowCursor(0)
+}
+
 func BuildWindowAndRenderer(spec WindowSpec) (*sdl.Window, *sdl.Renderer) {
 	// create the window
 	flags := uint32(sdl.WINDOW_SHOWN)
