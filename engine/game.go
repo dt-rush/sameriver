@@ -148,7 +148,6 @@ gameloop:
 		go scene.Destroy()
 	}
 	Logger.Printf("ended: %s ■", scene.Name())
-	endScene <- true
 	return nextScene
 }
 
@@ -168,10 +167,7 @@ func (g *Game) Run() {
 		g.currentScene.Init(g, nil)
 		stopLoading <- true
 		<-stopLoading
-		go func() {
-			g.currentScene = g.RunScene(g.currentScene, g.endScene)
-		}()
-		<-g.endScene
+		g.currentScene = g.RunScene(g.currentScene, g.endScene)
 	}
 	g.Destroy()
 }
