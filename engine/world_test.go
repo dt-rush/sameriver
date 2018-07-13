@@ -29,7 +29,7 @@ func TestWorldAddDependentSystems(t *testing.T) {
 	}
 }
 
-func TestWorldUnresolvedDependency(t *testing.T) {
+func TestWorldUnresolvedSystemDependency(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 		}
@@ -65,7 +65,7 @@ func TestWorldMisnamedSystem(t *testing.T) {
 	t.Fatal("should have panic'd")
 }
 
-func TestWorldDependencyNonPointer(t *testing.T) {
+func TestWorldSystemDependencyNonPointer(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 		}
@@ -73,6 +73,18 @@ func TestWorldDependencyNonPointer(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	w.AddSystems(
 		newTestDependentNonPointerSystem(),
+	)
+	t.Fatal("should have panic'd")
+}
+
+func TestWorldSystemDependencyNonSystem(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	w := NewWorld(1024, 1024)
+	w.AddSystems(
+		newTestDependentNonSystemSystem(),
 	)
 	t.Fatal("should have panic'd")
 }
@@ -90,13 +102,14 @@ func TestWorldUpdate(t *testing.T) {
 func TestWorldActivateDeactivateLogic(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
-	w.AddLogic(LogicUnit{
-		Name:   "logic",
+	lu1 := LogicUnit{
+		Name:   "l1",
 		Active: false,
 		F:      func() { x += 1 },
-	})
+	}
+	w.AddLogic(lu1)
 	// test Activate
-	w.ActivateLogic("logic")
+	w.ActivateLogic("l1")
 	if !w.logics[0].Active {
 		t.Fatal("failed to activate logic")
 	}
@@ -106,12 +119,33 @@ func TestWorldActivateDeactivateLogic(t *testing.T) {
 	}
 	// test Deactivate
 	x = 0
-	w.DeactivateLogic("logic")
+	w.DeactivateLogic("l1")
 	if w.logics[0].Active {
 		t.Fatal("failed to deactivate logic")
 	}
 	if x != 0 {
 		t.Fatal("deactivated logic ran")
+	}
+	// test ActivateAll/DeactivateAll
+	lu2 := LogicUnit{
+		Name:   "l2",
+		Active: false,
+		F:      func() {},
+	}
+	w.AddLogic(lu2)
+	w.ActivateLogic("l1")
+	w.ActivateLogic("l2")
+	w.DeactivateAllLogic()
+	for _, l := range w.logics {
+		if l.Active {
+			t.Fatal("did not deactivate all logic")
+		}
+	}
+	w.ActivateAllLogic()
+	for _, l := range w.logics {
+		if !l.Active {
+			t.Fatal("did not activate all logic")
+		}
 	}
 }
 

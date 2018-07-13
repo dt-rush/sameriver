@@ -8,9 +8,8 @@ import (
 
 // Basically a once with a delay after which the once becomes usable again
 type RateLimiter struct {
-	once  sync.Once
-	mutex sync.RWMutex
-	delay time.Duration
+	blocked atomic.Uint32
+	delay   time.Duration
 }
 
 func NewRateLimiter(delay time.Duration) *RateLimiter {
@@ -18,15 +17,13 @@ func NewRateLimiter(delay time.Duration) *RateLimiter {
 }
 
 func (r *RateLimiter) Do(f func()) {
-	r.mutex.RLock()
-	r.once.Do(f)
-	r.mutex.RUnlock()
-
-	time.Sleep(r.delay)
-
-	r.mutex.Lock()
-	r.once = sync.Once{}
-	r.mutex.Unlock()
+	if r.blocked.CAS(0, 1) {
+		f()
+		go func() {
+			time.Sleep(r.delay)
+			r.blocked.Store(0)
+		}()
+	}
 }
 
 // Like the above, but it can be reset while sleeping

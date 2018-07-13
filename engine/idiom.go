@@ -59,23 +59,6 @@ func removeStringFromSlice(slice *[]string, x string) {
 	}
 }
 
-func removeEntityQueryWatcherFromSliceByID(
-	slice *[]EntityQueryWatcher, ID int) {
-
-	last_ix := len(*slice) - 1
-	for i, v := range *slice {
-		if v.ID == ID {
-			(*slice)[i] = (*slice)[last_ix]
-			// set the last element (which we will then cut off the end)
-			// to the zero value, so that we don't leave any pointer members
-			// still sitting there in the shadow of the slice backing array
-			(*slice)[last_ix] = EntityQueryWatcher{}
-			*slice = (*slice)[:last_ix]
-			break
-		}
-	}
-}
-
 func removeEventChannelFromSlice(slice *[]*EventChannel, x *EventChannel) {
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {

@@ -1,18 +1,7 @@
-/*
- * Methods needed to treat a slice of *EntityTokens as a sorted slice of
- * *EntityTokens using code derived from the go runtime's implementation of
- * binary search for sort.Search, specialized for *EntityTokens
- *
- * This is used by the collision system, as provided to it by
- * EntityManager.GetSortedUpdatedEntityList, which returns a
- * SortedUpdatedEntityList, so that the collision entity ID's are always
- * in sorted order, which is needed for the triangle-packed array used there
- */
-
 package engine
 
 // Returns the index to insert x at (could be len(a) if it would be new max)
-func SortedEntityTokenSliceSearch(s []*EntityToken, x *EntityToken) int {
+func SortedIntSliceSearch(s []int, x int) int {
 	n := len(s)
 	// Define f(-1) == false and f(n) == true.
 	// Invariant: f(i-1) == false, f(j) == true.
@@ -21,7 +10,7 @@ func SortedEntityTokenSliceSearch(s []*EntityToken, x *EntityToken) int {
 	for i < j {
 		h := int(uint(i+j) >> 1) // avoid overflow when computing h
 		// i ≤ h < j
-		if s[h].ID < x.ID { // i <3 u
+		if s[h] < x { // i <3 u
 			i = h + 1 // preserves f(i-1) == false
 		} else {
 			j = h // preserves f(j) == true
@@ -31,12 +20,9 @@ func SortedEntityTokenSliceSearch(s []*EntityToken, x *EntityToken) int {
 	return i
 }
 
-func SortedEntityTokenSliceInsertIfNotPresent(
-	s *[]*EntityToken, x *EntityToken) bool {
-
-	i := SortedEntityTokenSliceSearch(*s, x)
+func SortedIntSliceInsertIfNotPresent(s *[]int, x int) bool {
+	i := SortedIntSliceSearch(*s, x)
 	// put the element at the end of the array
-	*s = append(*s, nil)
 	// if the insertion point was not the end,
 	if i != len(*s) {
 		// and the element is already there
@@ -46,16 +32,19 @@ func SortedEntityTokenSliceInsertIfNotPresent(
 			return false
 		} else {
 			// else shift everything up and place the entity in its proper
-			// position (the appended copy was overwritten by the shift)
+			// position (the 0 gets overwritten by the shift)
+			*s = append(*s, 0)
 			copy((*s)[i+1:], (*s)[i:])
 			(*s)[i] = x
 		}
+	} else {
+		*s = append(*s, x)
 	}
 	return true
 }
 
-func SortedEntityTokenSliceRemove(s *[]*EntityToken, x *EntityToken) {
-	i := SortedEntityTokenSliceSearch(*s, x)
+func SortedIntSliceRemove(s *[]int, x int) {
+	i := SortedIntSliceSearch(*s, x)
 	found := (i != len(*s) && (*s)[i] == x)
 	if found {
 		*s = append((*s)[:i], (*s)[i+1:]...)

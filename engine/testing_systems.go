@@ -54,3 +54,14 @@ func newTestDependentNonPointerSystem() *testDependentNonPointerSystem {
 }
 func (s *testDependentNonPointerSystem) LinkWorld(w *World)   {}
 func (s *testDependentNonPointerSystem) Update(dt_ms float64) {}
+
+// a system (misconfig) which is dependent on a non-System
+type testDependentNonSystemSystem struct {
+	ts *EntityManager `sameriver-system-dependency:"-"`
+}
+
+func newTestDependentNonSystemSystem() *testDependentNonSystemSystem {
+	return &testDependentNonSystemSystem{}
+}
+func (s *testDependentNonSystemSystem) LinkWorld(w *World)   {}
+func (s *testDependentNonSystemSystem) Update(dt_ms float64) {}

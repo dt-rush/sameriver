@@ -21,8 +21,7 @@ type EntityManager struct {
 	// entities which have been tagged uniquely
 	uniqueEntities map[string]*EntityToken
 	// ActiveEntityListCollection is used by GetUpdatedEntityList to
-	// store EntityQueryWatchers and references to UpdatedEntityLists used
-	// to implement GetUpdatedEntityList
+	// store references to existing UpdatedEntityLists (by name)
 	activeEntityLists *ActiveEntityListCollection
 	// used to communicate with other systems
 	eventBus *EventBus

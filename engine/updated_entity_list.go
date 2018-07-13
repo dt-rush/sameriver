@@ -1,5 +1,5 @@
 // a list of entities which have active = true, which receives updates to its
-// contents by an EntityQueryWatcher
+// contents via the Signal() method
 package engine
 
 import (
@@ -7,6 +7,19 @@ import (
 	"fmt"
 	"math/rand"
 )
+
+// used to communicate insert / remove events
+type EntitySignalType int
+
+const (
+	ENTITY_ADD    = iota
+	ENTITY_REMOVE = iota
+)
+
+type EntitySignal struct {
+	SignalType EntitySignalType
+	Entity     *EntityToken
+}
 
 type UpdatedEntityList struct {
 	// the entities in the list (tagged with gen)

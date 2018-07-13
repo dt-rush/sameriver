@@ -3,13 +3,11 @@ package engine
 import (
 	"errors"
 	"fmt"
-	"time"
 )
 
-// process the spawn requests in the channel buffer
+// get the current number of requests in the channel and only process
+// them. More may continue to pile up. They'll get processed next time.
 func (m *EntityManager) processSpawnChannel() {
-	// get the current number of requests in the channel and only process
-	// them. More may continue to pile up. They'll get processed next time.
 	m.spawnMutex.Lock()
 	defer m.spawnMutex.Unlock()
 
@@ -19,10 +17,7 @@ func (m *EntityManager) processSpawnChannel() {
 		e := <-m.spawnSubscription.C
 		_, err := m.Spawn(e.Data.(SpawnRequestData))
 		if err != nil {
-			go func() {
-				time.Sleep(5 * time.Second)
-				m.eventBus.Publish(SPAWNREQUEST_EVENT, e.Data)
-			}()
+			Logger.Println(err)
 		}
 	}
 }
@@ -66,11 +61,15 @@ func (m *EntityManager) spawn(r SpawnRequestData, uniqueTag string) (
 	}
 	// add the entity to the list of current entities
 	m.Entities[entity.ID] = entity
+	// "if not present" here is superfluous, since the lgoic of ID allocation
+	// during spawn/despawn means that the entity cannot be present in the list
+	// of current entities if allocateID() didn't return an error
+	SortedEntityTokenSliceInsertIfNotPresent(&m.entityTable.currentEntities, entity)
 	// print a debug message
 	// set the bitarray for this entity
 	entity.ComponentBitArray = r.Components.ToBitArray()
 	// copy the data inNto the component storage for each component
-	// (note: we dereference the pointers, this is a real copy, so it's good
+	// (note: we dereference the pointers, this is copy operation, so it's good
 	// that component values are either small pieces of data like [2]uint16
 	// or a pointer to a func, etc.).
 	// We don't "zero" the values of components not in the entity's set,

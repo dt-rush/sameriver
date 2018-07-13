@@ -44,6 +44,8 @@ func TestEntityManagerSpawnFail(t *testing.T) {
 	if err == nil {
 		t.Fatal("should have thrown error on spawnrequest when entity table full")
 	}
+	w.em.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, simpleSpawnRequestData()}
+	w.em.Update()
 }
 
 func TestEntityManagerSpawnRequest(t *testing.T) {
@@ -69,7 +71,27 @@ func TestEntityManagerDespawnRequest(t *testing.T) {
 	if total != 0 {
 		t.Fatal("should have despawned an entity after processing despawn subscription")
 	}
+}
 
+func TestEntityManagerDespawnAll(t *testing.T) {
+	w := NewWorld(1024, 1024)
+
+	for i := 0; i < 64; i++ {
+		w.em.Spawn(simpleSpawnRequestData())
+	}
+	w.em.spawnSubscription.C <- Event{}
+	w.em.despawnSubscription.C <- Event{}
+	w.em.DespawnAll()
+	total, _ := w.em.NumEntities()
+	if total != 0 {
+		t.Fatal("did not despawn all entities")
+	}
+	if len(w.em.spawnSubscription.C) != 0 {
+		t.Fatal("did not drain spawnSubscription channel")
+	}
+	if len(w.em.despawnSubscription.C) != 0 {
+		t.Fatal("did not drain despawnSubscription channel")
+	}
 }
 
 func TestEntityManagerSpawnWithComponent(t *testing.T) {
