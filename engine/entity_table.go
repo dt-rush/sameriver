@@ -8,9 +8,13 @@ import (
 // used by the EntityManager to hold info about the allocated entities
 type EntityTable struct {
 	// how many entities there are
-	numEntities int
+	n int
+	// how many entities are active
+	active int
 	// list of Entities which have been allocated
 	currentEntities []*EntityToken
+	// isAllocated is maintained for quick deallocate guard lookups
+	isAllocated [MAX_ENTITIES]bool
 	// list of available entity ID's which have previously been deallocated
 	availableIDs []int
 }
@@ -21,7 +25,7 @@ type EntityTable struct {
 // to spawn entities
 func (t *EntityTable) allocateID() (*EntityToken, error) {
 	// if maximum entity count reached, fail with message
-	if t.numEntities == MAX_ENTITIES {
+	if t.n == MAX_ENTITIES {
 		msg := fmt.Sprintf("Reached max entity count: %d. "+
 			"Will not allocate ID.", MAX_ENTITIES)
 		Logger.Println(msg)
@@ -30,24 +34,28 @@ func (t *EntityTable) allocateID() (*EntityToken, error) {
 	// if there is a deallocated entity somewhere in the table before the
 	// highest ID, return that ID to the caller
 	n_avail := len(t.availableIDs)
-	var id int
+	var ID int
 	if n_avail > 0 {
 		// there is an ID available for a previously deallocated entity.
 		// pop it from the list and continue with that as the ID
-		id = t.availableIDs[n_avail-1]
+		ID = t.availableIDs[n_avail-1]
 		t.availableIDs = t.availableIDs[:n_avail-1]
 	} else {
 		// every slot in the table before the highest ID is filled
-		id = t.numEntities
+		ID = t.n
 	}
+	t.isAllocated[ID] = true
 	// Increment the entity count
-	t.numEntities++
+	t.n++
 	// return the token
-	entity := EntityToken{ID: id, Active: false, Despawned: false}
+	entity := EntityToken{ID: ID, Active: false, Despawned: false}
 	return &entity, nil
 }
 
 func (t *EntityTable) deallocateID(ID int) {
-	t.numEntities--
-	t.availableIDs = append(t.availableIDs, ID)
+	// guards against false deallocation (edge case, but hey)
+	if t.isAllocated[ID] {
+		t.n--
+		t.availableIDs = append(t.availableIDs, ID)
+	}
 }

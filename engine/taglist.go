@@ -1,30 +1,41 @@
 package engine
 
 type TagList struct {
-	Tags []string
+	Tags map[string]bool
 }
 
-func (l *TagList) Has(tag string) bool {
-	for _, t := range l.Tags {
-		if t == tag {
-			return true
-		}
+func (l *TagList) Has(tags ...string) bool {
+	ok := true
+	for _, tag := range tags {
+		_, has := l.Tags[tag]
+		ok = ok && has
 	}
-	return false
+	return ok
 }
 
-// TODO: ensure idempotent
 func (l *TagList) Add(tag string) {
-	l.Tags = append(l.Tags, tag)
+	if l.Tags == nil {
+		l.Tags = make(map[string]bool, 1)
+	}
+	l.Tags[tag] = true
 }
 
-// TODO: ensure idempotent
 func (l *TagList) Remove(tag string) {
-	removeStringFromSlice(&l.Tags, tag)
+	delete(l.Tags, tag)
 }
 
 func (l *TagList) Copy() *TagList {
-	tagsCopy := make([]string, len(l.Tags))
-	copy(tagsCopy, l.Tags)
+	tagsCopy := make(map[string]bool, len(l.Tags))
+	for tag, _ := range l.Tags {
+		tagsCopy[tag] = true
+	}
 	return &TagList{Tags: tagsCopy}
+}
+
+func (l *TagList) ToSlice() []string {
+	slice := make([]string, 0, len(l.Tags))
+	for tag, _ := range l.Tags {
+		slice = append(slice, tag)
+	}
+	return slice
 }

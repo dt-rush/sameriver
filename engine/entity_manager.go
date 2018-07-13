@@ -72,6 +72,11 @@ func (m *EntityManager) Deactivate(entity *EntityToken) {
 func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
 	// only act if the state is different to that which exists
 	if entity.Active != state {
+		if state {
+			m.entityTable.active++
+		} else {
+			m.entityTable.active--
+		}
 		// start / stop logic accordingly
 		m.Components.Logic[entity.ID].Active = state
 		// set active state
@@ -137,14 +142,18 @@ func (m *EntityManager) EntityHasComponent(
 	return b
 }
 
-// apply the given tag to the given entity
-func (m *EntityManager) TagEntity(entity *EntityToken, tag string) {
-	// add the tag to the taglist component
-	m.Components.TagList[entity.ID].Add(tag)
-	// if the entity is active, it has already been checked by all lists,
-	// thus generate a new signal to add it to the list of the tag
+// apply the given tags to the given entity
+func (m *EntityManager) TagEntity(entity *EntityToken, tags ...string) {
+	if !m.EntityHasComponent(entity, TAGLIST_COMPONENT) {
+		entity.ComponentBitArray.SetBit(TAGLIST_COMPONENT)
+	}
+	for _, tag := range tags {
+		m.Components.TagList[entity.ID].Add(tag)
+		if entity.Active {
+			m.createEntitiesWithTagListIfNeeded(tag)
+		}
+	}
 	if entity.Active {
-		m.createEntitiesWithTagListIfNeeded(tag)
 		m.activeEntityLists.checkActiveEntity(entity)
 	}
 }
@@ -158,7 +167,8 @@ func (m *EntityManager) TagEntities(entities []*EntityToken, tag string) {
 
 // Remove a tag from an entity
 func (m *EntityManager) UntagEntity(entity *EntityToken, tag string) {
-	m.Components.TagList[entity.ID].Remove(tag)
+	list := m.Components.TagList[entity.ID]
+	list.Remove(tag)
 	m.activeEntityLists.checkActiveEntity(entity)
 }
 
@@ -170,15 +180,15 @@ func (m *EntityManager) UntagEntities(entities []*EntityToken, tag string) {
 }
 
 // Get the number of allocated entities (not number of active, mind you)
-func (m *EntityManager) NumEntities() int {
-	return m.entityTable.numEntities
+func (m *EntityManager) NumEntities() (total int, active int) {
+	return m.entityTable.n, m.entityTable.active
 }
 
 // Returns the Entities field, copied. Notice that this is of size MAX_ENTITIES
 // and can have many nil elements, so the caller must checka and discard
 // nil elements as they iterate
 func (m *EntityManager) GetCurrentEntities() []*EntityToken {
-	entities := make([]*EntityToken, 0, m.entityTable.numEntities)
+	entities := make([]*EntityToken, 0, m.entityTable.n)
 	for _, e := range m.Entities {
 		if e != nil {
 			entities = append(entities, e)
@@ -187,10 +197,15 @@ func (m *EntityManager) GetCurrentEntities() []*EntityToken {
 	return entities
 }
 
+func (m *EntityManager) String() string {
+	return fmt.Sprintf("EntityManager[ %d / %d active ]\n",
+		m.entityTable.n, m.entityTable.active)
+}
+
 // Somewhat expensive conversion of entire entity list to string, locking
 // spawn/despawn from occurring while we read the entities (best to use for
 // debugging, very ocassional diagnostic output)
-func (m *EntityManager) String() string {
+func (m *EntityManager) Dump() string {
 	m.spawnMutex.Lock()
 	defer m.spawnMutex.Unlock()
 

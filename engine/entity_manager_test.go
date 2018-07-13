@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"regexp"
 	"testing"
 )
 
@@ -16,7 +17,8 @@ func TestEntityManagerSpawn(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
 	w.em.Spawn(simpleSpawnRequestData())
-	if w.em.NumEntities() == 0 {
+	total, _ := w.em.NumEntities()
+	if total == 0 {
 		t.Fatal("failed to Spawn simple Spawn request entity")
 	}
 	e := w.em.Entities[0]
@@ -32,16 +34,28 @@ func TestEntityManagerSpawn(t *testing.T) {
 	}
 }
 
+func TestEntityManagerSpawnWithComponent(t *testing.T) {
+	w := NewWorld(1024, 1024)
+
+	pos := Vec2D{11, 11}
+	e, _ := w.em.Spawn(positionSpawnRequestData(pos))
+	if w.em.Components.Position[e.ID] != pos {
+		t.Fatal("failed to apply component data")
+	}
+	if !w.em.EntityHasComponent(e, POSITION_COMPONENT) {
+		t.Fatal("failed to set entity component bit array")
+	}
+}
+
 func TestEntityManagerEntitiesWithTagList(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
-	req := simpleTaggedSpawnRequestData()
-	tag := req.Components.TagList.Tags[0]
+	tag := "tag1"
+	req := simpleTaggedSpawnRequestData(tag)
 	w.em.Spawn(req)
 	w.em.Update()
 	tagged := w.em.EntitiesWithTag(tag)
-	empty := tagged.Length() == 0
-	if empty {
+	if tagged.Length() == 0 {
 		t.Fatal("failed to find Spawned entity in EntitiesWithTag")
 	}
 }
@@ -49,13 +63,22 @@ func TestEntityManagerEntitiesWithTagList(t *testing.T) {
 func TestEntityManagerSpawnUnique(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
-	req := simpleTaggedSpawnRequestData()
-	_, err := w.em.SpawnUnique("the chosen one", req)
+	tag := "the chosen one"
+	e, err := w.em.UniqueTaggedEntity(tag)
+	if !(e == nil && err != nil) {
+		t.Fatal("should return err if unique entity not found")
+	}
+	req := simpleSpawnRequestData()
+	_, err = w.em.SpawnUnique(tag, req)
 	if err != nil {
 		t.Fatal("failed to Spawn FIRST unique entity")
 	}
+	e, err = w.em.UniqueTaggedEntity(tag)
+	if !(e != nil && err == nil) {
+		t.Fatal("did not return unique entity")
+	}
 	w.em.Update()
-	_, err = w.em.SpawnUnique("the chosen one", req)
+	_, err = w.em.SpawnUnique(tag, req)
 	if err == nil {
 		t.Fatal("should not have been allowed to Spawn second unique entity")
 	}
@@ -81,6 +104,25 @@ func TestEntityManagerTagUntagEntity(t *testing.T) {
 	}
 }
 
+func TestEntityManagerTagUntagEntities(t *testing.T) {
+	w := NewWorld(1024, 1024)
+
+	w.em.Spawn(simpleSpawnRequestData())
+	w.em.Spawn(simpleSpawnRequestData())
+	w.em.Spawn(simpleSpawnRequestData())
+	w.em.Update()
+	tag := "tag1"
+	w.em.TagEntities(w.em.GetCurrentEntities(), tag)
+	tagged := w.em.EntitiesWithTag(tag)
+	if tagged.Length() != 3 {
+		t.Fatal("failed to tag all entities")
+	}
+	w.em.UntagEntities(w.em.GetCurrentEntities(), tag)
+	if tagged.Length() != 0 {
+		t.Fatal("failed to untag all entities")
+	}
+}
+
 func TestEntityManagerDeactivateActivateEntity(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
@@ -94,16 +136,26 @@ func TestEntityManagerDeactivateActivateEntity(t *testing.T) {
 	if tagged.Length() != 0 {
 		t.Fatal("entity was not removed from list after Deactivate()")
 	}
+	_, active := w.em.NumEntities()
+	if active != 0 {
+		t.Fatal("didn't update active count")
+	}
 	w.em.Activate(e)
-	if tagged.Length() == 0 {
+	if tagged.Length() != 1 {
 		t.Fatal("entity was not reinserted to list after Activate()")
+	}
+	_, active = w.em.NumEntities()
+	if active != 1 {
+		t.Fatal("didn't update active count")
 	}
 }
 
 func TestEntityManagerGetUpdatedEntityListByName(t *testing.T) {
 	w := NewWorld(1024, 1024)
-
 	name := "ILoveLily"
+	if w.em.GetUpdatedEntityListByName(name) != nil {
+		t.Fatal("should return nil if not found")
+	}
 	query := EntityQuery{
 		Name: name,
 		TestFunc: func(entity *EntityToken, em *EntityManager) bool {
@@ -115,7 +167,20 @@ func TestEntityManagerGetUpdatedEntityListByName(t *testing.T) {
 	}
 }
 
-func TestEntityManagerToString(t *testing.T) {
+func TestEntityManagerString(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	w.em.String()
+}
+
+func TestEntityManagerDump(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	w.em.Spawn(simpleSpawnRequestData())
+	w.em.Update()
+	e := w.em.Entities[0]
+	tag := "tag1"
+	w.em.TagEntity(e, tag)
+	s := w.em.Dump()
+	if ok, _ := regexp.MatchString("tag", s); !ok {
+		t.Fatal("tag data for each entity wasn't produced in EntityManager.Dump()")
+	}
 }

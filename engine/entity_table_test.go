@@ -8,8 +8,20 @@ func TestEntityTableAllocateID(t *testing.T) {
 	et := EntityTable{}
 	_, err := et.allocateID()
 	if !(err == nil &&
-		et.numEntities == 1) {
+		et.n == 1) {
 		t.Fatal("didn't allocate ID properly")
+	}
+}
+
+func TestEntityTableDeallocateID(t *testing.T) {
+	et := EntityTable{}
+	e, _ := et.allocateID()
+	et.deallocateID(e.ID)
+	if et.n != 0 {
+		t.Fatal("didn't update allocated count")
+	}
+	if !(len(et.availableIDs) == 1 && et.availableIDs[0] == e.ID) {
+		t.Fatal("didn't add deallocated ID to list of available IDs")
 	}
 }
 

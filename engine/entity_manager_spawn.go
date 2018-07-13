@@ -61,7 +61,7 @@ func (m *EntityManager) spawn(r SpawnRequestData, uniqueTag string) (
 	entity, err := m.entityTable.allocateID()
 	if err != nil {
 		errorMsg := fmt.Sprintf("⚠ Error in allocateID(): %s. Will not spawn "+
-			"entity with tags: %v\n", err, r.Components.TagList.Tags)
+			"entity with tags: %v\n", err, r.Tags)
 		return fail(errorMsg)
 	}
 	// add the entity to the list of current entities
@@ -82,11 +82,7 @@ func (m *EntityManager) spawn(r SpawnRequestData, uniqueTag string) (
 	// AtomicEntityModify pattern
 	m.ApplyComponentSet(r.Components)(entity)
 	// create (if doesn't exist) entitiesWithTag lists for each tag
-	if r.Components.TagList != nil {
-		for _, tag := range r.Components.TagList.Tags {
-			m.createEntitiesWithTagListIfNeeded(tag)
-		}
-	}
+	m.TagEntity(entity, r.Tags...)
 	// apply the unique tag if provided
 	if uniqueTag != "" {
 		m.createEntitiesWithTagListIfNeeded(uniqueTag)

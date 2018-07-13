@@ -2,8 +2,14 @@ package engine
 
 func simpleSpawnRequestData() SpawnRequestData {
 	return SpawnRequestData{
+		Components: ComponentSet{},
+	}
+}
+
+func positionSpawnRequestData(pos Vec2D) SpawnRequestData {
+	return SpawnRequestData{
 		Components: ComponentSet{
-			Position: &Vec2D{0, 0},
+			Position: &pos,
 		},
 	}
 }
@@ -17,12 +23,12 @@ func spatialSpawnRequestData(pos Vec2D, box Vec2D) SpawnRequestData {
 	}
 }
 
-func simpleTaggedSpawnRequestData() SpawnRequestData {
+func simpleTaggedSpawnRequestData(tag string) SpawnRequestData {
 	return SpawnRequestData{
 		Components: ComponentSet{
 			Position: &Vec2D{0, 0},
-			TagList:  &TagList{Tags: []string{"tag1"}},
 		},
+		Tags: []string{tag},
 	}
 }
 
