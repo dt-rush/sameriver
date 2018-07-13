@@ -63,8 +63,8 @@ func (ev *EventBus) notifySubscribers(e Event) {
 		// either the channel receiver is not right, or there's a
 		// problem with the rate of events sent over the channel)
 		if len(c.C) == EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
-			Logger.Printf("⚠ event subscriber channel #%d for %s is full\n",
-				c.Name)
+			Logger.Printf("⚠ event subscriber channel #%s for events of "+
+				"type %s is full\n", c.Name, EVENT_NAMES[e.Type])
 		}
 		if c.Query.Test(e) {
 			c.Send(e)
