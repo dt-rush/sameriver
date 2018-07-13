@@ -52,7 +52,7 @@ func (ev *EventBus) notifySubscribers(e Event) {
 
 	// TODO: generate a means of printing events and create a special
 	// system which listens on *all* events, printing them
-	// eventsDebug("⚹: %s\n", e.Description)
+	eventsLog("⚹: %s\n", EVENT_NAMES[e.Type])
 
 	for _, c := range ev.subscriberList.channels[e.Type] {
 		if !c.IsActive() {
@@ -63,7 +63,7 @@ func (ev *EventBus) notifySubscribers(e Event) {
 		// either the channel receiver is not right, or there's a
 		// problem with the rate of events sent over the channel)
 		if len(c.C) == EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
-			eventsDebug("⚠ subscriber channel #%d for %s is full\n",
+			Logger.Printf("⚠ event subscriber channel #%d for %s is full\n",
 				c.Name)
 		}
 		if c.Query.Test(e) {
