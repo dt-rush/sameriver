@@ -29,6 +29,54 @@ func TestWorldAddDependentSystems(t *testing.T) {
 	}
 }
 
+func TestWorldUnresolvedDependency(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	w := NewWorld(1024, 1024)
+	w.AddSystems(
+		newTestDependentSystem(),
+	)
+	t.Fatal("should have panic'd")
+}
+
+func TestWorldNonPointerReceiverSystem(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	w := NewWorld(1024, 1024)
+	w.AddSystems(
+		newTestNonPointerReceiverSystem(),
+	)
+	t.Fatal("should have panic'd")
+}
+
+func TestWorldMisnamedSystem(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	w := NewWorld(1024, 1024)
+	w.AddSystems(
+		newTestSystemThatIsMisnamed(),
+	)
+	t.Fatal("should have panic'd")
+}
+
+func TestWorldDependencyNonPointer(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	w := NewWorld(1024, 1024)
+	w.AddSystems(
+		newTestDependentNonPointerSystem(),
+	)
+	t.Fatal("should have panic'd")
+}
+
 func TestWorldUpdate(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	ts := newTestSystem()

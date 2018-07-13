@@ -44,8 +44,21 @@ func (w *World) AddSystems(systems ...System) {
 }
 
 func (w *World) addSystem(s System) {
+	w.assertSystemTypeValid(reflect.TypeOf(s))
 	w.systems = append(w.systems, s)
 	s.LinkWorld(w)
+}
+
+func (w *World) assertSystemTypeValid(t reflect.Type) {
+	if t.Kind() != reflect.Ptr {
+		panic("Implementers of engine.System must be pointer-receivers")
+	}
+	typeName := t.Elem().Name()
+	validName, _ := regexp.MatchString(".+System$", typeName)
+	if !validName {
+		panic(fmt.Sprintf("implementers of System must have a name "+
+			"matching regexp .+System$. %s did not", typeName))
+	}
 }
 
 func (w *World) linkSystemDependencies(s System) {
@@ -55,34 +68,18 @@ func (w *World) linkSystemDependencies(s System) {
 	// field and assign it as a pointer, cast to the expected type,
 	// to that field
 	//
-	// if TypeOf yields *CollisionSystem
-	if reflect.TypeOf(s).Kind() != reflect.Ptr {
-		panic("Implementers of engine.System must be pointer-receivers")
-	}
+	// sType is going to be something like *CollisionSystem
 	sType := reflect.TypeOf(s).Elem()
+	// get a type to represent the System interface (to ensure dependencies
+	// are to implementers of System)
 	systemInterface := reflect.TypeOf((*System)(nil)).Elem()
 	for i := 0; i < sType.NumField(); i++ {
 		// for each field of the struct
 		// f would be something like sh *SpatialHashSystem, possibly with a tag
 		f := sType.Field(i)
 		if f.Tag.Get("sameriver-system-dependency") != "" {
-			// check conditions for struct field
-			isPointer := f.Type.Kind() == reflect.Ptr
-			if !isPointer {
-				panic(fmt.Sprintf("fields tagged sameriver-system-dependency "+
-					"must be to pointer types "+
-					"(field %s %v of %s did not pass this requirement)",
-					f.Name, f.Type, sType.Name()))
-			}
-			// typeName is something like SpatialHashSystem
-			typeName := f.Type.Elem().Name()
-			validName, _ := regexp.MatchString(".+System", typeName)
-			if !validName {
-				panic(fmt.Sprintf("fields tagged sameriver-system-dependency "+
-					"must match regexp \".+System\" "+
-					"(field %s %v of %s did not pass this requirement)",
-					f.Name, f.Type, sType.Name()))
-			}
+			// check that tagged field implements System and is a valid System
+			// implemented
 			isSystem := f.Type.Implements(systemInterface)
 			if !isSystem {
 				panic(fmt.Sprintf("fields tagged sameriver-system-dependency "+
@@ -90,6 +87,7 @@ func (w *World) linkSystemDependencies(s System) {
 					"(field %s %v of %s did not pass this requirement",
 					f.Name, f.Type, sType.Name()))
 			}
+			w.assertSystemTypeValid(f.Type)
 			// iterate through the other systems and find one whose type matches
 			// the field's type
 			var foundSystem System
