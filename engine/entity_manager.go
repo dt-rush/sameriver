@@ -27,9 +27,9 @@ type EntityManager struct {
 	// used to communicate with other systems
 	eventBus *EventBus
 	// Channel for spawn entity requests (processed as a batch each Update())
-	spawnSubscription EventChannel
+	spawnSubscription *EventChannel
 	// Channel for despawn entity requests (processed as a batch each Update())
-	despawnSubscription EventChannel
+	despawnSubscription *EventChannel
 	// spawnMutex prevents despawn / spawn events from occurring while we
 	// convert the entire EntityManager to string (expensive!)
 	spawnMutex sync.Mutex

@@ -46,3 +46,8 @@ func (t *EntityTable) allocateID() (*EntityToken, error) {
 	entity := EntityToken{ID: id, Active: false, Despawned: false}
 	return &entity, nil
 }
+
+func (t *EntityTable) deallocateID(ID int) {
+	t.numEntities--
+	t.availableIDs = append(t.availableIDs, ID)
+}

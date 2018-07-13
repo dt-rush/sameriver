@@ -43,8 +43,7 @@ func (m *EntityManager) DespawnAll() {
 // (frees the ID and deactivates the entity)
 func (m *EntityManager) Despawn(entity *EntityToken) {
 	entity.Despawned = true
-	m.entityTable.numEntities--
-	m.entityTable.availableIDs = append(m.entityTable.availableIDs, entity.ID)
+	m.entityTable.deallocateID(entity.ID)
 	m.Entities[entity.ID] = nil
 	m.setActiveState(entity, false)
 }

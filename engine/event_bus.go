@@ -13,7 +13,7 @@ type SubscriberList struct {
 	// Each EventQuery's Predicate will be tested against the events
 	// that are published for the matching type (and thus the predicates
 	// can safely assert the type of the Data member of the event)
-	channels [N_EVENT_TYPES][]EventChannel
+	channels [N_EVENT_TYPES][]*EventChannel
 }
 
 type EventBus struct {
@@ -31,7 +31,7 @@ func (ev *EventBus) Publish(Type EventType, Data interface{}) {
 
 // Subscribe to listen for game events defined by a query
 func (ev *EventBus) Subscribe(
-	name string, q EventQuery) EventChannel {
+	name string, q *EventQuery) *EventChannel {
 
 	// Create a channel to return to the user
 	c := NewEventChannel(name, q)
@@ -43,7 +43,7 @@ func (ev *EventBus) Subscribe(
 }
 
 // Remove a subscriber
-func (ev *EventBus) Unsubscribe(c EventChannel) {
+func (ev *EventBus) Unsubscribe(c *EventChannel) {
 	removeEventChannelFromSlice(&ev.subscriberList.channels[c.Query.Type], c)
 }
 

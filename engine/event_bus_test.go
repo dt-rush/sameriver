@@ -28,6 +28,21 @@ func TestSimpleEventQueryMatching(t *testing.T) {
 	}
 }
 
+func TestDeactivatedSubscriber(t *testing.T) {
+	ev := NewEventBus()
+	ec := ev.Subscribe(
+		"SimpleCollisionQuery",
+		NewSimpleEventQuery(COLLISION_EVENT))
+	ec.Deactivate()
+	ev.Publish(COLLISION_EVENT, nil)
+	time.Sleep(FRAME_SLEEP)
+	select {
+	case _ = <-ec.C:
+		t.Fatal("event was received on deactivated EventChannel")
+	default:
+	}
+}
+
 func TestSimpleEventQueryNonMatching(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(

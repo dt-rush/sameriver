@@ -23,3 +23,18 @@ func TestEntityTableAllocateMaxIDs(t *testing.T) {
 		t.Fatal("should have returned error on allocating > MAX_ENTITIES")
 	}
 }
+
+func TestEntityTableReallocateDeallocatedID(t *testing.T) {
+	et := EntityTable{}
+	for i := 0; i < MAX_ENTITIES; i++ {
+		et.allocateID()
+	}
+	et.deallocateID(MAX_ENTITIES / 2)
+	e, err := et.allocateID()
+	if err != nil {
+		t.Fatal("should have had space after deallocate to allocate")
+	}
+	if e.ID != MAX_ENTITIES/2 {
+		t.Fatal("should have used deallocated ID to serve new allocate request")
+	}
+}
