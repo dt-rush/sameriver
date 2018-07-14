@@ -49,8 +49,8 @@ func TestCollisionRateLimit(t *testing.T) {
 	ec := w.ev.Subscribe(
 		"SimpleCollisionQuery",
 		NewSimpleEventQuery(COLLISION_EVENT))
-	e, _ := w.em.Spawn(collisionSpawnRequestData())
 	w.em.Spawn(collisionSpawnRequestData())
+	e, _ := w.em.Spawn(collisionSpawnRequestData())
 	w.em.Update()
 	w.Update(FRAME_SLEEP_MS)
 	w.Update(FRAME_SLEEP_MS)
@@ -65,5 +65,4 @@ func TestCollisionRateLimit(t *testing.T) {
 	if len(ec.C) != 2 {
 		t.Fatal("collision rate-limiter reset did not allow second collision")
 	}
-
 }

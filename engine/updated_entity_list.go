@@ -3,6 +3,7 @@
 package engine
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -131,5 +132,14 @@ func (l *UpdatedEntityList) RandomEntity() (*EntityToken, error) {
 
 // For printing the list
 func (l *UpdatedEntityList) String() string {
-	return fmt.Sprintf("%v", l.entities)
+	var buf bytes.Buffer
+	buf.WriteString("[")
+	for i, e := range l.entities {
+		buf.WriteString(fmt.Sprintf("%d", e.ID))
+		if i != len(l.entities)-1 {
+			buf.WriteString(", ")
+		}
+	}
+	buf.WriteString("]")
+	return buf.String()
 }

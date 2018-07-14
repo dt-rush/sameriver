@@ -76,3 +76,15 @@ func TestUpdatedEntityListAccess(t *testing.T) {
 		t.Fatal("Should have returned err when list empty for RandomEntity()")
 	}
 }
+
+func TestUpdatedEntityListToString(t *testing.T) {
+	list := NewUpdatedEntityList()
+	s0 := list.String()
+	list.Signal(EntitySignal{
+		ENTITY_ADD,
+		&EntityToken{ID: 0, Active: true, Despawned: false}})
+	s1 := list.String()
+	if !(len(s0) < len(s1)) {
+		t.Fatal("string doesn't seem to build when entitites added")
+	}
+}
