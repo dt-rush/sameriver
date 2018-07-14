@@ -52,12 +52,14 @@ sameriver
 ### 0. What is it?
 
 A game engine which takes advantage of go's language features to define 
-concurrently-executing entity behaviour and world logic relative to a 
+concurrently-executing entity and world logic relative to a 
 traditional synchronous game loop ("input, update, draw").
 
 ### 1. Development
 
-Just run `make`.
+Run `make` to build and test.
+
+Dependencies can be installed by `make deps`.
 
 ### 2. Dependencies
 
@@ -85,11 +87,11 @@ windows: mingw env packages (install from source)
 
 The engine is built on an "entity-component-system" architecture, in which:
 
-**Components** are collections of a certain type of data indexed by the ID's of entities. For example, the velocity component is at bottom a `[MAX_ENTITIES]([2]float32)`
+**Components** are collections of a certain type of data indexed by the ID's of entities. For example, the velocity component is a `[MAX_ENTITIES]Vec2D`.
 
-**Entities** are merely the set of components which their ID's index, and are essentially passed around in the system *as identical with* their ID's.
+**Entities** are merely the set of components indexed by an ID (entities can also be active or inactive)
 
-**Systems** are collections of logic which operate on subsets of components.
+**Systems** are collections of logic which operate on subsets of entities selected for by an arbitrary query
 
 There are also some **Managers** which are sort of like the glue holding the engine together, or providing services.
 
@@ -101,11 +103,9 @@ The engine is also built on a "scene-based" architecture, in which:
 
 **Scenes** are loaded into the `Game` object's loop, and have control over input and display while they're running.
 
-The most important scene, the GameScene, holds an `EntityManager`.
-
 All scenes will be registered and stored with the singleton Game object, and can refer to each other by name (strings).
 
-They are updated each game loop iteration, receiving:
+The currently running scene is updated each game loop iteration, receiving:
 
 * keyboard state via a call to a `HandleKeyboardState (keyboard_state []uint8)` method
 * delta-time updates via a call to an `Update (dt_ms float64)` method
