@@ -9,16 +9,16 @@ func TestEntityQuery(t *testing.T) {
 
 	pos := Vec2D{0, 0}
 	req := positionSpawnRequestData(pos)
-	w.em.Spawn(req)
-	w.em.Update()
-	e := w.em.Entities[0]
+	w.Em.Spawn(req)
+	w.Em.Update()
+	e := w.Em.Entities[0]
 	q := EntityQuery{
 		"positionQuery",
 		func(e *EntityToken, em *EntityManager) bool {
-			return w.em.Components.Position[e.ID] == pos
+			return w.Em.Components.Position[e.ID] == pos
 		},
 	}
-	if !q.Test(e, w.em) {
+	if !q.Test(e, w.Em) {
 		t.Fatal("query did not return true")
 	}
 }
@@ -28,11 +28,11 @@ func TestEntityQueryFromTag(t *testing.T) {
 
 	tag := "tag1"
 	req := simpleTaggedSpawnRequestData(tag)
-	w.em.Spawn(req)
-	w.em.Update()
-	e := w.em.Entities[0]
+	w.Em.Spawn(req)
+	w.Em.Update()
+	e := w.Em.Entities[0]
 	q := EntityQueryFromTag(tag)
-	if !q.Test(e, w.em) {
+	if !q.Test(e, w.Em) {
 		t.Fatal("query did not return true")
 	}
 }

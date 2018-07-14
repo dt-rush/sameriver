@@ -12,7 +12,7 @@ func NewPhysicsSystem() *PhysicsSystem {
 
 func (s *PhysicsSystem) LinkWorld(w *World) {
 	s.w = w
-	s.physicsEntities = w.em.GetUpdatedEntityList(
+	s.physicsEntities = w.Em.GetUpdatedEntityList(
 		EntityQueryFromComponentBitArray(
 			"physical",
 			MakeComponentBitArray([]ComponentType{
@@ -27,9 +27,9 @@ func (s *PhysicsSystem) Update(dt_ms float64) {
 	// note: there are no function calls in the below, so we won't
 	// be preempted while computin physics (this is very good, get it over with)
 	for _, e := range s.physicsEntities.entities {
-		pos := &s.w.em.Components.Position[e.ID]
-		box := s.w.em.Components.Box[e.ID]
-		vel := s.w.em.Components.Velocity[e.ID]
+		pos := &s.w.Em.Components.Position[e.ID]
+		box := s.w.Em.Components.Box[e.ID]
+		vel := s.w.Em.Components.Velocity[e.ID]
 		dx := vel.X * dt_ms
 		dy := vel.Y * dt_ms
 		// motion in x

@@ -27,13 +27,13 @@ func TestGameLoadingSceneGameScene(t *testing.T) {
 	loadingScene := testingLoadingScene{}
 	gameScene := testingGameScene{}
 	RunGame(GameInitSpec{
-		windowSpec: WindowSpec{
+		WindowSpec: WindowSpec{
 			Title:      "testing game",
 			Width:      100,
 			Height:     100,
 			Fullscreen: false},
-		loadingScene: &loadingScene,
-		firstScene:   &gameScene,
+		LoadingScene: &loadingScene,
+		FirstScene:   &gameScene,
 	})
 	if !(expectedLoadingScene.initRan == loadingScene.initRan &&
 		expectedLoadingScene.updateRan == loadingScene.updateRan &&

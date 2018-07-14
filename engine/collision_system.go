@@ -53,7 +53,7 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 	s.w = w
 	// query a regularly updated list of the entities which are collidable
 	// (position and hitbox)
-	s.collidableEntities = w.em.GetSortedUpdatedEntityList(
+	s.collidableEntities = w.Em.GetSortedUpdatedEntityList(
 		EntityQueryFromComponentBitArray(
 			"collidable",
 			MakeComponentBitArray([]ComponentType{
@@ -100,7 +100,7 @@ func (s *CollisionSystem) Update(dt_ms float64) {
 				// if colliding, send the message (rate-limited)
 				s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Do(
 					func() {
-						s.w.ev.Publish(COLLISION_EVENT,
+						s.w.Ev.Publish(COLLISION_EVENT,
 							CollisionData{EntityA: i, EntityB: j})
 					})
 				// TODO: move both entities away from their common center?
@@ -113,10 +113,10 @@ func (s *CollisionSystem) Update(dt_ms float64) {
 
 // Test collision between two entities
 func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
-	iPos := s.w.em.Components.Position[i]
-	iBox := s.w.em.Components.Box[i]
-	jPos := s.w.em.Components.Position[j]
-	jBox := s.w.em.Components.Box[j]
+	iPos := s.w.Em.Components.Position[i]
+	iBox := s.w.Em.Components.Box[i]
+	jPos := s.w.Em.Components.Position[j]
+	jBox := s.w.Em.Components.Box[j]
 	iRect := sdl.Rect{
 		int32(iPos.X),
 		int32(iPos.Y),

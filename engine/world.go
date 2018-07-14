@@ -11,8 +11,8 @@ import (
 type World struct {
 	Width         int
 	Height        int
-	ev            *EventBus
-	em            *EntityManager
+	Ev            *EventBus
+	Em            *EntityManager
 	systems       []System
 	logics        []LogicUnit
 	logicRunIndex int
@@ -24,8 +24,8 @@ func NewWorld(width int, height int) *World {
 	w := World{
 		Width:   width,
 		Height:  height,
-		ev:      ev,
-		em:      em,
+		Ev:      ev,
+		Em:      em,
 		systems: make([]System, 0),
 		logics:  make([]LogicUnit, 0),
 	}
@@ -123,7 +123,7 @@ func (w *World) linkSystemDependencies(s System) {
 }
 
 func (w *World) Update(dt_ms float64) {
-	w.em.Update()
+	w.Em.Update()
 	for _, s := range w.systems {
 		s.Update(dt_ms)
 	}

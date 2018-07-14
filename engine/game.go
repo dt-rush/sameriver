@@ -10,6 +10,7 @@ type Game struct {
 	Window     *sdl.Window
 	Renderer   *sdl.Renderer
 	WindowSpec WindowSpec
+	Screen     ScreenSpaceConverter
 
 	running      bool
 	loadingScene Scene
@@ -27,7 +28,11 @@ func RunGame(spec GameInitSpec) {
 	MainMediaThread(func() {
 		InitMediaLayer()
 		g := &Game{
-			WindowSpec:   spec.WindowSpec,
+			WindowSpec: spec.WindowSpec,
+			Screen: ScreenSpaceConverter{
+				W: float64(spec.WindowSpec.Width),
+				H: float64(spec.WindowSpec.Height),
+			},
 			loadingScene: spec.LoadingScene,
 			currentScene: spec.FirstScene,
 			endScene:     make(chan bool),
