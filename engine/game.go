@@ -7,30 +7,32 @@ import (
 )
 
 type Game struct {
-	running  bool
-	Window   *sdl.Window
-	Renderer *sdl.Renderer
+	Window     *sdl.Window
+	Renderer   *sdl.Renderer
+	WindowSpec WindowSpec
 
+	running      bool
 	loadingScene Scene
 	currentScene Scene
 	endScene     chan bool
 }
 
 type GameInitSpec struct {
-	windowSpec   WindowSpec
-	loadingScene Scene
-	firstScene   Scene
+	WindowSpec   WindowSpec
+	LoadingScene Scene
+	FirstScene   Scene
 }
 
 func RunGame(spec GameInitSpec) {
 	MainMediaThread(func() {
 		InitMediaLayer()
 		g := &Game{
-			loadingScene: spec.loadingScene,
-			currentScene: spec.firstScene,
+			WindowSpec:   spec.WindowSpec,
+			loadingScene: spec.LoadingScene,
+			currentScene: spec.FirstScene,
 			endScene:     make(chan bool),
 		}
-		g.Window, g.Renderer = BuildWindowAndRenderer(spec.windowSpec)
+		g.Window, g.Renderer = CreateWindowAndRenderer(spec.WindowSpec)
 		g.run()
 	})
 }
@@ -115,7 +117,6 @@ func (g *Game) blankScreen() {
 
 func (g *Game) handleKeyboard(scene Scene) {
 	// poll for events
-	sdl.PumpEvents()
 	var event sdl.Event
 	for event = sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch t := event.(type) {

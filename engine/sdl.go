@@ -37,7 +37,7 @@ func InitMediaLayer() {
 	sdl.ShowCursor(0)
 }
 
-func BuildWindowAndRenderer(spec WindowSpec) (*sdl.Window, *sdl.Renderer) {
+func CreateWindowAndRenderer(spec WindowSpec) (*sdl.Window, *sdl.Renderer) {
 	// create the window
 	flags := uint32(sdl.WINDOW_SHOWN)
 	if spec.Fullscreen {
