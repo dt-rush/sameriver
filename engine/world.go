@@ -139,13 +139,13 @@ func (w *World) AddLogic(logic LogicUnit) {
 	w.logics = append(w.logics, logic)
 }
 
-func (w *World) ActivateAllLogic() {
+func (w *World) ActivateAllLogics() {
 	for i, _ := range w.logics {
 		w.logics[i].Active = true
 	}
 }
 
-func (w *World) DeactivateAllLogic() {
+func (w *World) DeactivateAllLogics() {
 	for i, _ := range w.logics {
 		w.logics[i].Active = false
 	}
@@ -169,7 +169,7 @@ func (w *World) SetLogicActiveState(name string, state bool) {
 
 // run as many logics as we can in the time limit, picking up
 // where we left off next time (and returning the amount we overrun)
-func (w *World) RunLogic(limit_ms int64) (overrun_ms int64) {
+func (w *World) RunLogics(limit_ms int64) (overrun_ms int64) {
 	startLogicRunIndex := w.logicRunIndex
 	for limit_ms > 0 {
 		t0 := time.Now()

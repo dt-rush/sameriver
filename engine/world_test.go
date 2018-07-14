@@ -113,7 +113,7 @@ func TestWorldActivateDeactivateLogic(t *testing.T) {
 	if !w.logics[0].Active {
 		t.Fatal("failed to activate logic")
 	}
-	w.RunLogic(FRAME_SLEEP_MS)
+	w.RunLogics(FRAME_SLEEP_MS)
 	if x != 1 {
 		t.Fatal("active logic didn't run")
 	}
@@ -135,13 +135,13 @@ func TestWorldActivateDeactivateLogic(t *testing.T) {
 	w.AddLogic(lu2)
 	w.ActivateLogic("l1")
 	w.ActivateLogic("l2")
-	w.DeactivateAllLogic()
+	w.DeactivateAllLogics()
 	for _, l := range w.logics {
 		if l.Active {
 			t.Fatal("did not deactivate all logic")
 		}
 	}
-	w.ActivateAllLogic()
+	w.ActivateAllLogics()
 	for _, l := range w.logics {
 		if !l.Active {
 			t.Fatal("did not activate all logic")
@@ -149,7 +149,7 @@ func TestWorldActivateDeactivateLogic(t *testing.T) {
 	}
 }
 
-func TestWorldRunLogic(t *testing.T) {
+func TestWorldRunLogics(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
 	w.AddLogic(LogicUnit{
@@ -157,7 +157,7 @@ func TestWorldRunLogic(t *testing.T) {
 		Active: true,
 		F:      func() { x += 1 },
 	})
-	w.RunLogic(FRAME_SLEEP_MS / 5)
+	w.RunLogics(FRAME_SLEEP_MS / 5)
 	if x != 1 {
 		t.Fatal("failed to run logic")
 	}
@@ -172,11 +172,11 @@ func TestWorldRunLogicTiming(t *testing.T) {
 			F:      func() { time.Sleep(100 * time.Millisecond) },
 		})
 	}
-	overrun_ms := w.RunLogic(150)
+	overrun_ms := w.RunLogics(150)
 	if !(overrun_ms >= 50) {
 		t.Fatal("overrun time not calculated")
 	}
-	overrun_ms = w.RunLogic(300)
+	overrun_ms = w.RunLogics(300)
 	if !(overrun_ms >= 0 && overrun_ms <= 50) {
 		t.Fatal("overrun time not calculated")
 	}
@@ -192,7 +192,7 @@ func TestWorldRunLogicTiming(t *testing.T) {
 		Active: true,
 		F:      func() { fastRan = true },
 	})
-	w.RunLogic(8)
+	w.RunLogics(8)
 	if fastRan {
 		t.Fatal("continued running logic despite using up allowed milliseconds")
 	}
