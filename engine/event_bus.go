@@ -49,25 +49,30 @@ func (ev *EventBus) Unsubscribe(c *EventChannel) {
 
 // notify subscribers to a certain event
 func (ev *EventBus) notifySubscribers(e Event) {
-
-	// TODO: generate a means of printing events and create a special
-	// system which listens on *all* events, printing them
+	// TODO: create a special system which listens on *all* events,
+	// printing them if it's turned on
 	eventsLog("⚹: %s\n", EVENT_NAMES[e.Type])
+
+	var notifyFull = func(c *EventChannel) {
+		Logger.Printf("⚠ event subscriber channel #%s for events of "+
+			"type %s is full\n", c.Name, EVENT_NAMES[e.Type])
+	}
 
 	for _, c := range ev.subscriberList.channels[e.Type] {
 		if !c.IsActive() {
 			continue
 		}
-		// notify if the channel buffer is filled (we're in a
-		// goroutine, so it's all good, but probably indicates
-		// either the channel receiver is not right, or there's a
-		// problem with the rate of events sent over the channel)
-		if len(c.C) == EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
-			Logger.Printf("⚠ event subscriber channel #%s for events of "+
-				"type %s is full\n", c.Name, EVENT_NAMES[e.Type])
-		}
 		if c.Query.Test(e) {
-			c.Send(e)
+			if len(c.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
+				notifyFull(c)
+				// spawn a goroutine to do the channel send since we don't
+				// want a hang here to affect other subscribers
+				go func() {
+					c.C <- e
+				}()
+			} else {
+				c.C <- e
+			}
 		}
 	}
 }

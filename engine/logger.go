@@ -24,14 +24,14 @@ var Logger = log.New(
 func SubLogFunction(
 	moduleName string, flag bool) func(s string, params ...interface{}) {
 	prefix := fmt.Sprintf("[%s] ", moduleName)
-	return func(s string, params ...interface{}) {
+	return func(format string, params ...interface{}) {
 		switch {
 		case !flag:
 			return
 		case len(params) == 0:
-			Logger.Printf(prefix + s)
+			Logger.Printf(prefix + format)
 		default:
-			Logger.Printf(prefix+s, params...)
+			Logger.Printf(prefix+format, params...)
 		}
 	}
 }

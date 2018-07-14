@@ -5,14 +5,14 @@ import (
 	"time"
 )
 
-func TestConstructEventBus(t *testing.T) {
+func TestEventBusConstructEventBus(t *testing.T) {
 	ev := NewEventBus()
 	if ev == nil {
 		t.Fatal("Could not construct NewEventBus()")
 	}
 }
 
-func TestSimpleEventQueryMatching(t *testing.T) {
+func TestEventBusSimpleEventQueryMatching(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
 		"SimpleCollisionQuery",
@@ -28,7 +28,17 @@ func TestSimpleEventQueryMatching(t *testing.T) {
 	}
 }
 
-func TestDeactivatedSubscriber(t *testing.T) {
+func TestEventBusMaxCapacity(t *testing.T) {
+	ev := NewEventBus()
+	_ = ev.Subscribe(
+		"SimpleCollisionQuery",
+		NewSimpleEventQuery(COLLISION_EVENT))
+	for i := 0; i < EVENT_SUBSCRIBER_CHANNEL_CAPACITY+4; i++ {
+		ev.Publish(COLLISION_EVENT, nil)
+	}
+}
+
+func TestEventBusDeactivatedSubscriber(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
 		"SimpleCollisionQuery",
@@ -43,7 +53,7 @@ func TestDeactivatedSubscriber(t *testing.T) {
 	}
 }
 
-func TestSimpleEventQueryNonMatching(t *testing.T) {
+func TestEventBusSimpleEventQueryNonMatching(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
 		"SimpleCollisionQuery",
@@ -58,7 +68,7 @@ func TestSimpleEventQueryNonMatching(t *testing.T) {
 	}
 }
 
-func TestCollisionEventQueryMatching(t *testing.T) {
+func TestEventBusDataEventQueryMatching(t *testing.T) {
 	ev := NewEventBus()
 	collision := CollisionData{
 		EntityA: &EntityToken{ID: 0},
@@ -82,7 +92,7 @@ func TestCollisionEventQueryMatching(t *testing.T) {
 	}
 }
 
-func TestCollisionEventQueryNonMatching(t *testing.T) {
+func TestEventBusDataEventQueryNonMatching(t *testing.T) {
 	ev := NewEventBus()
 	collision := CollisionData{
 		EntityA: &EntityToken{ID: 0},
@@ -110,7 +120,7 @@ func TestCollisionEventQueryNonMatching(t *testing.T) {
 	}
 }
 
-func TestUnsubscribe(t *testing.T) {
+func TestEventBusUnsubscribe(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
 		"SimpleCollisionQuery",

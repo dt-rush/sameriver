@@ -26,16 +26,6 @@ func TestNewEventChannelActivateDeactivate(t *testing.T) {
 		t.Fatal("Activate() didn't change result of IsActive()")
 	}
 }
-func TestEventChannelSend(t *testing.T) {
-	ec := NewEventChannel("testchannel", nil)
-	ec.Send(Event{})
-	select {
-	case _ = <-ec.C:
-		break
-	default:
-		t.Fatal("Send() didn't send event to channel")
-	}
-}
 
 func TestEventChannelDrain(t *testing.T) {
 	ec := NewEventChannel("testchannel", nil)

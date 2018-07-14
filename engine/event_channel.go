@@ -31,10 +31,6 @@ func (c *EventChannel) IsActive() bool {
 	return c.active.Load() == 1
 }
 
-func (c *EventChannel) Send(e Event) {
-	c.C <- e
-}
-
 func (c *EventChannel) DrainChannel() {
 	n := len(c.C)
 	for i := 0; i < n; i++ {

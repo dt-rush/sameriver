@@ -1,4 +1,4 @@
-.PHONY: all test clean dirty generate 
+.PHONY: all test clean dirty generate sameriver-generate
 
 all: clean deps generate test clean
 
