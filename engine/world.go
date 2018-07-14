@@ -129,8 +129,14 @@ func (w *World) Update(dt_ms float64) {
 	}
 }
 
-func (w *World) AddLogic(l LogicUnit) {
-	w.logics = append(w.logics, l)
+func (w *World) AddLogics(logics ...LogicUnit) {
+	for _, logic := range logics {
+		w.logics = append(w.logics, logic)
+	}
+}
+
+func (w *World) AddLogic(logic LogicUnit) {
+	w.logics = append(w.logics, logic)
 }
 
 func (w *World) ActivateAllLogic() {
