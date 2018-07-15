@@ -23,6 +23,22 @@ func TestRuntimeLimiterAdd(t *testing.T) {
 	}
 }
 
+func TestRuntimeLimiterAddDuplicate(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	r := NewRuntimeLimiter()
+	logic := &LogicUnit{
+		Name:    "logic",
+		WorldID: 0,
+		F:       func() {},
+		Active:  true}
+	r.Add(logic)
+	r.Add(logic)
+	t.Fatal("should have panic'd")
+}
+
 func TestRuntimeLimiterRun(t *testing.T) {
 	r := NewRuntimeLimiter()
 	x := 0
@@ -38,6 +54,58 @@ func TestRuntimeLimiterRun(t *testing.T) {
 	}
 	if x != 32 {
 		t.Fatal("didn't run logic")
+	}
+	if !r.Finished() {
+		t.Fatal("should have returned finished = true when running sole " +
+			"logic within time limit")
+	}
+}
+
+func TestRuntimeLimiterOverrun(t *testing.T) {
+	r := NewRuntimeLimiter()
+	r.Add(&LogicUnit{
+		Name:    "logic",
+		WorldID: 0,
+		F:       func() { time.Sleep(150 * time.Millisecond) },
+		Active:  true})
+	r.Start()
+	remaining_ms := r.Run(100)
+	if remaining_ms > 0 {
+		t.Fatal("overrun time not calculated properly")
+	}
+}
+
+func TestRuntimeLimiterUnderrun(t *testing.T) {
+	r := NewRuntimeLimiter()
+	r.Add(&LogicUnit{
+		Name:    "logic",
+		WorldID: 0,
+		F:       func() { time.Sleep(100 * time.Millisecond) },
+		Active:  true})
+	r.Start()
+	remaining_ms := r.Run(300)
+	if !(remaining_ms > 0 && remaining_ms <= 200) {
+		t.Fatal("underrun time not calculated properly")
+	}
+}
+
+func TestRuntimeLimiterLimiting(t *testing.T) {
+	r := NewRuntimeLimiter()
+	fastRan := false
+	r.Add(&LogicUnit{
+		Name:    "logic-slow",
+		WorldID: 0,
+		F:       func() { time.Sleep(10 * time.Millisecond) },
+		Active:  true})
+	r.Add(&LogicUnit{
+		Name:    "logic-slow",
+		WorldID: 1,
+		F:       func() { fastRan = true },
+		Active:  true})
+	r.Start()
+	r.Run(2)
+	if fastRan {
+		t.Fatal("continued running logic despite using up allowed milliseconds")
 	}
 }
 

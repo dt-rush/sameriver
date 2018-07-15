@@ -165,6 +165,9 @@ func (w *World) linkSystemDependencies(s System) {
 }
 
 func (w *World) AddWorldLogic(Name string, F func()) *LogicUnit {
+	if _, ok := w.worldLogics[Name]; ok {
+		panic(fmt.Sprintf("double-add of world logic %s", Name))
+	}
 	l := &LogicUnit{
 		Name:    Name,
 		F:       F,
@@ -206,6 +209,9 @@ func (w *World) SetWorldLogicActiveState(name string, state bool) {
 }
 
 func (w *World) AddEntityLogic(Name string, F func()) *LogicUnit {
+	if _, ok := w.entityLogics[Name]; ok {
+		panic(fmt.Sprintf("double-add of entity logic %s", Name))
+	}
 	l := &LogicUnit{
 		Name:    Name,
 		F:       F,

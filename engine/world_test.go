@@ -3,7 +3,6 @@ package engine
 import (
 	"fmt"
 	"testing"
-	"time"
 )
 
 func TestCanConstructWorld(t *testing.T) {
@@ -16,6 +15,16 @@ func TestCanConstructWorld(t *testing.T) {
 func TestWorldAddSystems(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	w.AddSystems(newTestSystem())
+}
+
+func TestWorldAddSystemsDuplicate(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	w := NewWorld(1024, 1024)
+	w.AddSystems(newTestSystem(), newTestSystem())
+	t.Fatal("should have panic'd")
 }
 
 func TestWorldAddDependentSystems(t *testing.T) {
@@ -100,6 +109,17 @@ func TestWorldRunSystemsOnly(t *testing.T) {
 	}
 }
 
+func TestWorldAddWorldLogicDuplicate(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	w := NewWorld(1024, 1024)
+	w.AddWorldLogic("world-logic", func() {})
+	w.AddWorldLogic("world-logic", func() {})
+	t.Fatal("should have panic'd")
+}
+
 func TestWorldRunWorldLogicsOnly(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
@@ -111,20 +131,48 @@ func TestWorldRunWorldLogicsOnly(t *testing.T) {
 	}
 }
 
-func TestWorldRunSystemsAndWorldLogic(t *testing.T) {
+func TestWorldAddEntityLogicDuplicate(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	w := NewWorld(1024, 1024)
+	w.AddEntityLogic("entity-logic", func() {})
+	w.AddEntityLogic("entity-logic", func() {})
+	t.Fatal("should have panic'd")
+}
+
+func TestWorldRunEntityLogicsOnly(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	x := 0
+	w.AddEntityLogic("logic", func() { x += 1 })
+	w.ActivateAllEntityLogics()
+	w.Update(FRAME_SLEEP_MS / 2)
+	if x != 1 {
+		t.Fatal("failed to run logic")
+	}
+}
+
+func TestWorldRunSystemsAndWorldLogicsAndEntityLogics(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	ts := newTestSystem()
 	w.AddSystems(ts)
 	x := 0
+	y := 0
 	name := "logic"
 	w.AddWorldLogic(name, func() { x += 1 })
 	w.ActivateWorldLogic(name)
+	w.AddEntityLogic(name, func() { y += 1 })
+	w.ActivateEntityLogic(name)
 	w.Update(FRAME_SLEEP_MS / 2)
 	if ts.x != 1 {
 		t.Fatal("failed to update system")
 	}
 	if x != 1 {
-		t.Fatal("failed to run logic")
+		t.Fatal("failed to run world logic")
+	}
+	if y != 1 {
+		t.Fatal("failed to run entity logic")
 	}
 }
 
@@ -134,6 +182,20 @@ func TestWorldRemoveWorldLogic(t *testing.T) {
 	name := "l1"
 	w.AddWorldLogic(name, func() { x += 1 })
 	w.RemoveWorldLogic(name)
+	for i := 0; i < 32; i++ {
+		w.Update(FRAME_SLEEP_MS)
+	}
+	if x != 0 {
+		t.Fatal("logic was removed but still ran during Update()")
+	}
+}
+
+func TestWorldRemoveEntityLogic(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	x := 0
+	name := "l1"
+	w.AddEntityLogic(name, func() { x += 1 })
+	w.RemoveEntityLogic(name)
 	for i := 0; i < 32; i++ {
 		w.Update(FRAME_SLEEP_MS)
 	}
@@ -196,41 +258,56 @@ func TestWorldDeativateAllWorldLogics(t *testing.T) {
 	}
 }
 
-func TestWorldRunLogicOverrun(t *testing.T) {
+func TestWorldActivateEntityLogic(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	w.AddWorldLogic("logic", func() { time.Sleep(150 * time.Millisecond) })
-	w.ActivateAllWorldLogics()
-	w.worldLogicsRunner.Start()
-	remaining_ms := w.worldLogicsRunner.Run(100)
-	if remaining_ms > 0 {
-		t.Fatal("overrun time not calculated properly")
-	}
-	if !w.worldLogicsRunner.Finished() {
-		t.Fatal("should have returned finished = true when running sole logic " +
-			"within time limit")
+	x := 0
+	name := "l1"
+	w.AddEntityLogic(name, func() { x += 1 })
+	w.ActivateEntityLogic(name)
+	w.Update(FRAME_SLEEP_MS / 2)
+	if x != 1 {
+		t.Fatal("logic should have been active and run - did not")
 	}
 }
 
-func TestWorldLogicUnderrun(t *testing.T) {
+func TestWorldActivateAllEntityLogics(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	w.AddWorldLogic("logic", func() { time.Sleep(100 * time.Millisecond) })
-	w.ActivateAllWorldLogics()
-	w.worldLogicsRunner.Start()
-	remaining_ms := w.worldLogicsRunner.Run(300)
-	if !(remaining_ms >= 0 && remaining_ms <= 200) {
-		t.Fatal("remaining time not calculated properly")
+	x := 0
+	n := 16
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("logic-%d", i)
+		w.AddEntityLogic(name, func() { x += 1 })
+	}
+	w.ActivateAllEntityLogics()
+	w.Update(FRAME_SLEEP_MS / 2)
+	if x != n {
+		t.Fatal("logics all should have been activated - some did not run")
 	}
 }
 
-func TestWorldLogicTimeLimit(t *testing.T) {
+func TestWorldDeactivateEntityLogic(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	w.AddWorldLogic("slow", func() { time.Sleep(10 * time.Millisecond) })
-	fastRan := false
-	w.AddWorldLogic("fast", func() { fastRan = true })
-	w.ActivateAllWorldLogics()
-	w.worldLogicsRunner.Start()
-	w.worldLogicsRunner.Run(2)
-	if fastRan {
-		t.Fatal("continued running logic despite using up allowed milliseconds")
+	x := 0
+	name1 := "l1"
+	w.AddEntityLogic(name1, func() { x += 1 })
+	w.DeactivateEntityLogic(name1)
+	if x != 0 {
+		t.Fatal("deactivated logic ran")
+	}
+}
+
+func TestWorldDeativateAllEntityLogics(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	x := 0
+	n := 16
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("logic-%d", i)
+		w.AddEntityLogic(name, func() { x += 1 })
+		w.ActivateEntityLogic(name)
+	}
+	w.DeactivateAllEntityLogics()
+	w.Update(FRAME_SLEEP_MS / 2)
+	if x != 0 {
+		t.Fatal("logics all should have been deactivated, but some ran")
 	}
 }
