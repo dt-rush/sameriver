@@ -3,8 +3,6 @@ package engine
 import (
 	"fmt"
 	"time"
-
-	"github.com/dt-rush/sameriver/engine/utils"
 )
 
 // used to store a set of logicUnits which want to be executed together and
@@ -30,7 +28,7 @@ type RuntimeLimiter struct {
 	// the LogicUnit is coupled, it's Parent (for System.Update() instances,
 	// this is the System, for world LogicUnits this is the LogicUnit itself
 	// This is needed to support efficient delete and activate/deactivate
-	indexes map[utils.ID]int
+	indexes map[int]int
 }
 
 func NewRuntimeLimiter() *RuntimeLimiter {
@@ -38,7 +36,7 @@ func NewRuntimeLimiter() *RuntimeLimiter {
 		logicUnits:       make([]*LogicUnit, 0),
 		byName:           make(map[string]*LogicUnit),
 		runtimeEstimates: make(map[*LogicUnit]float64),
-		indexes:          make(map[utils.ID]int),
+		indexes:          make(map[int]int),
 	}
 }
 
@@ -58,7 +56,7 @@ func (r *RuntimeLimiter) AddFunction(logic *LogicUnit) {
 	logic.Active = true
 }
 
-func (r *RuntimeLimiter) RemoveFunction(WorldID utils.ID) {
+func (r *RuntimeLimiter) RemoveFunction(WorldID int) {
 	// return early if not present
 	index, ok := r.indexes[WorldID]
 	if !ok {

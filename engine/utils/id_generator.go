@@ -5,23 +5,21 @@ import (
 	"math"
 )
 
-type ID = int
-
 type IDGenerator struct {
-	universe map[ID]bool
-	freed    map[ID]bool
+	universe map[int]bool
+	freed    map[int]bool
 	x        atomic.Uint32
 }
 
 func NewIDGenerator() *IDGenerator {
 	return &IDGenerator{
-		universe: make(map[ID]bool),
-		freed:    make(map[ID]bool),
+		universe: make(map[int]bool),
+		freed:    make(map[int]bool),
 	}
 }
 
-func (g *IDGenerator) Next() ID {
-	var ID ID
+func (g *IDGenerator) Next() int {
+	var ID int
 	// try to get ID from already-available freed IDs
 	if len(g.freed) > 0 {
 		for freeID, _ := range g.freed {
@@ -45,7 +43,7 @@ func (g *IDGenerator) Next() ID {
 	return ID
 }
 
-func (g *IDGenerator) Free(ID ID) {
+func (g *IDGenerator) Free(ID int) {
 	delete(g.universe, ID)
 	g.freed[ID] = true
 }

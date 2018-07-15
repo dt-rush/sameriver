@@ -19,7 +19,7 @@ type World struct {
 	Em    *EntityManager
 
 	systems           []System
-	systemsIDs        map[System]utils.ID
+	systemsIDs        map[System]int
 	systemsRunner     *RuntimeLimiter
 	worldLogicsRunner *RuntimeLimiter
 }
@@ -31,7 +31,7 @@ func NewWorld(width int, height int) *World {
 		Ev:                NewEventBus(),
 		IDGen:             utils.NewIDGenerator(),
 		systems:           make([]System, 0),
-		systemsIDs:        make(map[System]utils.ID),
+		systemsIDs:        make(map[System]int),
 		systemsRunner:     NewRuntimeLimiter(),
 		worldLogicsRunner: NewRuntimeLimiter(),
 	}

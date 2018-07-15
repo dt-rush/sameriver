@@ -4,13 +4,11 @@ import (
 	"sync"
 
 	"github.com/golang-collections/go-datastructures/bitarray"
-
-	"github.com/dt-rush/sameriver/engine/utils"
 )
 
 type EntityToken struct {
 	ID                int
-	WorldID           utils.ID
+	WorldID           int
 	Active            bool
 	Despawned         bool
 	ComponentBitArray bitarray.BitArray
