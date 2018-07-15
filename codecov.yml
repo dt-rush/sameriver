@@ -1,6 +1,7 @@
 ignore:
   - "engine/testing_*.go"
   - "engine/game.go"
+  - "engine/game_screen.go"
   - "engine/idiom.go"
   - "engine/vec2d.go"
   - "engine/logger.go"

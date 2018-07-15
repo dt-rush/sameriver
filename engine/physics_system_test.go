@@ -27,10 +27,10 @@ func TestPhysicsSystemBounds(t *testing.T) {
 	w.AddSystems(ps)
 	e, _ := w.Em.Spawn(physicsSpawnRequestData())
 	directions := []Vec2D{
-		Vec2D{1, 0},
-		Vec2D{-1, 0},
-		Vec2D{0, 1},
-		Vec2D{0, -1},
+		Vec2D{100, 0},
+		Vec2D{-100, 0},
+		Vec2D{0, 100},
+		Vec2D{0, -100},
 	}
 	pos := &w.Em.Components.Position[e.ID]
 	box := &w.Em.Components.Box[e.ID]
@@ -38,9 +38,11 @@ func TestPhysicsSystemBounds(t *testing.T) {
 	for _, d := range directions {
 		*pos = Vec2D{512, 512}
 		*vel = d
-		for i := 0; i < 2048; i++ {
+		for i := 0; i < 64; i++ {
 			w.Update(FRAME_SLEEP_MS / 2)
+			time.Sleep(1 * time.Millisecond)
 		}
+		Logger.Println(*pos)
 		if !RectWithinRect(*pos, *box, Vec2D{0, 0}, Vec2D{1024, 1024}) {
 			t.Fatal("Update() placed entity outside world")
 		}
