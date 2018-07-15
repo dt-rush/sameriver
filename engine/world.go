@@ -26,47 +26,39 @@ type World struct {
 
 	worldLogics       map[string]*LogicUnit
 	worldLogicsRunner *RuntimeLimiter
+
+	entityLogics       map[string]*LogicUnit
+	entityLogicsRunner *RuntimeLimiter
 }
 
 func NewWorld(width int, height int) *World {
 	w := &World{
-		Width:             width,
-		Height:            height,
-		Ev:                NewEventBus(),
-		IDGen:             utils.NewIDGenerator(),
-		systems:           make(map[string]System),
-		systemsIDs:        make(map[System]int),
-		systemsRunner:     NewRuntimeLimiter(),
-		worldLogics:       make(map[string]*LogicUnit),
-		worldLogicsRunner: NewRuntimeLimiter(),
+		Width:              width,
+		Height:             height,
+		Ev:                 NewEventBus(),
+		IDGen:              utils.NewIDGenerator(),
+		systems:            make(map[string]System),
+		systemsIDs:         make(map[System]int),
+		systemsRunner:      NewRuntimeLimiter(),
+		worldLogics:        make(map[string]*LogicUnit),
+		worldLogicsRunner:  NewRuntimeLimiter(),
+		entityLogics:       make(map[string]*LogicUnit),
+		entityLogicsRunner: NewRuntimeLimiter(),
 	}
 	w.Em = NewEntityManager(w)
 	return w
 }
 
-func (w *World) Update(limit_ms float64) (overrun_ms float64) {
+func (w *World) Update(allowance float64) (overrun_ms float64) {
 	t0 := time.Now()
 	w.Em.Update()
-	// world logic and entity logic can use whatever time is left over after
-	// entity manager update
-	allowance := limit_ms - float64(time.Since(t0).Nanoseconds())/1.0e6
-	w.systemsRunner.Start()
-	w.worldLogicsRunner.Start()
-	for allowance >= 0 &&
-		!(w.systemsRunner.Finished() && w.worldLogicsRunner.Finished()) {
-		if !(w.systemsRunner.Finished() || w.worldLogicsRunner.Finished()) {
-			allowance /= 2
-		}
-		var remaining_ms float64
-		if !w.systemsRunner.Finished() {
-			remaining_ms += w.systemsRunner.Run(allowance)
-		}
-		if !w.worldLogicsRunner.Finished() {
-			remaining_ms += w.worldLogicsRunner.Run(allowance)
-		}
-		allowance = remaining_ms
-	}
-	return allowance
+	// systems update functions, world logic, and entity logic can use
+	// whatever time is left over after entity manager update
+	return RuntimeLimitShare(
+		allowance-float64(time.Since(t0).Nanoseconds())/1.0e6,
+		w.systemsRunner,
+		w.worldLogicsRunner,
+		w.entityLogicsRunner)
 }
 
 func (w *World) AddSystems(systems ...System) {
@@ -172,7 +164,7 @@ func (w *World) linkSystemDependencies(s System) {
 	}
 }
 
-func (w *World) AddLogic(Name string, F func()) *LogicUnit {
+func (w *World) AddWorldLogic(Name string, F func()) *LogicUnit {
 	l := &LogicUnit{
 		Name:    Name,
 		F:       F,
@@ -184,31 +176,72 @@ func (w *World) AddLogic(Name string, F func()) *LogicUnit {
 	return l
 }
 
-func (w *World) RemoveLogic(Name string) {
+func (w *World) RemoveWorldLogic(Name string) {
 	if logic, ok := w.worldLogics[Name]; ok {
 		w.worldLogicsRunner.Remove(logic.WorldID)
 		delete(w.worldLogics, Name)
 	}
 }
 
-func (w *World) ActivateAllLogics() {
+func (w *World) ActivateAllWorldLogics() {
 	w.worldLogicsRunner.ActivateAll()
 }
 
-func (w *World) DeactivateAllLogics() {
+func (w *World) DeactivateAllWorldLogics() {
 	w.worldLogicsRunner.DeactivateAll()
 }
 
-func (w *World) ActivateLogic(name string) {
-	w.SetLogicActiveState(name, true)
+func (w *World) ActivateWorldLogic(name string) {
+	w.SetWorldLogicActiveState(name, true)
 }
 
-func (w *World) DeactivateLogic(name string) {
-	w.SetLogicActiveState(name, false)
+func (w *World) DeactivateWorldLogic(name string) {
+	w.SetWorldLogicActiveState(name, false)
 }
 
-func (w *World) SetLogicActiveState(name string, state bool) {
+func (w *World) SetWorldLogicActiveState(name string, state bool) {
 	if logic, ok := w.worldLogics[name]; ok {
+		logic.Active = state
+	}
+}
+
+func (w *World) AddEntityLogic(Name string, F func()) *LogicUnit {
+	l := &LogicUnit{
+		Name:    Name,
+		F:       F,
+		Active:  false,
+		WorldID: w.IDGen.Next(),
+	}
+	w.entityLogics[Name] = l
+	w.entityLogicsRunner.Add(l)
+	return l
+}
+
+func (w *World) RemoveEntityLogic(Name string) {
+	if logic, ok := w.entityLogics[Name]; ok {
+		w.entityLogicsRunner.Remove(logic.WorldID)
+		delete(w.entityLogics, Name)
+	}
+}
+
+func (w *World) ActivateAllEntityLogics() {
+	w.entityLogicsRunner.ActivateAll()
+}
+
+func (w *World) DeactivateAllEntityLogics() {
+	w.entityLogicsRunner.DeactivateAll()
+}
+
+func (w *World) ActivateEntityLogic(name string) {
+	w.SetEntityLogicActiveState(name, true)
+}
+
+func (w *World) DeactivateEntityLogic(name string) {
+	w.SetEntityLogicActiveState(name, false)
+}
+
+func (w *World) SetEntityLogicActiveState(name string, state bool) {
+	if logic, ok := w.entityLogics[name]; ok {
 		logic.Active = state
 	}
 }

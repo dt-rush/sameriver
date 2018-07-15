@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func TestRuntimeLimiterAddLogic(t *testing.T) {
+func TestRuntimeLimiterAdd(t *testing.T) {
 	r := NewRuntimeLimiter()
 	for i := 0; i < 32; i++ {
 		name := fmt.Sprintf("logic-%d", i)
@@ -23,7 +23,7 @@ func TestRuntimeLimiterAddLogic(t *testing.T) {
 	}
 }
 
-func TestRuntimeLimiterRunLogic(t *testing.T) {
+func TestRuntimeLimiterRun(t *testing.T) {
 	r := NewRuntimeLimiter()
 	x := 0
 	name := "l1"
@@ -41,7 +41,7 @@ func TestRuntimeLimiterRunLogic(t *testing.T) {
 	}
 }
 
-func TestRuntimeLimiterDoNotRunEstimatedSlowLogic(t *testing.T) {
+func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 	r := NewRuntimeLimiter()
 	r.Add(&LogicUnit{
 		Name:    "dummy",
@@ -69,7 +69,7 @@ func TestRuntimeLimiterDoNotRunEstimatedSlowLogic(t *testing.T) {
 	}
 }
 
-func TestRuntimeLimiterRemoveLogic(t *testing.T) {
+func TestRuntimeLimiterRemove(t *testing.T) {
 	r := NewRuntimeLimiter()
 	// test that we can remove a logic which doens't exist idempotently
 	if r.Remove(0) != false {
@@ -99,5 +99,30 @@ func TestRuntimeLimiterRemoveLogic(t *testing.T) {
 	}
 	if len(r.logicUnits) != 0 {
 		t.Fatal("did not remove from logicUnits list")
+	}
+}
+
+func TestRuntimeLimitShare(t *testing.T) {
+	runners := make([]*RuntimeLimiter, 0)
+	counters := make([]int, 0)
+	for i := 0; i < 3; i++ {
+		func(i int) {
+			r := NewRuntimeLimiter()
+			runners = append(runners, r)
+			counters = append(counters, 0) // jet fuel can't melt steel beams
+			r.Add(&LogicUnit{
+				Name:    "logic",
+				WorldID: 0,
+				F:       func() { counters[i] += 1 },
+				Active:  true})
+		}(i)
+	}
+	for i := 0; i < 32; i++ {
+		RuntimeLimitShare(FRAME_SLEEP_MS, runners...)
+	}
+	for _, counter := range counters {
+		if counter != 32 {
+			t.Fatal("didn't share runtime properly")
+		}
 	}
 }

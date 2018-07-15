@@ -103,22 +103,22 @@ func TestWorldRunSystemsOnly(t *testing.T) {
 func TestWorldRunWorldLogicsOnly(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
-	w.AddLogic("logic", func() { x += 1 })
-	w.ActivateAllLogics()
+	w.AddWorldLogic("logic", func() { x += 1 })
+	w.ActivateAllWorldLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 1 {
 		t.Fatal("failed to run logic")
 	}
 }
 
-func TestWorldRunSystemsAndLogic(t *testing.T) {
+func TestWorldRunSystemsAndWorldLogic(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	ts := newTestSystem()
 	w.AddSystems(ts)
 	x := 0
 	name := "logic"
-	w.AddLogic(name, func() { x += 1 })
-	w.ActivateLogic(name)
+	w.AddWorldLogic(name, func() { x += 1 })
+	w.ActivateWorldLogic(name)
 	w.Update(FRAME_SLEEP_MS / 2)
 	if ts.x != 1 {
 		t.Fatal("failed to update system")
@@ -128,12 +128,12 @@ func TestWorldRunSystemsAndLogic(t *testing.T) {
 	}
 }
 
-func TestWorldRemoveLogic(t *testing.T) {
+func TestWorldRemoveWorldLogic(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
 	name := "l1"
-	w.AddLogic(name, func() { x += 1 })
-	w.RemoveLogic(name)
+	w.AddWorldLogic(name, func() { x += 1 })
+	w.RemoveWorldLogic(name)
 	for i := 0; i < 32; i++ {
 		w.Update(FRAME_SLEEP_MS)
 	}
@@ -142,54 +142,54 @@ func TestWorldRemoveLogic(t *testing.T) {
 	}
 }
 
-func TestWorldActivateLogic(t *testing.T) {
+func TestWorldActivateWorldLogic(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
 	name := "l1"
-	w.AddLogic(name, func() { x += 1 })
-	w.ActivateLogic(name)
+	w.AddWorldLogic(name, func() { x += 1 })
+	w.ActivateWorldLogic(name)
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 1 {
 		t.Fatal("logic should have been active and run - did not")
 	}
 }
 
-func TestWorldActivateAllLogics(t *testing.T) {
+func TestWorldActivateAllWorldLogics(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
 	n := 16
 	for i := 0; i < n; i++ {
 		name := fmt.Sprintf("logic-%d", i)
-		w.AddLogic(name, func() { x += 1 })
+		w.AddWorldLogic(name, func() { x += 1 })
 	}
-	w.ActivateAllLogics()
+	w.ActivateAllWorldLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != n {
 		t.Fatal("logics all should have been activated - some did not run")
 	}
 }
 
-func TestWorldDeactivateLogic(t *testing.T) {
+func TestWorldDeactivateWorldLogic(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
 	name1 := "l1"
-	w.AddLogic(name1, func() { x += 1 })
-	w.DeactivateLogic(name1)
+	w.AddWorldLogic(name1, func() { x += 1 })
+	w.DeactivateWorldLogic(name1)
 	if x != 0 {
 		t.Fatal("deactivated logic ran")
 	}
 }
 
-func TestWorldDeativateAllLogics(t *testing.T) {
+func TestWorldDeativateAllWorldLogics(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
 	n := 16
 	for i := 0; i < n; i++ {
 		name := fmt.Sprintf("logic-%d", i)
-		w.AddLogic(name, func() { x += 1 })
-		w.ActivateLogic(name)
+		w.AddWorldLogic(name, func() { x += 1 })
+		w.ActivateWorldLogic(name)
 	}
-	w.DeactivateAllLogics()
+	w.DeactivateAllWorldLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 0 {
 		t.Fatal("logics all should have been deactivated, but some ran")
@@ -198,8 +198,8 @@ func TestWorldDeativateAllLogics(t *testing.T) {
 
 func TestWorldRunLogicOverrun(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	w.AddLogic("logic", func() { time.Sleep(150 * time.Millisecond) })
-	w.ActivateAllLogics()
+	w.AddWorldLogic("logic", func() { time.Sleep(150 * time.Millisecond) })
+	w.ActivateAllWorldLogics()
 	w.worldLogicsRunner.Start()
 	remaining_ms := w.worldLogicsRunner.Run(100)
 	if remaining_ms > 0 {
@@ -213,8 +213,8 @@ func TestWorldRunLogicOverrun(t *testing.T) {
 
 func TestWorldLogicUnderrun(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	w.AddLogic("logic", func() { time.Sleep(100 * time.Millisecond) })
-	w.ActivateAllLogics()
+	w.AddWorldLogic("logic", func() { time.Sleep(100 * time.Millisecond) })
+	w.ActivateAllWorldLogics()
 	w.worldLogicsRunner.Start()
 	remaining_ms := w.worldLogicsRunner.Run(300)
 	if !(remaining_ms >= 0 && remaining_ms <= 200) {
@@ -224,10 +224,10 @@ func TestWorldLogicUnderrun(t *testing.T) {
 
 func TestWorldLogicTimeLimit(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	w.AddLogic("slow", func() { time.Sleep(10 * time.Millisecond) })
+	w.AddWorldLogic("slow", func() { time.Sleep(10 * time.Millisecond) })
 	fastRan := false
-	w.AddLogic("fast", func() { fastRan = true })
-	w.ActivateAllLogics()
+	w.AddWorldLogic("fast", func() { fastRan = true })
+	w.ActivateAllWorldLogics()
 	w.worldLogicsRunner.Start()
 	w.worldLogicsRunner.Run(2)
 	if fastRan {

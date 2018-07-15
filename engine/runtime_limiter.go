@@ -126,3 +126,25 @@ func (r *RuntimeLimiter) Start() {
 func (r *RuntimeLimiter) Finished() bool {
 	return r.finished
 }
+
+func RuntimeLimitShare(
+	allowance float64, runners ...*RuntimeLimiter) (remaining_ms float64) {
+
+	remaining_ms = allowance
+	for _, r := range runners {
+		r.Start()
+	}
+	finished := 0
+	for allowance >= 0 && finished != len(runners) {
+		perRunner := allowance / float64(len(runners)-finished)
+		var remaining_ms float64
+		for _, r := range runners {
+			remaining_ms += r.Run(perRunner)
+			if r.Finished() {
+				finished++
+			}
+		}
+		allowance = remaining_ms
+	}
+	return allowance
+}
