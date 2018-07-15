@@ -135,12 +135,18 @@ func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 	}
 }
 
-// Boolean check of whether a given entity has a given component
 func (m *EntityManager) EntityHasComponent(
 	entity *EntityToken, COMPONENT int) bool {
 
 	b, _ := entity.ComponentBitArray.GetBit(uint64(COMPONENT))
 	return b
+}
+
+func (m *EntityManager) EntityHasTag(
+	entity *EntityToken, tag string) bool {
+
+	return m.EntityHasComponent(entity, TAGLIST_COMPONENT) &&
+		m.Components.TagList[entity.ID].Has(tag)
 }
 
 // apply the given tags to the given entity

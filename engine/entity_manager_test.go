@@ -157,10 +157,16 @@ func TestEntityManagerTagUntagEntity(t *testing.T) {
 	if empty {
 		t.Fatal("failed to find Spawned entity in EntitiesWithTag")
 	}
+	if !w.Em.EntityHasTag(e, tag) {
+		t.Fatal("EntityHasTag() saw entity as untagged")
+	}
 	w.Em.UntagEntity(e, tag)
 	empty = tagged.Length() == 0
 	if !empty {
 		t.Fatal("entity was still in EntitiesWithTag after untag")
+	}
+	if w.Em.EntityHasTag(e, tag) {
+		t.Fatal("EntityHasTag() saw entity as still having removed tag")
 	}
 }
 
