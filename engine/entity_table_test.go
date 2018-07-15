@@ -2,10 +2,12 @@ package engine
 
 import (
 	"testing"
+
+	"github.com/dt-rush/sameriver/engine/utils"
 )
 
 func TestEntityTableAllocateID(t *testing.T) {
-	et := EntityTable{}
+	et := NewEntityTable(utils.NewIDGenerator())
 	_, err := et.allocateID()
 	if !(err == nil &&
 		et.n == 1) {
@@ -14,9 +16,9 @@ func TestEntityTableAllocateID(t *testing.T) {
 }
 
 func TestEntityTableDeallocateID(t *testing.T) {
-	et := EntityTable{}
+	et := NewEntityTable(utils.NewIDGenerator())
 	e, _ := et.allocateID()
-	et.deallocateID(e.ID)
+	et.deallocate(e)
 	if et.n != 0 {
 		t.Fatal("didn't update allocated count")
 	}
@@ -26,7 +28,7 @@ func TestEntityTableDeallocateID(t *testing.T) {
 }
 
 func TestEntityTableAllocateMaxIDs(t *testing.T) {
-	et := EntityTable{}
+	et := NewEntityTable(utils.NewIDGenerator())
 	for i := 0; i < MAX_ENTITIES; i++ {
 		et.allocateID()
 	}
@@ -37,11 +39,15 @@ func TestEntityTableAllocateMaxIDs(t *testing.T) {
 }
 
 func TestEntityTableReallocateDeallocatedID(t *testing.T) {
-	et := EntityTable{}
+	et := NewEntityTable(utils.NewIDGenerator())
+	var e *EntityToken
 	for i := 0; i < MAX_ENTITIES; i++ {
-		et.allocateID()
+		allocated, _ := et.allocateID()
+		if i == MAX_ENTITIES/2 {
+			e = allocated
+		}
 	}
-	et.deallocateID(MAX_ENTITIES / 2)
+	et.deallocate(e)
 	e, err := et.allocateID()
 	if err != nil {
 		t.Fatal("should have had space after deallocate to allocate")

@@ -26,7 +26,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 		e, _ := w.Em.Spawn(spatialSpawnRequestData(posbox[0], posbox[1]))
 		entityCells[e] = cells
 	}
-	w.Update(FRAME_SLEEP_MS)
+	w.Update(FRAME_SLEEP_MS/2)
 	for e, cells := range entityCells {
 		for _, cell := range cells {
 			table := sh.CurrentTablePointer()
@@ -60,7 +60,7 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 		[2]int{2, 2},
 	}
 	e, _ := w.Em.Spawn(spatialSpawnRequestData(pos, box))
-	w.Update(FRAME_SLEEP_MS)
+	w.Update(FRAME_SLEEP_MS/2)
 	table := sh.CurrentTablePointer()
 	for _, cell := range cells {
 		inCell := false
@@ -94,7 +94,7 @@ func TestSpatialHashDoubleCompute(t *testing.T) {
 	// update the world numerous times at the same time
 	for i := 0; i < N; i++ {
 		go func() {
-			sh.Update(FRAME_SLEEP_MS)
+			sh.Update()
 		}()
 	}
 	if sh.timesComputed.Load() == 512 {
@@ -108,7 +108,7 @@ func TestSpatialHashTableCopy(t *testing.T) {
 	sh := NewSpatialHashSystem(10, 10)
 	w.AddSystems(sh)
 	w.Em.Spawn(spatialSpawnRequestData(Vec2D{0, 0}, Vec2D{1, 1}))
-	w.Update(FRAME_SLEEP_MS)
+	w.Update(FRAME_SLEEP_MS/2)
 	table := sh.CurrentTablePointer()
 	tableCopy := sh.CurrentTableCopy()
 	if (*table)[0][0][0] != tableCopy[0][0][0] {

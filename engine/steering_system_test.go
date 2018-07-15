@@ -13,7 +13,7 @@ func TestSteeringSystem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w.Update(FRAME_SLEEP_MS)
+	w.Update(FRAME_SLEEP_MS/2)
 	if w.Em.Components.Velocity[e.ID] == vel {
 		t.Fatal("failed to steer velocity")
 	}

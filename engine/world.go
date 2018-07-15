@@ -6,30 +6,37 @@ import (
 	"regexp"
 	"time"
 	"unsafe"
+
+	"github.com/dt-rush/sameriver/engine/utils"
 )
 
 type World struct {
-	Width         int
-	Height        int
-	Ev            *EventBus
-	Em            *EntityManager
-	systems       []System
-	logics        []LogicUnit
-	logicRunIndex int
+	Width  int
+	Height int
+
+	IDGen *utils.IDGenerator
+	Ev    *EventBus
+	Em    *EntityManager
+
+	systems           []System
+	systemsIDs        map[System]utils.ID
+	systemsRunner     *RuntimeLimiter
+	worldLogicsRunner *RuntimeLimiter
 }
 
 func NewWorld(width int, height int) *World {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
-	w := World{
-		Width:   width,
-		Height:  height,
-		Ev:      ev,
-		Em:      em,
-		systems: make([]System, 0),
-		logics:  make([]LogicUnit, 0),
+	w := &World{
+		Width:             width,
+		Height:            height,
+		Ev:                NewEventBus(),
+		IDGen:             utils.NewIDGenerator(),
+		systems:           make([]System, 0),
+		systemsIDs:        make(map[System]utils.ID),
+		systemsRunner:     NewRuntimeLimiter(),
+		worldLogicsRunner: NewRuntimeLimiter(),
 	}
-	return &w
+	w.Em = NewEntityManager(w)
+	return w
 }
 
 func (w *World) AddSystems(systems ...System) {
@@ -46,7 +53,16 @@ func (w *World) AddSystems(systems ...System) {
 func (w *World) addSystem(s System) {
 	w.assertSystemTypeValid(reflect.TypeOf(s))
 	w.systems = append(w.systems, s)
+	ID := w.IDGen.Next()
+	w.systemsIDs[s] = ID
 	s.LinkWorld(w)
+	logicName := fmt.Sprintf("%s-update", reflect.TypeOf(s).Elem().Name())
+	w.systemsRunner.AddFunction(
+		&LogicUnit{
+			Name:    logicName,
+			WorldID: w.systemsIDs[s],
+			F:       s.Update,
+			Active:  true})
 }
 
 func (w *World) assertSystemTypeValid(t reflect.Type) {
@@ -122,33 +138,47 @@ func (w *World) linkSystemDependencies(s System) {
 	}
 }
 
-func (w *World) Update(dt_ms float64) {
+func (w *World) Update(limit_ms float64) (overrun_ms float64) {
+	t0 := time.Now()
 	w.Em.Update()
-	for _, s := range w.systems {
-		s.Update(dt_ms)
+	// world logic and entity logic can use whatever time is left over after
+	// entity manager update
+	allowance := limit_ms - float64(time.Since(t0).Nanoseconds())/1.0e6
+	w.systemsRunner.Start()
+	w.worldLogicsRunner.Start()
+	for allowance >= 0 &&
+		!(w.systemsRunner.Finished() && w.worldLogicsRunner.Finished()) {
+		if !(w.systemsRunner.Finished() || w.worldLogicsRunner.Finished()) {
+			allowance /= 2
+		}
+		var remaining_ms float64
+		if !w.systemsRunner.Finished() {
+			remaining_ms += w.systemsRunner.Run(allowance)
+		}
+		if !w.worldLogicsRunner.Finished() {
+			remaining_ms += w.worldLogicsRunner.Run(allowance)
+		}
+		allowance = remaining_ms
 	}
+	return allowance
 }
 
-func (w *World) AddLogics(logics ...LogicUnit) {
-	for _, logic := range logics {
-		w.logics = append(w.logics, logic)
+func (w *World) AddLogic(Name string, F func()) {
+	l := LogicUnit{
+		Name:    Name,
+		F:       F,
+		Active:  false,
+		WorldID: w.IDGen.Next(),
 	}
-}
-
-func (w *World) AddLogic(logic LogicUnit) {
-	w.logics = append(w.logics, logic)
+	w.worldLogicsRunner.AddFunction(&l)
 }
 
 func (w *World) ActivateAllLogics() {
-	for i, _ := range w.logics {
-		w.logics[i].Active = true
-	}
+	w.worldLogicsRunner.ActivateAll()
 }
 
 func (w *World) DeactivateAllLogics() {
-	for i, _ := range w.logics {
-		w.logics[i].Active = false
-	}
+	w.worldLogicsRunner.DeactivateAll()
 }
 
 func (w *World) ActivateLogic(name string) {
@@ -160,26 +190,7 @@ func (w *World) DeactivateLogic(name string) {
 }
 
 func (w *World) SetLogicActiveState(name string, state bool) {
-	for i, _ := range w.logics {
-		if w.logics[i].Name == name {
-			w.logics[i].Active = state
-		}
+	if logic, ok := w.worldLogicsRunner.byName[name]; ok {
+		logic.Active = state
 	}
-}
-
-// run as many logics as we can in the time limit, picking up
-// where we left off next time (and returning the amount we overrun)
-func (w *World) RunLogics(limit_ms int64) (overrun_ms int64) {
-	startLogicRunIndex := w.logicRunIndex
-	for limit_ms > 0 {
-		t0 := time.Now()
-		w.logics[w.logicRunIndex].F()
-		elapsed_ms := time.Since(t0).Nanoseconds() / 1e6
-		limit_ms -= elapsed_ms
-		w.logicRunIndex = (w.logicRunIndex + 1) % len(w.logics)
-		if w.logicRunIndex == startLogicRunIndex {
-			break
-		}
-	}
-	return limit_ms * -1
 }

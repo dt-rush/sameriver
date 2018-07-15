@@ -3,10 +3,14 @@ package engine
 import (
 	"errors"
 	"fmt"
+
+	"github.com/dt-rush/sameriver/engine/utils"
 )
 
 // used by the EntityManager to hold info about the allocated entities
 type EntityTable struct {
+	// the ID Generator given by the world the entity manager is in
+	IDGen *utils.IDGenerator
 	// how many entities there are
 	n int
 	// how many entities are active
@@ -17,6 +21,10 @@ type EntityTable struct {
 	isAllocated [MAX_ENTITIES]bool
 	// list of available entity ID's which have previously been deallocated
 	availableIDs []int
+}
+
+func NewEntityTable(IDGen *utils.IDGenerator) *EntityTable {
+	return &EntityTable{IDGen: IDGen}
 }
 
 // get the ID for a new entity. Only called by SpawnEntity, which locks
@@ -48,14 +56,20 @@ func (t *EntityTable) allocateID() (*EntityToken, error) {
 	// Increment the entity count
 	t.n++
 	// return the token
-	entity := EntityToken{ID: ID, Active: false, Despawned: false}
+	entity := EntityToken{
+		ID:        ID,
+		WorldID:   t.IDGen.Next(),
+		Active:    false,
+		Despawned: false,
+	}
 	return &entity, nil
 }
 
-func (t *EntityTable) deallocateID(ID int) {
+func (t *EntityTable) deallocate(e *EntityToken) {
 	// guards against false deallocation (edge case, but hey)
-	if t.isAllocated[ID] {
+	if t.isAllocated[e.ID] {
 		t.n--
-		t.availableIDs = append(t.availableIDs, ID)
+		t.availableIDs = append(t.availableIDs, e.ID)
+		t.IDGen.Free(e.WorldID)
 	}
 }

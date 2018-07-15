@@ -73,7 +73,7 @@ func (s *SpatialHashSystem) LinkWorld(w *World) {
 				[]ComponentType{POSITION_COMPONENT, BOX_COMPONENT})))
 }
 
-func (h *SpatialHashSystem) Update(dt_ms float64) {
+func (h *SpatialHashSystem) Update() {
 	// this lock prevents another call to Update()
 	// entering while we are currently calculating (this ensures robustness
 	// if for some reason it is called too often)

@@ -21,8 +21,8 @@ func TestComponentSetToBitArray(t *testing.T) {
 }
 
 func TestComponentSetApply(t *testing.T) {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
+	w := NewWorld(1024, 1024)
+	em := NewEntityManager(w)
 	e, _ := em.Spawn(simpleSpawnRequestData())
 	cs := fullZeroedComponentSet()
 	em.ApplyComponentSet(cs)(e)

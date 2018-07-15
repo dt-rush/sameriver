@@ -15,7 +15,7 @@ type EntityManager struct {
 	Components *ComponentsTable
 	// EntityTable stores: a list of allocated EntityTokens and a
 	// list of available IDs from previous deallocations
-	entityTable EntityTable
+	entityTable *EntityTable
 	// updated entity lists of entities with given tags
 	entitiesWithTag map[string]*UpdatedEntityList
 	// entities which have been tagged uniquely
@@ -35,19 +35,21 @@ type EntityManager struct {
 }
 
 // Construct a new entity manager
-func NewEntityManager(eventBus *EventBus) *EntityManager {
-	em := &EntityManager{}
+func NewEntityManager(w *World) *EntityManager {
+	em := &EntityManager{
+		entityTable:     NewEntityTable(w.IDGen),
+		entitiesWithTag: make(map[string]*UpdatedEntityList),
+		uniqueEntities:  make(map[string]*EntityToken),
+		eventBus:        w.Ev,
+		spawnSubscription: w.Ev.Subscribe(
+			"EntityManager::SpawnRequest",
+			NewSimpleEventQuery(SPAWNREQUEST_EVENT)),
+		despawnSubscription: w.Ev.Subscribe(
+			"EntityManager::DespawnRequest",
+			NewSimpleEventQuery(DESPAWNREQUEST_EVENT)),
+	}
 	em.Components = NewComponentsTable(em)
 	em.activeEntityLists = NewActiveEntityListCollection(em)
-	em.entitiesWithTag = make(map[string]*UpdatedEntityList)
-	em.uniqueEntities = make(map[string]*EntityToken)
-	em.eventBus = eventBus
-	em.spawnSubscription = eventBus.Subscribe(
-		"EntityManager::SpawnRequest",
-		NewSimpleEventQuery(SPAWNREQUEST_EVENT))
-	em.despawnSubscription = eventBus.Subscribe(
-		"EntityManager::DespawnRequest",
-		NewSimpleEventQuery(DESPAWNREQUEST_EVENT))
 	return em
 }
 

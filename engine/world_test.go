@@ -89,110 +89,117 @@ func TestWorldSystemDependencyNonSystem(t *testing.T) {
 	t.Fatal("should have panic'd")
 }
 
-func TestWorldUpdate(t *testing.T) {
+func TestWorldRunSystemsOnly(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	ts := newTestSystem()
 	w.AddSystems(ts)
-	w.Update(FRAME_SLEEP_MS)
-	if ts.x != FRAME_SLEEP_MS {
-		t.Fatal("didn't update world.systems")
+	w.Update(FRAME_SLEEP_MS / 2)
+	if ts.x == 0 {
+		t.Fatal("failed to update system")
+	}
+}
+
+func TestWorldRunWorldLogicsOnly(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	x := 0
+	w.AddLogic("logic", func() { x += 1 })
+	w.Update(FRAME_SLEEP_MS / 2)
+	if x != 1 {
+		t.Fatal("failed to run logic")
+	}
+}
+
+func TestWorldRunSystemsAndLogic(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	ts := newTestSystem()
+	w.AddSystems(ts)
+	x := 0
+	w.AddLogic("logic", func() { x += 1 })
+	w.Update(FRAME_SLEEP_MS / 2)
+	if ts.x == 0 {
+		t.Fatal("failed to update system")
+	}
+	if x != 1 {
+		t.Fatal("failed to run logic")
 	}
 }
 
 func TestWorldActivateDeactivateLogic(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
-	lu1 := LogicUnit{
-		Name:   "l1",
-		Active: false,
-		F:      func() { x += 1 },
-	}
-	w.AddLogic(lu1)
+	name1 := "l1"
+	w.AddLogic(name1, func() { x += 1 })
 	// test Activate
-	w.ActivateLogic("l1")
-	if !w.logics[0].Active {
+	w.ActivateLogic(name1)
+	if !w.worldLogicsRunner.byName[name1].Active {
 		t.Fatal("failed to activate logic")
 	}
-	w.RunLogics(FRAME_SLEEP_MS)
+	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 1 {
 		t.Fatal("active logic didn't run")
 	}
 	// test Deactivate
 	x = 0
-	w.DeactivateLogic("l1")
-	if w.logics[0].Active {
+	w.DeactivateLogic(name1)
+	if w.worldLogicsRunner.byName[name1].Active {
 		t.Fatal("failed to deactivate logic")
 	}
 	if x != 0 {
 		t.Fatal("deactivated logic ran")
 	}
 	// test ActivateAll/DeactivateAll
-	lu2 := LogicUnit{
-		Name:   "l2",
-		Active: false,
-		F:      func() {},
-	}
-	w.AddLogic(lu2)
-	w.ActivateLogic("l1")
-	w.ActivateLogic("l2")
+	name2 := "l2"
+	w.AddLogic(name2, func() {})
+	w.ActivateLogic(name2)
+	w.ActivateLogic(name2)
 	w.DeactivateAllLogics()
-	for _, l := range w.logics {
+	for _, l := range w.worldLogicsRunner.logicUnits {
 		if l.Active {
 			t.Fatal("did not deactivate all logic")
 		}
 	}
 	w.ActivateAllLogics()
-	for _, l := range w.logics {
+	for _, l := range w.worldLogicsRunner.logicUnits {
 		if !l.Active {
 			t.Fatal("did not activate all logic")
 		}
 	}
 }
 
-func TestWorldRunLogics(t *testing.T) {
+func TestWorldRunLogicOverrun(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	x := 0
-	w.AddLogic(LogicUnit{
-		Name:   "logic",
-		Active: true,
-		F:      func() { x += 1 },
-	})
-	w.RunLogics(FRAME_SLEEP_MS / 5)
-	if x != 1 {
-		t.Fatal("failed to run logic")
+	w.AddLogic("logic", func() { time.Sleep(150 * time.Millisecond) })
+	w.ActivateAllLogics()
+	w.worldLogicsRunner.Start()
+	remaining_ms := w.worldLogicsRunner.Run(100)
+	if remaining_ms > 0 {
+		t.Fatal("overrun time not calculated properly")
+	}
+	if !w.worldLogicsRunner.Finished() {
+		t.Fatal("should have returned finished = true when running sole logic " +
+			"within time limit")
 	}
 }
 
-func TestWorldRunLogicTiming(t *testing.T) {
+func TestWorldLogicUnderrun(t *testing.T) {
 	w := NewWorld(1024, 1024)
-	for i := 0; i < 3; i++ {
-		w.AddLogic(LogicUnit{
-			Name:   "logic",
-			Active: true,
-			F:      func() { time.Sleep(100 * time.Millisecond) },
-		})
+	w.AddLogic("logic", func() { time.Sleep(100 * time.Millisecond) })
+	w.ActivateAllLogics()
+	w.worldLogicsRunner.Start()
+	remaining_ms := w.worldLogicsRunner.Run(300)
+	if !(remaining_ms >= 0 && remaining_ms <= 200) {
+		t.Fatal("remaining time not calculated properly")
 	}
-	overrun_ms := w.RunLogics(150)
-	if !(overrun_ms >= 50) {
-		t.Fatal("overrun time not calculated")
-	}
-	overrun_ms = w.RunLogics(300)
-	if !(overrun_ms >= 0 && overrun_ms <= 50) {
-		t.Fatal("overrun time not calculated")
-	}
-	w = NewWorld(1024, 1024)
-	w.AddLogic(LogicUnit{
-		Name:   "slow",
-		Active: true,
-		F:      func() { time.Sleep(10 * time.Millisecond) },
-	})
+}
+
+func TestWorldLogicTimeLimit(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	w.AddLogic("slow", func() { time.Sleep(10 * time.Millisecond) })
 	fastRan := false
-	w.AddLogic(LogicUnit{
-		Name:   "fast",
-		Active: true,
-		F:      func() { fastRan = true },
-	})
-	w.RunLogics(8)
+	w.AddLogic("fast", func() { fastRan = true })
+	w.ActivateAllLogics()
+	w.worldLogicsRunner.Start()
+	w.worldLogicsRunner.Run(2)
 	if fastRan {
 		t.Fatal("continued running logic despite using up allowed milliseconds")
 	}

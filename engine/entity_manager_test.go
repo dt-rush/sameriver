@@ -6,8 +6,8 @@ import (
 )
 
 func TestEntityManagerConstruct(t *testing.T) {
-	ev := NewEventBus()
-	em := NewEntityManager(ev)
+	w := NewWorld(1024, 1024)
+	em := NewEntityManager(w)
 	if em == nil {
 		t.Fatal("Could not construct NewEntityManager()")
 	}
@@ -52,7 +52,7 @@ func TestEntityManagerSpawnRequest(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
 	w.Em.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, simpleSpawnRequestData()}
-	w.Update(FRAME_SLEEP_MS)
+	w.Update(FRAME_SLEEP_MS / 2)
 	total, _ := w.Em.NumEntities()
 	if total != 1 {
 		t.Fatal("should have spawned an entity after processing spawn subscription")
@@ -66,7 +66,7 @@ func TestEntityManagerDespawnRequest(t *testing.T) {
 	w.Em.despawnSubscription.C <- Event{
 		DESPAWNREQUEST_EVENT,
 		DespawnRequestData{Entity: e}}
-	w.Update(FRAME_SLEEP_MS)
+	w.Update(FRAME_SLEEP_MS / 2)
 	total, _ := w.Em.NumEntities()
 	if total != 0 {
 		t.Fatal("should have despawned an entity after processing despawn subscription")
