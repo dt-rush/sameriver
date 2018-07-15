@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestRuntimeLimiterAddLogic(t *testing.T) {
@@ -32,10 +33,35 @@ func TestRuntimeLimiterRunLogic(t *testing.T) {
 		F:       func() { x += 1 },
 		Active:  true})
 	for i := 0; i < 32; i++ {
+		r.Start()
 		r.Run(FRAME_SLEEP_MS)
 	}
 	if x != 32 {
 		t.Fatal("didn't run logic")
+	}
+}
+
+func TestRuntimeLimiterDoNotRunEstimatedSlowLogic(t *testing.T) {
+	r := NewRuntimeLimiter()
+	x := 0
+	name := "l1"
+	ms_duration := 100
+	r.Add(&LogicUnit{
+		Name:    name,
+		WorldID: 0,
+		F: func() {
+			x += 1
+			time.Sleep(time.Duration(ms_duration) * time.Millisecond)
+		},
+		Active: true})
+	// since it's never run before, running the logic will set its estimate
+	r.Start()
+	r.Run(FRAME_SLEEP_MS)
+	// now we try to run it again, but give it no time to run (exceeds estimate)
+	r.Start()
+	r.Run(float64(ms_duration) / 10.0)
+	if x == 2 {
+		t.Fatal("ran logic even though estimate should have prevented this")
 	}
 }
 
@@ -55,6 +81,7 @@ func TestRuntimeLimiterRemoveLogic(t *testing.T) {
 	r.Add(logic)
 	// run logic a few times so that it has runtimeEstimate data
 	for i := 0; i < 32; i++ {
+		r.Start()
 		r.Run(FRAME_SLEEP_MS)
 	}
 	// remove it
