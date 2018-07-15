@@ -18,9 +18,13 @@ type World struct {
 	Ev    *EventBus
 	Em    *EntityManager
 
-	systems           []System
-	systemsIDs        map[System]int
-	systemsRunner     *RuntimeLimiter
+	systems       map[string]System
+	systemsRunner *RuntimeLimiter
+	// this is needed to associate ID's with Systems, since System is an
+	// interface, not a struct type like LogicUnit
+	systemsIDs map[System]int
+
+	worldLogics       map[string]*LogicUnit
 	worldLogicsRunner *RuntimeLimiter
 }
 
@@ -30,13 +34,39 @@ func NewWorld(width int, height int) *World {
 		Height:            height,
 		Ev:                NewEventBus(),
 		IDGen:             utils.NewIDGenerator(),
-		systems:           make([]System, 0),
+		systems:           make(map[string]System),
 		systemsIDs:        make(map[System]int),
 		systemsRunner:     NewRuntimeLimiter(),
+		worldLogics:       make(map[string]*LogicUnit),
 		worldLogicsRunner: NewRuntimeLimiter(),
 	}
 	w.Em = NewEntityManager(w)
 	return w
+}
+
+func (w *World) Update(limit_ms float64) (overrun_ms float64) {
+	t0 := time.Now()
+	w.Em.Update()
+	// world logic and entity logic can use whatever time is left over after
+	// entity manager update
+	allowance := limit_ms - float64(time.Since(t0).Nanoseconds())/1.0e6
+	w.systemsRunner.Start()
+	w.worldLogicsRunner.Start()
+	for allowance >= 0 &&
+		!(w.systemsRunner.Finished() && w.worldLogicsRunner.Finished()) {
+		if !(w.systemsRunner.Finished() || w.worldLogicsRunner.Finished()) {
+			allowance /= 2
+		}
+		var remaining_ms float64
+		if !w.systemsRunner.Finished() {
+			remaining_ms += w.systemsRunner.Run(allowance)
+		}
+		if !w.worldLogicsRunner.Finished() {
+			remaining_ms += w.worldLogicsRunner.Run(allowance)
+		}
+		allowance = remaining_ms
+	}
+	return allowance
 }
 
 func (w *World) AddSystems(systems ...System) {
@@ -52,12 +82,16 @@ func (w *World) AddSystems(systems ...System) {
 
 func (w *World) addSystem(s System) {
 	w.assertSystemTypeValid(reflect.TypeOf(s))
-	w.systems = append(w.systems, s)
+	name := reflect.TypeOf(s).Elem().Name()
+	if _, ok := w.systems[name]; ok {
+		panic(fmt.Sprintf("double-add of system %s", name))
+	}
+	w.systems[name] = s
 	ID := w.IDGen.Next()
 	w.systemsIDs[s] = ID
 	s.LinkWorld(w)
-	logicName := fmt.Sprintf("%s-update", reflect.TypeOf(s).Elem().Name())
-	w.systemsRunner.AddFunction(
+	logicName := fmt.Sprintf("%s-update", name)
+	w.systemsRunner.Add(
 		&LogicUnit{
 			Name:    logicName,
 			WorldID: w.systemsIDs[s],
@@ -138,39 +172,23 @@ func (w *World) linkSystemDependencies(s System) {
 	}
 }
 
-func (w *World) Update(limit_ms float64) (overrun_ms float64) {
-	t0 := time.Now()
-	w.Em.Update()
-	// world logic and entity logic can use whatever time is left over after
-	// entity manager update
-	allowance := limit_ms - float64(time.Since(t0).Nanoseconds())/1.0e6
-	w.systemsRunner.Start()
-	w.worldLogicsRunner.Start()
-	for allowance >= 0 &&
-		!(w.systemsRunner.Finished() && w.worldLogicsRunner.Finished()) {
-		if !(w.systemsRunner.Finished() || w.worldLogicsRunner.Finished()) {
-			allowance /= 2
-		}
-		var remaining_ms float64
-		if !w.systemsRunner.Finished() {
-			remaining_ms += w.systemsRunner.Run(allowance)
-		}
-		if !w.worldLogicsRunner.Finished() {
-			remaining_ms += w.worldLogicsRunner.Run(allowance)
-		}
-		allowance = remaining_ms
-	}
-	return allowance
-}
-
-func (w *World) AddLogic(Name string, F func()) {
-	l := LogicUnit{
+func (w *World) AddLogic(Name string, F func()) *LogicUnit {
+	l := &LogicUnit{
 		Name:    Name,
 		F:       F,
 		Active:  false,
 		WorldID: w.IDGen.Next(),
 	}
-	w.worldLogicsRunner.AddFunction(&l)
+	w.worldLogics[Name] = l
+	w.worldLogicsRunner.Add(l)
+	return l
+}
+
+func (w *World) RemoveLogic(Name string) {
+	if logic, ok := w.worldLogics[Name]; ok {
+		w.worldLogicsRunner.Remove(logic.WorldID)
+		delete(w.worldLogics, Name)
+	}
 }
 
 func (w *World) ActivateAllLogics() {
@@ -190,7 +208,7 @@ func (w *World) DeactivateLogic(name string) {
 }
 
 func (w *World) SetLogicActiveState(name string, state bool) {
-	if logic, ok := w.worldLogicsRunner.byName[name]; ok {
+	if logic, ok := w.worldLogics[name]; ok {
 		logic.Active = state
 	}
 }

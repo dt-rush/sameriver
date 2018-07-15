@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -103,6 +104,7 @@ func TestWorldRunWorldLogicsOnly(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
 	w.AddLogic("logic", func() { x += 1 })
+	w.ActivateAllLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 1 {
 		t.Fatal("failed to run logic")
@@ -114,9 +116,11 @@ func TestWorldRunSystemsAndLogic(t *testing.T) {
 	ts := newTestSystem()
 	w.AddSystems(ts)
 	x := 0
-	w.AddLogic("logic", func() { x += 1 })
+	name := "logic"
+	w.AddLogic(name, func() { x += 1 })
+	w.ActivateLogic(name)
 	w.Update(FRAME_SLEEP_MS / 2)
-	if ts.x == 0 {
+	if ts.x != 1 {
 		t.Fatal("failed to update system")
 	}
 	if x != 1 {
@@ -124,45 +128,71 @@ func TestWorldRunSystemsAndLogic(t *testing.T) {
 	}
 }
 
-func TestWorldActivateDeactivateLogic(t *testing.T) {
+func TestWorldRemoveLogic(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	x := 0
+	name := "l1"
+	w.AddLogic(name, func() { x += 1 })
+	w.RemoveLogic(name)
+	for i := 0; i < 32; i++ {
+		w.Update(FRAME_SLEEP_MS)
+	}
+	if x != 0 {
+		t.Fatal("logic was removed but still ran during Update()")
+	}
+}
+
+func TestWorldActivateLogic(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	x := 0
+	name := "l1"
+	w.AddLogic(name, func() { x += 1 })
+	w.ActivateLogic(name)
+	w.Update(FRAME_SLEEP_MS / 2)
+	if x != 1 {
+		t.Fatal("logic should have been active and run - did not")
+	}
+}
+
+func TestWorldActivateAllLogics(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	x := 0
+	n := 16
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("logic-%d", i)
+		w.AddLogic(name, func() { x += 1 })
+	}
+	w.ActivateAllLogics()
+	w.Update(FRAME_SLEEP_MS / 2)
+	if x != n {
+		t.Fatal("logics all should have been activated - some did not run")
+	}
+}
+
+func TestWorldDeactivateLogic(t *testing.T) {
 	w := NewWorld(1024, 1024)
 	x := 0
 	name1 := "l1"
 	w.AddLogic(name1, func() { x += 1 })
-	// test Activate
-	w.ActivateLogic(name1)
-	if !w.worldLogicsRunner.byName[name1].Active {
-		t.Fatal("failed to activate logic")
-	}
-	w.Update(FRAME_SLEEP_MS / 2)
-	if x != 1 {
-		t.Fatal("active logic didn't run")
-	}
-	// test Deactivate
-	x = 0
 	w.DeactivateLogic(name1)
-	if w.worldLogicsRunner.byName[name1].Active {
-		t.Fatal("failed to deactivate logic")
-	}
 	if x != 0 {
 		t.Fatal("deactivated logic ran")
 	}
-	// test ActivateAll/DeactivateAll
-	name2 := "l2"
-	w.AddLogic(name2, func() {})
-	w.ActivateLogic(name2)
-	w.ActivateLogic(name2)
-	w.DeactivateAllLogics()
-	for _, l := range w.worldLogicsRunner.logicUnits {
-		if l.Active {
-			t.Fatal("did not deactivate all logic")
-		}
+}
+
+func TestWorldDeativateAllLogics(t *testing.T) {
+	w := NewWorld(1024, 1024)
+	x := 0
+	n := 16
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("logic-%d", i)
+		w.AddLogic(name, func() { x += 1 })
+		w.ActivateLogic(name)
 	}
-	w.ActivateAllLogics()
-	for _, l := range w.worldLogicsRunner.logicUnits {
-		if !l.Active {
-			t.Fatal("did not activate all logic")
-		}
+	w.DeactivateAllLogics()
+	w.Update(FRAME_SLEEP_MS / 2)
+	if x != 0 {
+		t.Fatal("logics all should have been deactivated, but some ran")
 	}
 }
 

@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -19,8 +18,6 @@ type RuntimeLimiter struct {
 	finished bool
 	// used so we can iterate the added logicUnits in order
 	logicUnits []*LogicUnit
-	// used ot access logics by name
-	byName map[string]*LogicUnit
 	// used to estimate the time cost in milliseconds of running a function,
 	// so that we can try to stay below the limit provided
 	runtimeEstimates map[*LogicUnit]float64
@@ -34,70 +31,9 @@ type RuntimeLimiter struct {
 func NewRuntimeLimiter() *RuntimeLimiter {
 	return &RuntimeLimiter{
 		logicUnits:       make([]*LogicUnit, 0),
-		byName:           make(map[string]*LogicUnit),
 		runtimeEstimates: make(map[*LogicUnit]float64),
 		indexes:          make(map[int]int),
 	}
-}
-
-func (r *RuntimeLimiter) AddFunction(logic *LogicUnit) {
-	// panic if adding duplicate by WorldID
-	if _, ok := r.indexes[logic.WorldID]; ok {
-		panic("Double-add of same logic unit to RuntimeLimiter")
-	}
-	// panic if adding duplicate by Name
-	if _, ok := r.byName[logic.Name]; ok {
-		panic(fmt.Sprintf("Double-add of same logic unit (by name: %s) "+
-			"to RuntimeLimiter", logic.Name))
-	}
-	r.logicUnits = append(r.logicUnits, logic)
-	r.byName[logic.Name] = logic
-	r.indexes[logic.WorldID] = len(r.logicUnits) - 1
-	logic.Active = true
-}
-
-func (r *RuntimeLimiter) RemoveFunction(WorldID int) {
-	// return early if not present
-	index, ok := r.indexes[WorldID]
-	if !ok {
-		return
-	}
-	// delete from runtimeEstimates
-	logicUnit := r.logicUnits[index]
-	if _, ok := r.runtimeEstimates[logicUnit]; ok {
-		delete(r.runtimeEstimates, logicUnit)
-	}
-	// delete from indexes
-	delete(r.indexes, WorldID)
-	// delete from byName
-	delete(r.byName, logicUnit.Name)
-	// delete from logicUnits by replacing the last element into its spot,
-	// updating the indexes entry for that element
-	lastIndex := len(r.logicUnits) - 1
-	r.logicUnits[index] = r.logicUnits[lastIndex]
-	r.logicUnits = r.logicUnits[:lastIndex]
-	r.indexes[r.logicUnits[index].WorldID] = index
-}
-
-func (r *RuntimeLimiter) ActivateAll() {
-	for _, l := range r.logicUnits {
-		l.Active = true
-	}
-}
-
-func (r *RuntimeLimiter) DeactivateAll() {
-	for _, l := range r.logicUnits {
-		l.Active = false
-	}
-}
-
-func (r *RuntimeLimiter) Start() {
-	r.startIX = r.runIX
-	r.finished = false
-}
-
-func (r *RuntimeLimiter) Finished() bool {
-	return r.finished
 }
 
 func (r *RuntimeLimiter) Run(allowance float64) (remaining_ms float64) {
@@ -134,4 +70,58 @@ func (r *RuntimeLimiter) Run(allowance float64) (remaining_ms float64) {
 		}
 	}
 	return allowance
+}
+
+func (r *RuntimeLimiter) Add(logic *LogicUnit) {
+	// panic if adding duplicate by WorldID
+	if _, ok := r.indexes[logic.WorldID]; ok {
+		panic("Double-add of same logic unit to RuntimeLimiter")
+	}
+	r.logicUnits = append(r.logicUnits, logic)
+	r.indexes[logic.WorldID] = len(r.logicUnits) - 1
+}
+
+func (r *RuntimeLimiter) Remove(WorldID int) bool {
+	// return early if not present
+	index, ok := r.indexes[WorldID]
+	if !ok {
+		return false
+	}
+	// delete from runtimeEstimates
+	logicUnit := r.logicUnits[index]
+	if _, ok := r.runtimeEstimates[logicUnit]; ok {
+		delete(r.runtimeEstimates, logicUnit)
+	}
+	// delete from indexes
+	delete(r.indexes, WorldID)
+	// delete from logicUnits by replacing the last element into its spot,
+	// updating the indexes entry for that element
+	lastIndex := len(r.logicUnits) - 1
+	if len(r.logicUnits) > 1 {
+		r.logicUnits[index] = r.logicUnits[lastIndex]
+		r.indexes[r.logicUnits[index].WorldID] = index
+	}
+	r.logicUnits = r.logicUnits[:lastIndex]
+	return true
+}
+
+func (r *RuntimeLimiter) ActivateAll() {
+	for _, l := range r.logicUnits {
+		l.Active = true
+	}
+}
+
+func (r *RuntimeLimiter) DeactivateAll() {
+	for _, l := range r.logicUnits {
+		l.Active = false
+	}
+}
+
+func (r *RuntimeLimiter) Start() {
+	r.startIX = r.runIX
+	r.finished = false
+}
+
+func (r *RuntimeLimiter) Finished() bool {
+	return r.finished
 }
