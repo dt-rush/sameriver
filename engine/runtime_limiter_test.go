@@ -43,12 +43,17 @@ func TestRuntimeLimiterRunLogic(t *testing.T) {
 
 func TestRuntimeLimiterDoNotRunEstimatedSlowLogic(t *testing.T) {
 	r := NewRuntimeLimiter()
+	r.Add(&LogicUnit{
+		Name:    "dummy",
+		WorldID: 0,
+		F:       func() {},
+		Active:  true})
 	x := 0
 	name := "l1"
 	ms_duration := 100
 	r.Add(&LogicUnit{
 		Name:    name,
-		WorldID: 0,
+		WorldID: 1,
 		F: func() {
 			x += 1
 			time.Sleep(time.Duration(ms_duration) * time.Millisecond)
@@ -58,7 +63,6 @@ func TestRuntimeLimiterDoNotRunEstimatedSlowLogic(t *testing.T) {
 	r.Start()
 	r.Run(FRAME_SLEEP_MS)
 	// now we try to run it again, but give it no time to run (exceeds estimate)
-	r.Start()
 	r.Run(float64(ms_duration) / 10.0)
 	if x == 2 {
 		t.Fatal("ran logic even though estimate should have prevented this")

@@ -47,7 +47,7 @@ func (r *RuntimeLimiter) Run(allowance float64) (remaining_ms float64) {
 		estimate, hasEstimate := r.runtimeEstimates[logic]
 		var t0 time.Time
 		var elapsed_ms float64
-		if estimate > allowance && r.runIX != r.startIX {
+		if hasEstimate && (estimate > allowance) && (r.runIX != r.startIX) {
 			return remaining_ms
 		}
 		if !hasEstimate || (hasEstimate && estimate <= allowance) {
