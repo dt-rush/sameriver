@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const VERSION = "0.5"
+const VERSION = "0.5.01"
 const AUDIO_ON = true
 
 const FPS = 60
