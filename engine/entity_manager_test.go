@@ -222,12 +222,12 @@ func TestEntityManagerGetUpdatedEntityListByName(t *testing.T) {
 	if w.Em.GetUpdatedEntityListByName(name) != nil {
 		t.Fatal("should return nil if not found")
 	}
-	query := EntityQuery{
+	Filter := EntityFilter{
 		Name: name,
 		TestFunc: func(entity *EntityToken, em *EntityManager) bool {
 			return false
 		}}
-	list := w.Em.GetUpdatedEntityList(query)
+	list := w.Em.GetUpdatedEntityList(Filter)
 	if w.Em.GetUpdatedEntityListByName(name) != list {
 		t.Fatal("GetUpdatedEntityListByName did not find list")
 	}

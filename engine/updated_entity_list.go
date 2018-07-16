@@ -23,8 +23,8 @@ type EntitySignal struct {
 type UpdatedEntityList struct {
 	// the entities in the list (tagged with gen)
 	entities []*EntityToken
-	// possibly nil query defining the list
-	Query *EntityQuery
+	// possibly nil Filter defining the list
+	Filter *EntityFilter
 	// whether the entities slice should be sorted
 	sorted bool
 	// a slice of funcs who want to be called *before* the entity gets

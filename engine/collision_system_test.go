@@ -16,8 +16,8 @@ func TestCollisionSystem(t *testing.T) {
 		t.Fatal("failed to inject *SpatialHashSystem to CollisionSystem.sh")
 	}
 	ec := w.Ev.Subscribe(
-		"SimpleCollisionQuery",
-		NewSimpleEventQuery(COLLISION_EVENT))
+		"SimpleCollisionFilter",
+		SimpleEventFilter(COLLISION_EVENT))
 	w.Em.Spawn(collisionSpawnRequestData())
 	w.Em.Spawn(collisionSpawnRequestData())
 	w.Update(FRAME_SLEEP_MS / 2)
@@ -47,8 +47,8 @@ func TestCollisionRateLimit(t *testing.T) {
 		cs,
 	)
 	ec := w.Ev.Subscribe(
-		"SimpleCollisionQuery",
-		NewSimpleEventQuery(COLLISION_EVENT))
+		"SimpleCollisionFilter",
+		SimpleEventFilter(COLLISION_EVENT))
 	w.Em.Spawn(collisionSpawnRequestData())
 	e, _ := w.Em.Spawn(collisionSpawnRequestData())
 	w.Em.Update()
@@ -65,4 +65,7 @@ func TestCollisionRateLimit(t *testing.T) {
 	if len(ec.C) != 2 {
 		t.Fatal("collision rate-limiter reset did not allow second collision")
 	}
+}
+
+func TestCollisionFilter(t *testing.T) {
 }

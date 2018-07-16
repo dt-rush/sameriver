@@ -12,7 +12,7 @@ func NewSteeringSystem() *SteeringSystem {
 func (s *SteeringSystem) LinkWorld(w *World) {
 	s.w = w
 	s.movementEntities = w.Em.GetUpdatedEntityList(
-		EntityQueryFromComponentBitArray(
+		EntityFilterFromComponentBitArray(
 			"steering",
 			MakeComponentBitArray([]ComponentType{
 				POSITION_COMPONENT,

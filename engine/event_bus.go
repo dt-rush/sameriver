@@ -10,7 +10,7 @@ type SubscriberList struct {
 	// subscriberLists is a list of lists of EventChannels
 	// where the outer list is indexed by the EventType (type aliased
 	// to int). So you could have a list of queries on CollisionEvents, etc.
-	// Each EventQuery's Predicate will be tested against the events
+	// Each EventFilter's Predicate will be tested against the events
 	// that are published for the matching type (and thus the predicates
 	// can safely assert the type of the Data member of the event)
 	channels [N_EVENT_TYPES][]*EventChannel
@@ -29,9 +29,9 @@ func (ev *EventBus) Publish(Type EventType, Data interface{}) {
 	go ev.notifySubscribers(Event{Type, Data})
 }
 
-// Subscribe to listen for game events defined by a query
+// Subscribe to listen for game events defined by a Filter
 func (ev *EventBus) Subscribe(
-	name string, q *EventQuery) *EventChannel {
+	name string, q *EventFilter) *EventChannel {
 
 	// Create a channel to return to the user
 	c := NewEventChannel(name, q)
@@ -44,7 +44,7 @@ func (ev *EventBus) Subscribe(
 
 // Remove a subscriber
 func (ev *EventBus) Unsubscribe(c *EventChannel) {
-	removeEventChannelFromSlice(&ev.subscriberList.channels[c.Query.Type], c)
+	removeEventChannelFromSlice(&ev.subscriberList.channels[c.Filter.Type], c)
 }
 
 // notify subscribers to a certain event
@@ -62,7 +62,7 @@ func (ev *EventBus) notifySubscribers(e Event) {
 		if !c.IsActive() {
 			continue
 		}
-		if c.Query.Test(e) {
+		if c.Filter.Test(e) {
 			if len(c.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
 				notifyFull(c)
 				// spawn a goroutine to do the channel send since we don't

@@ -51,10 +51,10 @@ func NewCollisionSystem() *CollisionSystem {
 
 func (s *CollisionSystem) LinkWorld(w *World) {
 	s.w = w
-	// query a regularly updated list of the entities which are collidable
+	// Filter a regularly updated list of the entities which are collidable
 	// (position and hitbox)
 	s.collidableEntities = w.Em.GetSortedUpdatedEntityList(
-		EntityQueryFromComponentBitArray(
+		EntityFilterFromComponentBitArray(
 			"collidable",
 			MakeComponentBitArray([]ComponentType{
 				POSITION_COMPONENT,
@@ -117,25 +117,27 @@ func (s *CollisionSystem) checkEntities(entities []*EntityToken) {
 			if j.ID < i.ID {
 				j, i = i, j
 			}
-			// check the collision
-			if !s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Limited() &&
-				s.TestCollision(uint16(i.ID), uint16(j.ID)) {
-				// if colliding, send the message (rate-limited)
-				s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Do(
-					func() {
-						s.w.Ev.Publish(COLLISION_EVENT,
-							CollisionData{EntityA: i, EntityB: j})
-					})
-				// TODO: move both entities away from their common center?
-				// generalized callback function probably best (with a set of
-				// predefined ones)
+			if !s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Limited() {
+				if s.TestCollision(i.ID, j.ID) {
+					s.DoCollide(i, j)
+				} else if s.TestCollision(j.ID, i.ID) {
+					s.DoCollide(j, i)
+				}
 			}
 		}
 	}
 }
 
+func (s *CollisionSystem) DoCollide(i *EntityToken, j *EntityToken) {
+	s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Do(
+		func() {
+			s.w.Ev.Publish(COLLISION_EVENT,
+				CollisionData{EntityA: i, EntityB: j})
+		})
+}
+
 // Test collision between two entities
-func (s *CollisionSystem) TestCollision(i uint16, j uint16) bool {
+func (s *CollisionSystem) TestCollision(i int, j int) bool {
 	iPos := s.w.Em.Components.Position[i]
 	iBox := s.w.Em.Components.Box[i]
 	jPos := s.w.Em.Components.Position[j]

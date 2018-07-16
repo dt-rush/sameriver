@@ -18,7 +18,7 @@ func NewPhysicsSystem() *PhysicsSystem {
 func (s *PhysicsSystem) LinkWorld(w *World) {
 	s.w = w
 	s.physicsEntities = w.Em.GetUpdatedEntityList(
-		EntityQueryFromComponentBitArray(
+		EntityFilterFromComponentBitArray(
 			"physical",
 			MakeComponentBitArray([]ComponentType{
 				POSITION_COMPONENT,

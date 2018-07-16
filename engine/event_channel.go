@@ -7,15 +7,15 @@ import (
 type EventChannel struct {
 	active *atomic.Uint32
 	C      chan (Event)
-	Query  *EventQuery // TODO: this is used only by callers. Refactor?
+	Filter *EventFilter // TODO: this is used only by callers. Refactor?
 	Name   string
 }
 
-func NewEventChannel(name string, q *EventQuery) *EventChannel {
+func NewEventChannel(name string, q *EventFilter) *EventChannel {
 	return &EventChannel{
 		active: atomic.NewUint32(1),
 		C:      make(chan (Event), EVENT_SUBSCRIBER_CHANNEL_CAPACITY),
-		Query:  q,
+		Filter: q,
 		Name:   name}
 }
 

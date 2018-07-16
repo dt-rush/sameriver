@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestEntityQuery(t *testing.T) {
+func TestEntityFilter(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
 	pos := Vec2D{0, 0}
@@ -12,18 +12,18 @@ func TestEntityQuery(t *testing.T) {
 	w.Em.Spawn(req)
 	w.Em.Update()
 	e := w.Em.Entities[0]
-	q := EntityQuery{
-		"positionQuery",
+	q := EntityFilter{
+		"positionFilter",
 		func(e *EntityToken, em *EntityManager) bool {
 			return w.Em.Components.Position[e.ID] == pos
 		},
 	}
 	if !q.Test(e, w.Em) {
-		t.Fatal("query did not return true")
+		t.Fatal("Filter did not return true")
 	}
 }
 
-func TestEntityQueryFromTag(t *testing.T) {
+func TestEntityFilterFromTag(t *testing.T) {
 	w := NewWorld(1024, 1024)
 
 	tag := "tag1"
@@ -31,8 +31,8 @@ func TestEntityQueryFromTag(t *testing.T) {
 	w.Em.Spawn(req)
 	w.Em.Update()
 	e := w.Em.Entities[0]
-	q := EntityQueryFromTag(tag)
+	q := EntityFilterFromTag(tag)
 	if !q.Test(e, w.Em) {
-		t.Fatal("query did not return true")
+		t.Fatal("Filter did not return true")
 	}
 }

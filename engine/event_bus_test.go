@@ -12,18 +12,18 @@ func TestEventBusConstructEventBus(t *testing.T) {
 	}
 }
 
-func TestEventBusSimpleEventQueryMatching(t *testing.T) {
+func TestEventBusSimpleEventFilterMatching(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
-		"SimpleCollisionQuery",
-		NewSimpleEventQuery(COLLISION_EVENT))
+		"SimpleCollisionFilter",
+		SimpleEventFilter(COLLISION_EVENT))
 	ev.Publish(COLLISION_EVENT, nil)
 	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
 		break
 	default:
-		t.Fatal("simple event query wasn't received by subscriber channel " +
+		t.Fatal("simple event Filter wasn't received by subscriber channel " +
 			"within 16 ms")
 	}
 }
@@ -31,8 +31,8 @@ func TestEventBusSimpleEventQueryMatching(t *testing.T) {
 func TestEventBusMaxCapacity(t *testing.T) {
 	ev := NewEventBus()
 	_ = ev.Subscribe(
-		"SimpleCollisionQuery",
-		NewSimpleEventQuery(COLLISION_EVENT))
+		"SimpleCollisionFilter",
+		SimpleEventFilter(COLLISION_EVENT))
 	for i := 0; i < EVENT_SUBSCRIBER_CHANNEL_CAPACITY+4; i++ {
 		ev.Publish(COLLISION_EVENT, nil)
 	}
@@ -41,8 +41,8 @@ func TestEventBusMaxCapacity(t *testing.T) {
 func TestEventBusDeactivatedSubscriber(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
-		"SimpleCollisionQuery",
-		NewSimpleEventQuery(COLLISION_EVENT))
+		"SimpleCollisionFilter",
+		SimpleEventFilter(COLLISION_EVENT))
 	ec.Deactivate()
 	ev.Publish(COLLISION_EVENT, nil)
 	time.Sleep(FRAME_SLEEP)
@@ -53,30 +53,30 @@ func TestEventBusDeactivatedSubscriber(t *testing.T) {
 	}
 }
 
-func TestEventBusSimpleEventQueryNonMatching(t *testing.T) {
+func TestEventBusSimpleEventFilterNonMatching(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
-		"SimpleCollisionQuery",
-		NewSimpleEventQuery(COLLISION_EVENT))
+		"SimpleCollisionFilter",
+		SimpleEventFilter(COLLISION_EVENT))
 	ev.Publish(SPAWNREQUEST_EVENT, nil)
 	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
-		t.Fatal("simple event query sent event to wrong type channel")
+		t.Fatal("simple event Filter sent event to wrong type channel")
 	default:
 		break
 	}
 }
 
-func TestEventBusDataEventQueryMatching(t *testing.T) {
+func TestEventBusDataEventFilterMatching(t *testing.T) {
 	ev := NewEventBus()
 	collision := CollisionData{
 		EntityA: &EntityToken{ID: 0},
 		EntityB: &EntityToken{ID: 1},
 	}
 	ec := ev.Subscribe(
-		"PredicateCollisionQuery",
-		NewPredicateEventQuery(
+		"PredicateCollisionFilter",
+		PredicateEventFilter(
 			COLLISION_EVENT,
 			func(e Event) bool {
 				return e.Data.(CollisionData) == collision
@@ -88,19 +88,19 @@ func TestEventBusDataEventQueryMatching(t *testing.T) {
 	case _ = <-ec.C:
 		break
 	default:
-		t.Fatal("collision event query did not match")
+		t.Fatal("collision event Filter did not match")
 	}
 }
 
-func TestEventBusDataEventQueryNonMatching(t *testing.T) {
+func TestEventBusDataEventFilterNonMatching(t *testing.T) {
 	ev := NewEventBus()
 	collision := CollisionData{
 		EntityA: &EntityToken{ID: 0},
 		EntityB: &EntityToken{ID: 1},
 	}
 	ec := ev.Subscribe(
-		"PredicateCollisionQuery",
-		NewPredicateEventQuery(
+		"PredicateCollisionFilter",
+		PredicateEventFilter(
 			COLLISION_EVENT,
 			func(e Event) bool {
 				return e.Data.(CollisionData) == collision
@@ -114,7 +114,7 @@ func TestEventBusDataEventQueryNonMatching(t *testing.T) {
 	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
-		t.Fatal("collision event query matched for wrong event data")
+		t.Fatal("collision event Filter matched for wrong event data")
 	default:
 		break
 	}
@@ -123,8 +123,8 @@ func TestEventBusDataEventQueryNonMatching(t *testing.T) {
 func TestEventBusUnsubscribe(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
-		"SimpleCollisionQuery",
-		NewSimpleEventQuery(COLLISION_EVENT))
+		"SimpleCollisionFilter",
+		SimpleEventFilter(COLLISION_EVENT))
 	ev.Unsubscribe(ec)
 	ev.Publish(COLLISION_EVENT, nil)
 	time.Sleep(FRAME_SLEEP)

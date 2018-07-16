@@ -43,10 +43,10 @@ func NewEntityManager(w *World) *EntityManager {
 		eventBus:        w.Ev,
 		spawnSubscription: w.Ev.Subscribe(
 			"EntityManager::SpawnRequest",
-			NewSimpleEventQuery(SPAWNREQUEST_EVENT)),
+			SimpleEventFilter(SPAWNREQUEST_EVENT)),
 		despawnSubscription: w.Ev.Subscribe(
 			"EntityManager::DespawnRequest",
-			NewSimpleEventQuery(DESPAWNREQUEST_EVENT)),
+			SimpleEventFilter(DESPAWNREQUEST_EVENT)),
 	}
 	em.Components = NewComponentsTable(em)
 	em.activeEntityLists = NewActiveEntityListCollection(em)
@@ -90,14 +90,14 @@ func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
 // Get a list of entities which will be updated whenever an entity becomes
 // active / inactive
 func (m *EntityManager) GetUpdatedEntityList(
-	q EntityQuery) *UpdatedEntityList {
+	q EntityFilter) *UpdatedEntityList {
 	return m.activeEntityLists.GetUpdatedEntityList(q)
 }
 
 // Get a list of entities which will be updated whenever an entity becomes
 // active / inactive
 func (m *EntityManager) GetSortedUpdatedEntityList(
-	q EntityQuery) *UpdatedEntityList {
+	q EntityFilter) *UpdatedEntityList {
 	return m.activeEntityLists.GetSortedUpdatedEntityList(q)
 }
 
@@ -131,7 +131,7 @@ func (m *EntityManager) EntitiesWithTag(tag string) *UpdatedEntityList {
 
 func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 	if _, exists := m.entitiesWithTag[tag]; !exists {
-		m.entitiesWithTag[tag] = m.GetUpdatedEntityList(EntityQueryFromTag(tag))
+		m.entitiesWithTag[tag] = m.GetUpdatedEntityList(EntityFilterFromTag(tag))
 	}
 }
 
