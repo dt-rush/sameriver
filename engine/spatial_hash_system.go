@@ -116,30 +116,25 @@ func (h *SpatialHashSystem) scanAndInsertEntities(entities []*EntityToken) {
 		// find out how many grids the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)
-		gridsWide := int(box.X) / (h.w.Height / h.gridX)
-		gridsHigh := int(box.Y) / (h.w.Width / h.gridY)
-		// figure out which cell the topleft corner is in
-		topLeftCellX, topLeftCellY := h.cellForPoint(int(pos.X), int(pos.Y))
-		// walk through each cell the entity touches by starting in the top-left
-		// and walking according to gridsHigh and gridsWide
-		for ix := 0; ix < gridsWide+1; ix++ {
-			for iy := 0; iy < gridsHigh+1; iy++ {
-				x := topLeftCellX + ix
-				y := topLeftCellY + iy
-				h.storeEntity(x, y, entity)
+		gridsWide := box.X / (float64(h.w.Width) / float64(h.gridX))
+		gridsHigh := box.Y / (float64(h.w.Height) / float64(h.gridY))
+		gridX := pos.X / (float64(h.w.Width) / float64(h.gridX))
+		gridY := pos.Y / (float64(h.w.Height) / float64(h.gridY))
+		// walk through each cell the entity touches by starting in the bottom-
+		// -left and walking according to gridsHigh and gridsWide
+		for ix := 0.0; ix < gridsWide+1; ix++ {
+			for iy := 0.0; iy < gridsHigh+1; iy++ {
+				x := gridX + ix
+				y := gridY + iy
+				if x < 0.0 || x >= float64(h.gridX) ||
+					y < 0.0 || y >= float64(h.gridY) {
+					continue
+				}
+				cell := &((*h.computingTable)[int(x)][int(y)])
+				*cell = append(*cell, entity)
 			}
 		}
 	}
-}
-
-func (h *SpatialHashSystem) storeEntity(x int, y int, entity *EntityToken) {
-	cell := &((*h.computingTable)[x][y])
-	*cell = append(*cell, entity)
-}
-
-// helper function for hashing
-func (h *SpatialHashSystem) cellForPoint(x int, y int) (cellX int, cellY int) {
-	return x / (h.w.Width / h.gridX), y / (h.w.Height / h.gridY)
 }
 
 // returns the double-buffer index of the current spatial hash table (the one
