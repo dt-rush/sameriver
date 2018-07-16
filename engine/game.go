@@ -107,6 +107,7 @@ gameloop:
 	}
 	// once gameloop ends, get next scene and destroy scene if transient
 	nextScene := scene.NextScene()
+	scene.End()
 	if scene.IsTransient() {
 		Logger.Printf("destroying scene: %s\n", scene.Name())
 		go scene.Destroy()

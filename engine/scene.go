@@ -23,6 +23,7 @@ type Scene interface {
 
 	IsDone() bool
 	NextScene() Scene
+	End()
 	IsTransient() bool
 	Destroy()
 }

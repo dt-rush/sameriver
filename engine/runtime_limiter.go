@@ -26,6 +26,8 @@ type RuntimeLimiter struct {
 	// this is the System, for world LogicUnits this is the LogicUnit itself
 	// This is needed to support efficient delete and activate/deactivate
 	indexes map[int]int
+	// used to keep a running average of the entire runtime
+	totalRuntime *float64
 }
 
 func NewRuntimeLimiter() *RuntimeLimiter {
@@ -41,19 +43,20 @@ func (r *RuntimeLimiter) Start() {
 	r.finished = false
 }
 
-func (r *RuntimeLimiter) Run(allowance float64) (remaining_ms float64) {
-	remaining_ms = allowance
+func (r *RuntimeLimiter) Run(allowance float64) (remaining float64) {
+	tStart := time.Now()
+	remaining = allowance
 	if len(r.logicUnits) == 0 {
 		r.finished = true
 		return
 	}
-	for allowance > 0 && len(r.logicUnits) > 0 {
+	for remaining > 0 && len(r.logicUnits) > 0 {
 		logic := r.logicUnits[r.runIX]
 		estimate, hasEstimate := r.runtimeEstimates[logic]
 		var t0 time.Time
-		var elapsed_ms float64
+		var elapsed float64
 		if hasEstimate && (estimate > allowance) && (r.runIX != r.startIX) {
-			return remaining_ms
+			return remaining
 		}
 		if !hasEstimate ||
 			(hasEstimate && estimate <= allowance) ||
@@ -62,22 +65,29 @@ func (r *RuntimeLimiter) Run(allowance float64) (remaining_ms float64) {
 			if logic.Active {
 				logic.F()
 			}
-			elapsed_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
+			elapsed = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 			if !hasEstimate {
-				r.runtimeEstimates[logic] = elapsed_ms
+				r.runtimeEstimates[logic] = elapsed
 			} else {
 				r.runtimeEstimates[logic] =
-					(r.runtimeEstimates[logic] + elapsed_ms) / 2.0
+					(r.runtimeEstimates[logic] + elapsed) / 2.0
 			}
 		}
-		allowance -= elapsed_ms
+		remaining -= elapsed
 		r.runIX = (r.runIX + 1) % len(r.logicUnits)
 		if r.runIX == r.startIX {
 			r.finished = true
 			break
 		}
 	}
-	return allowance
+	total := float64(time.Since(tStart).Nanoseconds()) / 1.0e6
+	if r.totalRuntime == nil {
+		r.totalRuntime = &total
+	} else {
+		*r.totalRuntime = (*r.totalRuntime + total) / 2.0
+	}
+	r.totalRuntime = r.totalRuntime
+	return allowance - total
 }
 
 func (r *RuntimeLimiter) Add(logic *LogicUnit) {
@@ -130,23 +140,38 @@ func (r *RuntimeLimiter) Finished() bool {
 }
 
 func RuntimeLimitShare(
-	allowance float64, runners ...*RuntimeLimiter) (remaining_ms float64) {
+	allowance float64, runners ...*RuntimeLimiter) (remaining float64) {
 
-	remaining_ms = allowance
+	remaining = allowance
 	for _, r := range runners {
 		r.Start()
 	}
 	finished := 0
 	for allowance >= 0 && finished != len(runners) {
 		perRunner := allowance / float64(len(runners)-finished)
-		var remaining_ms float64
+		var remaining float64
 		for _, r := range runners {
-			remaining_ms += r.Run(perRunner)
+			remaining += r.Run(perRunner)
 			if r.Finished() {
 				finished++
 			}
 		}
-		allowance = remaining_ms
+		allowance = remaining
 	}
 	return allowance
+}
+
+func (r *RuntimeLimiter) DumpStats() (stats map[string]float64, total float64) {
+	stats = make(map[string]float64)
+	for _, l := range r.logicUnits {
+		if est, ok := r.runtimeEstimates[l]; ok {
+			stats[l.Name] = est
+		} else {
+			stats[l.Name] = 0.0
+		}
+	}
+	if r.totalRuntime != nil {
+		total = *r.totalRuntime
+	}
+	return
 }

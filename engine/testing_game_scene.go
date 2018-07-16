@@ -46,6 +46,8 @@ func (s *testingGameScene) NextScene() Scene {
 	s.nextSceneRan = true
 	return nil
 }
+func (s *testingGameScene) End() {
+}
 func (s *testingGameScene) IsTransient() bool {
 	return false
 }

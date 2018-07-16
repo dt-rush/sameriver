@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -29,6 +30,8 @@ type World struct {
 
 	entityLogics       map[string]*LogicUnit
 	entityLogicsRunner *RuntimeLimiter
+
+	totalRuntime *float64
 }
 
 func NewWorld(width int, height int) *World {
@@ -54,11 +57,18 @@ func (w *World) Update(allowance float64) (overrun_ms float64) {
 	w.Em.Update()
 	// systems update functions, world logic, and entity logic can use
 	// whatever time is left over after entity manager update
-	return RuntimeLimitShare(
+	overunder := RuntimeLimitShare(
 		allowance-float64(time.Since(t0).Nanoseconds())/1.0e6,
 		w.systemsRunner,
 		w.worldLogicsRunner,
 		w.entityLogicsRunner)
+	total := float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	if w.totalRuntime == nil {
+		w.totalRuntime = &total
+	} else {
+		*w.totalRuntime = (*w.totalRuntime + total) / 2.0
+	}
+	return overunder
 }
 
 func (w *World) AddSystems(systems ...System) {
@@ -250,4 +260,33 @@ func (w *World) SetEntityLogicActiveState(name string, state bool) {
 	if logic, ok := w.entityLogics[name]; ok {
 		logic.Active = state
 	}
+}
+
+func (w *World) DumpStats() (stats map[string](map[string]float64)) {
+	stats = make(map[string](map[string]float64))
+	systemStats, systemTotal := w.systemsRunner.DumpStats()
+	worldStats, worldTotal := w.worldLogicsRunner.DumpStats()
+	entityStats, entityTotal := w.entityLogicsRunner.DumpStats()
+	stats["system"] = systemStats
+	stats["world"] = worldStats
+	stats["entity"] = entityStats
+	stats["totals"] = make(map[string]float64)
+	stats["totals"]["system"] = systemTotal
+	stats["totals"]["world"] = worldTotal
+	stats["totals"]["entity"] = entityTotal
+	if w.totalRuntime != nil {
+		stats["totals"]["total"] = *w.totalRuntime
+	} else {
+		stats["total"]["total"] = 0.0
+	}
+	return
+}
+
+func (w *World) DumpStatsString() string {
+	stats := w.DumpStats()
+	b, err := json.MarshalIndent(stats, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
 }
