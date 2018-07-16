@@ -122,7 +122,7 @@ func TestSpatialHashTableToString(t *testing.T) {
 	sh := NewSpatialHashSystem(10, 10)
 	w.AddSystems(sh)
 	table := sh.CurrentTablePointer()
-	table.String()
+	s0 := table.String()
 	for i := 0; i < 500; i++ {
 		w.Em.Spawn(spatialSpawnRequestData(
 			Vec2D{rand.Float64() * 1024, rand.Float64() * 1024},
@@ -130,5 +130,8 @@ func TestSpatialHashTableToString(t *testing.T) {
 	}
 	w.Update(FRAME_SLEEP_MS)
 	table = sh.CurrentTablePointer()
-	table.String()
+	s1 := table.String()
+	if len(s1) < len(s0) {
+		t.Fatal("spatial hash did not show entities in its String() representation")
+	}
 }
