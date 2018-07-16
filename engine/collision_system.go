@@ -57,6 +57,7 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 		EntityQueryFromComponentBitArray(
 			"collidable",
 			MakeComponentBitArray([]ComponentType{
+				POSITION_COMPONENT,
 				BOX_COMPONENT})))
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
@@ -84,19 +85,41 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 // in rateLimiters, so if we already sent one within the timeout, we just move on.
 func (s *CollisionSystem) Update() {
 
-	entities := s.collidableEntities.entities
-
 	// NOTE: The ID's in collidableEntities are in sorted order,
 	// so the rateLimiterArray access condition that i < j is respected
 	// check each possible collison between entities in the list by doing a
 	// handshake pattern
+	currentTable := s.sh.CurrentTablePointer()
+	for x := 0; x < s.sh.gridX; x++ {
+		for y := 0; y < s.sh.gridY; y++ {
+			s.checkEntities((*currentTable)[x][y])
+		}
+	}
+}
+
+func (s *CollisionSystem) checkEntities(entities []*EntityToken) {
+	// NOTE: we guard for despawns since the entities in the spatial hash
+	// table might have been despawned since the last time a spatial hash
+	// was computed (not every system is guaranteed to run every update loop,
+	// so maybe spatial hash didn't run but an entity or world logic did, to
+	// despawn one of the tokens still stored in the last-computed spatial hash
+	// table).
 	for ix := uint16(0); ix < uint16(len(entities)); ix++ {
+		i := entities[ix]
+		if i.Despawned {
+			continue
+		}
 		for jx := ix + 1; jx < uint16(len(entities)); jx++ {
-			// get the entity ID's
-			i := entities[ix]
 			j := entities[jx]
+			if j.Despawned {
+				continue
+			}
+			if j.ID < i.ID {
+				j, i = i, j
+			}
 			// check the collision
-			if s.TestCollision(uint16(i.ID), uint16(j.ID)) {
+			if !s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Limited() &&
+				s.TestCollision(uint16(i.ID), uint16(j.ID)) {
 				// if colliding, send the message (rate-limited)
 				s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Do(
 					func() {

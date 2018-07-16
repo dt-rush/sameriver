@@ -11,20 +11,19 @@ import (
 type EntityTable struct {
 	// the ID Generator given by the world the entity manager is in
 	IDGen *utils.IDGenerator
-	// how many entities there are
-	n int
-	// how many entities are active
-	active int
-	// list of Entities which have been allocated
-	currentEntities []*EntityToken
-	// isAllocated is maintained for quick deallocate guard lookups
-	isAllocated [MAX_ENTITIES]bool
 	// list of available entity ID's which have previously been deallocated
 	availableIDs []int
+	// list of Entities which have been allocated
+	currentEntities map[*EntityToken]bool
+	// how many entities are active
+	active int
 }
 
 func NewEntityTable(IDGen *utils.IDGenerator) *EntityTable {
-	return &EntityTable{IDGen: IDGen}
+	return &EntityTable{
+		IDGen:           IDGen,
+		currentEntities: make(map[*EntityToken]bool),
+	}
 }
 
 // get the ID for a new entity. Only called by SpawnEntity, which locks
@@ -33,7 +32,7 @@ func NewEntityTable(IDGen *utils.IDGenerator) *EntityTable {
 // to spawn entities
 func (t *EntityTable) allocateID() (*EntityToken, error) {
 	// if maximum entity count reached, fail with message
-	if t.n == MAX_ENTITIES {
+	if len(t.currentEntities) == MAX_ENTITIES {
 		msg := fmt.Sprintf("Reached max entity count: %d. "+
 			"Will not allocate ID.", MAX_ENTITIES)
 		Logger.Println(msg)
@@ -41,8 +40,8 @@ func (t *EntityTable) allocateID() (*EntityToken, error) {
 	}
 	// if there is a deallocated entity somewhere in the table before the
 	// highest ID, return that ID to the caller
-	n_avail := len(t.availableIDs)
 	var ID int
+	n_avail := len(t.availableIDs)
 	if n_avail > 0 {
 		// there is an ID available for a previously deallocated entity.
 		// pop it from the list and continue with that as the ID
@@ -50,26 +49,23 @@ func (t *EntityTable) allocateID() (*EntityToken, error) {
 		t.availableIDs = t.availableIDs[:n_avail-1]
 	} else {
 		// every slot in the table before the highest ID is filled
-		ID = t.n
+		ID = len(t.currentEntities)
 	}
-	t.isAllocated[ID] = true
-	// Increment the entity count
-	t.n++
-	// return the token
-	entity := EntityToken{
+	entity := &EntityToken{
 		ID:        ID,
 		WorldID:   t.IDGen.Next(),
 		Active:    false,
 		Despawned: false,
 	}
-	return &entity, nil
+	t.currentEntities[entity] = true
+	return entity, nil
 }
 
 func (t *EntityTable) deallocate(e *EntityToken) {
 	// guards against false deallocation (edge case, but hey)
-	if t.isAllocated[e.ID] {
-		t.n--
+	if _, ok := t.currentEntities[e]; ok {
 		t.availableIDs = append(t.availableIDs, e.ID)
 		t.IDGen.Free(e.WorldID)
+		delete(t.currentEntities, e)
 	}
 }

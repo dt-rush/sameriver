@@ -61,11 +61,6 @@ func (m *EntityManager) spawn(r SpawnRequestData, uniqueTag string) (
 	}
 	// add the entity to the list of current entities
 	m.Entities[entity.ID] = entity
-	// "if not present" here is superfluous, since the lgoic of ID allocation
-	// during spawn/despawn means that the entity cannot be present in the list
-	// of current entities if allocateID() didn't return an error
-	SortedEntityTokenSliceInsertIfNotPresent(&m.entityTable.currentEntities, entity)
-	// print a debug message
 	// set the bitarray for this entity
 	entity.ComponentBitArray = r.Components.ToBitArray()
 	// copy the data inNto the component storage for each component

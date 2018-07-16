@@ -29,7 +29,9 @@ func TestSortedEntityTokenSliceInsertIfNotPresent(t *testing.T) {
 	e2 := &EntityToken{ID: 2}
 	e3 := &EntityToken{ID: 3}
 	slice := []*EntityToken{e1, e2, e3}
+	SortedEntityTokenSliceInsertIfNotPresent(&slice, e1)
 	SortedEntityTokenSliceInsertIfNotPresent(&slice, e2)
+	SortedEntityTokenSliceInsertIfNotPresent(&slice, e3)
 	if len(slice) != 3 {
 		t.Fatal("inserted when already present")
 	}
@@ -41,10 +43,31 @@ func TestSortedEntityTokenSliceRemove(t *testing.T) {
 	e3 := &EntityToken{ID: 3}
 	e4 := &EntityToken{ID: 4}
 	slice := []*EntityToken{e1, e2, e3, e4}
+	SortedEntityTokenSliceRemove(&slice, e1)
+	if !(slice[0].ID == 2 &&
+		slice[1].ID == 3 &&
+		slice[2].ID == 4) {
+		t.Fatal("did not remove 0 properly")
+	}
+	slice = []*EntityToken{e1, e2, e3, e4}
 	SortedEntityTokenSliceRemove(&slice, e2)
 	if !(slice[0].ID == 1 &&
 		slice[1].ID == 3 &&
 		slice[2].ID == 4) {
-		t.Fatal("did not remove the right element")
+		t.Fatal("did not remove 1 properly")
+	}
+	slice = []*EntityToken{e1, e2, e3, e4}
+	SortedEntityTokenSliceRemove(&slice, e3)
+	if !(slice[0].ID == 1 &&
+		slice[1].ID == 2 &&
+		slice[2].ID == 4) {
+		t.Fatal("did not remove 2 properly")
+	}
+	slice = []*EntityToken{e1, e2, e3, e4}
+	SortedEntityTokenSliceRemove(&slice, e4)
+	if !(slice[0].ID == 1 &&
+		slice[1].ID == 2 &&
+		slice[2].ID == 3) {
+		t.Fatal("did not remove 3 properly")
 	}
 }

@@ -57,8 +57,8 @@ func NewSpatialHashSystem(gridX int, gridY int) *SpatialHashSystem {
 		h.tables[1][x] = make([][]*EntityToken, gridY)
 		// for each cell in the row (y)
 		for y := 0; y < gridY; y++ {
-			h.tables[0][x][y] = make([]*EntityToken, MAX_ENTITIES)
-			h.tables[1][x][y] = make([]*EntityToken, MAX_ENTITIES)
+			h.tables[0][x][y] = make([]*EntityToken, 0, MAX_ENTITIES)
+			h.tables[1][x][y] = make([]*EntityToken, 0, MAX_ENTITIES)
 		}
 	}
 	return &h
@@ -81,12 +81,11 @@ func (h *SpatialHashSystem) Update() {
 		return
 	}
 
-	entities := h.spatialEntities.entities
 	// we will write to the table indicated by nextBufIndex
 	h.computingTable = &h.tables[h.nextBufIndex()]
 	// clear any old data and run the computation
 	h.clearComputingTable()
-	h.scanAndInsertEntities(entities)
+	h.scanAndInsertEntities()
 	// this increment, due to the modulo 2 logic, is equivalent to setting
 	// computedBufIndex = nextBufIndex
 	h.timesComputed.Inc()
@@ -107,7 +106,9 @@ func (h *SpatialHashSystem) clearComputingTable() {
 }
 
 // used to iterate the entities and send them to the right cells
-func (h *SpatialHashSystem) scanAndInsertEntities(entities []*EntityToken) {
+func (h *SpatialHashSystem) scanAndInsertEntities() {
+
+	entities := h.spatialEntities.entities
 
 	// iterate each entity in the partition
 	for _, entity := range entities {
@@ -193,7 +194,7 @@ func (table *SpatialHashTable) String() string {
 			size += int(unsafe.Sizeof(&EntityToken{})) * len(cell)
 			buffer.WriteString(fmt.Sprintf(
 				"CELL(%d, %d): %.64s...", x, y,
-				fmt.Sprintf("%+v", cell)))
+				EntityTokenSliceToString(cell)))
 			if !(y == h-1 && x == w-1) {
 				buffer.WriteString(",\n")
 			}

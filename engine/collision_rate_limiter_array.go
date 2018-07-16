@@ -6,7 +6,7 @@ import (
 )
 
 // Defines a kind of trianglular 2D array which allows you to store a
-// ResettableRateLimiter at the intersection of each entity ID and each other
+// RateLimiter at the intersection of each entity ID and each other
 // entity ID, assuming they are indexed [i][j] where i < j
 // ("collision-indexing")
 //
@@ -33,8 +33,8 @@ import (
 //     r r r r r r r r r r
 //
 type CollisionRateLimiterArray struct {
-	backingArray []*utils.ResettableRateLimiter
-	Arr          [][]*utils.ResettableRateLimiter
+	backingArray []*utils.RateLimiter
+	Arr          [][]*utils.RateLimiter
 }
 
 // Construct a new CollisionRateLimiterArray
@@ -42,10 +42,10 @@ func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 	// build the backing array
 	a := CollisionRateLimiterArray{
 		backingArray: make(
-			[]*utils.ResettableRateLimiter,
+			[]*utils.RateLimiter,
 			MAX_ENTITIES*(MAX_ENTITIES+1)/2),
 		Arr: make(
-			[][]*utils.ResettableRateLimiter,
+			[][]*utils.RateLimiter,
 			MAX_ENTITIES),
 	}
 	// build the Arr slices which reference positions in the backing array
@@ -57,7 +57,7 @@ func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 	}
 	// create the rate limiters
 	for i := 0; i < len(a.backingArray); i++ {
-		a.backingArray[i] = utils.NewResettableRateLimiter(
+		a.backingArray[i] = utils.NewRateLimiter(
 			COLLISION_RATELIMIT_TIMEOUT_MS * time.Millisecond)
 	}
 	// return the object we've built
@@ -66,7 +66,7 @@ func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 
 // Get the rate limiter for an i, j pair
 func (a *CollisionRateLimiterArray) GetRateLimiter(
-	i int, j int) *utils.ResettableRateLimiter {
+	i int, j int) *utils.RateLimiter {
 
 	// for the i'th array,
 	//

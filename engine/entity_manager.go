@@ -188,14 +188,14 @@ func (m *EntityManager) UntagEntities(entities []*EntityToken, tag string) {
 
 // Get the number of allocated entities (not number of active, mind you)
 func (m *EntityManager) NumEntities() (total int, active int) {
-	return m.entityTable.n, m.entityTable.active
+	return len(m.entityTable.currentEntities), m.entityTable.active
 }
 
 // Returns the Entities field, copied. Notice that this is of size MAX_ENTITIES
 // and can have many nil elements, so the caller must checka and discard
 // nil elements as they iterate
 func (m *EntityManager) GetCurrentEntities() []*EntityToken {
-	entities := make([]*EntityToken, 0, m.entityTable.n)
+	entities := make([]*EntityToken, 0, len(m.entityTable.currentEntities))
 	for _, e := range m.Entities {
 		if e != nil {
 			entities = append(entities, e)
@@ -206,7 +206,7 @@ func (m *EntityManager) GetCurrentEntities() []*EntityToken {
 
 func (m *EntityManager) String() string {
 	return fmt.Sprintf("EntityManager[ %d / %d active ]\n",
-		m.entityTable.n, m.entityTable.active)
+		len(m.entityTable.currentEntities), m.entityTable.active)
 }
 
 // Somewhat expensive conversion of entire entity list to string, locking

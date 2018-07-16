@@ -117,9 +117,18 @@ func TestSpatialHashTableCopy(t *testing.T) {
 }
 
 func TestSpatialHashTableToString(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
 	w := NewWorld(1024, 1024)
 	sh := NewSpatialHashSystem(10, 10)
 	w.AddSystems(sh)
 	table := sh.CurrentTablePointer()
+	table.String()
+	for i := 0; i < 500; i++ {
+		w.Em.Spawn(spatialSpawnRequestData(
+			Vec2D{rand.Float64() * 1024, rand.Float64() * 1024},
+			Vec2D{5, 5}))
+	}
+	w.Update(FRAME_SLEEP_MS)
+	table = sh.CurrentTablePointer()
 	table.String()
 }

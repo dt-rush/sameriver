@@ -2,13 +2,12 @@ package utils
 
 import (
 	"go.uber.org/atomic"
-	"sync"
 	"time"
 )
 
-// Basically a once with a delay after which the once becomes usable again
+// Like the above, but it can be reset while sleeping
 type RateLimiter struct {
-	blocked atomic.Uint32
+	limited atomic.Uint32
 	delay   time.Duration
 }
 
@@ -17,48 +16,19 @@ func NewRateLimiter(delay time.Duration) *RateLimiter {
 }
 
 func (r *RateLimiter) Do(f func()) {
-	if r.blocked.CAS(0, 1) {
+	if r.limited.CAS(0, 1) {
 		f()
 		go func() {
 			time.Sleep(r.delay)
-			r.blocked.Store(0)
+			r.limited.CAS(1, 0)
 		}()
 	}
 }
 
-// Like the above, but it can be reset while sleeping
-type ResettableRateLimiter struct {
-	once  sync.Once
-	mutex sync.RWMutex
-	delay time.Duration
-	// used so the automatic reset can check, after sleeping, if
-	// another goroutine also had called Reset() while it slept. If so,
-	// do not reset as we would if nothing happened during sleep.
-	resetCounter atomic.Uint32
+func (r *RateLimiter) Reset() {
+	r.limited.CAS(1, 0)
 }
 
-func NewResettableRateLimiter(delay time.Duration) *ResettableRateLimiter {
-	return &ResettableRateLimiter{delay: delay}
-}
-
-func (r *ResettableRateLimiter) Do(f func()) {
-	r.mutex.RLock()
-	defer r.mutex.RUnlock()
-	r.once.Do(func() {
-		f()
-		go func() {
-			resetCounterBeforeSleep := r.resetCounter.Load()
-			time.Sleep(r.delay)
-			if r.resetCounter.Load() == resetCounterBeforeSleep {
-				r.Reset()
-			}
-		}()
-	})
-}
-
-func (r *ResettableRateLimiter) Reset() {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	r.resetCounter.Inc()
-	r.once = sync.Once{}
+func (r *RateLimiter) Limited() bool {
+	return r.limited.Load() == 1
 }

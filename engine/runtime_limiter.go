@@ -36,6 +36,11 @@ func NewRuntimeLimiter() *RuntimeLimiter {
 	}
 }
 
+func (r *RuntimeLimiter) Start() {
+	r.startIX = r.runIX
+	r.finished = false
+}
+
 func (r *RuntimeLimiter) Run(allowance float64) (remaining_ms float64) {
 	remaining_ms = allowance
 	if len(r.logicUnits) == 0 {
@@ -50,7 +55,9 @@ func (r *RuntimeLimiter) Run(allowance float64) (remaining_ms float64) {
 		if hasEstimate && (estimate > allowance) && (r.runIX != r.startIX) {
 			return remaining_ms
 		}
-		if !hasEstimate || (hasEstimate && estimate <= allowance) {
+		if !hasEstimate ||
+			(hasEstimate && estimate <= allowance) ||
+			(hasEstimate && estimate > allowance && r.runIX == r.startIX) {
 			t0 = time.Now()
 			if logic.Active {
 				logic.F()
@@ -116,11 +123,6 @@ func (r *RuntimeLimiter) DeactivateAll() {
 	for _, l := range r.logicUnits {
 		l.Active = false
 	}
-}
-
-func (r *RuntimeLimiter) Start() {
-	r.startIX = r.runIX
-	r.finished = false
 }
 
 func (r *RuntimeLimiter) Finished() bool {

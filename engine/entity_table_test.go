@@ -10,7 +10,7 @@ func TestEntityTableAllocateID(t *testing.T) {
 	et := NewEntityTable(utils.NewIDGenerator())
 	_, err := et.allocateID()
 	if !(err == nil &&
-		et.n == 1) {
+		len(et.currentEntities) == 1) {
 		t.Fatal("didn't allocate ID properly")
 	}
 }
@@ -19,7 +19,7 @@ func TestEntityTableDeallocateID(t *testing.T) {
 	et := NewEntityTable(utils.NewIDGenerator())
 	e, _ := et.allocateID()
 	et.deallocate(e)
-	if et.n != 0 {
+	if len(et.currentEntities) != 0 {
 		t.Fatal("didn't update allocated count")
 	}
 	if !(len(et.availableIDs) == 1 && et.availableIDs[0] == e.ID) {

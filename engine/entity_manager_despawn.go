@@ -25,8 +25,12 @@ func (m *EntityManager) DespawnAll() {
 		_ = <-m.despawnSubscription.C
 	}
 	// iterate all IDs which have been allocated and despawn them
-	for m.entityTable.n > 0 {
-		m.Despawn(m.entityTable.currentEntities[0])
+	toDespawn := make([]*EntityToken, 0)
+	for e, _ := range m.entityTable.currentEntities {
+		toDespawn = append(toDespawn, e)
+	}
+	for _, e := range toDespawn {
+		m.Despawn(e)
 	}
 }
 
@@ -35,7 +39,6 @@ func (m *EntityManager) DespawnAll() {
 func (m *EntityManager) Despawn(entity *EntityToken) {
 	entity.Despawned = true
 	m.entityTable.deallocate(entity)
-	SortedEntityTokenSliceRemove(&m.entityTable.currentEntities, entity)
 	m.Entities[entity.ID] = nil
 	m.setActiveState(entity, false)
 }

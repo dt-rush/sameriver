@@ -5,7 +5,7 @@ type TimeAccumulator struct {
 	Period float64
 }
 
-func CreateTimeAccumulator(period float64) TimeAccumulator {
+func NewTimeAccumulator(period float64) TimeAccumulator {
 	t := TimeAccumulator{}
 	t.Accum = 0
 	t.Period = period

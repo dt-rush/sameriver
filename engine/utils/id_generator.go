@@ -18,29 +18,31 @@ func NewIDGenerator() *IDGenerator {
 	}
 }
 
-func (g *IDGenerator) Next() int {
-	var ID int
+func (g *IDGenerator) Next() (ID int) {
 	// try to get ID from already-available freed IDs
 	if len(g.freed) > 0 {
+		// get first of freed
 		for freeID, _ := range g.freed {
 			ID = freeID
 			break
 		}
 		delete(g.freed, ID)
-	}
-	unique := false
-	for !unique {
-		u32ID := g.x.Inc()
-		if u32ID > math.MaxUint32/64 {
-			panic("tried to generate more than (2^32 - 1) / 64 simultaneous " +
-				"ID's without free. This is surely a logic error.")
+		return ID
+	} else {
+		unique := false
+		for !unique {
+			u32ID := g.x.Inc()
+			if u32ID > math.MaxUint32/64 {
+				panic("tried to generate more than (2^32 - 1) / 64 simultaneous " +
+					"ID's without free. This is surely a logic error.")
+			}
+			ID = int(u32ID)
+			_, already := g.universe[ID]
+			unique = !already
 		}
-		ID = int(u32ID)
-		_, already := g.universe[ID]
-		unique = !already
+		g.universe[ID] = true
+		return ID
 	}
-	g.universe[ID] = true
-	return ID
 }
 
 func (g *IDGenerator) Free(ID int) {
