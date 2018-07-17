@@ -13,7 +13,7 @@ func TestWorldEntityManagerProxySpawnDespawn(t *testing.T) {
 	if total == 0 {
 		t.Fatal("failed to Spawn simple Spawn request entity")
 	}
-	e := w.em.Entities[0]
+	e := w.em.entities[0]
 	if !e.Active {
 		t.Fatal("Spawned entity was not active")
 	}
@@ -35,7 +35,7 @@ func TestWorldEntityManagerProxySpawnDespawnEvent(t *testing.T) {
 	if total != 1 {
 		t.Fatal("should have spawned an entity after processing spawn subscription")
 	}
-	e := w.em.Entities[0]
+	e := w.em.entities[0]
 	w.QueueDespawn(DespawnRequestData{Entity: e})
 	time.Sleep(FRAME_SLEEP)
 	w.Update(FRAME_SLEEP_MS / 2)
@@ -80,7 +80,7 @@ func TestWorldEntityManagerProxyEntitiesWithTag(t *testing.T) {
 func TestWorldEntityManagerProxyDeactivateActivate(t *testing.T) {
 	w := testingWorld()
 	w.Spawn(simpleSpawnRequest())
-	e := w.em.Entities[0]
+	e := w.em.entities[0]
 	tag := "tag1"
 	w.TagEntity(e, tag)
 	tagged := w.EntitiesWithTag(tag)
@@ -160,7 +160,7 @@ func TestWorldEntityManagerProxyEntityHasComponent(t *testing.T) {
 	w := testingWorld()
 	pos := Vec2D{11, 11}
 	e, _ := w.Spawn(positionSpawnRequest(pos))
-	if w.em.Components.Position[e.ID] != pos {
+	if w.em.components.Position[e.ID] != pos {
 		t.Fatal("failed to apply component data")
 	}
 	if !w.EntityHasComponent(e, POSITION_COMPONENT) {
@@ -182,7 +182,7 @@ func TestWorldEntityManagerProxyTagEntity(t *testing.T) {
 	e, _ := w.Spawn(simpleSpawnRequest())
 	tag := "tag1"
 	w.TagEntity(e, tag)
-	if !w.em.Components.TagList[e.ID].Has(tag) {
+	if !w.em.components.TagList[e.ID].Has(tag) {
 		t.Fatal("entity's taglist was not modified by TagEntity")
 	}
 }
@@ -197,7 +197,7 @@ func TestWorldEntityManagerProxyTagEntities(t *testing.T) {
 	}
 	w.TagEntities(entities, tag)
 	for _, e := range entities {
-		if !w.em.Components.TagList[e.ID].Has(tag) {
+		if !w.em.components.TagList[e.ID].Has(tag) {
 			t.Fatal("entity's taglist was not modified by TagEntities")
 		}
 	}
@@ -208,7 +208,7 @@ func TestWorldEntityManagerProxyUntagEntity(t *testing.T) {
 	tag := "tag1"
 	e, _ := w.Spawn(simpleTaggedSpawnRequest(tag))
 	w.UntagEntity(e, tag)
-	if w.em.Components.TagList[e.ID].Has(tag) {
+	if w.em.components.TagList[e.ID].Has(tag) {
 		t.Fatal("entity's taglist was not modified by UntagEntity")
 	}
 }
@@ -223,7 +223,7 @@ func TestWorldEntityManagerProxyUntagEntities(t *testing.T) {
 	}
 	w.UntagEntities(entities, tag)
 	for _, e := range entities {
-		if w.em.Components.TagList[e.ID].Has(tag) {
+		if w.em.components.TagList[e.ID].Has(tag) {
 			t.Fatal("entity's taglist was not modified by UntagEntities")
 		}
 	}
@@ -281,7 +281,7 @@ func TestWorldEntityManagerProxyDumpEntities(
 	t *testing.T) {
 	w := testingWorld()
 	w.Spawn(simpleSpawnRequest())
-	e := w.em.Entities[0]
+	e := w.em.entities[0]
 	tag := "tag1"
 	w.TagEntity(e, tag)
 	s := w.DumpEntities()

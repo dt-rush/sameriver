@@ -36,15 +36,15 @@ func (ev *EventBus) Subscribe(
 	// Create a channel to return to the user
 	c := NewEventChannel(name, q)
 	// Add the channel to the subscriber list for its type
-	ev.subscriberList.channels[q.Type] = append(
-		ev.subscriberList.channels[q.Type], c)
+	ev.subscriberList.channels[q.eventType] = append(
+		ev.subscriberList.channels[q.eventType], c)
 	// return the channel to the caller
 	return c
 }
 
 // Remove a subscriber
 func (ev *EventBus) Unsubscribe(c *EventChannel) {
-	removeEventChannelFromSlice(&ev.subscriberList.channels[c.Filter.Type], c)
+	removeEventChannelFromSlice(&ev.subscriberList.channels[c.filter.eventType], c)
 }
 
 // notify subscribers to a certain event
@@ -55,14 +55,14 @@ func (ev *EventBus) notifySubscribers(e Event) {
 
 	var notifyFull = func(c *EventChannel) {
 		Logger.Printf("⚠ event subscriber channel #%s for events of "+
-			"type %s is full\n", c.Name, EVENT_NAMES[e.Type])
+			"type %s is full\n", c.name, EVENT_NAMES[e.Type])
 	}
 
 	for _, c := range ev.subscriberList.channels[e.Type] {
 		if !c.IsActive() {
 			continue
 		}
-		if c.Filter.Test(e) {
+		if c.filter.Test(e) {
 			if len(c.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
 				notifyFull(c)
 				// spawn a goroutine to do the channel send since we don't

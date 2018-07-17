@@ -25,10 +25,10 @@ func (e *Entity) LogicUnitName() string {
 
 func (e *Entity) MakeLogicUnit(F func()) *LogicUnit {
 	return &LogicUnit{
-		Name:    e.LogicUnitName(),
-		F:       F,
-		Active:  false,
-		WorldID: e.WorldID,
+		name:    e.LogicUnitName(),
+		f:       F,
+		active:  false,
+		worldID: e.WorldID,
 	}
 }
 

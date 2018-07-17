@@ -6,17 +6,17 @@ import (
 
 type EventChannel struct {
 	active *atomic.Uint32
-	C      chan (Event)
-	Filter *EventFilter // TODO: this is used only by callers. Refactor?
-	Name   string
+	C      chan Event
+	filter *EventFilter
+	name   string
 }
 
 func NewEventChannel(name string, q *EventFilter) *EventChannel {
 	return &EventChannel{
 		active: atomic.NewUint32(1),
 		C:      make(chan (Event), EVENT_SUBSCRIBER_CHANNEL_CAPACITY),
-		Filter: q,
-		Name:   name}
+		filter: q,
+		name:   name}
 }
 
 func (c *EventChannel) Activate() {

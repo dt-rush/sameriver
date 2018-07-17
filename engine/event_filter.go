@@ -1,13 +1,13 @@
 package engine
 
 type EventFilter struct {
-	Type      EventType
-	Predicate func(e Event) bool
+	eventType EventType
+	predicate func(e Event) bool
 }
 
 // for simple event queries, predicate is never tested
 func (q *EventFilter) Test(e Event) bool {
-	return q.Type == e.Type && (q.Predicate == nil || q.Predicate(e))
+	return q.eventType == e.Type && (q.predicate == nil || q.predicate(e))
 }
 
 // Construct a new EventFilter which only asks about

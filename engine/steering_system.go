@@ -31,11 +31,11 @@ func (s *SteeringSystem) Update() {
 }
 
 func (s *SteeringSystem) Seek(e *Entity) {
-	p0 := s.w.em.Components.Position[e.ID]
-	p1 := s.w.em.Components.MovementTarget[e.ID]
-	v := &s.w.em.Components.Velocity[e.ID]
-	maxV := s.w.em.Components.MaxVelocity[e.ID]
-	st := &s.w.em.Components.Steer[e.ID]
+	p0 := s.w.em.components.Position[e.ID]
+	p1 := s.w.em.components.MovementTarget[e.ID]
+	v := &s.w.em.components.Velocity[e.ID]
+	maxV := s.w.em.components.MaxVelocity[e.ID]
+	st := &s.w.em.components.Steer[e.ID]
 	desired := p1.Sub(p0)
 	distance := desired.Magnitude()
 	desired = desired.Unit()
@@ -52,10 +52,10 @@ func (s *SteeringSystem) Seek(e *Entity) {
 }
 
 func (s *SteeringSystem) Apply(e *Entity) {
-	v := &s.w.em.Components.Velocity[e.ID]
-	maxV := s.w.em.Components.MaxVelocity[e.ID]
-	st := &s.w.em.Components.Steer[e.ID]
-	mass := s.w.em.Components.Mass[e.ID]
+	v := &s.w.em.components.Velocity[e.ID]
+	maxV := s.w.em.components.MaxVelocity[e.ID]
+	st := &s.w.em.components.Steer[e.ID]
+	mass := s.w.em.components.Mass[e.ID]
 	// TODO: define this properly
 	maxSteerForce := 3.0
 	*st = st.Truncate(maxSteerForce)

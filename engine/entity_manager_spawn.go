@@ -61,7 +61,7 @@ func (m *EntityManager) doSpawn(r SpawnRequestData, uniqueTag string) (
 	}
 	e.World = m.w
 	// add the entity to the list of current entities
-	m.Entities[e.ID] = e
+	m.entities[e.ID] = e
 	// set the bitarray for this entity
 	e.ComponentBitArray = r.Components.ToBitArray()
 	// copy the data inNto the component storage for each component

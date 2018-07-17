@@ -22,7 +22,7 @@ func (w *World) entityFilterFromTag(tag string) EntityFilter {
 	return EntityFilter{
 		Name: tag,
 		Predicate: func(e *Entity) bool {
-			return w.em.Components.TagList[e.ID].Has(tag)
+			return w.em.components.TagList[e.ID].Has(tag)
 		}}
 }
 

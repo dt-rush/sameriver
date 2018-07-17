@@ -34,7 +34,7 @@ import (
 //
 type CollisionRateLimiterArray struct {
 	backingArray []*utils.RateLimiter
-	Arr          [][]*utils.RateLimiter
+	arr          [][]*utils.RateLimiter
 }
 
 // Construct a new CollisionRateLimiterArray
@@ -44,7 +44,7 @@ func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 		backingArray: make(
 			[]*utils.RateLimiter,
 			MAX_ENTITIES*(MAX_ENTITIES+1)/2),
-		Arr: make(
+		arr: make(
 			[][]*utils.RateLimiter,
 			MAX_ENTITIES),
 	}
@@ -52,7 +52,7 @@ func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 	offset := 0
 	for i := 0; i < MAX_ENTITIES; i++ {
 		sliceSize := MAX_ENTITIES - i
-		a.Arr[i] = a.backingArray[offset : offset+sliceSize]
+		a.arr[i] = a.backingArray[offset : offset+sliceSize]
 		offset += sliceSize
 	}
 	// create the rate limiters
@@ -78,14 +78,14 @@ func (a *CollisionRateLimiterArray) GetRateLimiter(
 	//
 	// so in order to map j = i + 1 to 0, j = i + 2 to 1, etc.,
 	// we use j - (i+1) as the index
-	return a.Arr[i][j-(i+1)]
+	return a.arr[i][j-(i+1)]
 }
 
 // Reset all the rate limiters corresponding to an ID in the array (the
 // entity there has been despawned)
 func (a *CollisionRateLimiterArray) Reset(e *Entity) {
 	// clear all where i = id
-	for _, r := range a.Arr[e.ID] {
+	for _, r := range a.arr[e.ID] {
 		r.Reset()
 	}
 	// clear all where j = id

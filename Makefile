@@ -8,7 +8,7 @@ generate: sameriver-generate
 debug-generate: sameriver-generate
 	./sameriver-generate -debug -outputdir=./engine
 
-test:
+test: generate
 	go test -v -coverprofile=coverage.txt -race ./engine
 
 sameriver-generate:

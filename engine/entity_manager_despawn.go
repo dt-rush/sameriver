@@ -39,6 +39,6 @@ func (m *EntityManager) despawnAll() {
 func (m *EntityManager) doDespawn(e *Entity) {
 	e.Despawned = true
 	m.entityTable.deallocate(e)
-	m.Entities[e.ID] = nil
+	m.entities[e.ID] = nil
 	m.setActiveState(e, false)
 }

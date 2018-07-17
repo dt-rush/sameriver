@@ -12,9 +12,9 @@ type EntityManager struct {
 	// the world this EntityManager is inside
 	w *World
 	// list of entities currently spawned (whether active or not)
-	Entities [MAX_ENTITIES]*Entity
+	entities [MAX_ENTITIES]*Entity
 	// Component data for entities
-	Components *ComponentsTable
+	components *ComponentsTable
 	// EntityTable stores: a list of allocated Entitys and a
 	// list of available IDs from previous deallocations
 	entityTable *EntityTable
@@ -40,7 +40,7 @@ type EntityManager struct {
 func NewEntityManager(w *World) *EntityManager {
 	em := &EntityManager{
 		w:               w,
-		entityTable:     NewEntityTable(w.IDGen),
+		entityTable:     NewEntityTable(w.idGen),
 		entitiesWithTag: make(map[string]*UpdatedEntityList),
 		uniqueEntities:  make(map[string]*Entity),
 		eventBus:        w.Events,
@@ -51,7 +51,7 @@ func NewEntityManager(w *World) *EntityManager {
 			"EntityManager::DespawnRequest",
 			SimpleEventFilter(DESPAWNREQUEST_EVENT)),
 	}
-	em.Components = NewComponentsTable(em)
+	em.components = NewComponentsTable(em)
 	em.activeEntityLists = NewActiveEntityListCollection(em)
 	return em
 }
@@ -82,7 +82,7 @@ func (m *EntityManager) setActiveState(e *Entity, state bool) {
 			m.entityTable.active--
 		}
 		// start / stop logic accordingly
-		m.Components.Logic[e.ID].Active = state
+		m.components.Logic[e.ID].active = state
 		// set active state
 		e.Active = state
 		// notify any listening lists
@@ -149,7 +149,7 @@ func (m *EntityManager) EntityHasTag(
 	e *Entity, tag string) bool {
 
 	return m.EntityHasComponent(e, TAGLIST_COMPONENT) &&
-		m.Components.TagList[e.ID].Has(tag)
+		m.components.TagList[e.ID].Has(tag)
 }
 
 // apply the given tags to the given entity
@@ -158,7 +158,7 @@ func (m *EntityManager) TagEntity(e *Entity, tags ...string) {
 		e.ComponentBitArray.SetBit(TAGLIST_COMPONENT)
 	}
 	for _, tag := range tags {
-		m.Components.TagList[e.ID].Add(tag)
+		m.components.TagList[e.ID].Add(tag)
 		if e.Active {
 			m.createEntitiesWithTagListIfNeeded(tag)
 		}
@@ -177,7 +177,7 @@ func (m *EntityManager) TagEntities(entities []*Entity, tag string) {
 
 // Remove a tag from an entity
 func (m *EntityManager) UntagEntity(e *Entity, tag string) {
-	list := m.Components.TagList[e.ID]
+	list := m.components.TagList[e.ID]
 	list.Remove(tag)
 	m.activeEntityLists.checkActiveEntity(e)
 }
@@ -199,7 +199,7 @@ func (m *EntityManager) NumEntities() (total int, active int) {
 // nil elements as they iterate
 func (m *EntityManager) GetCurrentEntities() []*Entity {
 	entities := make([]*Entity, 0, len(m.entityTable.currentEntities))
-	for _, e := range m.Entities {
+	for _, e := range m.entities {
 		if e != nil {
 			entities = append(entities, e)
 		}
@@ -221,11 +221,11 @@ func (m *EntityManager) Dump() string {
 
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
-	for _, e := range m.Entities {
+	for _, e := range m.entities {
 		if e == nil {
 			continue
 		}
-		tags := m.Components.TagList[e.ID]
+		tags := m.components.TagList[e.ID]
 		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",
 			e.ID, tags)
 		buffer.WriteString(entityRepresentation)

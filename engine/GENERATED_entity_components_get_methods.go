@@ -12,32 +12,32 @@
 package engine
 
 func (e *Entity) GetBox() *Vec2D {
-	return &e.World.em.Components.Box[e.ID]
+	return &e.World.em.components.Box[e.ID]
 }
 func (e *Entity) GetLogic() *LogicUnit {
-	return &e.World.em.Components.Logic[e.ID]
+	return &e.World.em.components.Logic[e.ID]
 }
 func (e *Entity) GetMass() *float64 {
-	return &e.World.em.Components.Mass[e.ID]
+	return &e.World.em.components.Mass[e.ID]
 }
 func (e *Entity) GetMaxVelocity() *float64 {
-	return &e.World.em.Components.MaxVelocity[e.ID]
+	return &e.World.em.components.MaxVelocity[e.ID]
 }
 func (e *Entity) GetMovementTarget() *Vec2D {
-	return &e.World.em.Components.MovementTarget[e.ID]
+	return &e.World.em.components.MovementTarget[e.ID]
 }
 func (e *Entity) GetPosition() *Vec2D {
-	return &e.World.em.Components.Position[e.ID]
+	return &e.World.em.components.Position[e.ID]
 }
 func (e *Entity) GetSprite() *Sprite {
-	return &e.World.em.Components.Sprite[e.ID]
+	return &e.World.em.components.Sprite[e.ID]
 }
 func (e *Entity) GetSteer() *Vec2D {
-	return &e.World.em.Components.Steer[e.ID]
+	return &e.World.em.components.Steer[e.ID]
 }
 func (e *Entity) GetTagList() *TagList {
-	return &e.World.em.Components.TagList[e.ID]
+	return &e.World.em.components.TagList[e.ID]
 }
 func (e *Entity) GetVelocity() *Vec2D {
-	return &e.World.em.Components.Velocity[e.ID]
+	return &e.World.em.components.Velocity[e.ID]
 }

@@ -43,7 +43,7 @@ func TestEntityManagerSpawnDespawn(t *testing.T) {
 	if total == 0 {
 		t.Fatal("failed to Spawn simple Spawn request entity")
 	}
-	e := w.em.Entities[0]
+	e := w.em.entities[0]
 	if !e.Active {
 		t.Fatal("Spawned entity was not active")
 	}
@@ -119,7 +119,7 @@ func TestEntityManagerEntityHasComponent(t *testing.T) {
 
 	pos := Vec2D{11, 11}
 	e, _ := w.em.spawn(positionSpawnRequest(pos))
-	if w.em.Components.Position[e.ID] != pos {
+	if w.em.components.Position[e.ID] != pos {
 		t.Fatal("failed to apply component data")
 	}
 	if !w.em.EntityHasComponent(e, POSITION_COMPONENT) {
@@ -166,7 +166,7 @@ func TestEntityManagerTagUntagEntity(t *testing.T) {
 	w := testingWorld()
 
 	w.em.spawn(simpleSpawnRequest())
-	e := w.em.Entities[0]
+	e := w.em.entities[0]
 	tag := "tag1"
 	w.em.TagEntity(e, tag)
 	tagged := w.em.EntitiesWithTag(tag)
@@ -197,7 +197,7 @@ func TestEntityManagerTagEntities(t *testing.T) {
 	}
 	w.em.TagEntities(entities, tag)
 	for _, e := range entities {
-		if !w.em.Components.TagList[e.ID].Has(tag) {
+		if !w.em.components.TagList[e.ID].Has(tag) {
 			t.Fatal("entity's taglist was not modified by TagEntities")
 		}
 	}
@@ -213,7 +213,7 @@ func TestEntityManagerUntagEntities(t *testing.T) {
 	}
 	w.em.UntagEntities(entities, tag)
 	for _, e := range entities {
-		if w.em.Components.TagList[e.ID].Has(tag) {
+		if w.em.components.TagList[e.ID].Has(tag) {
 			t.Fatal("entity's taglist was not modified by UntagEntities")
 		}
 	}
@@ -223,7 +223,7 @@ func TestEntityManagerDeactivateActivateEntity(t *testing.T) {
 	w := testingWorld()
 
 	w.em.spawn(simpleSpawnRequest())
-	e := w.em.Entities[0]
+	e := w.em.entities[0]
 	tag := "tag1"
 	w.em.TagEntity(e, tag)
 	tagged := w.em.EntitiesWithTag(tag)
@@ -327,7 +327,7 @@ func TestEntityManagerString(t *testing.T) {
 func TestEntityManagerDump(t *testing.T) {
 	w := testingWorld()
 	w.em.spawn(simpleSpawnRequest())
-	e := w.em.Entities[0]
+	e := w.em.entities[0]
 	tag := "tag1"
 	w.em.TagEntity(e, tag)
 	s := w.em.Dump()

@@ -63,8 +63,8 @@ func (r *RuntimeLimiter) Run(allowance float64) (remaining float64) {
 			(hasEstimate && estimate <= allowance) ||
 			(hasEstimate && estimate > allowance && r.runIX == r.startIX) {
 			t0 = time.Now()
-			if logic.Active {
-				logic.F()
+			if logic.active {
+				logic.f()
 			}
 			elapsed = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 			if !hasEstimate {
@@ -93,12 +93,12 @@ func (r *RuntimeLimiter) Run(allowance float64) (remaining float64) {
 
 func (r *RuntimeLimiter) Add(logic *LogicUnit) {
 	// panic if adding duplicate by WorldID
-	if _, ok := r.indexes[logic.WorldID]; ok {
+	if _, ok := r.indexes[logic.worldID]; ok {
 		panic(fmt.Sprintf("Double-add of same logic unit to RuntimeLimiter "+
-			"(WorldID: %d)", logic.WorldID))
+			"(WorldID: %d)", logic.worldID))
 	}
 	r.logicUnits = append(r.logicUnits, logic)
-	r.indexes[logic.WorldID] = len(r.logicUnits) - 1
+	r.indexes[logic.worldID] = len(r.logicUnits) - 1
 }
 
 func (r *RuntimeLimiter) Remove(WorldID int) bool {
@@ -122,7 +122,7 @@ func (r *RuntimeLimiter) Remove(WorldID int) bool {
 		// update the indexes array for the elemnt we put into the
 		// place of the one we spliced out
 		nowAtIndex := r.logicUnits[index]
-		r.indexes[nowAtIndex.WorldID] = index
+		r.indexes[nowAtIndex.worldID] = index
 	}
 	r.logicUnits = r.logicUnits[:lastIndex]
 	// update runIX - if we removed an entity earlier in the list,
@@ -137,13 +137,13 @@ func (r *RuntimeLimiter) Remove(WorldID int) bool {
 
 func (r *RuntimeLimiter) ActivateAll() {
 	for _, l := range r.logicUnits {
-		l.Active = true
+		l.active = true
 	}
 }
 
 func (r *RuntimeLimiter) DeactivateAll() {
 	for _, l := range r.logicUnits {
-		l.Active = false
+		l.active = false
 	}
 }
 
@@ -177,9 +177,9 @@ func (r *RuntimeLimiter) DumpStats() (stats map[string]float64, total float64) {
 	stats = make(map[string]float64)
 	for _, l := range r.logicUnits {
 		if est, ok := r.runtimeEstimates[l]; ok {
-			stats[l.Name] = est
+			stats[l.name] = est
 		} else {
-			stats[l.Name] = 0.0
+			stats[l.name] = 0.0
 		}
 	}
 	if r.totalRuntime != nil {

@@ -5,12 +5,12 @@ import (
 )
 
 func TestNewEventChannel(t *testing.T) {
-	q := &EventFilter{Type: SPAWNREQUEST_EVENT}
+	q := &EventFilter{eventType: SPAWNREQUEST_EVENT}
 	ec := NewEventChannel("testchannel", q)
 	if !(ec.IsActive() &&
 		ec.C != nil &&
-		ec.Filter == q &&
-		ec.Name == "testchannel") {
+		ec.filter == q &&
+		ec.name == "testchannel") {
 		t.Fatal("did not construct properly")
 	}
 }

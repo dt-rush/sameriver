@@ -15,7 +15,7 @@ type World struct {
 	Width  float64
 	Height float64
 
-	IDGen  *utils.IDGenerator
+	idGen  *utils.IDGenerator
 	Events *EventBus
 	em     *EntityManager
 
@@ -39,7 +39,7 @@ func NewWorld(width int, height int) *World {
 		Width:              float64(width),
 		Height:             float64(height),
 		Events:             NewEventBus(),
-		IDGen:              utils.NewIDGenerator(),
+		idGen:              utils.NewIDGenerator(),
 		systems:            make(map[string]System),
 		systemsIDs:         make(map[System]int),
 		systemsRunner:      NewRuntimeLimiter(),
@@ -49,7 +49,7 @@ func NewWorld(width int, height int) *World {
 		entityLogicsRunner: NewRuntimeLimiter(),
 	}
 	w.em = NewEntityManager(w)
-	w.em.Components = w.em.Components
+	w.em.components = w.em.components
 	return w
 }
 
@@ -90,16 +90,16 @@ func (w *World) addSystem(s System) {
 		panic(fmt.Sprintf("double-add of system %s", name))
 	}
 	w.systems[name] = s
-	ID := w.IDGen.Next()
+	ID := w.idGen.Next()
 	w.systemsIDs[s] = ID
 	s.LinkWorld(w)
 	logicName := fmt.Sprintf("%s-update", name)
 	w.systemsRunner.Add(
 		&LogicUnit{
-			Name:    logicName,
-			WorldID: w.systemsIDs[s],
-			F:       s.Update,
-			Active:  true})
+			name:    logicName,
+			worldID: w.systemsIDs[s],
+			f:       s.Update,
+			active:  true})
 }
 
 func (w *World) assertSystemTypeValid(t reflect.Type) {
@@ -180,10 +180,10 @@ func (w *World) AddWorldLogic(Name string, F func()) *LogicUnit {
 		panic(fmt.Sprintf("double-add of world logic %s", Name))
 	}
 	l := &LogicUnit{
-		Name:    Name,
-		F:       F,
-		Active:  false,
-		WorldID: w.IDGen.Next(),
+		name:    Name,
+		f:       F,
+		active:  false,
+		worldID: w.idGen.Next(),
 	}
 	w.worldLogics[Name] = l
 	w.worldLogicsRunner.Add(l)
@@ -192,7 +192,7 @@ func (w *World) AddWorldLogic(Name string, F func()) *LogicUnit {
 
 func (w *World) RemoveWorldLogic(Name string) {
 	if logic, ok := w.worldLogics[Name]; ok {
-		w.worldLogicsRunner.Remove(logic.WorldID)
+		w.worldLogicsRunner.Remove(logic.worldID)
 		delete(w.worldLogics, Name)
 	}
 }
@@ -215,7 +215,7 @@ func (w *World) DeactivateWorldLogic(name string) {
 
 func (w *World) SetWorldLogicActiveState(name string, state bool) {
 	if logic, ok := w.worldLogics[name]; ok {
-		logic.Active = state
+		logic.active = state
 	}
 }
 
@@ -228,7 +228,7 @@ func (w *World) AddEntityLogic(e *Entity, F func()) *LogicUnit {
 
 func (w *World) RemoveEntityLogic(e *Entity) {
 	if logic, ok := w.entityLogics[e.ID]; ok {
-		w.entityLogicsRunner.Remove(logic.WorldID)
+		w.entityLogicsRunner.Remove(logic.worldID)
 		delete(w.entityLogics, e.ID)
 	}
 }
@@ -251,7 +251,7 @@ func (w *World) DeactivateEntityLogic(e *Entity) {
 
 func (w *World) setEntityLogicActiveState(e *Entity, state bool) {
 	if logic, ok := w.entityLogics[e.ID]; ok {
-		logic.Active = state
+		logic.active = state
 	}
 }
 

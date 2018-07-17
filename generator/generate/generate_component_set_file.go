@@ -53,7 +53,7 @@ func generateComponentSetFile(
 						Id("e").Dot("ComponentBitArray").Dot("Or").Call(Id("b"))
 					for _, component := range components {
 						g.If(Id("cs").Dot(component.Name).Op("!=").Nil()).Block(
-							Id("em").Dot("Components").Dot(component.Name).
+							Id("em").Dot("components").Dot(component.Name).
 								Index(Id("e").Dot("ID")).Op("=").
 								Op("*").Id("cs").Dot(component.Name),
 						)

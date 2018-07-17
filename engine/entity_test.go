@@ -9,10 +9,10 @@ func TestEntityMakeLogicUnit(t *testing.T) {
 	worldID := 2000
 	e := Entity{ID: ID, WorldID: worldID}
 	lu := e.MakeLogicUnit(func() {})
-	if lu.Name != e.LogicUnitName() {
+	if lu.name != e.LogicUnitName() {
 		t.Fatal("did not set logic unit name")
 	}
-	if lu.WorldID != e.WorldID {
+	if lu.worldID != e.WorldID {
 		t.Fatal("did not set logic unit world ID")
 	}
 }

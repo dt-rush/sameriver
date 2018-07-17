@@ -38,8 +38,8 @@ func TestSpatialHashInsertion(t *testing.T) {
 			}
 			if !inCell {
 				t.Fatal(fmt.Sprintf("%v,%v was not mapped to cell %v",
-					w.em.Components.Position[e.ID],
-					w.em.Components.Box[e.ID],
+					w.em.components.Position[e.ID],
+					w.em.components.Box[e.ID],
 					cell))
 			}
 		}
@@ -70,8 +70,8 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 		}
 		if !inCell {
 			t.Fatal(fmt.Sprintf("%v,%v was not mapped to cell %v",
-				w.em.Components.Position[e.ID],
-				w.em.Components.Box[e.ID],
+				w.em.components.Position[e.ID],
+				w.em.components.Box[e.ID],
 				cell))
 		}
 	}

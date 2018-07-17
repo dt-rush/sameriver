@@ -11,11 +11,11 @@ func TestEntityFilter(t *testing.T) {
 	req := positionSpawnRequest(pos)
 	w.em.spawn(req)
 	w.em.Update()
-	e := w.em.Entities[0]
+	e := w.em.entities[0]
 	q := EntityFilter{
 		"positionFilter",
 		func(e *Entity) bool {
-			return w.em.Components.Position[e.ID] == pos
+			return w.em.components.Position[e.ID] == pos
 		},
 	}
 	if !q.Test(e) {
@@ -30,7 +30,7 @@ func TestEntityFilterFromTag(t *testing.T) {
 	req := simpleTaggedSpawnRequest(tag)
 	w.em.spawn(req)
 	w.em.Update()
-	e := w.em.Entities[0]
+	e := w.em.entities[0]
 	q := w.entityFilterFromTag(tag)
 	if !q.Test(e) {
 		t.Fatal("Filter did not return true")

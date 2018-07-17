@@ -41,11 +41,11 @@ func (s *PhysicsSystem) Update() {
 		// be preempted while computing physics (this is very good, get it over with)
 		for _, e := range s.physicsEntities.entities {
 			// the logic is simpler to read that way
-			pos := &s.w.em.Components.Position[e.ID]
-			box := &s.w.em.Components.Box[e.ID]
+			pos := &s.w.em.components.Position[e.ID]
+			box := &s.w.em.components.Box[e.ID]
 			pos.ShiftCenterToBottomLeft(box)
 			// calculate velocity
-			vel := s.w.em.Components.Velocity[e.ID]
+			vel := s.w.em.components.Velocity[e.ID]
 			dx := vel.X * dt_ms
 			dy := vel.Y * dt_ms
 			// motion in x

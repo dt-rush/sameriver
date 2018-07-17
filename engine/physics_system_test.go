@@ -11,13 +11,13 @@ func TestPhysicsSystemMotion(t *testing.T) {
 	ps := NewPhysicsSystem()
 	w.AddSystems(ps)
 	e, _ := w.em.spawn(physicsSpawnRequest())
-	w.em.Components.Velocity[e.ID] = Vec2D{1, 1}
-	pos := w.em.Components.Position[e.ID]
+	w.em.components.Velocity[e.ID] = Vec2D{1, 1}
+	pos := w.em.components.Position[e.ID]
 	// Update twice since physics system won't run the first time(needs a dt)
 	w.Update(FRAME_SLEEP_MS / 2)
 	time.Sleep(FRAME_SLEEP)
 	w.Update(FRAME_SLEEP_MS / 2)
-	if w.em.Components.Position[e.ID] == pos {
+	if w.em.components.Position[e.ID] == pos {
 		t.Fatal("failed to update position")
 	}
 }
@@ -35,9 +35,9 @@ func TestPhysicsSystemBounds(t *testing.T) {
 	}
 	worldCenter := Vec2D{w.Width / 2, w.Height / 2}
 	worldTopRight := Vec2D{w.Width, w.Height}
-	pos := &w.em.Components.Position[e.ID]
-	box := &w.em.Components.Box[e.ID]
-	vel := &w.em.Components.Velocity[e.ID]
+	pos := &w.em.components.Position[e.ID]
+	box := &w.em.components.Box[e.ID]
+	vel := &w.em.components.Velocity[e.ID]
 	for _, d := range directions {
 		*pos = Vec2D{512, 512}
 		*vel = d
