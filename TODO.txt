@@ -4,6 +4,10 @@ review comments
 
 find syntax improvements for user-facing code (some kind of promise chain thing? the error checking is nasty)
 
+de-expose all methods not needed by user
+
+make it so that entity position is the center of the box
+
 experiment with adding as a submodule to game
 https://git-scm.com/book/en/v2/Git-Tools-Submodules
 
