@@ -23,7 +23,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 	}
 	entityCells := make(map[*Entity][][2]int)
 	for posbox, cells := range testData {
-		e, _ := w.em.spawn(spatialSpawnRequest(posbox[0], posbox[1]))
+		e, _ := w.em.spawnFromRequest(spatialSpawnRequest(posbox[0], posbox[1]))
 		entityCells[e] = cells
 	}
 	w.Update(FRAME_SLEEP_MS / 2)
@@ -58,7 +58,7 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 		[2]int{2, 1},
 		[2]int{2, 2},
 	}
-	e, _ := w.em.spawn(spatialSpawnRequest(pos, box))
+	e, _ := w.em.spawnFromRequest(spatialSpawnRequest(pos, box))
 	w.Update(FRAME_SLEEP_MS / 2)
 	table := sh.CurrentTablePointer()
 	for _, cell := range cells {
@@ -87,7 +87,7 @@ func TestSpatialHashDoubleCompute(t *testing.T) {
 	// spawn a lot of entities
 	for i := 0; i < MAX_ENTITIES; i++ {
 		pos := Vec2D{100 * rand.Float64(), 100 * rand.Float64()}
-		w.em.spawn(spatialSpawnRequest(Vec2D{1, 1}, pos))
+		w.em.spawnFromRequest(spatialSpawnRequest(Vec2D{1, 1}, pos))
 	}
 	N := 512
 	// update the world numerous times at the same time
@@ -106,7 +106,7 @@ func TestSpatialHashTableCopy(t *testing.T) {
 	w := NewWorld(100, 100)
 	sh := NewSpatialHashSystem(10, 10)
 	w.AddSystems(sh)
-	w.em.spawn(spatialSpawnRequest(Vec2D{0, 0}, Vec2D{1, 1}))
+	w.em.spawnFromRequest(spatialSpawnRequest(Vec2D{0, 0}, Vec2D{1, 1}))
 	w.Update(FRAME_SLEEP_MS / 2)
 	table := sh.CurrentTablePointer()
 	tableCopy := sh.CurrentTableCopy()
@@ -123,7 +123,7 @@ func TestSpatialHashTableToString(t *testing.T) {
 	table := sh.CurrentTablePointer()
 	s0 := table.String()
 	for i := 0; i < 500; i++ {
-		w.em.spawn(spatialSpawnRequest(
+		w.em.spawnFromRequest(spatialSpawnRequest(
 			Vec2D{rand.Float64() * 1024, rand.Float64() * 1024},
 			Vec2D{5, 5}))
 	}

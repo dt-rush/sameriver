@@ -19,7 +19,7 @@ func TestEntityManagerNumEntities(t *testing.T) {
 	if !(total == 0 && active == 0) {
 		t.Fatal("somehow total and active were nonzero")
 	}
-	e, _ := w.em.spawn(simpleSpawnRequest())
+	e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
 	total, active = w.em.NumEntities()
 	if !(total == 1 && active == 1) {
 		t.Fatal("total or active not updated after one spawn")
@@ -38,7 +38,7 @@ func TestEntityManagerNumEntities(t *testing.T) {
 
 func TestEntityManagerSpawnDespawn(t *testing.T) {
 	w := testingWorld()
-	w.em.spawn(simpleSpawnRequest())
+	w.em.spawnFromRequest(simpleSpawnRequest())
 	total, _ := w.em.NumEntities()
 	if total == 0 {
 		t.Fatal("failed to Spawn simple Spawn request entity")
@@ -62,7 +62,7 @@ func TestEntityManagerSpawnFail(t *testing.T) {
 	for i := 0; i < MAX_ENTITIES; i++ {
 		w.em.entityTable.allocateID()
 	}
-	_, err := w.em.spawn(simpleSpawnRequest())
+	_, err := w.em.spawnFromRequest(simpleSpawnRequest())
 	if err == nil {
 		t.Fatal("should have thrown error on spawnrequest when entity table full")
 	}
@@ -82,7 +82,7 @@ func TestEntityManagerSpawnEvent(t *testing.T) {
 func TestEntityManagerDespawnEvent(t *testing.T) {
 	w := testingWorld()
 
-	e, _ := w.em.spawn(simpleSpawnRequest())
+	e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
 	w.em.despawnSubscription.C <- Event{
 		DESPAWNREQUEST_EVENT,
 		DespawnRequestData{Entity: e}}
@@ -97,7 +97,7 @@ func TestEntityManagerDespawnAll(t *testing.T) {
 	w := testingWorld()
 
 	for i := 0; i < 64; i++ {
-		w.em.spawn(simpleSpawnRequest())
+		w.em.spawnFromRequest(simpleSpawnRequest())
 	}
 	w.em.spawnSubscription.C <- Event{}
 	w.em.despawnSubscription.C <- Event{}
@@ -118,7 +118,7 @@ func TestEntityManagerEntityHasComponent(t *testing.T) {
 	w := testingWorld()
 
 	pos := Vec2D{11, 11}
-	e, _ := w.em.spawn(positionSpawnRequest(pos))
+	e, _ := w.em.spawnFromRequest(positionSpawnRequest(pos))
 	if w.em.components.Position[e.ID] != pos {
 		t.Fatal("failed to apply component data")
 	}
@@ -132,7 +132,7 @@ func TestEntityManagerEntitiesWithTag(t *testing.T) {
 
 	tag := "tag1"
 	req := simpleTaggedSpawnRequest(tag)
-	w.em.spawn(req)
+	w.em.spawnFromRequest(req)
 	tagged := w.em.EntitiesWithTag(tag)
 	if tagged.Length() == 0 {
 		t.Fatal("failed to find Spawned entity in EntitiesWithTag")
@@ -148,7 +148,7 @@ func TestEntityManagerSpawnUnique(t *testing.T) {
 		t.Fatal("should return err if unique entity not found")
 	}
 	req := simpleSpawnRequest()
-	_, err = w.em.spawnUnique(tag, req)
+	_, err = w.em.spawnUnique(tag, req.Components, req.Tags)
 	if err != nil {
 		t.Fatal("failed to Spawn FIRST unique entity")
 	}
@@ -156,7 +156,7 @@ func TestEntityManagerSpawnUnique(t *testing.T) {
 	if !(e != nil && err == nil) {
 		t.Fatal("did not return unique entity")
 	}
-	_, err = w.em.spawnUnique(tag, req)
+	_, err = w.em.spawnUnique(tag, req.Components, req.Tags)
 	if err == nil {
 		t.Fatal("should not have been allowed to Spawn second unique entity")
 	}
@@ -165,7 +165,7 @@ func TestEntityManagerSpawnUnique(t *testing.T) {
 func TestEntityManagerTagUntagEntity(t *testing.T) {
 	w := testingWorld()
 
-	w.em.spawn(simpleSpawnRequest())
+	w.em.spawnFromRequest(simpleSpawnRequest())
 	e := w.em.entities[0]
 	tag := "tag1"
 	w.em.TagEntity(e, tag)
@@ -192,7 +192,7 @@ func TestEntityManagerTagEntities(t *testing.T) {
 	entities := make([]*Entity, 0)
 	tag := "tag1"
 	for i := 0; i < 32; i++ {
-		e, _ := w.em.spawn(simpleSpawnRequest())
+		e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
 		entities = append(entities, e)
 	}
 	w.em.TagEntities(entities, tag)
@@ -208,7 +208,7 @@ func TestEntityManagerUntagEntities(t *testing.T) {
 	entities := make([]*Entity, 0)
 	tag := "tag1"
 	for i := 0; i < 32; i++ {
-		e, _ := w.em.spawn(simpleTaggedSpawnRequest(tag))
+		e, _ := w.em.spawnFromRequest(simpleTaggedSpawnRequest(tag))
 		entities = append(entities, e)
 	}
 	w.em.UntagEntities(entities, tag)
@@ -222,7 +222,7 @@ func TestEntityManagerUntagEntities(t *testing.T) {
 func TestEntityManagerDeactivateActivateEntity(t *testing.T) {
 	w := testingWorld()
 
-	w.em.spawn(simpleSpawnRequest())
+	w.em.spawnFromRequest(simpleSpawnRequest())
 	e := w.em.entities[0]
 	tag := "tag1"
 	w.em.TagEntity(e, tag)
@@ -254,7 +254,7 @@ func TestEntityManagerGetUpdatedEntityList(t *testing.T) {
 		}),
 	)
 
-	w.em.spawn(simpleSpawnRequest())
+	w.em.spawnFromRequest(simpleSpawnRequest())
 	if list.Length() != 1 {
 		t.Fatal("failed to update UpdatedEntityList")
 	}
@@ -305,7 +305,7 @@ func TestEntityManagerGetCurrentEntities(t *testing.T) {
 	if !(len(w.em.GetCurrentEntities()) == 0) {
 		t.Fatal("initially, len(GetCurrentEntities()) should be 0")
 	}
-	e, _ := w.em.spawn(simpleSpawnRequest())
+	e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
 	if !(len(w.em.GetCurrentEntities()) == 1) {
 		t.Fatal("after spawn, len(GetCurrentEntities()) should be 1")
 	}
@@ -326,7 +326,7 @@ func TestEntityManagerString(t *testing.T) {
 
 func TestEntityManagerDump(t *testing.T) {
 	w := testingWorld()
-	w.em.spawn(simpleSpawnRequest())
+	w.em.spawnFromRequest(simpleSpawnRequest())
 	e := w.em.entities[0]
 	tag := "tag1"
 	w.em.TagEntity(e, tag)

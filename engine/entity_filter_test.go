@@ -8,8 +8,8 @@ func TestEntityFilter(t *testing.T) {
 	w := testingWorld()
 
 	pos := Vec2D{0, 0}
-	req := positionSpawnRequest(pos)
-	w.em.spawn(req)
+	sp := positionSpawnRequest(pos)
+	w.em.spawn(sp.Components, sp.Tags)
 	w.em.Update()
 	e := w.em.entities[0]
 	q := EntityFilter{
@@ -27,8 +27,8 @@ func TestEntityFilterFromTag(t *testing.T) {
 	w := testingWorld()
 
 	tag := "tag1"
-	req := simpleTaggedSpawnRequest(tag)
-	w.em.spawn(req)
+	sp := simpleTaggedSpawnRequest(tag)
+	w.em.spawn(sp.Components, sp.Tags)
 	w.em.Update()
 	e := w.em.entities[0]
 	q := w.entityFilterFromTag(tag)

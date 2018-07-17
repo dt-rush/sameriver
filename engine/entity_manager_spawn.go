@@ -15,25 +15,31 @@ func (m *EntityManager) processSpawnChannel() {
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		e := <-m.spawnSubscription.C
-		_, err := m.spawn(e.Data.(SpawnRequestData))
+		sp := e.Data.(SpawnRequestData)
+		_, err := m.spawn(sp.Components, sp.Tags)
 		if err != nil {
 			Logger.Println(err)
 		}
 	}
 }
 
-func (m *EntityManager) spawn(r SpawnRequestData) (*Entity, error) {
-	return m.doSpawn(r, "")
+func (m *EntityManager) spawnFromRequest(req SpawnRequestData) (*Entity, error) {
+	return m.spawn(req.Components, req.Tags)
+}
+
+func (m *EntityManager) spawn(
+	components ComponentSet, tags []string) (*Entity, error) {
+	return m.doSpawn(components, tags, "")
 }
 
 func (m *EntityManager) spawnUnique(
-	tag string, r SpawnRequestData) (*Entity, error) {
+	tag string, components ComponentSet, tags []string) (*Entity, error) {
 
 	if _, ok := m.uniqueEntities[tag]; ok {
 		return nil, errors.New(fmt.Sprintf("requested to spawn unique "+
 			"entity for %s, but %s already exists", tag, tag))
 	}
-	e, err := m.doSpawn(r, tag)
+	e, err := m.doSpawn(components, tags, tag)
 	if err == nil {
 		m.uniqueEntities[tag] = e
 	}
@@ -44,7 +50,8 @@ func (m *EntityManager) spawnUnique(
 // returns the Entity (used to spawn an entity for which we *want* the
 // token back)
 
-func (m *EntityManager) doSpawn(r SpawnRequestData, uniqueTag string) (
+func (m *EntityManager) doSpawn(
+	components ComponentSet, tags []string, uniqueTag string) (
 	*Entity, error) {
 
 	// used if spawn is impossible for various reasons
@@ -56,14 +63,14 @@ func (m *EntityManager) doSpawn(r SpawnRequestData, uniqueTag string) (
 	e, err := m.entityTable.allocateID()
 	if err != nil {
 		errorMsg := fmt.Sprintf("⚠ Error in allocateID(): %s. Will not spawn "+
-			"entity with tags: %v\n", err, r.Tags)
+			"entity with tags: %v\n", err, tags)
 		return fail(errorMsg)
 	}
 	e.World = m.w
 	// add the entity to the list of current entities
 	m.entities[e.ID] = e
 	// set the bitarray for this entity
-	e.ComponentBitArray = r.Components.ToBitArray()
+	e.ComponentBitArray = components.ToBitArray()
 	// copy the data inNto the component storage for each component
 	// (note: we dereference the pointers, this is copy operation, so it's good
 	// that component values are either small pieces of data like [2]uint16
@@ -75,9 +82,9 @@ func (m *EntityManager) doSpawn(r SpawnRequestData, uniqueTag string) (
 	// NOTE: we can directly set the Active component value since no other
 	// goroutine could be also writing to this entity, due to the
 	// AtomicEntityModify pattern
-	m.ApplyComponentSet(r.Components)(e)
+	m.ApplyComponentSet(components)(e)
 	// create (if doesn't exist) entitiesWithTag lists for each tag
-	m.TagEntity(e, r.Tags...)
+	m.TagEntity(e, tags...)
 	// apply the unique tag if provided
 	if uniqueTag != "" {
 		m.createEntitiesWithTagListIfNeeded(uniqueTag)
