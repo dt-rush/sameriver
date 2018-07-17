@@ -106,7 +106,7 @@ func TestWorldEntityManagerProxyGetUpdatedEntityList(t *testing.T) {
 	w := testingWorld()
 	name := "ILoveLily"
 	list := w.GetUpdatedEntityList(NewEntityFilter(name,
-		func(entity *Entity) bool {
+		func(e *Entity) bool {
 			return true
 		}),
 	)
@@ -115,7 +115,7 @@ func TestWorldEntityManagerProxyGetUpdatedEntityList(t *testing.T) {
 		t.Fatal("failed to update UpdatedEntityList")
 	}
 	list2 := w.GetUpdatedEntityList(NewEntityFilter(name,
-		func(entity *Entity) bool {
+		func(e *Entity) bool {
 			return true
 		}),
 	)
@@ -147,7 +147,7 @@ func TestWorldEntityManagerProxyGetUpdatedEntityListByName(t *testing.T) {
 		t.Fatal("should return nil if not found")
 	}
 	list := w.GetUpdatedEntityList(NewEntityFilter(name,
-		func(entity *Entity) bool {
+		func(e *Entity) bool {
 			return false
 		}),
 	)

@@ -36,9 +36,9 @@ func (m *EntityManager) despawnAll() {
 
 // internal despawn function processes the despawn
 // (frees the ID and deactivates the entity)
-func (m *EntityManager) doDespawn(entity *Entity) {
-	entity.Despawned = true
-	m.entityTable.deallocate(entity)
-	m.Entities[entity.ID] = nil
-	m.setActiveState(entity, false)
+func (m *EntityManager) doDespawn(e *Entity) {
+	e.Despawned = true
+	m.entityTable.deallocate(e)
+	m.Entities[e.ID] = nil
+	m.setActiveState(e, false)
 }

@@ -53,17 +53,17 @@ func (m *EntityManager) doSpawn(r SpawnRequestData, uniqueTag string) (
 	}
 
 	// get an ID for the entity
-	entity, err := m.entityTable.allocateID()
+	e, err := m.entityTable.allocateID()
 	if err != nil {
 		errorMsg := fmt.Sprintf("⚠ Error in allocateID(): %s. Will not spawn "+
 			"entity with tags: %v\n", err, r.Tags)
 		return fail(errorMsg)
 	}
-	entity.World = m.w
+	e.World = m.w
 	// add the entity to the list of current entities
-	m.Entities[entity.ID] = entity
+	m.Entities[e.ID] = e
 	// set the bitarray for this entity
-	entity.ComponentBitArray = r.Components.ToBitArray()
+	e.ComponentBitArray = r.Components.ToBitArray()
 	// copy the data inNto the component storage for each component
 	// (note: we dereference the pointers, this is copy operation, so it's good
 	// that component values are either small pieces of data like [2]uint16
@@ -75,15 +75,15 @@ func (m *EntityManager) doSpawn(r SpawnRequestData, uniqueTag string) (
 	// NOTE: we can directly set the Active component value since no other
 	// goroutine could be also writing to this entity, due to the
 	// AtomicEntityModify pattern
-	m.ApplyComponentSet(r.Components)(entity)
+	m.ApplyComponentSet(r.Components)(e)
 	// create (if doesn't exist) entitiesWithTag lists for each tag
-	m.TagEntity(entity, r.Tags...)
+	m.TagEntity(e, r.Tags...)
 	// apply the unique tag if provided
 	if uniqueTag != "" {
 		m.createEntitiesWithTagListIfNeeded(uniqueTag)
 	}
 	// set entity active and notify entity is active
-	m.setActiveState(entity, true)
+	m.setActiveState(e, true)
 	// return Entity
-	return entity, nil
+	return e, nil
 }

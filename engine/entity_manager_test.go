@@ -249,7 +249,7 @@ func TestEntityManagerGetUpdatedEntityList(t *testing.T) {
 	w := testingWorld()
 	name := "ILoveLily"
 	list := w.em.GetUpdatedEntityList(NewEntityFilter(name,
-		func(entity *Entity) bool {
+		func(e *Entity) bool {
 			return true
 		}),
 	)
@@ -259,7 +259,7 @@ func TestEntityManagerGetUpdatedEntityList(t *testing.T) {
 		t.Fatal("failed to update UpdatedEntityList")
 	}
 	list2 := w.em.GetUpdatedEntityList(NewEntityFilter(name,
-		func(entity *Entity) bool {
+		func(e *Entity) bool {
 			return true
 		}),
 	)
@@ -291,7 +291,7 @@ func TestEntityManagerGetUpdatedEntityListByName(t *testing.T) {
 		t.Fatal("should return nil if not found")
 	}
 	list := w.em.GetUpdatedEntityList(NewEntityFilter(name,
-		func(entity *Entity) bool {
+		func(e *Entity) bool {
 			return false
 		}),
 	)

@@ -65,37 +65,37 @@ func (cs *ComponentSet) ToBitArray() bitarray.BitArray {
 
 func (em *EntityManager) ApplyComponentSet(cs ComponentSet) func(*Entity) {
 	b := cs.ToBitArray()
-	return func(entity *Entity) {
-		entity.ComponentBitArray = entity.ComponentBitArray.Or(b)
+	return func(e *Entity) {
+		e.ComponentBitArray = e.ComponentBitArray.Or(b)
 		if cs.Box != nil {
-			em.Components.Box[entity.ID] = *cs.Box
+			em.Components.Box[e.ID] = *cs.Box
 		}
 		if cs.Logic != nil {
-			em.Components.Logic[entity.ID] = *cs.Logic
+			em.Components.Logic[e.ID] = *cs.Logic
 		}
 		if cs.Mass != nil {
-			em.Components.Mass[entity.ID] = *cs.Mass
+			em.Components.Mass[e.ID] = *cs.Mass
 		}
 		if cs.MaxVelocity != nil {
-			em.Components.MaxVelocity[entity.ID] = *cs.MaxVelocity
+			em.Components.MaxVelocity[e.ID] = *cs.MaxVelocity
 		}
 		if cs.MovementTarget != nil {
-			em.Components.MovementTarget[entity.ID] = *cs.MovementTarget
+			em.Components.MovementTarget[e.ID] = *cs.MovementTarget
 		}
 		if cs.Position != nil {
-			em.Components.Position[entity.ID] = *cs.Position
+			em.Components.Position[e.ID] = *cs.Position
 		}
 		if cs.Sprite != nil {
-			em.Components.Sprite[entity.ID] = *cs.Sprite
+			em.Components.Sprite[e.ID] = *cs.Sprite
 		}
 		if cs.Steer != nil {
-			em.Components.Steer[entity.ID] = *cs.Steer
+			em.Components.Steer[e.ID] = *cs.Steer
 		}
 		if cs.TagList != nil {
-			em.Components.TagList[entity.ID] = *cs.TagList
+			em.Components.TagList[e.ID] = *cs.TagList
 		}
 		if cs.Velocity != nil {
-			em.Components.Velocity[entity.ID] = *cs.Velocity
+			em.Components.Velocity[e.ID] = *cs.Velocity
 		}
 	}
 }

@@ -6,7 +6,7 @@ import (
 
 type EntityFilter struct {
 	Name      string
-	Predicate func(entity *Entity) bool
+	Predicate func(e *Entity) bool
 }
 
 func NewEntityFilter(
@@ -14,15 +14,15 @@ func NewEntityFilter(
 	return EntityFilter{Name: name, Predicate: f}
 }
 
-func (q EntityFilter) Test(entity *Entity) bool {
-	return q.Predicate(entity)
+func (q EntityFilter) Test(e *Entity) bool {
+	return q.Predicate(e)
 }
 
 func (w *World) entityFilterFromTag(tag string) EntityFilter {
 	return EntityFilter{
 		Name: tag,
-		Predicate: func(entity *Entity) bool {
-			return w.Components.TagList[entity.ID].Has(tag)
+		Predicate: func(e *Entity) bool {
+			return w.Components.TagList[e.ID].Has(tag)
 		}}
 }
 
@@ -30,10 +30,10 @@ func EntityFilterFromComponentBitArray(
 	name string, q bitarray.BitArray) EntityFilter {
 	return EntityFilter{
 		Name: name,
-		Predicate: func(entity *Entity) bool {
+		Predicate: func(e *Entity) bool {
 			// determine if q = q&b
 			// that is, if every set bit of q is set in b
-			b := entity.ComponentBitArray
+			b := e.ComponentBitArray
 			return q.Equals(q.And(b))
 		}}
 }

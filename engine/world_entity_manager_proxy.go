@@ -27,12 +27,12 @@ func (w *World) Despawn(e *Entity) {
 	w.RemoveEntityLogic(e)
 }
 
-func (w *World) Activate(entity *Entity) {
-	w.em.Activate(entity)
+func (w *World) Activate(e *Entity) {
+	w.em.Activate(e)
 }
 
-func (w *World) Deactivate(entity *Entity) {
-	w.em.Deactivate(entity)
+func (w *World) Deactivate(e *Entity) {
+	w.em.Deactivate(e)
 }
 
 func (w *World) GetUpdatedEntityList(q EntityFilter) *UpdatedEntityList {
@@ -55,24 +55,24 @@ func (w *World) EntitiesWithTag(tag string) *UpdatedEntityList {
 	return w.em.EntitiesWithTag(tag)
 }
 
-func (w *World) EntityHasComponent(entity *Entity, COMPONENT int) bool {
-	return w.em.EntityHasComponent(entity, COMPONENT)
+func (w *World) EntityHasComponent(e *Entity, COMPONENT int) bool {
+	return w.em.EntityHasComponent(e, COMPONENT)
 }
 
-func (w *World) EntityHasTag(entity *Entity, tag string) bool {
-	return w.em.EntityHasTag(entity, tag)
+func (w *World) EntityHasTag(e *Entity, tag string) bool {
+	return w.em.EntityHasTag(e, tag)
 }
 
-func (w *World) TagEntity(entity *Entity, tags ...string) {
-	w.em.TagEntity(entity, tags...)
+func (w *World) TagEntity(e *Entity, tags ...string) {
+	w.em.TagEntity(e, tags...)
 }
 
 func (w *World) TagEntities(entities []*Entity, tag string) {
 	w.em.TagEntities(entities, tag)
 }
 
-func (w *World) UntagEntity(entity *Entity, tag string) {
-	w.em.UntagEntity(entity, tag)
+func (w *World) UntagEntity(e *Entity, tag string) {
+	w.em.UntagEntity(e, tag)
 }
 
 func (w *World) UntagEntities(entities []*Entity, tag string) {

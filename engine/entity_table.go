@@ -26,7 +26,7 @@ func NewEntityTable(IDGen *utils.IDGenerator) *EntityTable {
 	}
 }
 
-// get the ID for a new entity. Only called by SpawnEntity, which locks
+// get the ID for a new e. Only called by SpawnEntity, which locks
 // the entityTable, so it's safe that this method operates on that data.
 // Returns int32 so that we can return -1 in case we have run out of space
 // to spawn entities
@@ -43,7 +43,7 @@ func (t *EntityTable) allocateID() (*Entity, error) {
 	var ID int
 	n_avail := len(t.availableIDs)
 	if n_avail > 0 {
-		// there is an ID available for a previously deallocated entity.
+		// there is an ID available for a previously deallocated e.
 		// pop it from the list and continue with that as the ID
 		ID = t.availableIDs[n_avail-1]
 		t.availableIDs = t.availableIDs[:n_avail-1]

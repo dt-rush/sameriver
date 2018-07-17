@@ -111,9 +111,9 @@ func (h *SpatialHashSystem) scanAndInsertEntities() {
 	entities := h.spatialEntities.entities
 
 	// iterate each entity in the partition
-	for _, entity := range entities {
-		pos := h.w.em.Components.Position[entity.ID]
-		box := h.w.em.Components.Box[entity.ID]
+	for _, e := range entities {
+		pos := h.w.em.Components.Position[e.ID]
+		box := h.w.em.Components.Box[e.ID]
 		// find out how many grids the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)
@@ -132,7 +132,7 @@ func (h *SpatialHashSystem) scanAndInsertEntities() {
 					continue
 				}
 				cell := &((*h.computingTable)[int(x)][int(y)])
-				*cell = append(*cell, entity)
+				*cell = append(*cell, e)
 			}
 		}
 	}

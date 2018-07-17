@@ -47,14 +47,14 @@ func generateComponentSetFile(
 		Func().Parens(Id("*Entity")).
 		BlockFunc(func(g *Group) {
 			g.Id("b").Op(":=").Id("cs").Dot("ToBitArray").Call()
-			g.Return(Func().Parens(Id("entity").Op("*").Id("Entity")).
+			g.Return(Func().Parens(Id("e").Op("*").Id("Entity")).
 				BlockFunc(func(g *Group) {
-					g.Id("entity").Dot("ComponentBitArray").Op("=").
-						Id("entity").Dot("ComponentBitArray").Dot("Or").Call(Id("b"))
+					g.Id("e").Dot("ComponentBitArray").Op("=").
+						Id("e").Dot("ComponentBitArray").Dot("Or").Call(Id("b"))
 					for _, component := range components {
 						g.If(Id("cs").Dot(component.Name).Op("!=").Nil()).Block(
 							Id("em").Dot("Components").Dot(component.Name).
-								Index(Id("entity").Dot("ID")).Op("=").
+								Index(Id("e").Dot("ID")).Op("=").
 								Op("*").Id("cs").Dot(component.Name),
 						)
 					}

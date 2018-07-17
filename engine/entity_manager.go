@@ -63,30 +63,30 @@ func (m *EntityManager) Update() {
 }
 
 // set an entity Active and notify all active entity lists
-func (m *EntityManager) Activate(entity *Entity) {
-	m.setActiveState(entity, true)
+func (m *EntityManager) Activate(e *Entity) {
+	m.setActiveState(e, true)
 }
 
 // set an entity inactive and notify all active entity lists
-func (m *EntityManager) Deactivate(entity *Entity) {
-	m.setActiveState(entity, false)
+func (m *EntityManager) Deactivate(e *Entity) {
+	m.setActiveState(e, false)
 }
 
 // sets the active state on an entity and notifies all watchers
-func (m *EntityManager) setActiveState(entity *Entity, state bool) {
+func (m *EntityManager) setActiveState(e *Entity, state bool) {
 	// only act if the state is different to that which exists
-	if entity.Active != state {
+	if e.Active != state {
 		if state {
 			m.entityTable.active++
 		} else {
 			m.entityTable.active--
 		}
 		// start / stop logic accordingly
-		m.Components.Logic[entity.ID].Active = state
+		m.Components.Logic[e.ID].Active = state
 		// set active state
-		entity.Active = state
+		e.Active = state
 		// notify any listening lists
-		m.activeEntityLists.notifyActiveState(entity, state)
+		m.activeEntityLists.notifyActiveState(e, state)
 	}
 }
 
@@ -139,53 +139,53 @@ func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 }
 
 func (m *EntityManager) EntityHasComponent(
-	entity *Entity, COMPONENT int) bool {
+	e *Entity, COMPONENT int) bool {
 
-	b, _ := entity.ComponentBitArray.GetBit(uint64(COMPONENT))
+	b, _ := e.ComponentBitArray.GetBit(uint64(COMPONENT))
 	return b
 }
 
 func (m *EntityManager) EntityHasTag(
-	entity *Entity, tag string) bool {
+	e *Entity, tag string) bool {
 
-	return m.EntityHasComponent(entity, TAGLIST_COMPONENT) &&
-		m.Components.TagList[entity.ID].Has(tag)
+	return m.EntityHasComponent(e, TAGLIST_COMPONENT) &&
+		m.Components.TagList[e.ID].Has(tag)
 }
 
 // apply the given tags to the given entity
-func (m *EntityManager) TagEntity(entity *Entity, tags ...string) {
-	if !m.EntityHasComponent(entity, TAGLIST_COMPONENT) {
-		entity.ComponentBitArray.SetBit(TAGLIST_COMPONENT)
+func (m *EntityManager) TagEntity(e *Entity, tags ...string) {
+	if !m.EntityHasComponent(e, TAGLIST_COMPONENT) {
+		e.ComponentBitArray.SetBit(TAGLIST_COMPONENT)
 	}
 	for _, tag := range tags {
-		m.Components.TagList[entity.ID].Add(tag)
-		if entity.Active {
+		m.Components.TagList[e.ID].Add(tag)
+		if e.Active {
 			m.createEntitiesWithTagListIfNeeded(tag)
 		}
 	}
-	if entity.Active {
-		m.activeEntityLists.checkActiveEntity(entity)
+	if e.Active {
+		m.activeEntityLists.checkActiveEntity(e)
 	}
 }
 
 // Tag each of the entities in the provided list
 func (m *EntityManager) TagEntities(entities []*Entity, tag string) {
-	for _, entity := range entities {
-		m.TagEntity(entity, tag)
+	for _, e := range entities {
+		m.TagEntity(e, tag)
 	}
 }
 
 // Remove a tag from an entity
-func (m *EntityManager) UntagEntity(entity *Entity, tag string) {
-	list := m.Components.TagList[entity.ID]
+func (m *EntityManager) UntagEntity(e *Entity, tag string) {
+	list := m.Components.TagList[e.ID]
 	list.Remove(tag)
-	m.activeEntityLists.checkActiveEntity(entity)
+	m.activeEntityLists.checkActiveEntity(e)
 }
 
 // Remove a tag from each of the entities in the provided list
 func (m *EntityManager) UntagEntities(entities []*Entity, tag string) {
-	for _, entity := range entities {
-		m.UntagEntity(entity, tag)
+	for _, e := range entities {
+		m.UntagEntity(e, tag)
 	}
 }
 
@@ -221,13 +221,13 @@ func (m *EntityManager) Dump() string {
 
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
-	for _, entity := range m.Entities {
-		if entity == nil {
+	for _, e := range m.Entities {
+		if e == nil {
 			continue
 		}
-		tags := m.Components.TagList[entity.ID]
+		tags := m.Components.TagList[e.ID]
 		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",
-			entity.ID, tags)
+			e.ID, tags)
 		buffer.WriteString(entityRepresentation)
 		buffer.WriteString(",\n")
 	}
