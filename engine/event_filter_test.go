@@ -15,7 +15,7 @@ func TestEventFilterSimple(t *testing.T) {
 }
 
 func TestEventFilterPredicate(t *testing.T) {
-	entity := &EntityToken{ID: 100}
+	entity := &Entity{ID: 100}
 	pred := func(e Event) bool {
 		c := e.Data.(CollisionData)
 		return c.EntityA == entity
@@ -30,7 +30,7 @@ func TestEventFilterPredicate(t *testing.T) {
 }
 
 func TestEventFilterCollision(t *testing.T) {
-	entity := &EntityToken{ID: 100}
+	entity := &Entity{ID: 100}
 	pred := func(c CollisionData) bool {
 		return c.EntityA == entity
 	}

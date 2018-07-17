@@ -57,7 +57,7 @@ func (c *ActiveEntityListCollection) processBacklog(
 }
 
 func (c *ActiveEntityListCollection) notifyActiveState(
-	entity *EntityToken, active bool) {
+	entity *Entity, active bool) {
 
 	// send add / remove signal to all lists
 	for _, list := range c.lists {
@@ -71,7 +71,7 @@ func (c *ActiveEntityListCollection) notifyActiveState(
 	}
 }
 
-func (c *ActiveEntityListCollection) checkActiveEntity(entity *EntityToken) {
+func (c *ActiveEntityListCollection) checkActiveEntity(entity *Entity) {
 
 	// check if the entity needs to be added to any lists
 	for _, list := range c.lists {

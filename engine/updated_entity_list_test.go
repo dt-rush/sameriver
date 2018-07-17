@@ -6,7 +6,7 @@ import (
 
 func TestUpdatedEntityListAddRemove(t *testing.T) {
 	list := NewUpdatedEntityList()
-	e := &EntityToken{ID: 0, Active: true, Despawned: false}
+	e := &Entity{ID: 0, Active: true, Despawned: false}
 	list.Signal(EntitySignal{ENTITY_ADD, e})
 	if list.Length() != 1 {
 		t.Fatal("entity was not added to list")
@@ -19,8 +19,8 @@ func TestUpdatedEntityListAddRemove(t *testing.T) {
 
 func TestSortedUpdatedEntityListAddRemove(t *testing.T) {
 	list := NewSortedUpdatedEntityList()
-	e8 := &EntityToken{ID: 8, Active: true, Despawned: false}
-	e0 := &EntityToken{ID: 0, Active: true, Despawned: false}
+	e8 := &Entity{ID: 8, Active: true, Despawned: false}
+	e0 := &Entity{ID: 0, Active: true, Despawned: false}
 	list.Signal(EntitySignal{ENTITY_ADD, e8})
 	list.Signal(EntitySignal{ENTITY_ADD, e0})
 	if list.entities[0].ID != 0 {
@@ -34,7 +34,7 @@ func TestUpdatedEntityListCallback(t *testing.T) {
 	list.AddCallback(func(signal EntitySignal) {
 		ran = true
 	})
-	e := &EntityToken{ID: 0, Active: true, Despawned: false}
+	e := &Entity{ID: 0, Active: true, Despawned: false}
 	list.Signal(EntitySignal{ENTITY_ADD, e})
 	if !ran {
 		t.Fatal("callback didn't run")
@@ -43,13 +43,13 @@ func TestUpdatedEntityListCallback(t *testing.T) {
 
 func TestUpdatedEntityListAccess(t *testing.T) {
 	list := NewUpdatedEntityList()
-	e0 := &EntityToken{ID: 0, Active: true, Despawned: false}
+	e0 := &Entity{ID: 0, Active: true, Despawned: false}
 	list.Signal(EntitySignal{ENTITY_ADD, e0})
 	entities := list.GetEntities()
 	if len(entities) != 1 {
 		t.Fatal("GetEntities() didn't contain the spawned entity")
 	}
-	e1 := &EntityToken{ID: 1, Active: true, Despawned: false}
+	e1 := &Entity{ID: 1, Active: true, Despawned: false}
 	list.Signal(EntitySignal{ENTITY_ADD, e1})
 	e, err := list.FirstEntity()
 	if err != nil {
@@ -82,7 +82,7 @@ func TestUpdatedEntityListToString(t *testing.T) {
 	s0 := list.String()
 	list.Signal(EntitySignal{
 		ENTITY_ADD,
-		&EntityToken{ID: 0, Active: true, Despawned: false}})
+		&Entity{ID: 0, Active: true, Despawned: false}})
 	s1 := list.String()
 	if !(len(s0) < len(s1)) {
 		t.Fatal("string doesn't seem to build when entitites added")

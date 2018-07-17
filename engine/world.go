@@ -220,14 +220,14 @@ func (w *World) SetWorldLogicActiveState(name string, state bool) {
 	}
 }
 
-func (w *World) AddEntityLogic(e *EntityToken, F func()) *LogicUnit {
+func (w *World) AddEntityLogic(e *Entity, F func()) *LogicUnit {
 	l := e.MakeLogicUnit(F)
 	w.entityLogics[e.ID] = l
 	w.entityLogicsRunner.Add(l)
 	return l
 }
 
-func (w *World) RemoveEntityLogic(e *EntityToken) {
+func (w *World) RemoveEntityLogic(e *Entity) {
 	if logic, ok := w.entityLogics[e.ID]; ok {
 		w.entityLogicsRunner.Remove(logic.WorldID)
 		delete(w.entityLogics, e.ID)
@@ -242,15 +242,15 @@ func (w *World) DeactivateAllEntityLogics() {
 	w.entityLogicsRunner.DeactivateAll()
 }
 
-func (w *World) ActivateEntityLogic(e *EntityToken) {
+func (w *World) ActivateEntityLogic(e *Entity) {
 	w.setEntityLogicActiveState(e, true)
 }
 
-func (w *World) DeactivateEntityLogic(e *EntityToken) {
+func (w *World) DeactivateEntityLogic(e *Entity) {
 	w.setEntityLogicActiveState(e, false)
 }
 
-func (w *World) setEntityLogicActiveState(e *EntityToken, state bool) {
+func (w *World) setEntityLogicActiveState(e *Entity, state bool) {
 	if logic, ok := w.entityLogics[e.ID]; ok {
 		logic.Active = state
 	}

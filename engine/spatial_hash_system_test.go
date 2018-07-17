@@ -21,7 +21,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 		[2]Vec2D{Vec2D{99, 99}, Vec2D{1, 1}}: [][2]int{[2]int{9, 9}},
 		[2]Vec2D{Vec2D{11, 99}, Vec2D{1, 1}}: [][2]int{[2]int{1, 9}},
 	}
-	entityCells := make(map[*EntityToken][][2]int)
+	entityCells := make(map[*Entity][][2]int)
 	for posbox, cells := range testData {
 		e, _ := w.em.spawn(spatialSpawnRequest(posbox[0], posbox[1]))
 		entityCells[e] = cells

@@ -25,7 +25,7 @@ func (m *EntityManager) despawnAll() {
 		_ = <-m.despawnSubscription.C
 	}
 	// iterate all IDs which have been allocated and despawn them
-	todespawn := make([]*EntityToken, 0)
+	todespawn := make([]*Entity, 0)
 	for e, _ := range m.entityTable.currentEntities {
 		todespawn = append(todespawn, e)
 	}
@@ -36,7 +36,7 @@ func (m *EntityManager) despawnAll() {
 
 // internal despawn function processes the despawn
 // (frees the ID and deactivates the entity)
-func (m *EntityManager) doDespawn(entity *EntityToken) {
+func (m *EntityManager) doDespawn(entity *Entity) {
 	entity.Despawned = true
 	m.entityTable.deallocate(entity)
 	m.Entities[entity.ID] = nil

@@ -30,7 +30,7 @@ func (s *SteeringSystem) Update() {
 	}
 }
 
-func (s *SteeringSystem) Seek(e *EntityToken) {
+func (s *SteeringSystem) Seek(e *Entity) {
 	p0 := s.w.em.Components.Position[e.ID]
 	p1 := s.w.em.Components.MovementTarget[e.ID]
 	v := &s.w.em.Components.Velocity[e.ID]
@@ -51,7 +51,7 @@ func (s *SteeringSystem) Seek(e *EntityToken) {
 	st.Inc(force)
 }
 
-func (s *SteeringSystem) Apply(e *EntityToken) {
+func (s *SteeringSystem) Apply(e *Entity) {
 	v := &s.w.em.Components.Velocity[e.ID]
 	maxV := s.w.em.Components.MaxVelocity[e.ID]
 	st := &s.w.em.Components.Steer[e.ID]

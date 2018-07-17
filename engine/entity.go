@@ -8,7 +8,7 @@ import (
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
-type EntityToken struct {
+type Entity struct {
 	ID                int
 	WorldID           int
 	Active            bool
@@ -18,11 +18,11 @@ type EntityToken struct {
 	Lists             []*UpdatedEntityList
 }
 
-func (e *EntityToken) LogicUnitName() string {
+func (e *Entity) LogicUnitName() string {
 	return fmt.Sprintf("entity-logic-%d", e.ID)
 }
 
-func (e *EntityToken) MakeLogicUnit(F func()) *LogicUnit {
+func (e *Entity) MakeLogicUnit(F func()) *LogicUnit {
 	return &LogicUnit{
 		Name:    e.LogicUnitName(),
 		F:       F,
@@ -31,7 +31,7 @@ func (e *EntityToken) MakeLogicUnit(F func()) *LogicUnit {
 	}
 }
 
-func EntityTokenSliceToString(entities []*EntityToken) string {
+func EntitySliceToString(entities []*Entity) string {
 	var buf bytes.Buffer
 	buf.WriteString("[")
 	for i, e := range entities {

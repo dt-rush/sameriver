@@ -71,8 +71,8 @@ func TestEventBusSimpleEventFilterNonMatching(t *testing.T) {
 func TestEventBusDataEventFilterMatching(t *testing.T) {
 	ev := NewEventBus()
 	collision := CollisionData{
-		EntityA: &EntityToken{ID: 0},
-		EntityB: &EntityToken{ID: 1},
+		EntityA: &Entity{ID: 0},
+		EntityB: &Entity{ID: 1},
 	}
 	ec := ev.Subscribe(
 		"PredicateCollisionFilter",
@@ -95,8 +95,8 @@ func TestEventBusDataEventFilterMatching(t *testing.T) {
 func TestEventBusDataEventFilterNonMatching(t *testing.T) {
 	ev := NewEventBus()
 	collision := CollisionData{
-		EntityA: &EntityToken{ID: 0},
-		EntityB: &EntityToken{ID: 1},
+		EntityA: &Entity{ID: 0},
+		EntityB: &Entity{ID: 1},
 	}
 	ec := ev.Subscribe(
 		"PredicateCollisionFilter",
@@ -108,8 +108,8 @@ func TestEventBusDataEventFilterNonMatching(t *testing.T) {
 	)
 	ev.Publish(COLLISION_EVENT,
 		CollisionData{
-			EntityA: &EntityToken{ID: 7},
-			EntityB: &EntityToken{ID: 9},
+			EntityA: &Entity{ID: 7},
+			EntityB: &Entity{ID: 9},
 		})
 	time.Sleep(FRAME_SLEEP)
 	select {

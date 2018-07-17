@@ -63,9 +63,9 @@ func (cs *ComponentSet) ToBitArray() bitarray.BitArray {
 	return b
 }
 
-func (em *EntityManager) ApplyComponentSet(cs ComponentSet) func(*EntityToken) {
+func (em *EntityManager) ApplyComponentSet(cs ComponentSet) func(*Entity) {
 	b := cs.ToBitArray()
-	return func(entity *EntityToken) {
+	return func(entity *Entity) {
 		entity.ComponentBitArray = entity.ComponentBitArray.Or(b)
 		if cs.Box != nil {
 			em.Components.Box[entity.ID] = *cs.Box

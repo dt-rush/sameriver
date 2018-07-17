@@ -14,7 +14,7 @@ func TestEntityFilter(t *testing.T) {
 	e := w.em.Entities[0]
 	q := EntityFilter{
 		"positionFilter",
-		func(e *EntityToken) bool {
+		func(e *Entity) bool {
 			return w.Components.Position[e.ID] == pos
 		},
 	}

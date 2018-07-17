@@ -106,7 +106,7 @@ func TestWorldEntityManagerProxyGetUpdatedEntityList(t *testing.T) {
 	w := testingWorld()
 	name := "ILoveLily"
 	list := w.GetUpdatedEntityList(NewEntityFilter(name,
-		func(entity *EntityToken) bool {
+		func(entity *Entity) bool {
 			return true
 		}),
 	)
@@ -115,7 +115,7 @@ func TestWorldEntityManagerProxyGetUpdatedEntityList(t *testing.T) {
 		t.Fatal("failed to update UpdatedEntityList")
 	}
 	list2 := w.GetUpdatedEntityList(NewEntityFilter(name,
-		func(entity *EntityToken) bool {
+		func(entity *Entity) bool {
 			return true
 		}),
 	)
@@ -127,12 +127,12 @@ func TestWorldEntityManagerProxyGetUpdatedEntityList(t *testing.T) {
 func TestWorldEntityManagerProxyGetSortedUpdatedEntityList(t *testing.T) {
 	w := testingWorld()
 	list := w.GetSortedUpdatedEntityList(NewEntityFilter("filter",
-		func(e *EntityToken) bool {
+		func(e *Entity) bool {
 			return true
 		}),
 	)
-	e8 := &EntityToken{ID: 8, Active: true, Despawned: false}
-	e0 := &EntityToken{ID: 0, Active: true, Despawned: false}
+	e8 := &Entity{ID: 8, Active: true, Despawned: false}
+	e0 := &Entity{ID: 0, Active: true, Despawned: false}
 	list.Signal(EntitySignal{ENTITY_ADD, e8})
 	list.Signal(EntitySignal{ENTITY_ADD, e0})
 	if list.entities[0].ID != 0 {
@@ -147,7 +147,7 @@ func TestWorldEntityManagerProxyGetUpdatedEntityListByName(t *testing.T) {
 		t.Fatal("should return nil if not found")
 	}
 	list := w.GetUpdatedEntityList(NewEntityFilter(name,
-		func(entity *EntityToken) bool {
+		func(entity *Entity) bool {
 			return false
 		}),
 	)
@@ -189,7 +189,7 @@ func TestWorldEntityManagerProxyTagEntity(t *testing.T) {
 
 func TestWorldEntityManagerProxyTagEntities(t *testing.T) {
 	w := testingWorld()
-	entities := make([]*EntityToken, 0)
+	entities := make([]*Entity, 0)
 	tag := "tag1"
 	for i := 0; i < 32; i++ {
 		e, _ := w.Spawn(simpleSpawnRequest())
@@ -215,7 +215,7 @@ func TestWorldEntityManagerProxyUntagEntity(t *testing.T) {
 
 func TestWorldEntityManagerProxyUntagEntities(t *testing.T) {
 	w := testingWorld()
-	entities := make([]*EntityToken, 0)
+	entities := make([]*Entity, 0)
 	tag := "tag1"
 	for i := 0; i < 32; i++ {
 		e, _ := w.Spawn(simpleTaggedSpawnRequest(tag))

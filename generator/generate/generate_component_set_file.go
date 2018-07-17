@@ -44,10 +44,10 @@ func generateComponentSetFile(
 	f.Func().
 		Params(Id("em").Op("*").Id("EntityManager")).
 		Id("ApplyComponentSet").Params(Id("cs").Id("ComponentSet")).
-		Func().Parens(Id("*EntityToken")).
+		Func().Parens(Id("*Entity")).
 		BlockFunc(func(g *Group) {
 			g.Id("b").Op(":=").Id("cs").Dot("ToBitArray").Call()
-			g.Return(Func().Parens(Id("entity").Op("*").Id("EntityToken")).
+			g.Return(Func().Parens(Id("entity").Op("*").Id("Entity")).
 				BlockFunc(func(g *Group) {
 					g.Id("entity").Dot("ComponentBitArray").Op("=").
 						Id("entity").Dot("ComponentBitArray").Dot("Or").Call(Id("b"))

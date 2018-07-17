@@ -18,7 +18,7 @@ package engine
 // little splice idiom when we don't care about slice order (saves
 // a copy operation if we wanted to shift the slice to fill the gap)
 
-func removeEntityTokenFromSlice(slice *[]*EntityToken, x *EntityToken) {
+func removeEntityFromSlice(slice *[]*Entity, x *Entity) {
 	last_ix := len(*slice) - 1
 	for i, v := range *slice {
 		if v == x {
@@ -29,13 +29,13 @@ func removeEntityTokenFromSlice(slice *[]*EntityToken, x *EntityToken) {
 	}
 }
 
-func removeAtIndexInEntityTokenSlice(slice *[]*EntityToken, index int) {
+func removeAtIndexInEntitySlice(slice *[]*Entity, index int) {
 	last_ix := len(*slice) - 1
 	(*slice)[index] = (*slice)[last_ix]
 	*slice = (*slice)[:last_ix]
 }
 
-func indexOfEntityTokenInSlice(slice *[]*EntityToken, x *EntityToken) int {
+func indexOfEntityInSlice(slice *[]*Entity, x *Entity) int {
 	for i, v := range *slice {
 		if v == x {
 			return i

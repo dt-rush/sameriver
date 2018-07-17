@@ -22,12 +22,12 @@ func (m *EntityManager) processSpawnChannel() {
 	}
 }
 
-func (m *EntityManager) spawn(r SpawnRequestData) (*EntityToken, error) {
+func (m *EntityManager) spawn(r SpawnRequestData) (*Entity, error) {
 	return m.doSpawn(r, "")
 }
 
 func (m *EntityManager) spawnUnique(
-	tag string, r SpawnRequestData) (*EntityToken, error) {
+	tag string, r SpawnRequestData) (*Entity, error) {
 
 	if _, ok := m.uniqueEntities[tag]; ok {
 		return nil, errors.New(fmt.Sprintf("requested to spawn unique "+
@@ -41,14 +41,14 @@ func (m *EntityManager) spawnUnique(
 }
 
 // given a list of components, spawn an entity with the default values
-// returns the EntityToken (used to spawn an entity for which we *want* the
+// returns the Entity (used to spawn an entity for which we *want* the
 // token back)
 
 func (m *EntityManager) doSpawn(r SpawnRequestData, uniqueTag string) (
-	*EntityToken, error) {
+	*Entity, error) {
 
 	// used if spawn is impossible for various reasons
-	var fail = func(msg string) (*EntityToken, error) {
+	var fail = func(msg string) (*Entity, error) {
 		return nil, errors.New(msg)
 	}
 
@@ -83,6 +83,6 @@ func (m *EntityManager) doSpawn(r SpawnRequestData, uniqueTag string) (
 	}
 	// set entity active and notify entity is active
 	m.setActiveState(entity, true)
-	// return EntityToken
+	// return Entity
 	return entity, nil
 }

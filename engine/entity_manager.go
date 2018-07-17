@@ -12,16 +12,16 @@ type EntityManager struct {
 	// the world this EntityManager is inside
 	w *World
 	// list of entities currently spawned (whether active or not)
-	Entities [MAX_ENTITIES]*EntityToken
+	Entities [MAX_ENTITIES]*Entity
 	// Component data for entities
 	Components *ComponentsTable
-	// EntityTable stores: a list of allocated EntityTokens and a
+	// EntityTable stores: a list of allocated Entitys and a
 	// list of available IDs from previous deallocations
 	entityTable *EntityTable
 	// updated entity lists of entities with given tags
 	entitiesWithTag map[string]*UpdatedEntityList
 	// entities which have been tagged uniquely
-	uniqueEntities map[string]*EntityToken
+	uniqueEntities map[string]*Entity
 	// ActiveEntityListCollection is used by GetUpdatedEntityList to
 	// store references to existing UpdatedEntityLists (by name)
 	activeEntityLists *ActiveEntityListCollection
@@ -42,7 +42,7 @@ func NewEntityManager(w *World) *EntityManager {
 		w:               w,
 		entityTable:     NewEntityTable(w.IDGen),
 		entitiesWithTag: make(map[string]*UpdatedEntityList),
-		uniqueEntities:  make(map[string]*EntityToken),
+		uniqueEntities:  make(map[string]*Entity),
 		eventBus:        w.Ev,
 		spawnSubscription: w.Ev.Subscribe(
 			"EntityManager::SpawnRequest",
@@ -63,17 +63,17 @@ func (m *EntityManager) Update() {
 }
 
 // set an entity Active and notify all active entity lists
-func (m *EntityManager) Activate(entity *EntityToken) {
+func (m *EntityManager) Activate(entity *Entity) {
 	m.setActiveState(entity, true)
 }
 
 // set an entity inactive and notify all active entity lists
-func (m *EntityManager) Deactivate(entity *EntityToken) {
+func (m *EntityManager) Deactivate(entity *Entity) {
 	m.setActiveState(entity, false)
 }
 
 // sets the active state on an entity and notifies all watchers
-func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
+func (m *EntityManager) setActiveState(entity *Entity, state bool) {
 	// only act if the state is different to that which exists
 	if entity.Active != state {
 		if state {
@@ -116,7 +116,7 @@ func (m *EntityManager) GetUpdatedEntityListByName(
 
 // Gets the first entity with the given tag. Warns to console if the entity is
 // not unique. Returns an error if the entity doesn't exist
-func (m *EntityManager) UniqueTaggedEntity(tag string) (*EntityToken, error) {
+func (m *EntityManager) UniqueTaggedEntity(tag string) (*Entity, error) {
 	if e, ok := m.uniqueEntities[tag]; ok {
 		return e, nil
 	} else {
@@ -139,21 +139,21 @@ func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 }
 
 func (m *EntityManager) EntityHasComponent(
-	entity *EntityToken, COMPONENT int) bool {
+	entity *Entity, COMPONENT int) bool {
 
 	b, _ := entity.ComponentBitArray.GetBit(uint64(COMPONENT))
 	return b
 }
 
 func (m *EntityManager) EntityHasTag(
-	entity *EntityToken, tag string) bool {
+	entity *Entity, tag string) bool {
 
 	return m.EntityHasComponent(entity, TAGLIST_COMPONENT) &&
 		m.Components.TagList[entity.ID].Has(tag)
 }
 
 // apply the given tags to the given entity
-func (m *EntityManager) TagEntity(entity *EntityToken, tags ...string) {
+func (m *EntityManager) TagEntity(entity *Entity, tags ...string) {
 	if !m.EntityHasComponent(entity, TAGLIST_COMPONENT) {
 		entity.ComponentBitArray.SetBit(TAGLIST_COMPONENT)
 	}
@@ -169,21 +169,21 @@ func (m *EntityManager) TagEntity(entity *EntityToken, tags ...string) {
 }
 
 // Tag each of the entities in the provided list
-func (m *EntityManager) TagEntities(entities []*EntityToken, tag string) {
+func (m *EntityManager) TagEntities(entities []*Entity, tag string) {
 	for _, entity := range entities {
 		m.TagEntity(entity, tag)
 	}
 }
 
 // Remove a tag from an entity
-func (m *EntityManager) UntagEntity(entity *EntityToken, tag string) {
+func (m *EntityManager) UntagEntity(entity *Entity, tag string) {
 	list := m.Components.TagList[entity.ID]
 	list.Remove(tag)
 	m.activeEntityLists.checkActiveEntity(entity)
 }
 
 // Remove a tag from each of the entities in the provided list
-func (m *EntityManager) UntagEntities(entities []*EntityToken, tag string) {
+func (m *EntityManager) UntagEntities(entities []*Entity, tag string) {
 	for _, entity := range entities {
 		m.UntagEntity(entity, tag)
 	}
@@ -197,8 +197,8 @@ func (m *EntityManager) NumEntities() (total int, active int) {
 // Returns the Entities field, copied. Notice that this is of size MAX_ENTITIES
 // and can have many nil elements, so the caller must checka and discard
 // nil elements as they iterate
-func (m *EntityManager) GetCurrentEntities() []*EntityToken {
-	entities := make([]*EntityToken, 0, len(m.entityTable.currentEntities))
+func (m *EntityManager) GetCurrentEntities() []*Entity {
+	entities := make([]*Entity, 0, len(m.entityTable.currentEntities))
 	for _, e := range m.Entities {
 		if e != nil {
 			entities = append(entities, e)

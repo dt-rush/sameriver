@@ -1,7 +1,7 @@
 /*
- * Methods needed to treat a slice of *EntityTokens as a sorted slice of
- * *EntityTokens using code derived from the go runtime's implementation of
- * binary search for sort.Search, specialized for *EntityTokens
+ * Methods needed to treat a slice of *Entitys as a sorted slice of
+ * *Entitys using code derived from the go runtime's implementation of
+ * binary search for sort.Search, specialized for *Entitys
  *
  * This is used by the collision system, as provided to it by
  * EntityManager.GetSortedUpdatedEntityList, which returns a
@@ -12,7 +12,7 @@
 package engine
 
 // Returns the index to insert x at (could be len(a) if it would be new max)
-func SortedEntityTokenSliceSearch(s []*EntityToken, x *EntityToken) int {
+func SortedEntitySliceSearch(s []*Entity, x *Entity) int {
 	n := len(s)
 	// Define f(-1) == false and f(n) == true.
 	// Invariant: f(i-1) == false, f(j) == true.
@@ -31,10 +31,10 @@ func SortedEntityTokenSliceSearch(s []*EntityToken, x *EntityToken) int {
 	return i
 }
 
-func SortedEntityTokenSliceInsertIfNotPresent(
-	s *[]*EntityToken, x *EntityToken) bool {
+func SortedEntitySliceInsertIfNotPresent(
+	s *[]*Entity, x *Entity) bool {
 
-	i := SortedEntityTokenSliceSearch(*s, x)
+	i := SortedEntitySliceSearch(*s, x)
 	// put the element at the end of the array
 	*s = append(*s, nil)
 	// if the insertion point was not the end,
@@ -54,8 +54,8 @@ func SortedEntityTokenSliceInsertIfNotPresent(
 	return true
 }
 
-func SortedEntityTokenSliceRemove(s *[]*EntityToken, x *EntityToken) {
-	i := SortedEntityTokenSliceSearch(*s, x)
+func SortedEntitySliceRemove(s *[]*Entity, x *Entity) {
+	i := SortedEntitySliceSearch(*s, x)
 	found := (i != len(*s) && (*s)[i] == x)
 	if found {
 		*s = append((*s)[:i], (*s)[i+1:]...)

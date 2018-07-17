@@ -14,7 +14,7 @@ type EntityTable struct {
 	// list of available entity ID's which have previously been deallocated
 	availableIDs []int
 	// list of Entities which have been allocated
-	currentEntities map[*EntityToken]bool
+	currentEntities map[*Entity]bool
 	// how many entities are active
 	active int
 }
@@ -22,7 +22,7 @@ type EntityTable struct {
 func NewEntityTable(IDGen *utils.IDGenerator) *EntityTable {
 	return &EntityTable{
 		IDGen:           IDGen,
-		currentEntities: make(map[*EntityToken]bool),
+		currentEntities: make(map[*Entity]bool),
 	}
 }
 
@@ -30,7 +30,7 @@ func NewEntityTable(IDGen *utils.IDGenerator) *EntityTable {
 // the entityTable, so it's safe that this method operates on that data.
 // Returns int32 so that we can return -1 in case we have run out of space
 // to spawn entities
-func (t *EntityTable) allocateID() (*EntityToken, error) {
+func (t *EntityTable) allocateID() (*Entity, error) {
 	// if maximum entity count reached, fail with message
 	if len(t.currentEntities) == MAX_ENTITIES {
 		msg := fmt.Sprintf("Reached max entity count: %d. "+
@@ -51,7 +51,7 @@ func (t *EntityTable) allocateID() (*EntityToken, error) {
 		// every slot in the table before the highest ID is filled
 		ID = len(t.currentEntities)
 	}
-	entity := &EntityToken{
+	entity := &Entity{
 		ID:        ID,
 		WorldID:   t.IDGen.Next(),
 		Active:    false,
@@ -61,7 +61,7 @@ func (t *EntityTable) allocateID() (*EntityToken, error) {
 	return entity, nil
 }
 
-func (t *EntityTable) deallocate(e *EntityToken) {
+func (t *EntityTable) deallocate(e *Entity) {
 	// guards against false deallocation (edge case, but hey)
 	if _, ok := t.currentEntities[e]; ok {
 		t.availableIDs = append(t.availableIDs, e.ID)

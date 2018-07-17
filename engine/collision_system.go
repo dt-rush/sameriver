@@ -97,7 +97,7 @@ func (s *CollisionSystem) Update() {
 	}
 }
 
-func (s *CollisionSystem) checkEntities(entities []*EntityToken) {
+func (s *CollisionSystem) checkEntities(entities []*Entity) {
 	// NOTE: we guard for despawns since the entities in the spatial hash
 	// table might have been despawned since the last time a spatial hash
 	// was computed (not every system is guaranteed to run every update loop,
@@ -128,7 +128,7 @@ func (s *CollisionSystem) checkEntities(entities []*EntityToken) {
 	}
 }
 
-func (s *CollisionSystem) DoCollide(i *EntityToken, j *EntityToken) {
+func (s *CollisionSystem) DoCollide(i *Entity, j *Entity) {
 	s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Do(
 		func() {
 			s.w.Ev.Publish(COLLISION_EVENT,

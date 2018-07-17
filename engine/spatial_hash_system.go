@@ -10,7 +10,7 @@ import (
 
 // the actual cell data structure is a gridDimension x gridDimension array of
 // entities
-type SpatialHashTable [][][]*EntityToken
+type SpatialHashTable [][][]*Entity
 
 // used to compute the spatial hash tables given a list of entities
 type SpatialHashSystem struct {
@@ -49,16 +49,16 @@ func NewSpatialHashSystem(gridX int, gridY int) *SpatialHashSystem {
 		gridX: gridX,
 		gridY: gridY,
 	}
-	h.tables[0] = make([][][]*EntityToken, gridX)
-	h.tables[1] = make([][][]*EntityToken, gridX)
+	h.tables[0] = make([][][]*Entity, gridX)
+	h.tables[1] = make([][][]*Entity, gridX)
 	// for each column (x) in the grid
 	for x := 0; x < gridX; x++ {
-		h.tables[0][x] = make([][]*EntityToken, gridY)
-		h.tables[1][x] = make([][]*EntityToken, gridY)
+		h.tables[0][x] = make([][]*Entity, gridY)
+		h.tables[1][x] = make([][]*Entity, gridY)
 		// for each cell in the row (y)
 		for y := 0; y < gridY; y++ {
-			h.tables[0][x][y] = make([]*EntityToken, 0, MAX_ENTITIES)
-			h.tables[1][x][y] = make([]*EntityToken, 0, MAX_ENTITIES)
+			h.tables[0][x][y] = make([]*Entity, 0, MAX_ENTITIES)
+			h.tables[1][x][y] = make([]*Entity, 0, MAX_ENTITIES)
 		}
 	}
 	return &h
@@ -167,9 +167,9 @@ func (h *SpatialHashSystem) CurrentTableCopy() SpatialHashTable {
 	var t = h.CurrentTablePointer()
 	t2 := make(SpatialHashTable, h.gridX)
 	for x := 0; x < h.gridX; x++ {
-		t2[x] = make([][]*EntityToken, h.gridX)
+		t2[x] = make([][]*Entity, h.gridX)
 		for y := 0; y < h.gridY; y++ {
-			t2[x][y] = make([]*EntityToken, len((*t)[x][y]))
+			t2[x][y] = make([]*Entity, len((*t)[x][y]))
 			copy(t2[x][y], (*t)[x][y])
 		}
 	}
@@ -191,10 +191,10 @@ func (table *SpatialHashTable) String() string {
 	for x := 0; x < w; x++ {
 		for y := 0; y < h; y++ {
 			cell := (*table)[x][y]
-			size += int(unsafe.Sizeof(&EntityToken{})) * len(cell)
+			size += int(unsafe.Sizeof(&Entity{})) * len(cell)
 			buffer.WriteString(fmt.Sprintf(
 				"CELL(%d, %d): %.64s...", x, y,
-				EntityTokenSliceToString(cell)))
+				EntitySliceToString(cell)))
 			if !(y == h-1 && x == w-1) {
 				buffer.WriteString(",\n")
 			}

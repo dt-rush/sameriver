@@ -40,7 +40,7 @@ func TestEntityTableAllocateMaxIDs(t *testing.T) {
 
 func TestEntityTableReallocateDeallocatedID(t *testing.T) {
 	et := NewEntityTable(utils.NewIDGenerator())
-	var e *EntityToken
+	var e *Entity
 	for i := 0; i < MAX_ENTITIES; i++ {
 		allocated, _ := et.allocateID()
 		if i == MAX_ENTITIES/2 {
