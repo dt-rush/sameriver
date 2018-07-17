@@ -107,13 +107,13 @@ func (h *SpatialHashSystem) clearComputingTable() {
 
 // used to iterate the entities and send them to the right cells
 func (h *SpatialHashSystem) scanAndInsertEntities() {
-
-	entities := h.spatialEntities.entities
-
-	// iterate each entity in the partition
-	for _, e := range entities {
-		pos := h.w.em.Components.Position[e.ID]
-		box := h.w.em.Components.Box[e.ID]
+	for _, e := range h.spatialEntities.entities {
+		// we shift the position to the bottom-left because
+		// the logic is simpler to read that way
+		pos := &h.w.em.Components.Position[e.ID]
+		box := &h.w.em.Components.Box[e.ID]
+		pos.ShiftCenterToBottomLeft(box)
+		defer pos.ShiftBottomLeftToCenter(box)
 		// find out how many grids the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)

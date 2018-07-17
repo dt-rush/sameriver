@@ -12,7 +12,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 	sh := NewSpatialHashSystem(10, 10)
 	w.AddSystems(sh)
 	testData := map[[2]Vec2D][][2]int{
-		[2]Vec2D{Vec2D{0, 0}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
+		[2]Vec2D{Vec2D{5, 5}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
 		[2]Vec2D{Vec2D{1, 1}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
 		[2]Vec2D{Vec2D{4, 4}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
 		[2]Vec2D{Vec2D{0, 11}, Vec2D{1, 1}}:  [][2]int{[2]int{0, 1}},
@@ -50,10 +50,9 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 	w := NewWorld(100, 100)
 	sh := NewSpatialHashSystem(10, 10)
 	w.AddSystems(sh)
-	pos := Vec2D{0, 0}
-	box := Vec2D{25, 25}
+	pos := Vec2D{20, 20}
+	box := Vec2D{5, 5}
 	cells := [][2]int{
-		[2]int{0, 0},
 		[2]int{1, 1},
 		[2]int{1, 2},
 		[2]int{2, 1},

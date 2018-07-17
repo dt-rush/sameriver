@@ -97,3 +97,27 @@ func (v1 Vec2D) AngleBetween(v2 Vec2D) float64 {
 		return math.Acos(d)
 	}
 }
+
+func (pos *Vec2D) ShiftedCenterToBottomLeft(box *Vec2D) Vec2D {
+	return Vec2D{
+		pos.X - box.X/2,
+		pos.Y - box.Y/2,
+	}
+}
+
+func (pos *Vec2D) ShiftedBottomLeftToCenter(box *Vec2D) Vec2D {
+	return Vec2D{
+		pos.X + box.X/2,
+		pos.Y + box.Y/2,
+	}
+}
+
+func (pos *Vec2D) ShiftCenterToBottomLeft(box *Vec2D) {
+	pos.X -= box.X / 2
+	pos.Y -= box.Y / 2
+}
+
+func (pos *Vec2D) ShiftBottomLeftToCenter(box *Vec2D) {
+	pos.X += box.X / 2
+	pos.Y += box.Y / 2
+}

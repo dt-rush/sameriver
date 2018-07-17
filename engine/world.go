@@ -12,8 +12,8 @@ import (
 )
 
 type World struct {
-	Width  int
-	Height int
+	Width  float64
+	Height float64
 
 	IDGen      *utils.IDGenerator
 	Ev         *EventBus
@@ -37,8 +37,8 @@ type World struct {
 
 func NewWorld(width int, height int) *World {
 	w := &World{
-		Width:              width,
-		Height:             height,
+		Width:              float64(width),
+		Height:             float64(height),
 		Ev:                 NewEventBus(),
 		IDGen:              utils.NewIDGenerator(),
 		systems:            make(map[string]System),

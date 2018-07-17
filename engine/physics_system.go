@@ -38,10 +38,13 @@ func (s *PhysicsSystem) Update() {
 	} else {
 		dt_ms := float64(time.Since(*s.lastUpdate).Nanoseconds()) / 1.0e6
 		// note: there are no function calls in the below, so we won't
-		// be preempted while computin physics (this is very good, get it over with)
+		// be preempted while computing physics (this is very good, get it over with)
 		for _, e := range s.physicsEntities.entities {
+			// the logic is simpler to read that way
 			pos := &s.w.em.Components.Position[e.ID]
-			box := s.w.em.Components.Box[e.ID]
+			box := &s.w.em.Components.Box[e.ID]
+			pos.ShiftCenterToBottomLeft(box)
+			// calculate velocity
 			vel := s.w.em.Components.Velocity[e.ID]
 			dx := vel.X * dt_ms
 			dy := vel.Y * dt_ms
@@ -67,6 +70,8 @@ func (s *PhysicsSystem) Update() {
 				// otherwise move in y freely
 				pos.Y += dy
 			}
+			// unshift position back to center
+			pos.ShiftBottomLeftToCenter(box)
 		}
 	}
 }

@@ -34,10 +34,6 @@
 //
 package engine
 
-import (
-	"github.com/veandco/go-sdl2/sdl"
-)
-
 type CollisionSystem struct {
 	w                  *World
 	collidableEntities *UpdatedEntityList
@@ -138,19 +134,10 @@ func (s *CollisionSystem) DoCollide(i *Entity, j *Entity) {
 
 // Test collision between two entities
 func (s *CollisionSystem) TestCollision(i int, j int) bool {
-	iPos := s.w.em.Components.Position[i]
-	iBox := s.w.em.Components.Box[i]
-	jPos := s.w.em.Components.Position[j]
-	jBox := s.w.em.Components.Box[j]
-	iRect := sdl.Rect{
-		int32(iPos.X),
-		int32(iPos.Y),
-		int32(iBox.X),
-		int32(iBox.Y)}
-	jRect := sdl.Rect{
-		int32(jPos.X),
-		int32(jPos.Y),
-		int32(jBox.X),
-		int32(jBox.Y)}
-	return iRect.HasIntersection(&jRect)
+	iPos := &s.w.em.Components.Position[i]
+	iBox := &s.w.em.Components.Box[i]
+	jPos := &s.w.em.Components.Position[j]
+	jBox := &s.w.em.Components.Box[j]
+	intersects := RectIntersectsRect(iPos, iBox, jPos, jBox)
+	return intersects
 }

@@ -7,8 +7,12 @@ type RectPair struct {
 	box1 Vec2D
 }
 
-func RectWithinRect(pos0 Vec2D, box0 Vec2D, pos1 Vec2D, box1 Vec2D) bool {
-	// NOTE: pos is bottom-left
+// takes rectanges defined with pos in the center of the rect
+func RectWithinRect(pos0, box0, pos1, box1 *Vec2D) bool {
+	pos0.ShiftCenterToBottomLeft(box0)
+	pos1.ShiftCenterToBottomLeft(box1)
+	defer pos0.ShiftBottomLeftToCenter(box0)
+	defer pos1.ShiftBottomLeftToCenter(box1)
 	return pos0.X >= pos1.X &&
 		pos0.X+box0.X <= pos1.X+box1.X &&
 		pos0.Y >= pos1.Y &&
@@ -16,7 +20,12 @@ func RectWithinRect(pos0 Vec2D, box0 Vec2D, pos1 Vec2D, box1 Vec2D) bool {
 }
 
 // translated from SDL2's SDL_HasIntersection(SDL_Rect * A, SDL_Rect * B)
-func RectIntersectsRect(pos0 Vec2D, box0 Vec2D, pos1 Vec2D, box1 Vec2D) bool {
+// takes rectanges defined with pos in the center of the rect
+func RectIntersectsRect(pos0, box0, pos1, box1 *Vec2D) bool {
+	pos0.ShiftCenterToBottomLeft(box0)
+	pos1.ShiftCenterToBottomLeft(box1)
+	defer pos0.ShiftBottomLeftToCenter(box0)
+	defer pos1.ShiftBottomLeftToCenter(box1)
 	// horizontal
 	Amin := pos0.X
 	Amax := Amin + box0.X

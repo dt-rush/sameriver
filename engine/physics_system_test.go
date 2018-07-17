@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -32,6 +33,8 @@ func TestPhysicsSystemBounds(t *testing.T) {
 		Vec2D{0, 100},
 		Vec2D{0, -100},
 	}
+	worldCenter := Vec2D{w.Width / 2, w.Height / 2}
+	worldTopRight := Vec2D{w.Width, w.Height}
 	pos := &w.em.Components.Position[e.ID]
 	box := &w.em.Components.Box[e.ID]
 	vel := &w.em.Components.Velocity[e.ID]
@@ -42,9 +45,9 @@ func TestPhysicsSystemBounds(t *testing.T) {
 			w.Update(FRAME_SLEEP_MS / 2)
 			time.Sleep(1 * time.Millisecond)
 		}
-		Logger.Println(*pos)
-		if !RectWithinRect(*pos, *box, Vec2D{0, 0}, Vec2D{1024, 1024}) {
-			t.Fatal("Update() placed entity outside world")
+		if !RectWithinRect(pos, box, &worldCenter, &worldTopRight) {
+			t.Fatal(fmt.Sprintf("traveling with velocity %v placed entity "+
+				"outside world (at position %v, box %v)", *vel, *pos, *box))
 		}
 	}
 }
