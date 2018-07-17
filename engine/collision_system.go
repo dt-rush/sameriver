@@ -127,7 +127,7 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 func (s *CollisionSystem) DoCollide(i *Entity, j *Entity) {
 	s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Do(
 		func() {
-			s.w.Ev.Publish(COLLISION_EVENT,
+			s.w.Events.Publish(COLLISION_EVENT,
 				CollisionData{EntityA: i, EntityB: j})
 		})
 }

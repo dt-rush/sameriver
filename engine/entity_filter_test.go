@@ -15,7 +15,7 @@ func TestEntityFilter(t *testing.T) {
 	q := EntityFilter{
 		"positionFilter",
 		func(e *Entity) bool {
-			return w.Components.Position[e.ID] == pos
+			return w.em.Components.Position[e.ID] == pos
 		},
 	}
 	if !q.Test(e) {

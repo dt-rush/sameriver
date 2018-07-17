@@ -43,11 +43,11 @@ func NewEntityManager(w *World) *EntityManager {
 		entityTable:     NewEntityTable(w.IDGen),
 		entitiesWithTag: make(map[string]*UpdatedEntityList),
 		uniqueEntities:  make(map[string]*Entity),
-		eventBus:        w.Ev,
-		spawnSubscription: w.Ev.Subscribe(
+		eventBus:        w.Events,
+		spawnSubscription: w.Events.Subscribe(
 			"EntityManager::SpawnRequest",
 			SimpleEventFilter(SPAWNREQUEST_EVENT)),
-		despawnSubscription: w.Ev.Subscribe(
+		despawnSubscription: w.Events.Subscribe(
 			"EntityManager::DespawnRequest",
 			SimpleEventFilter(DESPAWNREQUEST_EVENT)),
 	}

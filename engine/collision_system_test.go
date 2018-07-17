@@ -15,7 +15,7 @@ func TestCollisionSystem(t *testing.T) {
 	if cs.sh == nil {
 		t.Fatal("failed to inject *SpatialHashSystem to CollisionSystem.sh")
 	}
-	ec := w.Ev.Subscribe(
+	ec := w.Events.Subscribe(
 		"SimpleCollisionFilter",
 		SimpleEventFilter(COLLISION_EVENT))
 	w.em.spawn(collisionSpawnRequest())
@@ -46,7 +46,7 @@ func TestCollisionRateLimit(t *testing.T) {
 		NewSpatialHashSystem(10, 10),
 		cs,
 	)
-	ec := w.Ev.Subscribe(
+	ec := w.Events.Subscribe(
 		"SimpleCollisionFilter",
 		SimpleEventFilter(COLLISION_EVENT))
 	w.em.spawn(collisionSpawnRequest())

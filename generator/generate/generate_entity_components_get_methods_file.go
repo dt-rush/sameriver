@@ -17,7 +17,7 @@ func generateEntityComponentsGetMethodsFile(components []ComponentSpec) *File {
 			Op("*").Id(component.Type).
 			Block(
 				Return(
-					Op("&").Id("e").Dot("World").Dot("Components").
+					Op("&").Id("e").Dot("World").Dot("em").Dot("Components").
 						Dot(component.Name).Index(Id("e").Dot("ID")),
 				),
 			)

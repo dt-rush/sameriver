@@ -15,10 +15,9 @@ type World struct {
 	Width  float64
 	Height float64
 
-	IDGen      *utils.IDGenerator
-	Ev         *EventBus
-	em         *EntityManager
-	Components *ComponentsTable
+	IDGen  *utils.IDGenerator
+	Events *EventBus
+	em     *EntityManager
 
 	systems       map[string]System
 	systemsRunner *RuntimeLimiter
@@ -39,7 +38,7 @@ func NewWorld(width int, height int) *World {
 	w := &World{
 		Width:              float64(width),
 		Height:             float64(height),
-		Ev:                 NewEventBus(),
+		Events:             NewEventBus(),
 		IDGen:              utils.NewIDGenerator(),
 		systems:            make(map[string]System),
 		systemsIDs:         make(map[System]int),
@@ -50,7 +49,7 @@ func NewWorld(width int, height int) *World {
 		entityLogicsRunner: NewRuntimeLimiter(),
 	}
 	w.em = NewEntityManager(w)
-	w.Components = w.em.Components
+	w.em.Components = w.em.Components
 	return w
 }
 
