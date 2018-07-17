@@ -15,7 +15,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 		[2]Vec2D{Vec2D{5, 5}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
 		[2]Vec2D{Vec2D{1, 1}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
 		[2]Vec2D{Vec2D{4, 4}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
-		[2]Vec2D{Vec2D{0, 11}, Vec2D{1, 1}}:  [][2]int{[2]int{0, 1}},
+		[2]Vec2D{Vec2D{1, 11}, Vec2D{1, 1}}:  [][2]int{[2]int{0, 1}},
 		[2]Vec2D{Vec2D{11, 11}, Vec2D{1, 1}}: [][2]int{[2]int{1, 1}},
 		[2]Vec2D{Vec2D{41, 41}, Vec2D{1, 1}}: [][2]int{[2]int{4, 4}},
 		[2]Vec2D{Vec2D{99, 99}, Vec2D{1, 1}}: [][2]int{[2]int{9, 9}},
@@ -79,7 +79,7 @@ func TestSpatialHashTableCopy(t *testing.T) {
 	w := NewWorld(100, 100)
 	sh := NewSpatialHashSystem(10, 10)
 	w.AddSystems(sh)
-	w.em.spawnFromRequest(spatialSpawnRequest(Vec2D{0, 0}, Vec2D{1, 1}))
+	w.em.spawnFromRequest(spatialSpawnRequest(Vec2D{1, 1}, Vec2D{1, 1}))
 	w.Update(FRAME_SLEEP_MS / 2)
 	table := sh.Table
 	tableCopy := sh.TableCopy()

@@ -35,8 +35,8 @@ func simpleTaggedSpawnRequest(tag string) SpawnRequestData {
 func collisionSpawnRequest() SpawnRequestData {
 	return SpawnRequestData{
 		Components: ComponentSet{
-			Position: &Vec2D{0, 0},
-			Box:      &Vec2D{10, 10},
+			Position: &Vec2D{10, 10},
+			Box:      &Vec2D{4, 4},
 		},
 	}
 }

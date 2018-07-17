@@ -6,7 +6,7 @@ import (
 	"unsafe"
 )
 
-// the actual cell data structure is a gridDimension x gridDimension array of
+// the actual cell data structure is a cellDimension x cellDimension array of
 // entities
 type SpatialHashTable [][][]*Entity
 
@@ -24,17 +24,17 @@ type SpatialHashSystem struct {
 	Table SpatialHashTable
 }
 
-func NewSpatialHashSystem(gridX int, gridY int) *SpatialHashSystem {
+func NewSpatialHashSystem(cellX int, cellY int) *SpatialHashSystem {
 	h := SpatialHashSystem{
-		GridX: gridX,
-		GridY: gridY,
+		GridX: cellX,
+		GridY: cellY,
 	}
-	h.Table = make([][][]*Entity, gridX)
-	// for each column (x) in the grid
-	for x := 0; x < gridX; x++ {
-		h.Table[x] = make([][]*Entity, gridY)
+	h.Table = make([][][]*Entity, cellX)
+	// for each column (x) in the cell
+	for x := 0; x < cellX; x++ {
+		h.Table[x] = make([][]*Entity, cellY)
 		// for each cell in the row (y)
-		for y := 0; y < gridY; y++ {
+		for y := 0; y < cellY; y++ {
 			h.Table[x][y] = make([]*Entity, 0, MAX_ENTITIES)
 		}
 	}
@@ -71,6 +71,8 @@ func (h *SpatialHashSystem) clearTable() {
 
 // used to iterate the entities and send them to the right cells
 func (h *SpatialHashSystem) scanAndInsertEntities() {
+	cellSizeX := h.w.Width / float64(h.GridX)
+	cellSizeY := h.w.Height / float64(h.GridX)
 	for _, e := range h.spatialEntities.entities {
 		// we shift the position to the bottom-left because
 		// the logic is simpler to read that way
@@ -78,19 +80,19 @@ func (h *SpatialHashSystem) scanAndInsertEntities() {
 		box := &h.w.em.components.Box[e.ID]
 		pos.ShiftCenterToBottomLeft(box)
 		defer pos.ShiftBottomLeftToCenter(box)
-		// find out how many grids the entity spans in x and y (almost always 0,
+		// find out how many cells the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)
-		gridsWide := box.X / (float64(h.w.Width) / float64(h.GridX))
-		gridsHigh := box.Y / (float64(h.w.Height) / float64(h.GridY))
-		gridX := pos.X / (float64(h.w.Width) / float64(h.GridX))
-		gridY := pos.Y / (float64(h.w.Height) / float64(h.GridY))
+		cellsWide := box.X / cellSizeX
+		cellsHigh := box.Y / cellSizeY
+		cellX := pos.X / cellSizeX
+		cellY := pos.Y / cellSizeY
 		// walk through each cell the entity touches by starting in the bottom-
-		// -left and walking according to gridsHigh and gridsWide
-		for ix := 0.0; ix < gridsWide+1; ix++ {
-			for iy := 0.0; iy < gridsHigh+1; iy++ {
-				x := int(gridX + ix)
-				y := int(gridY + iy)
+		// -left and walking according to cellsHigh and cellsWide
+		for ix := 0.0; ix < cellsWide+1; ix++ {
+			for iy := 0.0; iy < cellsHigh+1; iy++ {
+				x := int(cellX + ix)
+				y := int(cellY + iy)
 				if x < 0.0 || x > h.GridX-1 ||
 					y < 0.0 || y > h.GridY-1 {
 					continue
