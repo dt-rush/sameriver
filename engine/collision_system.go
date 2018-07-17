@@ -53,7 +53,7 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 	s.w = w
 	// Filter a regularly updated list of the entities which are collidable
 	// (position and hitbox)
-	s.collidableEntities = w.Em.GetSortedUpdatedEntityList(
+	s.collidableEntities = w.em.GetSortedUpdatedEntityList(
 		EntityFilterFromComponentBitArray(
 			"collidable",
 			MakeComponentBitArray([]ComponentType{
@@ -138,10 +138,10 @@ func (s *CollisionSystem) DoCollide(i *EntityToken, j *EntityToken) {
 
 // Test collision between two entities
 func (s *CollisionSystem) TestCollision(i int, j int) bool {
-	iPos := s.w.Em.Components.Position[i]
-	iBox := s.w.Em.Components.Box[i]
-	jPos := s.w.Em.Components.Position[j]
-	jBox := s.w.Em.Components.Box[j]
+	iPos := s.w.em.Components.Position[i]
+	iBox := s.w.em.Components.Box[i]
+	jPos := s.w.em.Components.Position[j]
+	jBox := s.w.em.Components.Box[j]
 	iRect := sdl.Rect{
 		int32(iPos.X),
 		int32(iPos.Y),

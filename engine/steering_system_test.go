@@ -5,16 +5,16 @@ import (
 )
 
 func TestSteeringSystem(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	ss := NewSteeringSystem()
 	w.AddSystems(ss)
-	e, err := w.Em.Spawn(steeringSpawnRequestData())
-	vel := w.Em.Components.Velocity[e.ID]
+	e, err := w.em.spawn(steeringSpawnRequest())
+	vel := w.em.Components.Velocity[e.ID]
 	if err != nil {
 		t.Fatal(err)
 	}
 	w.Update(FRAME_SLEEP_MS/2)
-	if w.Em.Components.Velocity[e.ID] == vel {
+	if w.em.Components.Velocity[e.ID] == vel {
 		t.Fatal("failed to steer velocity")
 	}
 }

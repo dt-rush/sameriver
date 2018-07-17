@@ -6,35 +6,35 @@ import (
 )
 
 func TestPhysicsSystemMotion(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.AddSystems(ps)
-	e, _ := w.Em.Spawn(physicsSpawnRequestData())
-	w.Em.Components.Velocity[e.ID] = Vec2D{1, 1}
-	pos := w.Em.Components.Position[e.ID]
+	e, _ := w.em.spawn(physicsSpawnRequest())
+	w.em.Components.Velocity[e.ID] = Vec2D{1, 1}
+	pos := w.em.Components.Position[e.ID]
 	// Update twice since physics system won't run the first time(needs a dt)
 	w.Update(FRAME_SLEEP_MS / 2)
 	time.Sleep(FRAME_SLEEP)
 	w.Update(FRAME_SLEEP_MS / 2)
-	if w.Em.Components.Position[e.ID] == pos {
+	if w.em.Components.Position[e.ID] == pos {
 		t.Fatal("failed to update position")
 	}
 }
 
 func TestPhysicsSystemBounds(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.AddSystems(ps)
-	e, _ := w.Em.Spawn(physicsSpawnRequestData())
+	e, _ := w.em.spawn(physicsSpawnRequest())
 	directions := []Vec2D{
 		Vec2D{100, 0},
 		Vec2D{-100, 0},
 		Vec2D{0, 100},
 		Vec2D{0, -100},
 	}
-	pos := &w.Em.Components.Position[e.ID]
-	box := &w.Em.Components.Box[e.ID]
-	vel := &w.Em.Components.Velocity[e.ID]
+	pos := &w.em.Components.Position[e.ID]
+	box := &w.em.Components.Box[e.ID]
+	vel := &w.em.Components.Velocity[e.ID]
 	for _, d := range directions {
 		*pos = Vec2D{512, 512}
 		*vel = d

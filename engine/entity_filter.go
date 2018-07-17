@@ -5,20 +5,24 @@ import (
 )
 
 type EntityFilter struct {
-	Name     string
-	TestFunc func(entity *EntityToken, em *EntityManager) bool
+	Name      string
+	Predicate func(entity *EntityToken) bool
 }
 
-func (q EntityFilter) Test(entity *EntityToken, em *EntityManager) bool {
-	result := q.TestFunc(entity, em)
-	return result
+func NewEntityFilter(
+	name string, f func(e *EntityToken) bool) EntityFilter {
+	return EntityFilter{Name: name, Predicate: f}
 }
 
-func EntityFilterFromTag(tag string) EntityFilter {
+func (q EntityFilter) Test(entity *EntityToken) bool {
+	return q.Predicate(entity)
+}
+
+func (w *World) entityFilterFromTag(tag string) EntityFilter {
 	return EntityFilter{
 		Name: tag,
-		TestFunc: func(entity *EntityToken, em *EntityManager) bool {
-			return em.Components.TagList[entity.ID].Has(tag)
+		Predicate: func(entity *EntityToken) bool {
+			return w.Components.TagList[entity.ID].Has(tag)
 		}}
 }
 
@@ -26,7 +30,7 @@ func EntityFilterFromComponentBitArray(
 	name string, q bitarray.BitArray) EntityFilter {
 	return EntityFilter{
 		Name: name,
-		TestFunc: func(entity *EntityToken, em *EntityManager) bool {
+		Predicate: func(entity *EntityToken) bool {
 			// determine if q = q&b
 			// that is, if every set bit of q is set in b
 			b := entity.ComponentBitArray

@@ -9,6 +9,8 @@ import (
 
 // Provides services related to entities
 type EntityManager struct {
+	// the world this EntityManager is inside
+	w *World
 	// list of entities currently spawned (whether active or not)
 	Entities [MAX_ENTITIES]*EntityToken
 	// Component data for entities
@@ -37,6 +39,7 @@ type EntityManager struct {
 // Construct a new entity manager
 func NewEntityManager(w *World) *EntityManager {
 	em := &EntityManager{
+		w:               w,
 		entityTable:     NewEntityTable(w.IDGen),
 		entitiesWithTag: make(map[string]*UpdatedEntityList),
 		uniqueEntities:  make(map[string]*EntityToken),
@@ -89,8 +92,7 @@ func (m *EntityManager) setActiveState(entity *EntityToken, state bool) {
 
 // Get a list of entities which will be updated whenever an entity becomes
 // active / inactive
-func (m *EntityManager) GetUpdatedEntityList(
-	q EntityFilter) *UpdatedEntityList {
+func (m *EntityManager) GetUpdatedEntityList(q EntityFilter) *UpdatedEntityList {
 	return m.activeEntityLists.GetUpdatedEntityList(q)
 }
 
@@ -131,7 +133,8 @@ func (m *EntityManager) EntitiesWithTag(tag string) *UpdatedEntityList {
 
 func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 	if _, exists := m.entitiesWithTag[tag]; !exists {
-		m.entitiesWithTag[tag] = m.GetUpdatedEntityList(EntityFilterFromTag(tag))
+		m.entitiesWithTag[tag] =
+			m.GetUpdatedEntityList(m.w.entityFilterFromTag(tag))
 	}
 }
 

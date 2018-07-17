@@ -50,7 +50,7 @@ func (c *ActiveEntityListCollection) processBacklog(
 	list *UpdatedEntityList) {
 
 	for _, e := range c.em.GetCurrentEntities() {
-		if q.Test(e, c.em) {
+		if q.Test(e) {
 			list.Signal(EntitySignal{ENTITY_ADD, e})
 		}
 	}
@@ -61,7 +61,7 @@ func (c *ActiveEntityListCollection) notifyActiveState(
 
 	// send add / remove signal to all lists
 	for _, list := range c.lists {
-		if list.Filter.Test(entity, c.em) {
+		if list.Filter.Test(entity) {
 			if active {
 				list.Signal(EntitySignal{ENTITY_ADD, entity})
 			} else {
@@ -75,14 +75,14 @@ func (c *ActiveEntityListCollection) checkActiveEntity(entity *EntityToken) {
 
 	// check if the entity needs to be added to any lists
 	for _, list := range c.lists {
-		if list.Filter.Test(entity, c.em) {
+		if list.Filter.Test(entity) {
 			list.Signal(EntitySignal{ENTITY_ADD, entity})
 		}
 	}
 	// check whether the entity needs to be removed from any lists it's on
 	toRemove := make([]*UpdatedEntityList, 0)
 	for _, list := range entity.Lists {
-		if list.Filter != nil && !list.Filter.Test(entity, c.em) {
+		if list.Filter != nil && !list.Filter.Test(entity) {
 			toRemove = append(toRemove, list)
 		}
 	}

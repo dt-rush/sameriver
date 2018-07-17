@@ -194,3 +194,20 @@ func TestRuntimeLimitShare(t *testing.T) {
 		}
 	}
 }
+
+func TestRuntimeLimiterRunDuringRemovals(t *testing.T) {
+	r := NewRuntimeLimiter()
+	for i := 0; i < 32; i++ {
+		name := fmt.Sprintf("logic-%d", i)
+		logic := &LogicUnit{
+			Name:    name,
+			WorldID: i,
+			F:       func() {},
+			Active:  true}
+		r.Add(logic)
+		if !(len(r.logicUnits) > 0 &&
+			r.indexes[logic.WorldID] == len(r.logicUnits)-1) {
+			t.Fatal("was not inserted properly")
+		}
+	}
+}

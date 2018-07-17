@@ -21,13 +21,12 @@ func NewIDGenerator() *IDGenerator {
 func (g *IDGenerator) Next() (ID int) {
 	// try to get ID from already-available freed IDs
 	if len(g.freed) > 0 {
-		// get first of freed
+		// get first of freed (break immediately)
 		for freeID, _ := range g.freed {
 			ID = freeID
+			delete(g.freed, freeID)
 			break
 		}
-		delete(g.freed, ID)
-		return ID
 	} else {
 		unique := false
 		for !unique {
@@ -40,9 +39,9 @@ func (g *IDGenerator) Next() (ID int) {
 			_, already := g.universe[ID]
 			unique = !already
 		}
-		g.universe[ID] = true
-		return ID
 	}
+	g.universe[ID] = true
+	return ID
 }
 
 func (g *IDGenerator) Free(ID int) {

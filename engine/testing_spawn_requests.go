@@ -1,12 +1,12 @@
 package engine
 
-func simpleSpawnRequestData() SpawnRequestData {
+func simpleSpawnRequest() SpawnRequestData {
 	return SpawnRequestData{
 		Components: ComponentSet{},
 	}
 }
 
-func positionSpawnRequestData(pos Vec2D) SpawnRequestData {
+func positionSpawnRequest(pos Vec2D) SpawnRequestData {
 	return SpawnRequestData{
 		Components: ComponentSet{
 			Position: &pos,
@@ -14,7 +14,7 @@ func positionSpawnRequestData(pos Vec2D) SpawnRequestData {
 	}
 }
 
-func spatialSpawnRequestData(pos Vec2D, box Vec2D) SpawnRequestData {
+func spatialSpawnRequest(pos Vec2D, box Vec2D) SpawnRequestData {
 	return SpawnRequestData{
 		Components: ComponentSet{
 			Position: &pos,
@@ -23,7 +23,7 @@ func spatialSpawnRequestData(pos Vec2D, box Vec2D) SpawnRequestData {
 	}
 }
 
-func simpleTaggedSpawnRequestData(tag string) SpawnRequestData {
+func simpleTaggedSpawnRequest(tag string) SpawnRequestData {
 	return SpawnRequestData{
 		Components: ComponentSet{
 			Position: &Vec2D{0, 0},
@@ -32,7 +32,7 @@ func simpleTaggedSpawnRequestData(tag string) SpawnRequestData {
 	}
 }
 
-func collisionSpawnRequestData() SpawnRequestData {
+func collisionSpawnRequest() SpawnRequestData {
 	return SpawnRequestData{
 		Components: ComponentSet{
 			Position: &Vec2D{0, 0},
@@ -41,7 +41,7 @@ func collisionSpawnRequestData() SpawnRequestData {
 	}
 }
 
-func steeringSpawnRequestData() SpawnRequestData {
+func steeringSpawnRequest() SpawnRequestData {
 	mass := 3.0
 	maxV := 3.0
 	return SpawnRequestData{
@@ -56,7 +56,7 @@ func steeringSpawnRequestData() SpawnRequestData {
 	}
 }
 
-func physicsSpawnRequestData() SpawnRequestData {
+func physicsSpawnRequest() SpawnRequestData {
 	mass := 3.0
 	return SpawnRequestData{
 		Components: ComponentSet{

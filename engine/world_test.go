@@ -6,14 +6,14 @@ import (
 )
 
 func TestCanConstructWorld(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	if w == nil {
 		t.Fatal("NewWorld() was nil")
 	}
 }
 
 func TestWorldAddSystems(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	w.AddSystems(newTestSystem())
 }
 
@@ -22,13 +22,13 @@ func TestWorldAddSystemsDuplicate(t *testing.T) {
 		if r := recover(); r != nil {
 		}
 	}()
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	w.AddSystems(newTestSystem(), newTestSystem())
 	t.Fatal("should have panic'd")
 }
 
 func TestWorldAddDependentSystems(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	dep := newTestDependentSystem()
 	w.AddSystems(
 		newTestSystem(),
@@ -44,7 +44,7 @@ func TestWorldUnresolvedSystemDependency(t *testing.T) {
 		if r := recover(); r != nil {
 		}
 	}()
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	w.AddSystems(
 		newTestDependentSystem(),
 	)
@@ -56,7 +56,7 @@ func TestWorldNonPointerReceiverSystem(t *testing.T) {
 		if r := recover(); r != nil {
 		}
 	}()
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	w.AddSystems(
 		newTestNonPointerReceiverSystem(),
 	)
@@ -68,7 +68,7 @@ func TestWorldMisnamedSystem(t *testing.T) {
 		if r := recover(); r != nil {
 		}
 	}()
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	w.AddSystems(
 		newTestSystemThatIsMisnamed(),
 	)
@@ -80,7 +80,7 @@ func TestWorldSystemDependencyNonPointer(t *testing.T) {
 		if r := recover(); r != nil {
 		}
 	}()
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	w.AddSystems(
 		newTestDependentNonPointerSystem(),
 	)
@@ -92,7 +92,7 @@ func TestWorldSystemDependencyNonSystem(t *testing.T) {
 		if r := recover(); r != nil {
 		}
 	}()
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	w.AddSystems(
 		newTestDependentNonSystemSystem(),
 	)
@@ -100,7 +100,7 @@ func TestWorldSystemDependencyNonSystem(t *testing.T) {
 }
 
 func TestWorldRunSystemsOnly(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	ts := newTestSystem()
 	w.AddSystems(ts)
 	w.Update(FRAME_SLEEP_MS / 2)
@@ -114,14 +114,14 @@ func TestWorldAddWorldLogicDuplicate(t *testing.T) {
 		if r := recover(); r != nil {
 		}
 	}()
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	w.AddWorldLogic("world-logic", func() {})
 	w.AddWorldLogic("world-logic", func() {})
 	t.Fatal("should have panic'd")
 }
 
 func TestWorldRunWorldLogicsOnly(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
 	w.AddWorldLogic("logic", func() { x += 1 })
 	w.ActivateAllWorldLogics()
@@ -136,16 +136,18 @@ func TestWorldAddEntityLogicDuplicate(t *testing.T) {
 		if r := recover(); r != nil {
 		}
 	}()
-	w := NewWorld(1024, 1024)
-	w.AddEntityLogic("entity-logic", func() {})
-	w.AddEntityLogic("entity-logic", func() {})
+	w := testingWorld()
+	e, _ := w.em.spawn(simpleSpawnRequest())
+	w.AddEntityLogic(e, func() {})
+	w.AddEntityLogic(e, func() {})
 	t.Fatal("should have panic'd")
 }
 
 func TestWorldRunEntityLogicsOnly(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
-	w.AddEntityLogic("logic", func() { x += 1 })
+	e, _ := w.em.spawn(simpleSpawnRequest())
+	w.AddEntityLogic(e, func() { x += 1 })
 	w.ActivateAllEntityLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 1 {
@@ -154,7 +156,7 @@ func TestWorldRunEntityLogicsOnly(t *testing.T) {
 }
 
 func TestWorldRunSystemsAndWorldLogicsAndEntityLogics(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	ts := newTestSystem()
 	w.AddSystems(ts)
 	x := 0
@@ -162,8 +164,9 @@ func TestWorldRunSystemsAndWorldLogicsAndEntityLogics(t *testing.T) {
 	name := "logic"
 	w.AddWorldLogic(name, func() { x += 1 })
 	w.ActivateWorldLogic(name)
-	w.AddEntityLogic(name, func() { y += 1 })
-	w.ActivateEntityLogic(name)
+	e, _ := w.em.spawn(simpleSpawnRequest())
+	w.AddEntityLogic(e, func() { y += 1 })
+	w.ActivateEntityLogic(e)
 	w.Update(FRAME_SLEEP_MS / 2)
 	if ts.x != 1 {
 		t.Fatal("failed to update system")
@@ -177,7 +180,7 @@ func TestWorldRunSystemsAndWorldLogicsAndEntityLogics(t *testing.T) {
 }
 
 func TestWorldRemoveWorldLogic(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
 	name := "l1"
 	w.AddWorldLogic(name, func() { x += 1 })
@@ -191,11 +194,11 @@ func TestWorldRemoveWorldLogic(t *testing.T) {
 }
 
 func TestWorldRemoveEntityLogic(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
-	name := "l1"
-	w.AddEntityLogic(name, func() { x += 1 })
-	w.RemoveEntityLogic(name)
+	e, _ := w.em.spawn(simpleSpawnRequest())
+	w.AddEntityLogic(e, func() { x += 1 })
+	w.RemoveEntityLogic(e)
 	for i := 0; i < 32; i++ {
 		w.Update(FRAME_SLEEP_MS)
 	}
@@ -205,7 +208,7 @@ func TestWorldRemoveEntityLogic(t *testing.T) {
 }
 
 func TestWorldActivateWorldLogic(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
 	name := "l1"
 	w.AddWorldLogic(name, func() { x += 1 })
@@ -217,7 +220,7 @@ func TestWorldActivateWorldLogic(t *testing.T) {
 }
 
 func TestWorldActivateAllWorldLogics(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
 	n := 16
 	for i := 0; i < n; i++ {
@@ -232,7 +235,7 @@ func TestWorldActivateAllWorldLogics(t *testing.T) {
 }
 
 func TestWorldDeactivateWorldLogic(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
 	name1 := "l1"
 	w.AddWorldLogic(name1, func() { x += 1 })
@@ -243,7 +246,7 @@ func TestWorldDeactivateWorldLogic(t *testing.T) {
 }
 
 func TestWorldDeativateAllWorldLogics(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
 	n := 16
 	for i := 0; i < n; i++ {
@@ -259,11 +262,11 @@ func TestWorldDeativateAllWorldLogics(t *testing.T) {
 }
 
 func TestWorldActivateEntityLogic(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
-	name := "l1"
-	w.AddEntityLogic(name, func() { x += 1 })
-	w.ActivateEntityLogic(name)
+	e, _ := w.em.spawn(simpleSpawnRequest())
+	w.AddEntityLogic(e, func() { x += 1 })
+	w.ActivateEntityLogic(e)
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 1 {
 		t.Fatal("logic should have been active and run - did not")
@@ -271,12 +274,12 @@ func TestWorldActivateEntityLogic(t *testing.T) {
 }
 
 func TestWorldActivateAllEntityLogics(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
 	n := 16
 	for i := 0; i < n; i++ {
-		name := fmt.Sprintf("logic-%d", i)
-		w.AddEntityLogic(name, func() { x += 1 })
+		e, _ := w.em.spawn(simpleSpawnRequest())
+		w.AddEntityLogic(e, func() { x += 1 })
 	}
 	w.ActivateAllEntityLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
@@ -286,24 +289,24 @@ func TestWorldActivateAllEntityLogics(t *testing.T) {
 }
 
 func TestWorldDeactivateEntityLogic(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
-	name1 := "l1"
-	w.AddEntityLogic(name1, func() { x += 1 })
-	w.DeactivateEntityLogic(name1)
+	e, _ := w.em.spawn(simpleSpawnRequest())
+	w.AddEntityLogic(e, func() { x += 1 })
+	w.DeactivateEntityLogic(e)
 	if x != 0 {
 		t.Fatal("deactivated logic ran")
 	}
 }
 
 func TestWorldDeativateAllEntityLogics(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	x := 0
 	n := 16
 	for i := 0; i < n; i++ {
-		name := fmt.Sprintf("logic-%d", i)
-		w.AddEntityLogic(name, func() { x += 1 })
-		w.ActivateEntityLogic(name)
+		e, _ := w.em.spawn(simpleSpawnRequest())
+		w.AddEntityLogic(e, func() { x += 1 })
+		w.ActivateEntityLogic(e)
 	}
 	w.DeactivateAllEntityLogics()
 	w.Update(FRAME_SLEEP_MS / 2)

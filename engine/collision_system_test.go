@@ -6,7 +6,7 @@ import (
 )
 
 func TestCollisionSystem(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	cs := NewCollisionSystem()
 	w.AddSystems(
 		NewSpatialHashSystem(10, 10),
@@ -18,8 +18,8 @@ func TestCollisionSystem(t *testing.T) {
 	ec := w.Ev.Subscribe(
 		"SimpleCollisionFilter",
 		SimpleEventFilter(COLLISION_EVENT))
-	w.Em.Spawn(collisionSpawnRequestData())
-	w.Em.Spawn(collisionSpawnRequestData())
+	w.em.spawn(collisionSpawnRequest())
+	w.em.spawn(collisionSpawnRequest())
 	w.Update(FRAME_SLEEP_MS / 2)
 	time.Sleep(FRAME_SLEEP)
 	select {
@@ -28,7 +28,7 @@ func TestCollisionSystem(t *testing.T) {
 	default:
 		t.Fatal("collision event wasn't received within 16 ms")
 	}
-	w.Em.Components.Position[w.Em.Entities[0].ID] = Vec2D{100, 100}
+	w.em.Components.Position[w.em.Entities[0].ID] = Vec2D{100, 100}
 	w.Update(FRAME_SLEEP_MS / 2)
 	time.Sleep(FRAME_SLEEP)
 	select {
@@ -40,7 +40,7 @@ func TestCollisionSystem(t *testing.T) {
 }
 
 func TestCollisionRateLimit(t *testing.T) {
-	w := NewWorld(1024, 1024)
+	w := testingWorld()
 	cs := NewCollisionSystem()
 	w.AddSystems(
 		NewSpatialHashSystem(10, 10),
@@ -49,9 +49,9 @@ func TestCollisionRateLimit(t *testing.T) {
 	ec := w.Ev.Subscribe(
 		"SimpleCollisionFilter",
 		SimpleEventFilter(COLLISION_EVENT))
-	w.Em.Spawn(collisionSpawnRequestData())
-	e, _ := w.Em.Spawn(collisionSpawnRequestData())
-	w.Em.Update()
+	w.em.spawn(collisionSpawnRequest())
+	e, _ := w.em.spawn(collisionSpawnRequest())
+	w.em.Update()
 	w.Update(FRAME_SLEEP_MS / 2)
 	w.Update(FRAME_SLEEP_MS / 2)
 	time.Sleep(FRAME_SLEEP)

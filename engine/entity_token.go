@@ -18,9 +18,13 @@ type EntityToken struct {
 	Lists             []*UpdatedEntityList
 }
 
-func (e *EntityToken) MakeLogicUnit(Name string, F func()) *LogicUnit {
+func (e *EntityToken) LogicUnitName() string {
+	return fmt.Sprintf("entity-logic-%d", e.ID)
+}
+
+func (e *EntityToken) MakeLogicUnit(F func()) *LogicUnit {
 	return &LogicUnit{
-		Name:    Name,
+		Name:    e.LogicUnitName(),
 		F:       F,
 		Active:  false,
 		WorldID: e.WorldID,

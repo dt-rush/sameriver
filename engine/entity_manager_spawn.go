@@ -15,25 +15,25 @@ func (m *EntityManager) processSpawnChannel() {
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		e := <-m.spawnSubscription.C
-		_, err := m.Spawn(e.Data.(SpawnRequestData))
+		_, err := m.spawn(e.Data.(SpawnRequestData))
 		if err != nil {
 			Logger.Println(err)
 		}
 	}
 }
 
-func (m *EntityManager) Spawn(r SpawnRequestData) (*EntityToken, error) {
-	return m.spawn(r, "")
+func (m *EntityManager) spawn(r SpawnRequestData) (*EntityToken, error) {
+	return m.doSpawn(r, "")
 }
 
-func (m *EntityManager) SpawnUnique(
+func (m *EntityManager) spawnUnique(
 	tag string, r SpawnRequestData) (*EntityToken, error) {
 
 	if _, ok := m.uniqueEntities[tag]; ok {
 		return nil, errors.New(fmt.Sprintf("requested to spawn unique "+
 			"entity for %s, but %s already exists", tag, tag))
 	}
-	e, err := m.spawn(r, tag)
+	e, err := m.doSpawn(r, tag)
 	if err == nil {
 		m.uniqueEntities[tag] = e
 	}
@@ -44,7 +44,7 @@ func (m *EntityManager) SpawnUnique(
 // returns the EntityToken (used to spawn an entity for which we *want* the
 // token back)
 
-func (m *EntityManager) spawn(r SpawnRequestData, uniqueTag string) (
+func (m *EntityManager) doSpawn(r SpawnRequestData, uniqueTag string) (
 	*EntityToken, error) {
 
 	// used if spawn is impossible for various reasons

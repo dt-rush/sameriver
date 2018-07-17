@@ -67,7 +67,7 @@ func NewSpatialHashSystem(gridX int, gridY int) *SpatialHashSystem {
 func (s *SpatialHashSystem) LinkWorld(w *World) {
 	s.w = w
 	// get a list of spatial entities
-	s.spatialEntities = w.Em.GetUpdatedEntityList(
+	s.spatialEntities = w.em.GetUpdatedEntityList(
 		EntityFilterFromComponentBitArray("spatial",
 			MakeComponentBitArray(
 				[]ComponentType{POSITION_COMPONENT, BOX_COMPONENT})))
@@ -112,8 +112,8 @@ func (h *SpatialHashSystem) scanAndInsertEntities() {
 
 	// iterate each entity in the partition
 	for _, entity := range entities {
-		pos := h.w.Em.Components.Position[entity.ID]
-		box := h.w.Em.Components.Box[entity.ID]
+		pos := h.w.em.Components.Position[entity.ID]
+		box := h.w.em.Components.Box[entity.ID]
 		// find out how many grids the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)

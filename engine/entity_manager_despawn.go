@@ -8,13 +8,13 @@ func (m *EntityManager) processDespawnChannel() {
 	n := len(m.despawnSubscription.C)
 	for i := 0; i < n; i++ {
 		e := <-m.despawnSubscription.C
-		m.Despawn(e.Data.(DespawnRequestData).Entity)
+		m.doDespawn(e.Data.(DespawnRequestData).Entity)
 	}
 }
 
 // User facing function which is used to drain the state of the
 // entity manager, and will also kill any pending spawn requests
-func (m *EntityManager) DespawnAll() {
+func (m *EntityManager) despawnAll() {
 	m.spawnMutex.Lock()
 	defer m.spawnMutex.Unlock()
 	// drain the spawn and despawn subscription channels of accumulated events
@@ -25,18 +25,18 @@ func (m *EntityManager) DespawnAll() {
 		_ = <-m.despawnSubscription.C
 	}
 	// iterate all IDs which have been allocated and despawn them
-	toDespawn := make([]*EntityToken, 0)
+	todespawn := make([]*EntityToken, 0)
 	for e, _ := range m.entityTable.currentEntities {
-		toDespawn = append(toDespawn, e)
+		todespawn = append(todespawn, e)
 	}
-	for _, e := range toDespawn {
-		m.Despawn(e)
+	for _, e := range todespawn {
+		m.doDespawn(e)
 	}
 }
 
 // internal despawn function processes the despawn
 // (frees the ID and deactivates the entity)
-func (m *EntityManager) Despawn(entity *EntityToken) {
+func (m *EntityManager) doDespawn(entity *EntityToken) {
 	entity.Despawned = true
 	m.entityTable.deallocate(entity)
 	m.Entities[entity.ID] = nil

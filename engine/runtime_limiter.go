@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -93,7 +94,8 @@ func (r *RuntimeLimiter) Run(allowance float64) (remaining float64) {
 func (r *RuntimeLimiter) Add(logic *LogicUnit) {
 	// panic if adding duplicate by WorldID
 	if _, ok := r.indexes[logic.WorldID]; ok {
-		panic("Double-add of same logic unit to RuntimeLimiter")
+		panic(fmt.Sprintf("Double-add of same logic unit to RuntimeLimiter "+
+			"(WorldID: %d)", logic.WorldID))
 	}
 	r.logicUnits = append(r.logicUnits, logic)
 	r.indexes[logic.WorldID] = len(r.logicUnits) - 1
@@ -115,11 +117,21 @@ func (r *RuntimeLimiter) Remove(WorldID int) bool {
 	// delete from logicUnits by replacing the last element into its spot,
 	// updating the indexes entry for that element
 	lastIndex := len(r.logicUnits) - 1
-	if len(r.logicUnits) > 1 {
+	if len(r.logicUnits) > 1 && index != lastIndex {
 		r.logicUnits[index] = r.logicUnits[lastIndex]
-		r.indexes[r.logicUnits[index].WorldID] = index
+		// update the indexes array for the elemnt we put into the
+		// place of the one we spliced out
+		nowAtIndex := r.logicUnits[index]
+		r.indexes[nowAtIndex.WorldID] = index
 	}
 	r.logicUnits = r.logicUnits[:lastIndex]
+	// update runIX - if we removed an entity earlier in the list,
+	// we should subtract 1 to keep runIX at it's same position. If we
+	// removed one later in the list or equal to the current position,
+	// we do nothing
+	if index < r.runIX {
+		r.runIX--
+	}
 	return true
 }
 

@@ -11,7 +11,7 @@ func NewSteeringSystem() *SteeringSystem {
 
 func (s *SteeringSystem) LinkWorld(w *World) {
 	s.w = w
-	s.movementEntities = w.Em.GetUpdatedEntityList(
+	s.movementEntities = w.em.GetUpdatedEntityList(
 		EntityFilterFromComponentBitArray(
 			"steering",
 			MakeComponentBitArray([]ComponentType{
@@ -31,11 +31,11 @@ func (s *SteeringSystem) Update() {
 }
 
 func (s *SteeringSystem) Seek(e *EntityToken) {
-	p0 := s.w.Em.Components.Position[e.ID]
-	p1 := s.w.Em.Components.MovementTarget[e.ID]
-	v := &s.w.Em.Components.Velocity[e.ID]
-	maxV := s.w.Em.Components.MaxVelocity[e.ID]
-	st := &s.w.Em.Components.Steer[e.ID]
+	p0 := s.w.em.Components.Position[e.ID]
+	p1 := s.w.em.Components.MovementTarget[e.ID]
+	v := &s.w.em.Components.Velocity[e.ID]
+	maxV := s.w.em.Components.MaxVelocity[e.ID]
+	st := &s.w.em.Components.Steer[e.ID]
 	desired := p1.Sub(p0)
 	distance := desired.Magnitude()
 	desired = desired.Unit()
@@ -52,10 +52,10 @@ func (s *SteeringSystem) Seek(e *EntityToken) {
 }
 
 func (s *SteeringSystem) Apply(e *EntityToken) {
-	v := &s.w.Em.Components.Velocity[e.ID]
-	maxV := s.w.Em.Components.MaxVelocity[e.ID]
-	st := &s.w.Em.Components.Steer[e.ID]
-	mass := s.w.Em.Components.Mass[e.ID]
+	v := &s.w.em.Components.Velocity[e.ID]
+	maxV := s.w.em.Components.MaxVelocity[e.ID]
+	st := &s.w.em.Components.Steer[e.ID]
+	mass := s.w.em.Components.Mass[e.ID]
 	// TODO: define this properly
 	maxSteerForce := 3.0
 	*st = st.Truncate(maxSteerForce)

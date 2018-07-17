@@ -5,11 +5,11 @@ import (
 )
 
 func TestEntityTokenMakeLogicUnit(t *testing.T) {
+	ID := 1000
 	worldID := 2000
-	name := "mylogic"
-	e := EntityToken{WorldID: worldID}
-	lu := e.MakeLogicUnit(name, func() {})
-	if lu.Name != name {
+	e := EntityToken{ID: ID, WorldID: worldID}
+	lu := e.MakeLogicUnit(func() {})
+	if lu.Name != e.LogicUnitName() {
 		t.Fatal("did not set logic unit name")
 	}
 	if lu.WorldID != e.WorldID {
