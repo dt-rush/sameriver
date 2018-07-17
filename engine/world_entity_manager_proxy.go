@@ -6,14 +6,14 @@ func (w *World) QueueSpawn(req SpawnRequestData) {
 	}()
 }
 
-func (w *World) Spawn(components ComponentSet, tags []string) (*Entity, error) {
-	return w.em.spawn(components, tags)
+func (w *World) Spawn(tags []string, components ComponentSet) (*Entity, error) {
+	return w.em.spawn(tags, components)
 }
 
 func (w *World) SpawnUnique(
-	tag string, components ComponentSet, tags []string) (*Entity, error) {
+	tag string, tags []string, components ComponentSet) (*Entity, error) {
 
-	return w.em.spawnUnique(tag, components, tags)
+	return w.em.spawnUnique(tag, tags, components)
 }
 
 func (w *World) QueueDespawn(req DespawnRequestData) {

@@ -148,7 +148,7 @@ func TestEntityManagerSpawnUnique(t *testing.T) {
 		t.Fatal("should return err if unique entity not found")
 	}
 	req := simpleSpawnRequest()
-	_, err = w.em.spawnUnique(tag, req.Components, req.Tags)
+	_, err = w.em.spawnUnique(tag, req.Tags, req.Components)
 	if err != nil {
 		t.Fatal("failed to Spawn FIRST unique entity")
 	}
@@ -156,7 +156,7 @@ func TestEntityManagerSpawnUnique(t *testing.T) {
 	if !(e != nil && err == nil) {
 		t.Fatal("did not return unique entity")
 	}
-	_, err = w.em.spawnUnique(tag, req.Components, req.Tags)
+	_, err = w.em.spawnUnique(tag, req.Tags, req.Components)
 	if err == nil {
 		t.Fatal("should not have been allowed to Spawn second unique entity")
 	}

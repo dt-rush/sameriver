@@ -15,8 +15,8 @@ func (m *EntityManager) processSpawnChannel() {
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		e := <-m.spawnSubscription.C
-		sp := e.Data.(SpawnRequestData)
-		_, err := m.spawn(sp.Components, sp.Tags)
+		req := e.Data.(SpawnRequestData)
+		_, err := m.spawn(req.Tags, req.Components)
 		if err != nil {
 			Logger.Println(err)
 		}
@@ -24,22 +24,22 @@ func (m *EntityManager) processSpawnChannel() {
 }
 
 func (m *EntityManager) spawnFromRequest(req SpawnRequestData) (*Entity, error) {
-	return m.spawn(req.Components, req.Tags)
+	return m.spawn(req.Tags, req.Components)
 }
 
-func (m *EntityManager) spawn(
-	components ComponentSet, tags []string) (*Entity, error) {
-	return m.doSpawn(components, tags, "")
+func (m *EntityManager) spawn(tags []string,
+	components ComponentSet) (*Entity, error) {
+	return m.doSpawn("", tags, components)
 }
 
 func (m *EntityManager) spawnUnique(
-	tag string, components ComponentSet, tags []string) (*Entity, error) {
+	tag string, tags []string, components ComponentSet) (*Entity, error) {
 
 	if _, ok := m.uniqueEntities[tag]; ok {
 		return nil, errors.New(fmt.Sprintf("requested to spawn unique "+
 			"entity for %s, but %s already exists", tag, tag))
 	}
-	e, err := m.doSpawn(components, tags, tag)
+	e, err := m.doSpawn(tag, tags, components)
 	if err == nil {
 		m.uniqueEntities[tag] = e
 	}
@@ -51,7 +51,7 @@ func (m *EntityManager) spawnUnique(
 // token back)
 
 func (m *EntityManager) doSpawn(
-	components ComponentSet, tags []string, uniqueTag string) (
+	uniqueTag string, tags []string, components ComponentSet) (
 	*Entity, error) {
 
 	// used if spawn is impossible for various reasons

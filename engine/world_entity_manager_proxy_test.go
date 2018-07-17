@@ -9,7 +9,7 @@ import (
 func TestWorldEntityManagerProxySpawnDespawn(t *testing.T) {
 	w := testingWorld()
 	req := simpleSpawnRequest()
-	w.Spawn(req.Components, req.Tags)
+	w.Spawn(req.Tags, req.Components)
 	total, _ := w.em.NumEntities()
 	if total == 0 {
 		t.Fatal("failed to Spawn simple Spawn request entity")
@@ -54,7 +54,7 @@ func TestWorldEntityManagerProxySpawnUnique(t *testing.T) {
 		t.Fatal("should return err if unique entity not found")
 	}
 	req := simpleSpawnRequest()
-	_, err = w.SpawnUnique(tag, req.Components, req.Tags)
+	_, err = w.SpawnUnique(tag, req.Tags, req.Components)
 	if err != nil {
 		t.Fatal("failed to Spawn FIRST unique entity")
 	}
@@ -62,7 +62,7 @@ func TestWorldEntityManagerProxySpawnUnique(t *testing.T) {
 	if !(e != nil && err == nil) {
 		t.Fatal("did not return unique entity")
 	}
-	_, err = w.SpawnUnique(tag, req.Components, req.Tags)
+	_, err = w.SpawnUnique(tag, req.Tags, req.Components)
 	if err == nil {
 		t.Fatal("should not have been allowed to Spawn second unique entity")
 	}
@@ -72,7 +72,7 @@ func TestWorldEntityManagerProxyEntitiesWithTag(t *testing.T) {
 	w := testingWorld()
 	tag := "tag1"
 	req := simpleTaggedSpawnRequest(tag)
-	w.Spawn(req.Components, req.Tags)
+	w.Spawn(req.Tags, req.Components)
 	tagged := w.EntitiesWithTag(tag)
 	if tagged.Length() == 0 {
 		t.Fatal("failed to find Spawned entity in EntitiesWithTag")
@@ -82,7 +82,7 @@ func TestWorldEntityManagerProxyEntitiesWithTag(t *testing.T) {
 func TestWorldEntityManagerProxyDeactivateActivate(t *testing.T) {
 	w := testingWorld()
 	req := simpleSpawnRequest()
-	w.Spawn(req.Components, req.Tags)
+	w.Spawn(req.Tags, req.Components)
 	e := w.em.entities[0]
 	tag := "tag1"
 	w.TagEntity(e, tag)
@@ -114,7 +114,7 @@ func TestWorldEntityManagerProxyGetUpdatedEntityList(t *testing.T) {
 		}),
 	)
 	req := simpleSpawnRequest()
-	w.Spawn(req.Components, req.Tags)
+	w.Spawn(req.Tags, req.Components)
 	if list.Length() != 1 {
 		t.Fatal("failed to update UpdatedEntityList")
 	}
@@ -164,7 +164,7 @@ func TestWorldEntityManagerProxyEntityHasComponent(t *testing.T) {
 	w := testingWorld()
 	pos := Vec2D{11, 11}
 	req := positionSpawnRequest(pos)
-	e, _ := w.Spawn(req.Components, req.Tags)
+	e, _ := w.Spawn(req.Tags, req.Components)
 	if w.em.components.Position[e.ID] != pos {
 		t.Fatal("failed to apply component data")
 	}
@@ -177,7 +177,7 @@ func TestWorldEntityManagerProxyEntityHasTag(t *testing.T) {
 	w := testingWorld()
 	tag := "tag1"
 	req := simpleTaggedSpawnRequest(tag)
-	e, _ := w.Spawn(req.Components, req.Tags)
+	e, _ := w.Spawn(req.Tags, req.Components)
 	if !w.EntityHasTag(e, tag) {
 		t.Fatal("EntityHasTag was false for tagged entity")
 	}
@@ -186,7 +186,7 @@ func TestWorldEntityManagerProxyEntityHasTag(t *testing.T) {
 func TestWorldEntityManagerProxyTagEntity(t *testing.T) {
 	w := testingWorld()
 	req := simpleSpawnRequest()
-	e, _ := w.Spawn(req.Components, req.Tags)
+	e, _ := w.Spawn(req.Tags, req.Components)
 	tag := "tag1"
 	w.TagEntity(e, tag)
 	if !w.em.components.TagList[e.ID].Has(tag) {
@@ -200,7 +200,7 @@ func TestWorldEntityManagerProxyTagEntities(t *testing.T) {
 	tag := "tag1"
 	for i := 0; i < 32; i++ {
 		req := simpleSpawnRequest()
-		e, _ := w.Spawn(req.Components, req.Tags)
+		e, _ := w.Spawn(req.Tags, req.Components)
 		entities = append(entities, e)
 	}
 	w.TagEntities(entities, tag)
@@ -215,7 +215,7 @@ func TestWorldEntityManagerProxyUntagEntity(t *testing.T) {
 	w := testingWorld()
 	tag := "tag1"
 	req := simpleTaggedSpawnRequest(tag)
-	e, _ := w.Spawn(req.Components, req.Tags)
+	e, _ := w.Spawn(req.Tags, req.Components)
 	w.UntagEntity(e, tag)
 	if w.em.components.TagList[e.ID].Has(tag) {
 		t.Fatal("entity's taglist was not modified by UntagEntity")
@@ -228,7 +228,7 @@ func TestWorldEntityManagerProxyUntagEntities(t *testing.T) {
 	tag := "tag1"
 	for i := 0; i < 32; i++ {
 		req := simpleTaggedSpawnRequest(tag)
-		e, _ := w.Spawn(req.Components, req.Tags)
+		e, _ := w.Spawn(req.Tags, req.Components)
 		entities = append(entities, e)
 	}
 	w.UntagEntities(entities, tag)
@@ -247,7 +247,7 @@ func TestWorldEntityManagerProxyNumEntities(
 		t.Fatal("somehow total and active were nonzero")
 	}
 	req := simpleSpawnRequest()
-	e, _ := w.Spawn(req.Components, req.Tags)
+	e, _ := w.Spawn(req.Tags, req.Components)
 	total, active = w.NumEntities()
 	if !(total == 1 && active == 1) {
 		t.Fatal("total or active not updated after one spawn")
@@ -270,7 +270,7 @@ func TestWorldEntityManagerProxyGetCurrentEntities(t *testing.T) {
 		t.Fatal("initially, len(GetCurrentEntities()) should be 0")
 	}
 	req := simpleSpawnRequest()
-	e, _ := w.Spawn(req.Components, req.Tags)
+	e, _ := w.Spawn(req.Tags, req.Components)
 	if !(len(w.GetCurrentEntities()) == 1) {
 		t.Fatal("after spawn, len(GetCurrentEntities()) should be 1")
 	}
@@ -293,7 +293,7 @@ func TestWorldEntityManagerProxyDumpEntities(
 	t *testing.T) {
 	w := testingWorld()
 	req := simpleSpawnRequest()
-	w.Spawn(req.Components, req.Tags)
+	w.Spawn(req.Tags, req.Components)
 	e := w.em.entities[0]
 	tag := "tag1"
 	w.TagEntity(e, tag)

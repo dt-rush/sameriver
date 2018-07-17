@@ -18,9 +18,9 @@ func TestCollisionSystem(t *testing.T) {
 	ec := w.Events.Subscribe(
 		"SimpleCollisionFilter",
 		SimpleEventFilter(COLLISION_EVENT))
-	sp := collisionSpawnRequest()
-	w.em.spawn(sp.Components, sp.Tags)
-	w.em.spawn(sp.Components, sp.Tags)
+	req := collisionSpawnRequest()
+	w.em.spawn(req.Tags, req.Components)
+	w.em.spawn(req.Tags, req.Components)
 	w.Update(FRAME_SLEEP_MS / 2)
 	time.Sleep(FRAME_SLEEP)
 	select {
@@ -50,9 +50,9 @@ func TestCollisionRateLimit(t *testing.T) {
 	ec := w.Events.Subscribe(
 		"SimpleCollisionFilter",
 		SimpleEventFilter(COLLISION_EVENT))
-	sp := collisionSpawnRequest()
-	w.em.spawn(sp.Components, sp.Tags)
-	e, _ := w.em.spawn(sp.Components, sp.Tags)
+	req := collisionSpawnRequest()
+	w.em.spawn(req.Tags, req.Components)
+	e, _ := w.em.spawn(req.Tags, req.Components)
 	w.em.Update()
 	w.Update(FRAME_SLEEP_MS / 2)
 	w.Update(FRAME_SLEEP_MS / 2)
