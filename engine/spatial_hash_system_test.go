@@ -29,9 +29,8 @@ func TestSpatialHashInsertion(t *testing.T) {
 	w.Update(FRAME_SLEEP_MS / 2)
 	for e, cells := range entityCells {
 		for _, cell := range cells {
-			table := sh.CurrentTablePointer()
 			inCell := false
-			for _, entity := range (*table)[cell[0]][cell[1]] {
+			for _, entity := range sh.Table[cell[0]][cell[1]] {
 				if entity == e {
 					inCell = true
 				}
@@ -60,10 +59,9 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 	}
 	e, _ := w.em.spawnFromRequest(spatialSpawnRequest(pos, box))
 	w.Update(FRAME_SLEEP_MS / 2)
-	table := sh.CurrentTablePointer()
 	for _, cell := range cells {
 		inCell := false
-		for _, entity := range (*table)[cell[0]][cell[1]] {
+		for _, entity := range sh.Table[cell[0]][cell[1]] {
 			if entity == e {
 				inCell = true
 			}
@@ -77,40 +75,19 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 	}
 }
 
-// testing that the spatial hash will not double-compute while one calculation
-// is already running
-func TestSpatialHashDoubleCompute(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-	w := NewWorld(100, 100)
-	sh := NewSpatialHashSystem(10, 10)
-	w.AddSystems(sh)
-	// spawn a lot of entities
-	for i := 0; i < MAX_ENTITIES; i++ {
-		pos := Vec2D{100 * rand.Float64(), 100 * rand.Float64()}
-		w.em.spawnFromRequest(spatialSpawnRequest(Vec2D{1, 1}, pos))
-	}
-	N := 512
-	// update the world numerous times at the same time
-	for i := 0; i < N; i++ {
-		go func() {
-			sh.Update()
-		}()
-	}
-	if sh.timesComputed.Load() == 512 {
-		t.Fatal("spatial hash did not guard against starting compute while " +
-			"already in progress")
-	}
-}
-
 func TestSpatialHashTableCopy(t *testing.T) {
 	w := NewWorld(100, 100)
 	sh := NewSpatialHashSystem(10, 10)
 	w.AddSystems(sh)
 	w.em.spawnFromRequest(spatialSpawnRequest(Vec2D{0, 0}, Vec2D{1, 1}))
 	w.Update(FRAME_SLEEP_MS / 2)
-	table := sh.CurrentTablePointer()
-	tableCopy := sh.CurrentTableCopy()
-	if (*table)[0][0][0] != tableCopy[0][0][0] {
+	table := sh.Table
+	tableCopy := sh.TableCopy()
+	if table[0][0][0] != tableCopy[0][0][0] {
+		t.Fatal("CurrentTableCopy() doesn't return a copy")
+	}
+	table[0][0] = table[0][0][:0]
+	if len(tableCopy[0][0]) == 0 {
 		t.Fatal("CurrentTableCopy() doesn't return a copy")
 	}
 }
@@ -120,7 +97,7 @@ func TestSpatialHashTableToString(t *testing.T) {
 	w := testingWorld()
 	sh := NewSpatialHashSystem(10, 10)
 	w.AddSystems(sh)
-	table := sh.CurrentTablePointer()
+	table := sh.Table
 	s0 := table.String()
 	for i := 0; i < 500; i++ {
 		w.em.spawnFromRequest(spatialSpawnRequest(
@@ -128,8 +105,7 @@ func TestSpatialHashTableToString(t *testing.T) {
 			Vec2D{5, 5}))
 	}
 	w.Update(FRAME_SLEEP_MS)
-	table = sh.CurrentTablePointer()
-	s1 := table.String()
+	s1 := sh.Table.String()
 	if len(s1) < len(s0) {
 		t.Fatal("spatial hash did not show entities in its String() representation")
 	}

@@ -85,10 +85,9 @@ func (s *CollisionSystem) Update() {
 	// so the rateLimiterArray access condition that i < j is respected
 	// check each possible collison between entities in the list by doing a
 	// handshake pattern
-	currentTable := s.sh.CurrentTablePointer()
-	for x := 0; x < s.sh.gridX; x++ {
-		for y := 0; y < s.sh.gridY; y++ {
-			s.checkEntities((*currentTable)[x][y])
+	for x := 0; x < s.sh.GridX; x++ {
+		for y := 0; y < s.sh.GridY; y++ {
+			s.checkEntities(s.sh.Table[x][y])
 		}
 	}
 }
