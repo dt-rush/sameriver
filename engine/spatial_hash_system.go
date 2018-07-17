@@ -89,13 +89,13 @@ func (h *SpatialHashSystem) scanAndInsertEntities() {
 		// -left and walking according to gridsHigh and gridsWide
 		for ix := 0.0; ix < gridsWide+1; ix++ {
 			for iy := 0.0; iy < gridsHigh+1; iy++ {
-				x := gridX + ix
-				y := gridY + iy
-				if x < 0.0 || x >= float64(h.GridX) ||
-					y < 0.0 || y >= float64(h.GridY) {
+				x := int(gridX + ix)
+				y := int(gridY + iy)
+				if x < 0.0 || x > h.GridX-1 ||
+					y < 0.0 || y > h.GridY-1 {
 					continue
 				}
-				cell := &h.Table[int(x)][int(y)]
+				cell := &h.Table[x][y]
 				*cell = append(*cell, e)
 			}
 		}
