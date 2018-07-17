@@ -96,6 +96,10 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) GenerateOutput {
 		File:    generateComponentsTableFile(components),
 		Imports: importStrings,
 	}
+	output.generatedSourceFiles["entity_components_get_methods.go"] = GeneratedFile{
+		File:    generateEntityComponentsGetMethodsFile(components),
+		Imports: importStrings,
+	}
 	// return
 	output.message = "generated"
 	return output

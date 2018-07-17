@@ -22,6 +22,9 @@ var gameDir = flag.String("gamedir", "",
 var outputDir = flag.String("outputdir", DEFAULT_OUTPUT_DIR,
 	"the directory in which to output the generated files")
 
+var debug = flag.Bool("debug", false,
+	"whether to print out the entire generated raw files")
+
 func main() {
 	parseArgs()
 	runGenerate()
@@ -44,7 +47,7 @@ func parseArgs() {
 }
 
 func runGenerate() {
-	g := generate.NewGenerateProcess(*engineDir, *gameDir, *outputDir)
+	g := generate.NewGenerateProcess(*engineDir, *gameDir, *outputDir, *debug)
 	g.Run(generate.TargetsCollection{
 		"events":     g.GenerateEventFiles,
 		"components": g.GenerateComponentFiles,

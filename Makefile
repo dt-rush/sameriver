@@ -5,6 +5,9 @@ all: clean deps generate test clean
 generate: sameriver-generate
 	./sameriver-generate  -outputdir=./engine
 
+debug-generate: sameriver-generate
+	./sameriver-generate -debug -outputdir=./engine
+
 test:
 	go test -v -coverprofile=coverage.txt -race ./engine
 

@@ -35,6 +35,7 @@ type GenerateProcess struct {
 	errors           map[string]string
 	rootTargets      TargetsCollection
 	targetsProcessed []string
+	debug            bool
 }
 
 // a header to affix to all files generated
@@ -52,7 +53,8 @@ const GENERATED_HEADER = `
 
 // Init the struct
 func NewGenerateProcess(
-	engineDir string, gameDir string, outputDir string) *GenerateProcess {
+	engineDir string, gameDir string,
+	outputDir string, debug bool) *GenerateProcess {
 
 	g := GenerateProcess{}
 	g.engineDir = engineDir
@@ -61,6 +63,7 @@ func NewGenerateProcess(
 	g.sourceFiles = make(map[string]GeneratedFile)
 	g.messages = make(map[string]string)
 	g.errors = make(map[string]string)
+	g.debug = debug
 	return &g
 }
 
@@ -111,8 +114,13 @@ func (g *GenerateProcess) OutputFiles() {
 		// add the file contents
 		contents += fmt.Sprintf("%#v", generateFile.File)
 		// parse the generated file to find out what imports it has
-		importsToAdd := getImportStringsFromFileAsString(
-			fmt.Sprintf("%#v", generateFile.File))
+		rawFile := fmt.Sprintf("%#v", generateFile.File)
+		if g.debug {
+			fmt.Println("==================================================")
+			fmt.Printf("raw file for %s: \n\n%s\n\n", filename, rawFile)
+			fmt.Println("==================================================")
+		}
+		importsToAdd := getImportStringsFromFileAsString(rawFile)
 		nImportsAlready := len(importsToAdd)
 		// add any imports to be added which are not already in the
 		// generated file

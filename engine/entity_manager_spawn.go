@@ -59,6 +59,7 @@ func (m *EntityManager) doSpawn(r SpawnRequestData, uniqueTag string) (
 			"entity with tags: %v\n", err, r.Tags)
 		return fail(errorMsg)
 	}
+	entity.World = m.w
 	// add the entity to the list of current entities
 	m.Entities[entity.ID] = entity
 	// set the bitarray for this entity

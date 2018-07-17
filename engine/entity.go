@@ -10,6 +10,7 @@ import (
 
 type Entity struct {
 	ID                int
+	World             *World
 	WorldID           int
 	Active            bool
 	Despawned         bool
