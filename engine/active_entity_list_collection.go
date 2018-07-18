@@ -1,35 +1,35 @@
 package engine
 
-type ActiveEntityListCollection struct {
-	em    *EntityManager
-	lists map[string]*UpdatedEntityList
+// Get a list of entities which will be updated whenever an entity becomes
+// active / inactive
+func (m *EntityManager) GetUpdatedEntityList(q EntityFilter) *UpdatedEntityList {
+	return m.getUpdatedEntityList(q, false)
 }
 
-func NewActiveEntityListCollection(
-	em *EntityManager) *ActiveEntityListCollection {
+// Get a list of entities which will be updated whenever an entity becomes
+// active / inactive, sorted by ID
+func (m *EntityManager) GetSortedUpdatedEntityList(
+	q EntityFilter) *UpdatedEntityList {
+	return m.getUpdatedEntityList(q, true)
+}
 
-	return &ActiveEntityListCollection{
-		em:    em,
-		lists: make(map[string]*UpdatedEntityList),
+// get a previously-created UpdatedEntityList by name, or nil if does not exist
+func (m *EntityManager) GetUpdatedEntityListByName(
+	name string) *UpdatedEntityList {
+
+	if list, ok := m.lists[name]; ok {
+		return list
+	} else {
+		return nil
 	}
 }
 
-func (c *ActiveEntityListCollection) GetUpdatedEntityList(
-	q EntityFilter) *UpdatedEntityList {
-	return c.getUpdatedEntityList(q, false)
-}
-
-func (c *ActiveEntityListCollection) GetSortedUpdatedEntityList(
-	q EntityFilter) *UpdatedEntityList {
-	return c.getUpdatedEntityList(q, true)
-}
-
-func (c *ActiveEntityListCollection) getUpdatedEntityList(
+func (m *EntityManager) getUpdatedEntityList(
 	q EntityFilter, sorted bool) *UpdatedEntityList {
 	// return the list if it already exists (this is why Filter names should
 	// be unique if they expect to be unique!)
 	// TODO: document this requirement
-	if list, exists := c.lists[q.Name]; exists {
+	if list, exists := m.lists[q.Name]; exists {
 		return list
 	}
 	// register a Filter watcher for the Filter given
@@ -40,27 +40,27 @@ func (c *ActiveEntityListCollection) getUpdatedEntityList(
 		list = NewUpdatedEntityList()
 	}
 	list.Filter = &q
-	c.processBacklog(q, list)
-	c.lists[q.Name] = list
+	m.processBacklog(q, list)
+	m.lists[q.Name] = list
 	return list
 }
 
-func (c *ActiveEntityListCollection) processBacklog(
-	q EntityFilter,
-	list *UpdatedEntityList) {
-
-	for _, e := range c.em.GetCurrentEntities() {
+func (m *EntityManager) processBacklog(q EntityFilter, list *UpdatedEntityList) {
+	for e, _ := range m.entityTable.currentEntities {
 		if q.Test(e) {
 			list.Signal(EntitySignal{ENTITY_ADD, e})
 		}
 	}
 }
 
-func (c *ActiveEntityListCollection) notifyActiveState(
-	e *Entity, active bool) {
-
-	// send add / remove signal to all lists
-	for _, list := range c.lists {
+// send add / remove signal to all lists according to active state of
+// entity and whether its in the list
+func (m *EntityManager) notifyActiveState(e *Entity, active bool) {
+	// TODO: possible performance improvement if when active == false
+	// we send remove to the list no matter what, since remove is idempotent
+	// and will only match those lists for which the entity did match the query
+	// already, by virtue of its being present
+	for _, list := range m.lists {
 		if list.Filter.Test(e) {
 			if active {
 				list.Signal(EntitySignal{ENTITY_ADD, e})
@@ -71,10 +71,9 @@ func (c *ActiveEntityListCollection) notifyActiveState(
 	}
 }
 
-func (c *ActiveEntityListCollection) checkActiveEntity(e *Entity) {
-
-	// check if the entity needs to be added to any lists
-	for _, list := range c.lists {
+// check if the entity needs to be added to or removed from any lists
+func (m *EntityManager) checkActiveEntity(e *Entity) {
+	for _, list := range m.lists {
 		if list.Filter.Test(e) {
 			list.Signal(EntitySignal{ENTITY_ADD, e})
 		}

@@ -18,17 +18,5 @@ func generateComponentsTableFile(
 		}
 	}).Line()
 
-	// write the Init method
-	f.Func().
-		Id("NewComponentsTable").
-		Params(Id("em").Op("*").Id("EntityManager")).
-		Op("*").Id("ComponentsTable").
-		Block(
-			Return(Op("&").Id("ComponentsTable").
-				Values(DictFunc(func(d Dict) {
-					d[Id("em")] = Id("em")
-				}))),
-		).Line()
-
 	return f
 }

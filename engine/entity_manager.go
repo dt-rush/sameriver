@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"sync"
 )
 
 // Provides services related to entities
@@ -14,26 +13,20 @@ type EntityManager struct {
 	// list of entities currently spawned (whether active or not)
 	entities [MAX_ENTITIES]*Entity
 	// Component data for entities
-	components *ComponentsTable
+	components ComponentsTable
 	// EntityTable stores: a list of allocated Entitys and a
 	// list of available IDs from previous deallocations
 	entityTable *EntityTable
+	// updated entity lists created by the user according to provided filters
+	lists map[string]*UpdatedEntityList
 	// updated entity lists of entities with given tags
 	entitiesWithTag map[string]*UpdatedEntityList
 	// entities which have been tagged uniquely
 	uniqueEntities map[string]*Entity
-	// ActiveEntityListCollection is used by GetUpdatedEntityList to
-	// store references to existing UpdatedEntityLists (by name)
-	activeEntityLists *ActiveEntityListCollection
-	// used to communicate with other systems
-	eventBus *EventBus
 	// Channel for spawn entity requests (processed as a batch each Update())
 	spawnSubscription *EventChannel
 	// Channel for despawn entity requests (processed as a batch each Update())
 	despawnSubscription *EventChannel
-	// spawnMutex prevents despawn / spawn events from occurring while we
-	// convert the entire EntityManager to string (expensive!)
-	spawnMutex sync.Mutex
 }
 
 // Construct a new entity manager
@@ -41,18 +34,14 @@ func NewEntityManager(w *World) *EntityManager {
 	em := &EntityManager{
 		w:               w,
 		entityTable:     NewEntityTable(w.idGen),
+		lists:           make(map[string]*UpdatedEntityList),
 		entitiesWithTag: make(map[string]*UpdatedEntityList),
 		uniqueEntities:  make(map[string]*Entity),
-		eventBus:        w.Events,
-		spawnSubscription: w.Events.Subscribe(
-			"EntityManager::SpawnRequest",
+		spawnSubscription: w.Events.Subscribe("EntityManager::SpawnRequest",
 			SimpleEventFilter(SPAWNREQUEST_EVENT)),
-		despawnSubscription: w.Events.Subscribe(
-			"EntityManager::DespawnRequest",
+		despawnSubscription: w.Events.Subscribe("EntityManager::DespawnRequest",
 			SimpleEventFilter(DESPAWNREQUEST_EVENT)),
 	}
-	em.components = NewComponentsTable(em)
-	em.activeEntityLists = NewActiveEntityListCollection(em)
 	return em
 }
 
@@ -86,31 +75,7 @@ func (m *EntityManager) setActiveState(e *Entity, state bool) {
 		// set active state
 		e.Active = state
 		// notify any listening lists
-		m.activeEntityLists.notifyActiveState(e, state)
-	}
-}
-
-// Get a list of entities which will be updated whenever an entity becomes
-// active / inactive
-func (m *EntityManager) GetUpdatedEntityList(q EntityFilter) *UpdatedEntityList {
-	return m.activeEntityLists.GetUpdatedEntityList(q)
-}
-
-// Get a list of entities which will be updated whenever an entity becomes
-// active / inactive
-func (m *EntityManager) GetSortedUpdatedEntityList(
-	q EntityFilter) *UpdatedEntityList {
-	return m.activeEntityLists.GetSortedUpdatedEntityList(q)
-}
-
-// get a previously-created UpdatedEntityList by name, or nil if does not exist
-func (m *EntityManager) GetUpdatedEntityListByName(
-	name string) *UpdatedEntityList {
-
-	if list, ok := m.activeEntityLists.lists[name]; ok {
-		return list
-	} else {
-		return nil
+		m.notifyActiveState(e, state)
 	}
 }
 
@@ -138,16 +103,12 @@ func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 	}
 }
 
-func (m *EntityManager) EntityHasComponent(
-	e *Entity, COMPONENT int) bool {
-
+func (m *EntityManager) EntityHasComponent(e *Entity, COMPONENT int) bool {
 	b, _ := e.ComponentBitArray.GetBit(uint64(COMPONENT))
 	return b
 }
 
-func (m *EntityManager) EntityHasTag(
-	e *Entity, tag string) bool {
-
+func (m *EntityManager) EntityHasTag(e *Entity, tag string) bool {
 	return m.EntityHasComponent(e, TAGLIST_COMPONENT) &&
 		m.components.TagList[e.ID].Has(tag)
 }
@@ -164,7 +125,7 @@ func (m *EntityManager) TagEntity(e *Entity, tags ...string) {
 		}
 	}
 	if e.Active {
-		m.activeEntityLists.checkActiveEntity(e)
+		m.checkActiveEntity(e)
 	}
 }
 
@@ -179,7 +140,7 @@ func (m *EntityManager) TagEntities(entities []*Entity, tag string) {
 func (m *EntityManager) UntagEntity(e *Entity, tag string) {
 	list := m.components.TagList[e.ID]
 	list.Remove(tag)
-	m.activeEntityLists.checkActiveEntity(e)
+	m.checkActiveEntity(e)
 }
 
 // Remove a tag from each of the entities in the provided list
@@ -216,9 +177,6 @@ func (m *EntityManager) String() string {
 // spawn/despawn from occurring while we read the entities (best to use for
 // debugging, very ocassional diagnostic output)
 func (m *EntityManager) Dump() string {
-	m.spawnMutex.Lock()
-	defer m.spawnMutex.Unlock()
-
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
 	for _, e := range m.entities {

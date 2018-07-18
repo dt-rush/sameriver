@@ -24,7 +24,3 @@ type ComponentsTable struct {
 	TagList        [MAX_ENTITIES]TagList
 	Velocity       [MAX_ENTITIES]Vec2D
 }
-
-func NewComponentsTable(em *EntityManager) *ComponentsTable {
-	return &ComponentsTable{em: em}
-}
