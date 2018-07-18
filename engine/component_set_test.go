@@ -22,10 +22,9 @@ func TestComponentSetToBitArray(t *testing.T) {
 
 func TestComponentSetApply(t *testing.T) {
 	w := testingWorld()
-	em := NewEntityManager(w)
-	e, _ := em.spawnFromRequest(simpleSpawnRequest())
+	e, _ := testingSpawnSimple(w)
 	cs := fullZeroedComponentSet()
-	em.ApplyComponentSet(cs)(e)
+	w.ApplyComponentSet(cs)(e)
 	if !e.ComponentBitArray.Equals(cs.ToBitArray()) {
 		t.Fatal("failed to modify bitarray")
 	}

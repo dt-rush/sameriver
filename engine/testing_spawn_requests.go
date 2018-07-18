@@ -1,51 +1,51 @@
 package engine
 
-func simpleSpawnRequest() SpawnRequestData {
-	return SpawnRequestData{
-		Components: ComponentSet{},
-	}
+func testingSimpleSpawnRequest() SpawnRequestData {
+	return SpawnRequestData{Tags: []string{}, Components: ComponentSet{}}
 }
 
-func positionSpawnRequest(pos Vec2D) SpawnRequestData {
-	return SpawnRequestData{
-		Components: ComponentSet{
-			Position: &pos,
-		},
-	}
+func testingQueueSpawnSimple(em EntityManagerInterface) {
+	em.QueueSpawn([]string{}, ComponentSet{})
 }
 
-func spatialSpawnRequest(pos Vec2D, box Vec2D) SpawnRequestData {
-	return SpawnRequestData{
-		Components: ComponentSet{
+func testingSpawnSimple(em EntityManagerInterface) (*Entity, error) {
+	return em.Spawn([]string{}, ComponentSet{})
+}
+
+func testingSpawnPosition(
+	em EntityManagerInterface, pos Vec2D) (*Entity, error) {
+	return em.Spawn([]string{}, ComponentSet{Position: &pos})
+}
+
+func testingSpawnTagged(
+	em EntityManagerInterface, tag string) (*Entity, error) {
+	return em.Spawn([]string{tag}, ComponentSet{})
+}
+
+func testingSpawnSpatial(
+	em EntityManagerInterface, pos Vec2D, box Vec2D) (*Entity, error) {
+	return em.Spawn([]string{},
+		ComponentSet{
 			Position: &pos,
 			Box:      &box,
 		},
-	}
+	)
 }
 
-func simpleTaggedSpawnRequest(tag string) SpawnRequestData {
-	return SpawnRequestData{
-		Components: ComponentSet{
-			Position: &Vec2D{0, 0},
-		},
-		Tags: []string{tag},
-	}
-}
-
-func collisionSpawnRequest() SpawnRequestData {
-	return SpawnRequestData{
-		Components: ComponentSet{
+func testingSpawnCollision(em EntityManagerInterface) (*Entity, error) {
+	return em.Spawn([]string{},
+		ComponentSet{
 			Position: &Vec2D{10, 10},
 			Box:      &Vec2D{4, 4},
 		},
-	}
+	)
 }
 
-func steeringSpawnRequest() SpawnRequestData {
+func testingSpawnSteering(em EntityManagerInterface) (*Entity, error) {
 	mass := 3.0
 	maxV := 3.0
-	return SpawnRequestData{
-		Components: ComponentSet{
+	return em.Spawn([]string{},
+		ComponentSet{
 			Position:       &Vec2D{0, 0},
 			Velocity:       &Vec2D{0, 0},
 			MaxVelocity:    &maxV,
@@ -53,17 +53,17 @@ func steeringSpawnRequest() SpawnRequestData {
 			Steer:          &Vec2D{0, 0},
 			Mass:           &mass,
 		},
-	}
+	)
 }
 
-func physicsSpawnRequest() SpawnRequestData {
+func testingSpawnPhysics(em EntityManagerInterface) (*Entity, error) {
 	mass := 3.0
-	return SpawnRequestData{
-		Components: ComponentSet{
-			Position: &Vec2D{0, 0},
+	return em.Spawn([]string{},
+		ComponentSet{
+			Position: &Vec2D{10, 10},
 			Velocity: &Vec2D{0, 0},
-			Box:      &Vec2D{10, 10},
+			Box:      &Vec2D{1, 1},
 			Mass:     &mass,
 		},
-	}
+	)
 }

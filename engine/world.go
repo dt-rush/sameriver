@@ -55,7 +55,7 @@ func NewWorld(width int, height int) *World {
 
 func (w *World) Update(allowance float64) (overrun_ms float64) {
 	t0 := time.Now()
-	w.em.Update()
+	w.em.Update(FRAME_SLEEP_MS / 2)
 	// systems update functions, world logic, and entity logic can use
 	// whatever time is left over after entity manager update
 	overunder := RuntimeLimitShare(
@@ -253,6 +253,11 @@ func (w *World) setEntityLogicActiveState(e *Entity, state bool) {
 	if logic, ok := w.entityLogics[e.ID]; ok {
 		logic.active = state
 	}
+}
+
+func (w *World) String() string {
+	// TODO: implement
+	return "TODO"
 }
 
 func (w *World) DumpStats() (stats map[string](map[string]float64)) {

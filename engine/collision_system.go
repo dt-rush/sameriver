@@ -34,6 +34,10 @@
 //
 package engine
 
+import (
+	"time"
+)
+
 type CollisionSystem struct {
 	w                  *World
 	collidableEntities *UpdatedEntityList
@@ -41,8 +45,10 @@ type CollisionSystem struct {
 	sh                 *SpatialHashSystem `sameriver-system-dependency:"-"`
 }
 
-func NewCollisionSystem() *CollisionSystem {
-	return &CollisionSystem{rateLimiterArray: NewCollisionRateLimiterArray()}
+func NewCollisionSystem(rateLimit time.Duration) *CollisionSystem {
+	return &CollisionSystem{
+		rateLimiterArray: NewCollisionRateLimiterArray(rateLimit),
+	}
 }
 
 func (s *CollisionSystem) LinkWorld(w *World) {
@@ -80,7 +86,6 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 // events for each possible collision [i][j] using the rate limiter at [i][j]
 // in rateLimiters, so if we already sent one within the timeout, we just move on.
 func (s *CollisionSystem) Update() {
-
 	// NOTE: The ID's in collidableEntities are in sorted order,
 	// so the rateLimiterArray access condition that i < j is respected
 	// check each possible collison between entities in the list by doing a
@@ -109,15 +114,13 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 			if j.Despawned {
 				continue
 			}
+			// required that i.ID , j.ID for the rate limiter array
 			if j.ID < i.ID {
 				j, i = i, j
 			}
-			if !s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Limited() {
-				if s.TestCollision(i.ID, j.ID) {
-					s.DoCollide(i, j)
-				} else if s.TestCollision(j.ID, i.ID) {
-					s.DoCollide(j, i)
-				}
+			if !s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Limited() &&
+				s.TestCollision(i.ID, j.ID) {
+				s.DoCollide(i, j)
 			}
 		}
 	}
@@ -127,7 +130,9 @@ func (s *CollisionSystem) DoCollide(i *Entity, j *Entity) {
 	s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Do(
 		func() {
 			s.w.Events.Publish(COLLISION_EVENT,
-				CollisionData{EntityA: i, EntityB: j})
+				CollisionData{This: i, Other: j})
+			s.w.Events.Publish(COLLISION_EVENT,
+				CollisionData{This: j, Other: i})
 		})
 }
 

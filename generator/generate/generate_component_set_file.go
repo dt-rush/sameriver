@@ -42,7 +42,7 @@ func generateComponentSetFile(
 
 	// create EntityManager.ApplyComponent method
 	f.Func().
-		Params(Id("em").Op("*").Id("EntityManager")).
+		Params(Id("m").Op("*").Id("EntityManager")).
 		Id("ApplyComponentSet").Params(Id("cs").Id("ComponentSet")).
 		Func().Parens(Id("*Entity")).
 		BlockFunc(func(g *Group) {
@@ -53,7 +53,7 @@ func generateComponentSetFile(
 						Id("e").Dot("ComponentBitArray").Dot("Or").Call(Id("b"))
 					for _, component := range components {
 						g.If(Id("cs").Dot(component.Name).Op("!=").Nil()).Block(
-							Id("em").Dot("components").Dot(component.Name).
+							Id("m").Dot("components").Dot(component.Name).
 								Index(Id("e").Dot("ID")).Op("=").
 								Op("*").Id("cs").Dot(component.Name),
 						)

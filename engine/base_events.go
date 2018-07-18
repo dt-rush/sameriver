@@ -2,14 +2,15 @@ package engine
 
 // a collision has occured between two entities
 type CollisionData struct {
-	EntityA *Entity
-	EntityB *Entity
+	This  *Entity
+	Other *Entity
 }
 
 // the EntityManager is requested to spawn an entity
 type SpawnRequestData struct {
-	Components ComponentSet
+	UniqueTag  string
 	Tags       []string
+	Components ComponentSet
 }
 
 // the EntityManager is requested to despawn an entity

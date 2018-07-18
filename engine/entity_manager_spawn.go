@@ -8,31 +8,48 @@ import (
 // get the current number of requests in the channel and only process
 // them. More may continue to pile up. They'll get processed next time.
 func (m *EntityManager) processSpawnChannel() {
-	m.spawnMutex.Lock()
-	defer m.spawnMutex.Unlock()
-
 	n := len(m.spawnSubscription.C)
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		e := <-m.spawnSubscription.C
 		req := e.Data.(SpawnRequestData)
-		_, err := m.spawn(req.Tags, req.Components)
+		_, err := m.Spawn(req.Tags, req.Components)
 		if err != nil {
 			Logger.Println(err)
 		}
 	}
 }
 
-func (m *EntityManager) spawnFromRequest(req SpawnRequestData) (*Entity, error) {
-	return m.spawn(req.Tags, req.Components)
+func (m *EntityManager) QueueSpawn(tags []string, components ComponentSet) {
+	req := SpawnRequestData{Tags: tags, Components: components}
+	if len(m.spawnSubscription.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
+		go func() {
+			m.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, req}
+		}()
+	} else {
+		m.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, req}
+	}
 }
 
-func (m *EntityManager) spawn(tags []string,
+func (m *EntityManager) Spawn(tags []string,
 	components ComponentSet) (*Entity, error) {
 	return m.doSpawn("", tags, components)
 }
 
-func (m *EntityManager) spawnUnique(
+func (m *EntityManager) QueueSpawnUnique(
+	uniqueTag string, tags []string, components ComponentSet) {
+	req := SpawnRequestData{
+		UniqueTag: uniqueTag, Tags: tags, Components: components}
+	if len(m.spawnSubscription.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
+		go func() {
+			m.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, req}
+		}()
+	} else {
+		m.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, req}
+	}
+}
+
+func (m *EntityManager) SpawnUnique(
 	tag string, tags []string, components ComponentSet) (*Entity, error) {
 
 	if _, ok := m.uniqueEntities[tag]; ok {

@@ -1,30 +1,38 @@
 package engine
 
-func (w *World) QueueSpawn(req SpawnRequestData) {
-	go func() {
-		w.em.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, req}
-	}()
+func (w *World) Spawn(tags []string, components ComponentSet) (*Entity, error) {
+	return w.em.Spawn(tags, components)
 }
 
-func (w *World) Spawn(tags []string, components ComponentSet) (*Entity, error) {
-	return w.em.spawn(tags, components)
+func (w *World) QueueSpawn(tags []string, components ComponentSet) {
+	w.em.QueueSpawn(tags, components)
 }
 
 func (w *World) SpawnUnique(
 	tag string, tags []string, components ComponentSet) (*Entity, error) {
 
-	return w.em.spawnUnique(tag, tags, components)
+	return w.em.SpawnUnique(tag, tags, components)
 }
 
-func (w *World) QueueDespawn(req DespawnRequestData) {
-	go func() {
-		w.em.despawnSubscription.C <- Event{DESPAWNREQUEST_EVENT, req}
-	}()
+func (w *World) QueueSpawnUnique(
+	uniqueTag string, tags []string, components ComponentSet) {
+	w.em.QueueSpawnUnique(uniqueTag, tags, components)
+}
+
+func (w *World) QueueDespawn(e *Entity) {
+	w.em.QueueDespawn(e)
 }
 
 func (w *World) Despawn(e *Entity) {
-	w.em.doDespawn(e)
+	w.em.Despawn(e)
 	w.RemoveEntityLogic(e)
+}
+
+func (w *World) DespawnAll() {
+	for e, _ := range w.em.GetCurrentEntitiesSetCopy() {
+		w.RemoveEntityLogic(e)
+	}
+	w.em.DespawnAll()
 }
 
 func (w *World) Activate(e *Entity) {
@@ -33,6 +41,10 @@ func (w *World) Activate(e *Entity) {
 
 func (w *World) Deactivate(e *Entity) {
 	w.em.Deactivate(e)
+}
+
+func (w *World) ApplyComponentSet(cs ComponentSet) func(*Entity) {
+	return w.em.ApplyComponentSet(cs)
 }
 
 func (w *World) GetUpdatedEntityList(q EntityFilter) *UpdatedEntityList {
@@ -83,14 +95,14 @@ func (w *World) NumEntities() (total int, active int) {
 	return w.em.NumEntities()
 }
 
-func (w *World) GetCurrentEntities() []*Entity {
-	return w.em.GetCurrentEntities()
+func (w *World) GetCurrentEntitiesSet() map[*Entity]bool {
+	return w.em.GetCurrentEntitiesSet()
 }
 
-func (w *World) EntityManagerString() string {
-	return w.em.String()
+func (w *World) GetCurrentEntitiesSetCopy() map[*Entity]bool {
+	return w.em.GetCurrentEntitiesSetCopy()
 }
 
 func (w *World) DumpEntities() string {
-	return w.em.Dump()
+	return w.em.DumpEntities()
 }

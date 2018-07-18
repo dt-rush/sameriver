@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
 )
 
 // Provides services related to entities
@@ -46,9 +47,12 @@ func NewEntityManager(w *World) *EntityManager {
 }
 
 // called once per scene Update() for scenes holding an entity manager
-func (m *EntityManager) Update() {
+func (m *EntityManager) Update(allowance float64) float64 {
+	// TODO: implement this using a RuntimeLimiter
+	t0 := time.Now()
 	m.processDespawnChannel()
 	m.processSpawnChannel()
+	return float64(time.Since(t0).Nanoseconds()) / 1.0e6
 }
 
 // set an entity Active and notify all active entity lists
@@ -155,17 +159,20 @@ func (m *EntityManager) NumEntities() (total int, active int) {
 	return len(m.entityTable.currentEntities), m.entityTable.active
 }
 
-// Returns the Entities field, copied. Notice that this is of size MAX_ENTITIES
-// and can have many nil elements, so the caller must checka and discard
-// nil elements as they iterate
-func (m *EntityManager) GetCurrentEntities() []*Entity {
-	entities := make([]*Entity, 0, len(m.entityTable.currentEntities))
-	for _, e := range m.entities {
-		if e != nil {
-			entities = append(entities, e)
-		}
+// return a map where the keys are the current entities (aka an idiomatic
+// go "set")
+func (m *EntityManager) GetCurrentEntitiesSet() map[*Entity]bool {
+	return m.entityTable.currentEntities
+}
+
+// return a copy of the current entities map (allowing you to spawn/despawn
+// while iterating over it)
+func (m *EntityManager) GetCurrentEntitiesSetCopy() map[*Entity]bool {
+	setCopy := make(map[*Entity]bool, len(m.entityTable.currentEntities))
+	for e, _ := range m.entityTable.currentEntities {
+		setCopy[e] = true
 	}
-	return entities
+	return setCopy
 }
 
 func (m *EntityManager) String() string {
@@ -173,10 +180,8 @@ func (m *EntityManager) String() string {
 		len(m.entityTable.currentEntities), m.entityTable.active)
 }
 
-// Somewhat expensive conversion of entire entity list to string, locking
-// spawn/despawn from occurring while we read the entities (best to use for
-// debugging, very ocassional diagnostic output)
-func (m *EntityManager) Dump() string {
+// dump entities with tags
+func (m *EntityManager) DumpEntities() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
 	for _, e := range m.entities {

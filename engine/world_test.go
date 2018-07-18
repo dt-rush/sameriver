@@ -137,7 +137,7 @@ func TestWorldAddEntityLogicDuplicate(t *testing.T) {
 		}
 	}()
 	w := testingWorld()
-	e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
+	e, _ := testingSpawnSimple(w)
 	w.AddEntityLogic(e, func() {})
 	w.AddEntityLogic(e, func() {})
 	t.Fatal("should have panic'd")
@@ -146,7 +146,7 @@ func TestWorldAddEntityLogicDuplicate(t *testing.T) {
 func TestWorldRunEntityLogicsOnly(t *testing.T) {
 	w := testingWorld()
 	x := 0
-	e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
+	e, _ := testingSpawnSimple(w)
 	w.AddEntityLogic(e, func() { x += 1 })
 	w.ActivateAllEntityLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
@@ -164,7 +164,7 @@ func TestWorldRunSystemsAndWorldLogicsAndEntityLogics(t *testing.T) {
 	name := "logic"
 	w.AddWorldLogic(name, func() { x += 1 })
 	w.ActivateWorldLogic(name)
-	e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
+	e, _ := testingSpawnSimple(w)
 	w.AddEntityLogic(e, func() { y += 1 })
 	w.ActivateEntityLogic(e)
 	w.Update(FRAME_SLEEP_MS / 2)
@@ -196,7 +196,7 @@ func TestWorldRemoveWorldLogic(t *testing.T) {
 func TestWorldRemoveEntityLogic(t *testing.T) {
 	w := testingWorld()
 	x := 0
-	e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
+	e, _ := testingSpawnSimple(w)
 	w.AddEntityLogic(e, func() { x += 1 })
 	w.RemoveEntityLogic(e)
 	for i := 0; i < 32; i++ {
@@ -264,7 +264,7 @@ func TestWorldDeativateAllWorldLogics(t *testing.T) {
 func TestWorldActivateEntityLogic(t *testing.T) {
 	w := testingWorld()
 	x := 0
-	e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
+	e, _ := testingSpawnSimple(w)
 	w.AddEntityLogic(e, func() { x += 1 })
 	w.ActivateEntityLogic(e)
 	w.Update(FRAME_SLEEP_MS / 2)
@@ -278,7 +278,7 @@ func TestWorldActivateAllEntityLogics(t *testing.T) {
 	x := 0
 	n := 16
 	for i := 0; i < n; i++ {
-		e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
+		e, _ := testingSpawnSimple(w)
 		w.AddEntityLogic(e, func() { x += 1 })
 	}
 	w.ActivateAllEntityLogics()
@@ -291,7 +291,7 @@ func TestWorldActivateAllEntityLogics(t *testing.T) {
 func TestWorldDeactivateEntityLogic(t *testing.T) {
 	w := testingWorld()
 	x := 0
-	e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
+	e, _ := testingSpawnSimple(w)
 	w.AddEntityLogic(e, func() { x += 1 })
 	w.DeactivateEntityLogic(e)
 	if x != 0 {
@@ -304,7 +304,7 @@ func TestWorldDeativateAllEntityLogics(t *testing.T) {
 	x := 0
 	n := 16
 	for i := 0; i < n; i++ {
-		e, _ := w.em.spawnFromRequest(simpleSpawnRequest())
+		e, _ := testingSpawnSimple(w)
 		w.AddEntityLogic(e, func() { x += 1 })
 		w.ActivateEntityLogic(e)
 	}

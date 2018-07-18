@@ -2,43 +2,43 @@ package engine
 
 // process the despawn requests in the channel buffer
 func (m *EntityManager) processDespawnChannel() {
-	m.spawnMutex.Lock()
-	defer m.spawnMutex.Unlock()
-
 	n := len(m.despawnSubscription.C)
 	for i := 0; i < n; i++ {
 		e := <-m.despawnSubscription.C
-		m.doDespawn(e.Data.(DespawnRequestData).Entity)
+		m.Despawn(e.Data.(DespawnRequestData).Entity)
 	}
 }
 
 // User facing function which is used to drain the state of the
 // entity manager, and will also kill any pending spawn requests
-func (m *EntityManager) despawnAll() {
-	m.spawnMutex.Lock()
-	defer m.spawnMutex.Unlock()
-	// drain the spawn and despawn subscription channels of accumulated events
+func (m *EntityManager) DespawnAll() {
+	// drain the spawn request channel of pending spawns
 	for len(m.spawnSubscription.C) > 0 {
 		_ = <-m.spawnSubscription.C
 	}
-	for len(m.despawnSubscription.C) > 0 {
-		_ = <-m.despawnSubscription.C
-	}
-	// iterate all IDs which have been allocated and despawn them
-	todespawn := make([]*Entity, 0)
-	for e, _ := range m.entityTable.currentEntities {
-		todespawn = append(todespawn, e)
-	}
-	for _, e := range todespawn {
-		m.doDespawn(e)
+	// iterate all entities which have been allocated and despawn them
+	for e, _ := range m.GetCurrentEntitiesSetCopy() {
+		m.Despawn(e)
 	}
 }
 
-// internal despawn function processes the despawn
-// (frees the ID and deactivates the entity)
-func (m *EntityManager) doDespawn(e *Entity) {
-	e.Despawned = true
-	m.entityTable.deallocate(e)
-	m.entities[e.ID] = nil
-	m.setActiveState(e, false)
+// Despawn an entity
+func (m *EntityManager) Despawn(e *Entity) {
+	if !e.Despawned {
+		e.Despawned = true
+		m.entityTable.deallocate(e)
+		m.entities[e.ID] = nil
+		m.setActiveState(e, false)
+	}
+}
+
+func (m *EntityManager) QueueDespawn(e *Entity) {
+	req := DespawnRequestData{Entity: e}
+	if len(m.despawnSubscription.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
+		go func() {
+			m.despawnSubscription.C <- Event{DESPAWNREQUEST_EVENT, req}
+		}()
+	} else {
+		m.despawnSubscription.C <- Event{DESPAWNREQUEST_EVENT, req}
+	}
 }

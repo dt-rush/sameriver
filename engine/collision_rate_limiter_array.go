@@ -38,7 +38,8 @@ type CollisionRateLimiterArray struct {
 }
 
 // Construct a new CollisionRateLimiterArray
-func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
+func NewCollisionRateLimiterArray(
+	rateLimit time.Duration) CollisionRateLimiterArray {
 	// build the backing array
 	a := CollisionRateLimiterArray{
 		backingArray: make(
@@ -57,8 +58,7 @@ func NewCollisionRateLimiterArray() CollisionRateLimiterArray {
 	}
 	// create the rate limiters
 	for i := 0; i < len(a.backingArray); i++ {
-		a.backingArray[i] = utils.NewRateLimiter(
-			COLLISION_RATELIMIT_TIMEOUT_MS * time.Millisecond)
+		a.backingArray[i] = utils.NewRateLimiter(rateLimit)
 	}
 	// return the object we've built
 	return a

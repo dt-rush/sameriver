@@ -18,11 +18,11 @@ func TestEventFilterPredicate(t *testing.T) {
 	entity := &Entity{ID: 100}
 	pred := func(e Event) bool {
 		c := e.Data.(CollisionData)
-		return c.EntityA == entity
+		return c.This == entity
 	}
 	event := Event{
 		Type: COLLISION_EVENT,
-		Data: CollisionData{EntityA: entity}}
+		Data: CollisionData{This: entity}}
 	f := PredicateEventFilter(COLLISION_EVENT, pred)
 	if !f.Test(event) {
 		t.Fatal("filter did not match, should have")
@@ -30,14 +30,15 @@ func TestEventFilterPredicate(t *testing.T) {
 }
 
 func TestEventFilterCollision(t *testing.T) {
-	entity := &Entity{ID: 100}
-	pred := func(c CollisionData) bool {
-		return c.EntityA == entity
+	this := &Entity{ID: 100}
+	other := &Entity{ID: 100}
+	predicate := func(c CollisionData) bool {
+		return c.This == this && c.Other == other
 	}
 	event := Event{
 		Type: COLLISION_EVENT,
-		Data: CollisionData{EntityA: entity}}
-	f := CollisionEventFilter(pred)
+		Data: CollisionData{This: this, Other: other}}
+	f := CollisionEventFilter(predicate)
 	if !f.Test(event) {
 		t.Fatal("filter did not match, should have")
 	}
