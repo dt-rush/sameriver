@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"io/ioutil"
-	"os"
 	"path"
 	"regexp"
 	"sort"
@@ -92,7 +90,7 @@ func (g *GenerateProcess) GenerateComponentFiles(target string) GenerateOutput {
 		File:    generateComponentSetFile(components),
 		Imports: importStrings,
 	}
-	output.generatedSourceFiles["components_data.go"] = GeneratedFile{
+	output.generatedSourceFiles["components_table.go"] = GeneratedFile{
 		File:    generateComponentsTableFile(components),
 		Imports: importStrings,
 	}
@@ -161,32 +159,4 @@ func (g *GenerateProcess) getComponentSpecs(
 	fmt.Printf("no struct named ComponentSet not found in %s",
 		componentSetSrcFile)
 	return components
-}
-
-func (g *GenerateProcess) getDeepCopyMethod(
-	componentName string) (bool, string) {
-
-	// attempt to find deep_copy_${component}.go either in enginedir or gamedir
-	expectedFileName := fmt.Sprintf("deep_copy_%s.go",
-		strings.ToLower(componentName))
-	engineDirFiles, err := ioutil.ReadDir(g.engineDir)
-	if err != nil {
-		panic(err)
-	}
-	var gameDirFiles []os.FileInfo
-	if g.gameDir != "" {
-		gameDirFiles, err = ioutil.ReadDir(g.gameDir)
-		if err != nil {
-			panic(err)
-		}
-	}
-	allFiles := make([]os.FileInfo, 0)
-	allFiles = append(allFiles, engineDirFiles...)
-	allFiles = append(allFiles, gameDirFiles...)
-	for _, file := range allFiles {
-		if file.Name() == expectedFileName {
-			return true, file.Name()
-		}
-	}
-	return false, ""
 }
