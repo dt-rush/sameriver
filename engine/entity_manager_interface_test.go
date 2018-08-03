@@ -58,6 +58,28 @@ func EntityManagerInterfaceTestQueueSpawn(
 	}
 }
 
+func EntityManagerInterfaceTestQueueSpawnFull(
+	em EntityManagerInterface, t *testing.T) {
+	// fill up the spawnSubscription channel
+	for i := 0; i < EVENT_SUBSCRIBER_CHANNEL_CAPACITY; i++ {
+		testingQueueSpawnSimple(em)
+	}
+	// spawn two more entities (one simple, one unique)
+	testingQueueSpawnSimple(em)
+	testingQueueSpawnUnique(em)
+	// sleep long enough for the events to appear on the channel
+	time.Sleep(FRAME_SLEEP)
+	// update *twice*, allowing the extra events to process despite having seen
+	// a full spawn subscription channel the first time
+	em.Update(FRAME_SLEEP_MS / 2)
+	em.Update(FRAME_SLEEP_MS / 2)
+	total, _ := em.NumEntities()
+	if total != EVENT_SUBSCRIBER_CHANNEL_CAPACITY+2 {
+		t.Fatal("should have spawned entities after processing spawn " +
+			"request channel")
+	}
+}
+
 func EntityManagerInterfaceTestDespawn(
 	em EntityManagerInterface, t *testing.T) {
 

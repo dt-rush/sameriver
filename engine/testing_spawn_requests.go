@@ -8,6 +8,10 @@ func testingQueueSpawnSimple(em EntityManagerInterface) {
 	em.QueueSpawn([]string{}, ComponentSet{})
 }
 
+func testingQueueSpawnUnique(em EntityManagerInterface) {
+	em.QueueSpawnUnique("unique", []string{}, ComponentSet{})
+}
+
 func testingSpawnSimple(em EntityManagerInterface) (*Entity, error) {
 	return em.Spawn([]string{}, ComponentSet{})
 }

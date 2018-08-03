@@ -20,26 +20,12 @@ func (m *EntityManager) processSpawnChannel() {
 	}
 }
 
-func (m *EntityManager) QueueSpawn(tags []string, components ComponentSet) {
-	req := SpawnRequestData{Tags: tags, Components: components}
-	if len(m.spawnSubscription.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
-		go func() {
-			m.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, req}
-		}()
-	} else {
-		m.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, req}
-	}
-}
-
 func (m *EntityManager) Spawn(tags []string,
 	components ComponentSet) (*Entity, error) {
 	return m.doSpawn("", tags, components)
 }
 
-func (m *EntityManager) QueueSpawnUnique(
-	uniqueTag string, tags []string, components ComponentSet) {
-	req := SpawnRequestData{
-		UniqueTag: uniqueTag, Tags: tags, Components: components}
+func (m *EntityManager) queueSpawn(req SpawnRequestData) {
 	if len(m.spawnSubscription.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
 		go func() {
 			m.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, req}
@@ -47,6 +33,22 @@ func (m *EntityManager) QueueSpawnUnique(
 	} else {
 		m.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, req}
 	}
+}
+
+func (m *EntityManager) QueueSpawn(tags []string, components ComponentSet) {
+	m.queueSpawn(SpawnRequestData{
+		Tags:       tags,
+		Components: components,
+	})
+}
+
+func (m *EntityManager) QueueSpawnUnique(
+	uniqueTag string, tags []string, components ComponentSet) {
+	m.queueSpawn(SpawnRequestData{
+		UniqueTag:  uniqueTag,
+		Tags:       tags,
+		Components: components,
+	})
 }
 
 func (m *EntityManager) SpawnUnique(
