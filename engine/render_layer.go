@@ -7,15 +7,17 @@ import (
 type RenderFunc func(w *sdl.Window, r *sdl.Renderer)
 
 type RenderLayer struct {
-	renderFunc RenderFunc
+	name       string
 	z          int
+	renderFunc RenderFunc
 	active     bool
 }
 
-func NewRenderLayer(renderFunc RenderFunc, z int) *RenderLayer {
+func NewRenderLayer(name string, z int, renderFunc RenderFunc) *RenderLayer {
 	return &RenderLayer{
-		renderFunc: renderFunc,
+		name:       name,
 		z:          z,
+		renderFunc: renderFunc,
 		active:     true,
 	}
 }
@@ -30,6 +32,10 @@ func (l *RenderLayer) Deactivate() {
 
 func (l *RenderLayer) IsActive() bool {
 	return l.active
+}
+
+func (l *RenderLayer) Name() string {
+	return l.name
 }
 
 func (l *RenderLayer) Render(w *sdl.Window, r *sdl.Renderer) {

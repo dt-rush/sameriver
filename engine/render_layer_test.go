@@ -5,7 +5,7 @@ import (
 )
 
 func TestRenderLayerActivateDeactivate(t *testing.T) {
-	l := NewRenderLayer(testingNullRenderF, 0)
+	l := NewRenderLayer("null", 0, testingNullRenderF)
 	if !l.IsActive() {
 		t.Fatal("new layers should be active")
 	}
@@ -16,5 +16,12 @@ func TestRenderLayerActivateDeactivate(t *testing.T) {
 	l.Activate()
 	if !l.IsActive() {
 		t.Fatal("Activate() did not activate")
+	}
+}
+
+func TestRenderLayerName(t *testing.T) {
+	l := NewRenderLayer("hello", 0, nil)
+	if l.Name() != "hello" {
+		t.Fatal("Name() doesn't return name given to constructor")
 	}
 }
