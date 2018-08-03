@@ -275,7 +275,7 @@ func (w *World) DumpStats() (stats map[string](map[string]float64)) {
 	if w.totalRuntime != nil {
 		stats["totals"]["total"] = *w.totalRuntime
 	} else {
-		stats["total"]["total"] = 0.0
+		stats["totals"]["total"] = 0.0
 	}
 	return
 }

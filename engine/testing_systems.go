@@ -1,8 +1,12 @@
 package engine
 
+import (
+	"time"
+)
+
 // a basic system with a data member
 type testSystem struct {
-	x float64
+	updates int
 }
 
 func newTestSystem() *testSystem {
@@ -10,7 +14,8 @@ func newTestSystem() *testSystem {
 }
 func (s *testSystem) LinkWorld(w *World) {}
 func (s *testSystem) Update() {
-	s.x += 1
+	time.Sleep(1 * time.Millisecond)
+	s.updates += 1
 }
 
 // a system dependent on testSystem

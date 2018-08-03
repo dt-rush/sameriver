@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -104,7 +105,7 @@ func TestWorldRunSystemsOnly(t *testing.T) {
 	ts := newTestSystem()
 	w.AddSystems(ts)
 	w.Update(FRAME_SLEEP_MS / 2)
-	if ts.x == 0 {
+	if ts.updates == 0 {
 		t.Fatal("failed to update system")
 	}
 }
@@ -155,26 +156,16 @@ func TestWorldRunEntityLogicsOnly(t *testing.T) {
 	}
 }
 
-func TestWorldRunSystemsAndWorldLogicsAndEntityLogics(t *testing.T) {
-	w := testingWorld()
-	ts := newTestSystem()
-	w.AddSystems(ts)
-	x := 0
-	y := 0
-	name := "logic"
-	w.AddWorldLogic(name, func() { x += 1 })
-	w.ActivateWorldLogic(name)
-	e, _ := testingSpawnSimple(w)
-	w.AddEntityLogic(e, func() { y += 1 })
-	w.ActivateEntityLogic(e)
+func TestWorldRunAllLogicTypes(t *testing.T) {
+	w, ts, worldUpdates, entityUpdates := testingWorldWithAllLogicTypes()
 	w.Update(FRAME_SLEEP_MS / 2)
-	if ts.x != 1 {
+	if ts.updates != 1 {
 		t.Fatal("failed to update system")
 	}
-	if x != 1 {
+	if *worldUpdates != 1 {
 		t.Fatal("failed to run world logic")
 	}
-	if y != 1 {
+	if *entityUpdates != 1 {
 		t.Fatal("failed to run entity logic")
 	}
 }
@@ -313,4 +304,38 @@ func TestWorldDeativateAllEntityLogics(t *testing.T) {
 	if x != 0 {
 		t.Fatal("logics all should have been deactivated, but some ran")
 	}
+}
+
+func TestWorldDumpStats(t *testing.T) {
+	w, _, _, _ := testingWorldWithAllLogicTypes()
+	w.Update(FRAME_SLEEP_MS / 2)
+	// test dump stats object
+	stats := w.DumpStats()
+	if len(stats) <= 1 {
+		t.Fatal("stats not populated properly - should have keys for each " +
+			"subsystem at least")
+	}
+	if _, ok := stats["totals"]["total"]; !ok {
+		t.Fatal("no total update runtime stat included")
+	}
+	// test whether individual runtime limiter DumpStats() corresponds to
+	// their entries in the overall DumpStats()
+	systemStats, _ := w.systemsRunner.DumpStats()
+	worldStats, _ := w.worldLogicsRunner.DumpStats()
+	entityStats, _ := w.entityLogicsRunner.DumpStats()
+	if !reflect.DeepEqual(stats["system"], systemStats) {
+		t.Fatal("system stats dump was not equal to systemsRunner stats dump")
+	}
+	if !reflect.DeepEqual(stats["world"], worldStats) {
+		t.Fatal("world stats dump was not equal to worldLogicsRunner stats dump")
+	}
+	if !reflect.DeepEqual(stats["entity"], entityStats) {
+		t.Fatal("entity stats dump was not equal to entityLogicsRunner stats dump")
+	}
+	// test stats string
+	statsString := w.DumpStatsString()
+	if statsString == "" || len(statsString) == 0 {
+		t.Fatal("statsString is empty")
+	}
+
 }
