@@ -98,9 +98,6 @@ func (m *EntityManager) doSpawn(
 	// because if a system operating on the component data
 	// expects to work on the data, it should be maintaining a list of
 	// entities with the required components using an UpdatedEntityList
-	// NOTE: we can directly set the Active component value since no other
-	// goroutine could be also writing to this entity, due to the
-	// AtomicEntityModify pattern
 	m.ApplyComponentSet(components)(e)
 	// create (if doesn't exist) entitiesWithTag lists for each tag
 	m.TagEntity(e, tags...)
