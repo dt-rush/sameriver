@@ -4,11 +4,10 @@
 //
 // 2. an UpdatedEntityList of entities having Position and HitBox
 //
-// 3. a special data structure which holds rate limiters for each possible
-// 	collision
+//  3. a special data structure which holds rate limiters for each possible
+//     collision
 //
-//
-// Datastructure (3.) - triangular rateLimiters array
+// # Datastructure (3.) - triangular rateLimiters array
 //
 // The rate limiters data structed is "collision-indexed", meaning it is indexed
 // [i][j], where i and j are ID's and i < j. That is, each pairing of ID's
@@ -23,15 +22,14 @@
 // sync.Once which can be reset either by a natural delay or externally, in
 // a goroutine-safe way)
 //
-//          j
+//	        j
 //
-//      0 1 2 3 4
-//     0  r r r r
-//     1    r r r
-//  i  2      r r
-//     3        r
-//     4
-//
+//	    0 1 2 3 4
+//	   0  r r r r
+//	   1    r r r
+//	i  2      r r
+//	   3        r
+//	   4
 package engine
 
 import (
