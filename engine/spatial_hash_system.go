@@ -41,13 +41,16 @@ func NewSpatialHashSystem(cellX int, cellY int) *SpatialHashSystem {
 	return &h
 }
 
+func (s *SpatialHashSystem) GetComponentDeps() []string {
+	return []string{"Vec2D,Position", "Vec2D,Box"}
+}
+
 func (s *SpatialHashSystem) LinkWorld(w *World) {
 	s.w = w
 	// get a list of spatial entities
 	s.spatialEntities = w.em.GetUpdatedEntityList(
 		EntityFilterFromComponentBitArray("spatial",
-			MakeComponentBitArray(
-				[]ComponentType{POSITION_COMPONENT, BOX_COMPONENT})))
+			w.em.components.BitArrayFromNames([]string{"Position", "Box"})))
 }
 
 func (h *SpatialHashSystem) Update() {

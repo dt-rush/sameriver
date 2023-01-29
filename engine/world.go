@@ -49,7 +49,6 @@ func NewWorld(width int, height int) *World {
 		entityLogicsRunner: NewRuntimeLimiter(),
 	}
 	w.em = NewEntityManager(w)
-	w.em.components = w.em.components
 	return w
 }
 
@@ -72,9 +71,19 @@ func (w *World) Update(allowance float64) (overrun_ms float64) {
 	return overunder
 }
 
+func (w *World) RegisterComponents(specs []string) {
+	// register generic taglist
+	w.em.components.AddComponent("TagList,GenericTags")
+	// register given specs
+	for spec := range specs {
+		w.em.components.AddComponent(spec)
+	}
+}
+
 func (w *World) AddSystems(systems ...System) {
 	// add all systems
 	for _, s := range systems {
+		w.ensureComponents(s.GetComponentDeps())
 		w.addSystem(s)
 	}
 	// link up all systems' dependencies

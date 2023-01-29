@@ -14,7 +14,7 @@ type EntityManager struct {
 	// list of entities currently spawned (whether active or not)
 	entities [MAX_ENTITIES]*Entity
 	// Component data for entities
-	components ComponentsTable
+	components ComponentTable
 	// EntityTable stores: a list of allocated Entitys and a
 	// list of available IDs from previous deallocations
 	entityTable *EntityTable
@@ -34,6 +34,7 @@ type EntityManager struct {
 func NewEntityManager(w *World) *EntityManager {
 	em := &EntityManager{
 		w:               w,
+		components:      NewComponentTable(),
 		entityTable:     NewEntityTable(w.idGen),
 		lists:           make(map[string]*UpdatedEntityList),
 		entitiesWithTag: make(map[string]*UpdatedEntityList),
@@ -107,14 +108,14 @@ func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 	}
 }
 
-func (m *EntityManager) EntityHasComponent(e *Entity, COMPONENT int) bool {
-	b, _ := e.ComponentBitArray.GetBit(uint64(COMPONENT))
+func (m *EntityManager) EntityHasComponent(e *Entity, name string) bool {
+	b, _ := e.ComponentBitArray.GetBit(uint64(m.components.ixs[name]))
 	return b
 }
 
 func (m *EntityManager) EntityHasTag(e *Entity, tag string) bool {
-	return m.EntityHasComponent(e, TAGLIST_COMPONENT) &&
-		m.components.TagList[e.ID].Has(tag)
+	return m.EntityHasComponent(e, "TagList") &&
+		e.GetTagList("GenericTags").Has(tag)
 }
 
 // apply the given tags to the given entity

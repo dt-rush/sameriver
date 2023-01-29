@@ -15,17 +15,16 @@ func NewPhysicsSystem() *PhysicsSystem {
 	return &PhysicsSystem{}
 }
 
+func (s *PhysicsSystem) GetComponentDeps() []string {
+	return []string{"Vec2D,Position", "Vec2D,Velocity", "Vec2D,Box", "Float64,Mass"}
+}
+
 func (s *PhysicsSystem) LinkWorld(w *World) {
 	s.w = w
 	s.physicsEntities = w.em.GetUpdatedEntityList(
 		EntityFilterFromComponentBitArray(
 			"physical",
-			MakeComponentBitArray([]ComponentType{
-				POSITION_COMPONENT,
-				VELOCITY_COMPONENT,
-				BOX_COMPONENT,
-				MASS_COMPONENT, // TODO: make some use of mass?
-			})))
+			w.em.components.BitArrayFromNames([]string{"Position", "Velocity", "Box", "Mass"})))
 }
 
 func (s *PhysicsSystem) Update() {

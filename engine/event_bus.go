@@ -13,7 +13,12 @@ type SubscriberList struct {
 	// Each EventFilter's Predicate will be tested against the events
 	// that are published for the matching type (and thus the predicates
 	// can safely assert the type of the Data member of the event)
-	channels [N_EVENT_TYPES][]*EventChannel
+	channels map[string][]*EventChannel
+}
+
+type Event struct {
+	Type string
+	Data interface{}
 }
 
 type EventBus struct {
@@ -22,11 +27,13 @@ type EventBus struct {
 }
 
 func NewEventBus() *EventBus {
-	return &EventBus{}
+	b := &EventBus{}
+	b.subscriberList.channels = make(map[string][]*EventChannel)
+	return b
 }
 
-func (ev *EventBus) Publish(Type EventType, Data interface{}) {
-	go ev.notifySubscribers(Event{Type, Data})
+func (ev *EventBus) Publish(t string, data interface{}) {
+	go ev.notifySubscribers(Event{t, data})
 }
 
 // Subscribe to listen for game events defined by a Filter
@@ -51,11 +58,11 @@ func (ev *EventBus) Unsubscribe(c *EventChannel) {
 func (ev *EventBus) notifySubscribers(e Event) {
 	// TODO: create a special system which listens on *all* events,
 	// printing them if it's turned on
-	eventsLog("⚹: %s\n", EVENT_NAMES[e.Type])
+	eventsLog("⚹: %s\n", e.Type)
 
 	var notifyFull = func(c *EventChannel) {
 		Logger.Printf("⚠ event subscriber channel #%s for events of "+
-			"type %s is full\n", c.name, EVENT_NAMES[e.Type])
+			"type %s is full\n", c.name, e.Type)
 	}
 
 	for _, c := range ev.subscriberList.channels[e.Type] {

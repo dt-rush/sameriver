@@ -89,16 +89,9 @@ func (m *EntityManager) doSpawn(
 	// add the entity to the list of current entities
 	m.entities[e.ID] = e
 	// set the bitarray for this entity
-	e.ComponentBitArray = components.ToBitArray()
+	e.ComponentBitArray = m.Components.BitArrayFromComponentSet(components)
 	// copy the data inNto the component storage for each component
-	// (note: we dereference the pointers, this is copy operation, so it's good
-	// that component values are either small pieces of data like [2]uint16
-	// or a pointer to a func, etc.).
-	// We don't "zero" the values of components not in the entity's set,
-	// because if a system operating on the component data
-	// expects to work on the data, it should be maintaining a list of
-	// entities with the required components using an UpdatedEntityList
-	m.ApplyComponentSet(components)(e)
+	m.Components.ApplyComponentSet(e, components)
 	// create (if doesn't exist) entitiesWithTag lists for each tag
 	m.TagEntity(e, tags...)
 	// apply the unique tag if provided

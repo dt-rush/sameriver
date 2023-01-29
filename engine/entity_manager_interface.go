@@ -13,7 +13,6 @@ type EntityManagerInterface interface {
 	DespawnAll()
 	Activate(e *Entity)
 	Deactivate(e *Entity)
-	ApplyComponentSet(cs ComponentSet) func(*Entity)
 
 	TagEntity(e *Entity, tags ...string)
 	TagEntities(entities []*Entity, tag string)

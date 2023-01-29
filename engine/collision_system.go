@@ -36,6 +36,11 @@ import (
 	"time"
 )
 
+type CollisionData struct {
+	This  *Entity
+	Other *Entity
+}
+
 type CollisionSystem struct {
 	w                  *World
 	collidableEntities *UpdatedEntityList
@@ -49,6 +54,10 @@ func NewCollisionSystem(rateLimit time.Duration) *CollisionSystem {
 	}
 }
 
+func (s *CollisionSystem) GetComponentDeps() []string {
+	return []string{"Vec2D,Position", "Vec2D,Box"}
+}
+
 func (s *CollisionSystem) LinkWorld(w *World) {
 	s.w = w
 	// Filter a regularly updated list of the entities which are collidable
@@ -56,9 +65,7 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 	s.collidableEntities = w.em.GetSortedUpdatedEntityList(
 		EntityFilterFromComponentBitArray(
 			"collidable",
-			MakeComponentBitArray([]ComponentType{
-				POSITION_COMPONENT,
-				BOX_COMPONENT})))
+			w.em.components.BitArrayFromNames([]string{"Position", "Box"})))
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
 	// in the collision rate limiter array (to guard against an entity
@@ -127,9 +134,9 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 func (s *CollisionSystem) DoCollide(i *Entity, j *Entity) {
 	s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Do(
 		func() {
-			s.w.Events.Publish(COLLISION_EVENT,
+			s.w.Events.Publish("collision",
 				CollisionData{This: i, Other: j})
-			s.w.Events.Publish(COLLISION_EVENT,
+			s.w.Events.Publish("collision",
 				CollisionData{This: j, Other: i})
 		})
 }
