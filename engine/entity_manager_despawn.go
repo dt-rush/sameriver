@@ -1,5 +1,10 @@
 package engine
 
+// the EntityManager is requested to despawn an entity
+type DespawnRequestData struct {
+	Entity *Entity
+}
+
 // process the despawn requests in the channel buffer
 func (m *EntityManager) processDespawnChannel() {
 	n := len(m.despawnSubscription.C)
@@ -36,9 +41,9 @@ func (m *EntityManager) QueueDespawn(e *Entity) {
 	req := DespawnRequestData{Entity: e}
 	if len(m.despawnSubscription.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
 		go func() {
-			m.despawnSubscription.C <- Event{DESPAWNREQUEST_EVENT, req}
+			m.despawnSubscription.C <- Event{"despawn-request", req}
 		}()
 	} else {
-		m.despawnSubscription.C <- Event{DESPAWNREQUEST_EVENT, req}
+		m.despawnSubscription.C <- Event{"despawn-request", req}
 	}
 }

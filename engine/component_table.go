@@ -1,6 +1,7 @@
-package main
+package engine
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -10,13 +11,13 @@ import (
 type ComponentTable struct {
 	em *EntityManager
 
-	highest_ix int
-	ixs        map[string]int
-	names      map[string]bool
+	next_ix int
+	ixs     map[string]int
+	ixs_rev map[int]string
+	names   map[string]bool
 
 	// data storage
 	vec2DMap     map[string][]Vec2D
-	vec3DMap     map[string][]Vec3D
 	logicUnitMap map[string][]LogicUnit
 	boolMap      map[string][]bool
 	intMap       map[string][]int
@@ -27,12 +28,12 @@ type ComponentTable struct {
 	genericMap   map[string][]interface{}
 }
 
-func NewComponentTable() ComponentTable {
+func NewComponentTable() *ComponentTable {
 	ct := &ComponentTable{}
 	ct.ixs = make(map[string]int)
+	ct.ixs_rev = make(map[int]string)
 	ct.names = make(map[string]bool)
 	ct.vec2DMap = make(map[string][]Vec2D)
-	ct.vec3DMap = make(map[string][]Vec3D)
 	ct.logicUnitMap = make(map[string][]LogicUnit)
 	ct.boolMap = make(map[string][]bool)
 	ct.intMap = make(map[string][]int)
@@ -57,30 +58,29 @@ func (ct *ComponentTable) AddComponent(spec string) {
 		ct.names[name] = true
 	}
 	// increment index and store (used for bitarray generation)
-	ct.ixs[name] = ct.highest_ix
-	ct.highest_ix++
+	ct.ixs[name] = ct.next_ix
+	ct.ixs_rev[ct.next_ix] = name
+	ct.next_ix++
 	// create table in appropriate map
 	switch kind {
 	case "Vec2D":
-		ct.componentsMap.vec2DMap[name] = make([]Vec2D, MAX_ENTITIES)
-	case "Vec3D":
-		ct.componentsMap.vec3DMap[name] = make([]Vec3D, MAX_ENTITIES)
+		ct.vec2DMap[name] = make([]Vec2D, MAX_ENTITIES)
 	case "LogicUnit":
-		ct.componentsMap.logicUnitMap[name] = make([]LogicUnit, MAX_ENTITIES)
+		ct.logicUnitMap[name] = make([]LogicUnit, MAX_ENTITIES)
 	case "Bool":
-		ct.componentsMap.intMap[name] = make([]bool, MAX_ENTITIES)
+		ct.boolMap[name] = make([]bool, MAX_ENTITIES)
 	case "Int":
-		ct.componentsMap.intMap[name] = make([]int, MAX_ENTITIES)
+		ct.intMap[name] = make([]int, MAX_ENTITIES)
 	case "Float64":
-		ct.componentsMap.float64Map[name] = make([]float64, MAX_ENTITIES)
+		ct.float64Map[name] = make([]float64, MAX_ENTITIES)
 	case "String":
-		ct.componentsMap.intMap[name] = make([]string, MAX_ENTITIES)
+		ct.stringMap[name] = make([]string, MAX_ENTITIES)
 	case "Sprite":
-		ct.componentsMap.spriteMap[name] = make([]Sprite, MAX_ENTITIES)
+		ct.spriteMap[name] = make([]Sprite, MAX_ENTITIES)
 	case "TagList":
-		ct.componentsMap.tagListMap[name] = make([]TagList, MAX_ENTITIES)
+		ct.tagListMap[name] = make([]TagList, MAX_ENTITIES)
 	case "Generic":
-		ct.componentsMap.genericMap[name] = make([]interface{}, MAX_ENTITIES)
+		ct.genericMap[name] = make([]interface{}, MAX_ENTITIES)
 	default:
 		panic(fmt.Sprintf("added component of kind %s has no case in component_table.go", kind))
 	}
@@ -89,9 +89,6 @@ func (ct *ComponentTable) AddComponent(spec string) {
 func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs *ComponentSet) {
 	for name, v := range cs.vec2DMap {
 		ct.vec2DMap[name][e.ID] = v
-	}
-	for name, v := range cs.vec3DMap {
-		ct.vec3DMap[name][e.ID] = v
 	}
 	for name, l := range cs.logicUnitMap {
 		ct.logicUnitMap[name][e.ID] = l
@@ -121,9 +118,10 @@ func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs *ComponentSet) {
 
 func (ct *ComponentTable) BitArrayFromNames(names []string) bitarray.BitArray {
 	b := bitarray.NewBitArray(uint64(len(ct.ixs)))
-	for name := range names {
+	for _, name := range names {
 		b.SetBit(uint64(ct.ixs[name]))
 	}
+	return b
 }
 
 func (ct *ComponentTable) BitArrayFromComponentSet(cs *ComponentSet) bitarray.BitArray {
@@ -131,6 +129,7 @@ func (ct *ComponentTable) BitArrayFromComponentSet(cs *ComponentSet) bitarray.Bi
 	for name, _ := range cs.names {
 		b.SetBit(uint64(ct.ixs[name]))
 	}
+	return b
 }
 
 // prints a string representation of a component bitarray as a set with
@@ -138,13 +137,13 @@ func (ct *ComponentTable) BitArrayFromComponentSet(cs *ComponentSet) bitarray.Bi
 func (ct *ComponentTable) BitArrayToString(b bitarray.BitArray) string {
 	var buf bytes.Buffer
 	buf.WriteString("[")
-	for i := uint64(0); i < len(ct.names); i++ {
+	for i := uint64(0); i < uint64(len(ct.names)); i++ {
 		bit, _ := b.GetBit(i)
 		// the index into the array is the component type int from the
 		// iota const block in component_enum.go
 		if bit {
-			buf.WriteString(fmt.Sprintf("%s", ct.names[i]))
-			if i != len(ct.names)-1 {
+			buf.WriteString(fmt.Sprintf("%s", ct.ixs_rev[int(i)]))
+			if i != uint64(len(ct.names)-1) {
 				buf.WriteString(", ")
 			}
 		}
@@ -154,10 +153,7 @@ func (ct *ComponentTable) BitArrayToString(b bitarray.BitArray) string {
 }
 
 func (e *Entity) GetVec2D(name string) *Vec2D {
-	return &e.World.em.components.vec3DMap[name][e.ID]
-}
-func (e *Entity) GetVec3D(name string) *Vec3D {
-	return &e.World.em.components.vec3DMap[name][e.ID]
+	return &e.World.em.components.vec2DMap[name][e.ID]
 }
 func (e *Entity) GetLogicUnit(name string) *LogicUnit {
 	return &e.World.em.components.logicUnitMap[name][e.ID]

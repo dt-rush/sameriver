@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -9,10 +10,11 @@ type ComponentSet struct {
 	names map[string]bool
 	// data storage
 	vec2DMap     map[string]Vec2D
-	vec3DMap     map[string]Vec3D
 	logicUnitMap map[string]LogicUnit
+	boolMap      map[string]bool
 	intMap       map[string]int
 	float64Map   map[string]float64
+	stringMap    map[string]string
 	spriteMap    map[string]Sprite
 	tagListMap   map[string]TagList
 	genericMap   map[string]interface{}
@@ -23,10 +25,11 @@ type ComponentSet struct {
 func MakeComponentSet(input map[string]interface{}) *ComponentSet {
 	cs := &ComponentSet{
 		vec2DMap:     make(map[string]Vec2D),
-		vec3DMap:     make(map[string]Vec3D),
 		logicUnitMap: make(map[string]LogicUnit),
+		boolMap:      make(map[string]bool),
 		intMap:       make(map[string]int),
 		float64Map:   make(map[string]float64),
+		stringMap:    make(map[string]string),
 		spriteMap:    make(map[string]Sprite),
 		tagListMap:   make(map[string]TagList),
 		genericMap:   make(map[string]interface{}),
@@ -41,32 +44,36 @@ func MakeComponentSet(input map[string]interface{}) *ComponentSet {
 		// assign values into appropriate maps
 		switch kind {
 		case "Vec2D":
-			if vec2d, ok := value.(Vec2D); ok {
-				cs.vec2DMap[name] = vec2d
-			}
-		case "Vec3D":
-			if vec3d, ok := value.(Vec3D); ok {
-				cs.vec3DMap[name] = vec3d
+			if v, ok := value.(Vec2D); ok {
+				cs.vec2DMap[name] = v
 			}
 		case "LogicUnit":
-			if logicUnit, ok := value.(LogicUnit); ok {
-				cs.logicUnitMap[name] = logicUnit
+			if l, ok := value.(LogicUnit); ok {
+				cs.logicUnitMap[name] = l
+			}
+		case "Bool":
+			if b, ok := value.(bool); ok {
+				cs.boolMap[name] = b
 			}
 		case "Int":
-			if integer, ok := value.(int); ok {
-				cs.intMap[name] = integer
+			if i, ok := value.(int); ok {
+				cs.intMap[name] = i
 			}
 		case "Float64":
-			if float, ok := value.(float64); ok {
-				cs.float64Map[name] = float
+			if f, ok := value.(float64); ok {
+				cs.float64Map[name] = f
+			}
+		case "String":
+			if s, ok := value.(string); ok {
+				cs.stringMap[name] = s
 			}
 		case "Sprite":
-			if sprite, ok := value.(Sprite); ok {
-				cs.spriteMap[name] = sprite
+			if s, ok := value.(Sprite); ok {
+				cs.spriteMap[name] = s
 			}
 		case "TagList":
-			if tagList, ok := value.(TagList); ok {
-				cs.tagListMap[name] = tagList
+			if t, ok := value.(TagList); ok {
+				cs.tagListMap[name] = t
 			}
 		case "Generic":
 			cs.genericMap[name] = value

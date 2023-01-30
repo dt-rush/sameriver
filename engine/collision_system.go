@@ -124,7 +124,7 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 				j, i = i, j
 			}
 			if !s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Limited() &&
-				s.TestCollision(i.ID, j.ID) {
+				s.TestCollision(i, j) {
 				s.DoCollide(i, j)
 			}
 		}
@@ -142,11 +142,11 @@ func (s *CollisionSystem) DoCollide(i *Entity, j *Entity) {
 }
 
 // Test collision between two entities
-func (s *CollisionSystem) TestCollision(i int, j int) bool {
-	iPos := &s.w.em.components.Position[i]
-	iBox := &s.w.em.components.Box[i]
-	jPos := &s.w.em.components.Position[j]
-	jBox := &s.w.em.components.Box[j]
+func (s *CollisionSystem) TestCollision(i *Entity, j *Entity) bool {
+	iPos := i.GetVec2D("Position")
+	iBox := i.GetVec2D("Box")
+	jPos := j.GetVec2D("Position")
+	jBox := j.GetVec2D("Box")
 	intersects := RectIntersectsRect(iPos, iBox, jPos, jBox)
 	return intersects
 }

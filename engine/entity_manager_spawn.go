@@ -5,6 +5,11 @@ import (
 	"fmt"
 )
 
+type SpawnRequestData struct {
+	Components ComponentSet
+	Tags       []string
+}
+
 // get the current number of requests in the channel and only process
 // them. More may continue to pile up. They'll get processed next time.
 func (m *EntityManager) processSpawnChannel() {
@@ -28,10 +33,10 @@ func (m *EntityManager) Spawn(tags []string,
 func (m *EntityManager) queueSpawn(req SpawnRequestData) {
 	if len(m.spawnSubscription.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
 		go func() {
-			m.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, req}
+			m.spawnSubscription.C <- Event{"spawn-request", req}
 		}()
 	} else {
-		m.spawnSubscription.C <- Event{SPAWNREQUEST_EVENT, req}
+		m.spawnSubscription.C <- Event{"spawn-request", req}
 	}
 }
 
