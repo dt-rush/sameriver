@@ -1,7 +1,11 @@
 package engine
 
 func testingWorld() *World {
-	return NewWorld(1024, 1024)
+	w := NewWorld(1024, 1024)
+	w.RegisterComponents([]string{
+		"Vec2D,Position",
+	})
+	return w
 }
 
 func testingWorldWithAllLogicTypes() (*World, *testSystem, *int, *int) {

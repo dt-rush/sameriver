@@ -13,7 +13,7 @@ func (s *SteeringSystem) GetComponentDeps() []string {
 	return []string{
 		"Vec2D,Position",
 		"Vec2D,Velocity",
-		"Vec2D,MaxVelocity",
+		"Float64,MaxVelocity",
 		"Vec2D,MovementTarget",
 		"Vec2D,Steer",
 		"Float64,Mass",

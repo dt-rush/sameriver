@@ -1,18 +1,18 @@
 package engine
 
 import (
-	"reflect"
 	"testing"
 )
 
-func TestValidateComponentSetFields(t *testing.T) {
-	ty := reflect.TypeOf(ComponentSet{})
-	for i := 0; i < ty.NumField(); i++ {
-		f := ty.Field(i)
-		if f.Type.Kind() != reflect.Ptr {
-			t.Errorf("field %s was not of pointer type", f.Name)
+func TestInvalidComponentType(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Should panic if given component type Vec7D")
 		}
-	}
+	}()
+	MakeComponentSet(map[string]interface{}{
+		"Vec7D,Position": Vec2D{0, 0},
+	})
 }
 
 func TestComponentSetToBitArray(t *testing.T) {

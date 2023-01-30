@@ -5,14 +5,10 @@ import (
 )
 
 func TestEntityMakeLogicUnit(t *testing.T) {
-	ID := 1000
-	worldID := 2000
-	e := Entity{ID: ID, WorldID: worldID}
+	w := testingWorld()
+	e, _ := w.Spawn([]string{}, ComponentSet{})
 	lu := e.MakeLogicUnit("loggyboi", func() {})
 	if lu.name != e.LogicUnitName("loggyboi") {
 		t.Fatal("did not set logic unit name")
-	}
-	if lu.worldID != e.WorldID {
-		t.Fatal("did not set logic unit world ID")
 	}
 }

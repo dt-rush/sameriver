@@ -87,7 +87,59 @@ func (ct *ComponentTable) AddComponent(spec string) {
 	}
 }
 
+func (ct *ComponentTable) VerifyComponentSet(cs ComponentSet) (bool, string) {
+	for name, _ := range cs.vec2DMap {
+		if _, ok := ct.vec2DMap[name]; !ok {
+			return false, fmt.Sprintf("%s not found in vec2DMap", name)
+		}
+	}
+	for name, _ := range cs.logicUnitMap {
+		if _, ok := ct.logicUnitMap[name]; !ok {
+			return false, fmt.Sprintf("%s not found in logicUnitMap", name)
+		}
+	}
+	for name, _ := range cs.boolMap {
+		if _, ok := ct.boolMap[name]; !ok {
+			return false, fmt.Sprintf("%s not found in boolMap", name)
+		}
+	}
+	for name, _ := range cs.intMap {
+		if _, ok := ct.intMap[name]; !ok {
+			return false, fmt.Sprintf("%s not found in intMap", name)
+		}
+	}
+	for name, _ := range cs.float64Map {
+		if _, ok := ct.float64Map[name]; !ok {
+			return false, fmt.Sprintf("%s not found in float64Map", name)
+		}
+	}
+	for name, _ := range cs.stringMap {
+		if _, ok := ct.stringMap[name]; !ok {
+			return false, fmt.Sprintf("%s not found in stringMap", name)
+		}
+	}
+	for name, _ := range cs.spriteMap {
+		if _, ok := ct.spriteMap[name]; !ok {
+			return false, fmt.Sprintf("%s not found in spriteMap", name)
+		}
+	}
+	for name, _ := range cs.tagListMap {
+		if _, ok := ct.tagListMap[name]; !ok {
+			return false, fmt.Sprintf("%s not found in tagListMap", name)
+		}
+	}
+	for name, _ := range cs.genericMap {
+		if _, ok := ct.genericMap[name]; !ok {
+			return false, fmt.Sprintf("%s not found in genericMap", name)
+		}
+	}
+	return true, "valid component set"
+}
+
 func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs ComponentSet) {
+	if ok, msg := ct.VerifyComponentSet(cs); !ok {
+		panic(fmt.Sprintf("Invalid ComponentSet Application: %s", msg))
+	}
 	for name, v := range cs.vec2DMap {
 		ct.vec2DMap[name][e.ID] = v
 	}
