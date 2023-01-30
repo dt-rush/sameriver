@@ -308,14 +308,17 @@ func (w *World) DumpStats() (stats map[string](map[string]float64)) {
 	stats = make(map[string](map[string]float64))
 	systemStats, systemTotal := w.systemsRunner.DumpStats()
 	worldStats, worldTotal := w.worldLogicsRunner.DumpStats()
-	entityStats, entityTotal := w.primaryEntityLogicsRunner.DumpStats()
+	primaryEntityStats, primaryEntityTotal := w.primaryEntityLogicsRunner.DumpStats()
+	logicUnitStats, logicUnitTotal := w.logicUnitComponentRunner.DumpStats()
 	stats["system"] = systemStats
 	stats["world"] = worldStats
-	stats["entity"] = entityStats
+	stats["primaryEntity"] = primaryEntityStats
+	stats["logicUnits"] = logicUnitStats
 	stats["totals"] = make(map[string]float64)
 	stats["totals"]["system"] = systemTotal
 	stats["totals"]["world"] = worldTotal
-	stats["totals"]["entity"] = entityTotal
+	stats["totals"]["primaryEntity"] = primaryEntityTotal
+	stats["totals"]["logicUnit"] = logicUnitTotal
 	if w.totalRuntime != nil {
 		stats["totals"]["total"] = *w.totalRuntime
 	} else {
