@@ -25,12 +25,12 @@ func (w *World) QueueDespawn(e *Entity) {
 
 func (w *World) Despawn(e *Entity) {
 	w.em.Despawn(e)
-	w.RemoveEntityLogic(e)
+	w.RemoveAllLogics(e)
 }
 
 func (w *World) DespawnAll() {
 	for e, _ := range w.em.GetCurrentEntitiesSetCopy() {
-		w.RemoveEntityLogic(e)
+		w.RemoveAllLogics(e)
 	}
 	w.em.DespawnAll()
 }
@@ -41,10 +41,6 @@ func (w *World) Activate(e *Entity) {
 
 func (w *World) Deactivate(e *Entity) {
 	w.em.Deactivate(e)
-}
-
-func (w *World) ApplyComponentSet(cs ComponentSet) func(*Entity) {
-	return w.em.ApplyComponentSet(cs)
 }
 
 func (w *World) GetUpdatedEntityList(q EntityFilter) *UpdatedEntityList {
@@ -67,8 +63,8 @@ func (w *World) EntitiesWithTag(tag string) *UpdatedEntityList {
 	return w.em.EntitiesWithTag(tag)
 }
 
-func (w *World) EntityHasComponent(e *Entity, COMPONENT int) bool {
-	return w.em.EntityHasComponent(e, COMPONENT)
+func (w *World) EntityHasComponent(e *Entity, name string) bool {
+	return w.em.EntityHasComponent(e, name)
 }
 
 func (w *World) EntityHasTag(e *Entity, tag string) bool {

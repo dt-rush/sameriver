@@ -10,7 +10,7 @@ import (
 // used by the EntityManager to hold info about the allocated entities
 type EntityTable struct {
 	// the ID Generator given by the world the entity manager is in
-	idGen *utils.IDGenerator
+	IdGen *utils.IDGenerator
 	// list of available entity ID's which have previously been deallocated
 	availableIDs []int
 	// list of Entities which have been allocated
@@ -21,7 +21,7 @@ type EntityTable struct {
 
 func NewEntityTable(IDGen *utils.IDGenerator) *EntityTable {
 	return &EntityTable{
-		idGen:           IDGen,
+		IdGen:           IDGen,
 		currentEntities: make(map[*Entity]bool),
 	}
 }
@@ -53,7 +53,7 @@ func (t *EntityTable) allocateID() (*Entity, error) {
 	}
 	entity := &Entity{
 		ID:        ID,
-		WorldID:   t.idGen.Next(),
+		WorldID:   t.IdGen.Next(),
 		Active:    false,
 		Despawned: false,
 		Logics:    make(map[string]*LogicUnit),
@@ -66,7 +66,7 @@ func (t *EntityTable) deallocate(e *Entity) {
 	// guards against false deallocation (edge case, but hey)
 	if _, ok := t.currentEntities[e]; ok {
 		t.availableIDs = append(t.availableIDs, e.ID)
-		t.idGen.Free(e.WorldID)
+		t.IdGen.Free(e.WorldID)
 		delete(t.currentEntities, e)
 	}
 }

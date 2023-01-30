@@ -18,7 +18,7 @@ func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) 
 	// subscribe to collision events
 	ec := w.Events.Subscribe(
 		"SimpleCollisionFilter",
-		SimpleEventFilter(COLLISION_EVENT))
+		SimpleEventFilter("collision"))
 	return w, cs, ec, e
 }
 
@@ -34,7 +34,7 @@ func TestCollisionSystem(t *testing.T) {
 		t.Fatal("collision event wasn't received within 1 frame")
 	}
 	// move the enitity so it no longer collides
-	*e.GetPosition() = Vec2D{100, 100}
+	*e.GetVec2D("Position") = Vec2D{100, 100}
 	w.Update(FRAME_SLEEP_MS / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_SLEEP)
@@ -70,22 +70,22 @@ func TestCollisionRateLimit(t *testing.T) {
 func TestCollisionFilter(t *testing.T) {
 	w, _, _, e := testingSetupCollision()
 	coin, _ := w.Spawn([]string{"coin"},
-		ComponentSet{
-			Position: e.GetPosition(),
-			Box:      e.GetBox(),
-		},
-	)
-	predicate := func(c CollisionData) bool {
+		MakeComponentSet(map[string]interface{}{
+			"Vec2D,Position": e.GetVec2D("Position"),
+			"Vec2D,Box":      e.GetVec2D("Box"),
+		}))
+	predicate := func(ev Event) bool {
+		c := ev.Data.(CollisionData)
 		return c.This == e && c.Other == coin
 	}
 	ec := w.Events.Subscribe("PredicateCollisionFilter",
-		CollisionEventFilter(predicate))
+		PredicateEventFilter("collision", predicate))
 	w.Update(FRAME_SLEEP_MS / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_SLEEP)
 	select {
 	case ev := <-ec.C:
-		if !predicate(ev.Data.(CollisionData)) {
+		if !predicate(ev) {
 			t.Fatal("CollisionEventFilter did not select correct event")
 		}
 	default:

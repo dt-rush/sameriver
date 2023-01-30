@@ -17,6 +17,9 @@ func (s *testSystem) Update() {
 	time.Sleep(1 * time.Millisecond)
 	s.updates += 1
 }
+func (s *testSystem) GetComponentDeps() []string {
+	return []string{}
+}
 
 // a system dependent on testSystem
 type testDependentSystem struct {
@@ -28,16 +31,22 @@ func newTestDependentSystem() *testDependentSystem {
 }
 func (s *testDependentSystem) LinkWorld(w *World) {}
 func (s *testDependentSystem) Update()            {}
+func (s *testDependentSystem) GetComponentDeps() []string {
+	return []string{}
+}
 
 // a system (misconfig) which is implemented on a non-pointer receiver
 type testNonPointerReceiverSystem struct {
 }
 
-func newTestNonPointerReceiverSystem() testNonPointerReceiverSystem {
-	return testNonPointerReceiverSystem{}
+func newTestNonPointerReceiverSystem() *testNonPointerReceiverSystem {
+	return &testNonPointerReceiverSystem{}
 }
 func (s testNonPointerReceiverSystem) LinkWorld(w *World) {}
 func (s testNonPointerReceiverSystem) Update()            {}
+func (s testNonPointerReceiverSystem) GetComponentDeps() []string {
+	return []string{}
+}
 
 // a system (misconfig) whose name does not end in System
 type testSystemThatIsMisnamed struct {
@@ -48,6 +57,9 @@ func newTestSystemThatIsMisnamed() *testSystemThatIsMisnamed {
 }
 func (s *testSystemThatIsMisnamed) LinkWorld(w *World) {}
 func (s *testSystemThatIsMisnamed) Update()            {}
+func (s *testSystemThatIsMisnamed) GetComponentDeps() []string {
+	return []string{}
+}
 
 // a system (misconfig) which is dependent on a non-pointer type
 type testDependentNonPointerSystem struct {
@@ -59,6 +71,9 @@ func newTestDependentNonPointerSystem() *testDependentNonPointerSystem {
 }
 func (s *testDependentNonPointerSystem) LinkWorld(w *World) {}
 func (s *testDependentNonPointerSystem) Update()            {}
+func (s *testDependentNonPointerSystem) GetComponentDeps() []string {
+	return []string{}
+}
 
 // a system (misconfig) which is dependent on a non-System
 type testDependentNonSystemSystem struct {
@@ -70,3 +85,6 @@ func newTestDependentNonSystemSystem() *testDependentNonSystemSystem {
 }
 func (s *testDependentNonSystemSystem) LinkWorld(w *World) {}
 func (s *testDependentNonSystemSystem) Update()            {}
+func (s *testDependentNonSystemSystem) GetComponentDeps() []string {
+	return []string{}
+}

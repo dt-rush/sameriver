@@ -17,7 +17,7 @@ func testingWorldWithAllLogicTypes() (*World, *testSystem, *int, *int) {
 	w.ActivateWorldLogic(name)
 	// add entity logic
 	e, _ := testingSpawnSimple(w)
-	w.AddEntityLogic(e, func() { entityUpdates += 1 })
+	w.SetPrimaryEntityLogic(e, func() { entityUpdates += 1 })
 	w.ActivateEntityLogic(e)
 	return w, ts, &worldUpdates, &entityUpdates
 }

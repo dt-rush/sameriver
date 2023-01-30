@@ -18,7 +18,7 @@ type ComponentTable struct {
 
 	// data storage
 	vec2DMap     map[string][]Vec2D
-	logicUnitMap map[string][]LogicUnit
+	logicUnitMap map[string][]*LogicUnit
 	boolMap      map[string][]bool
 	intMap       map[string][]int
 	float64Map   map[string][]float64
@@ -34,7 +34,7 @@ func NewComponentTable() *ComponentTable {
 	ct.ixs_rev = make(map[int]string)
 	ct.names = make(map[string]bool)
 	ct.vec2DMap = make(map[string][]Vec2D)
-	ct.logicUnitMap = make(map[string][]LogicUnit)
+	ct.logicUnitMap = make(map[string][]*LogicUnit)
 	ct.boolMap = make(map[string][]bool)
 	ct.intMap = make(map[string][]int)
 	ct.float64Map = make(map[string][]float64)
@@ -53,7 +53,8 @@ func (ct *ComponentTable) AddComponent(spec string) {
 
 	// guard against double insertion (many say it's a great time, but not here)
 	if _, ok := ct.names[name]; ok {
-		panic(fmt.Sprintf("can't add component with name %s - already exists in components table", name))
+		Logger.Println(fmt.Sprintf("Component with name %s already exists in components table", name))
+		return
 	} else {
 		ct.names[name] = true
 	}
@@ -65,8 +66,8 @@ func (ct *ComponentTable) AddComponent(spec string) {
 	switch kind {
 	case "Vec2D":
 		ct.vec2DMap[name] = make([]Vec2D, MAX_ENTITIES)
-	case "LogicUnit":
-		ct.logicUnitMap[name] = make([]LogicUnit, MAX_ENTITIES)
+	case "*LogicUnit":
+		ct.logicUnitMap[name] = make([]*LogicUnit, MAX_ENTITIES)
 	case "Bool":
 		ct.boolMap[name] = make([]bool, MAX_ENTITIES)
 	case "Int":
@@ -92,7 +93,8 @@ func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs ComponentSet) {
 	}
 	for name, l := range cs.logicUnitMap {
 		ct.logicUnitMap[name][e.ID] = l
-		e.Logics[l.name] = &l
+		e.Logics[l.name] = l
+		e.World.logicUnitComponentRunner.Add(l)
 	}
 	for name, b := range cs.boolMap {
 		ct.boolMap[name][e.ID] = b
@@ -157,7 +159,7 @@ func (e *Entity) GetVec2D(name string) *Vec2D {
 	return &e.World.em.components.vec2DMap[name][e.ID]
 }
 func (e *Entity) GetLogicUnit(name string) *LogicUnit {
-	return &e.World.em.components.logicUnitMap[name][e.ID]
+	return e.World.em.components.logicUnitMap[name][e.ID]
 }
 func (e *Entity) GetBool(name string) *bool {
 	return &e.World.em.components.boolMap[name][e.ID]

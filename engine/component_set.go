@@ -10,7 +10,7 @@ type ComponentSet struct {
 	names map[string]bool
 	// data storage
 	vec2DMap     map[string]Vec2D
-	logicUnitMap map[string]LogicUnit
+	logicUnitMap map[string]*LogicUnit
 	boolMap      map[string]bool
 	intMap       map[string]int
 	float64Map   map[string]float64
@@ -22,10 +22,10 @@ type ComponentSet struct {
 
 // takes as input a map whose keys are components specified by {kind},{name}
 // and whose values are interface{} for the value
-func MakeComponentSet(input map[string]interface{}) *ComponentSet {
-	cs := &ComponentSet{
+func MakeComponentSet(input map[string]interface{}) ComponentSet {
+	cs := ComponentSet{
 		vec2DMap:     make(map[string]Vec2D),
-		logicUnitMap: make(map[string]LogicUnit),
+		logicUnitMap: make(map[string]*LogicUnit),
 		boolMap:      make(map[string]bool),
 		intMap:       make(map[string]int),
 		float64Map:   make(map[string]float64),
@@ -47,8 +47,8 @@ func MakeComponentSet(input map[string]interface{}) *ComponentSet {
 			if v, ok := value.(Vec2D); ok {
 				cs.vec2DMap[name] = v
 			}
-		case "LogicUnit":
-			if l, ok := value.(LogicUnit); ok {
+		case "*LogicUnit":
+			if l, ok := value.(*LogicUnit); ok {
 				cs.logicUnitMap[name] = l
 			}
 		case "Bool":

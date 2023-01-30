@@ -25,7 +25,7 @@ type EntityManagerInterface interface {
 
 	UniqueTaggedEntity(tag string) (*Entity, error)
 	EntitiesWithTag(tag string) *UpdatedEntityList
-	EntityHasComponent(e *Entity, COMPONENT int) bool
+	EntityHasComponent(e *Entity, name string) bool
 	EntityHasTag(e *Entity, tag string) bool
 
 	GetUpdatedEntityList(q EntityFilter) *UpdatedEntityList

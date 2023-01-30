@@ -35,7 +35,7 @@ func NewEntityManager(w *World) *EntityManager {
 	em := &EntityManager{
 		w:               w,
 		components:      NewComponentTable(),
-		entityTable:     NewEntityTable(w.idGen),
+		entityTable:     NewEntityTable(w.IdGen),
 		lists:           make(map[string]*UpdatedEntityList),
 		entitiesWithTag: make(map[string]*UpdatedEntityList),
 		uniqueEntities:  make(map[string]*Entity),
@@ -76,7 +76,7 @@ func (m *EntityManager) setActiveState(e *Entity, state bool) {
 			m.entityTable.active--
 		}
 		// start / stop all logics of this entity accordingly
-		// TODO: fetch from e.Logics and set active for each one
+		e.PrimaryLogic.active = state
 		for _, logic := range e.Logics {
 			logic.active = state
 		}

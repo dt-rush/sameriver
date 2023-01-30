@@ -17,6 +17,7 @@ type Entity struct {
 	ComponentBitArray bitarray.BitArray
 	ListsMutex        sync.RWMutex
 	Lists             []*UpdatedEntityList
+	PrimaryLogic      *LogicUnit
 	Logics            map[string]*LogicUnit
 }
 
@@ -24,12 +25,12 @@ func (e *Entity) LogicUnitName(name string) string {
 	return fmt.Sprintf("entity-logic-%d-%s", e.ID, name)
 }
 
-func (e *Entity) MakeLogicUnit(name string, F func()) LogicUnit {
-	return LogicUnit{
+func (e *Entity) MakeLogicUnit(name string, F func()) *LogicUnit {
+	return &LogicUnit{
 		name:    e.LogicUnitName(name),
 		f:       F,
-		active:  false,
-		worldID: e.WorldID,
+		active:  true,
+		worldID: e.World.IdGen.Next(),
 	}
 }
 

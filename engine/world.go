@@ -15,40 +15,50 @@ type World struct {
 	Width  float64
 	Height float64
 
-	idGen  *utils.IDGenerator
+	IdGen  *utils.IDGenerator
 	Events *EventBus
 	em     *EntityManager
 
 	systems       map[string]System
 	systemsRunner *RuntimeLimiter
 	// this is needed to associate ID's with Systems, since System is an
-	// interface, not a struct type like LogicUnit
+	// interface, not a struct type like LogicUnit that can have a name field
 	systemsIDs map[System]int
 
 	worldLogics       map[string]*LogicUnit
 	worldLogicsRunner *RuntimeLimiter
 
-	entityLogics       map[int]*LogicUnit
-	entityLogicsRunner *RuntimeLimiter
+	// for primary entity logics
+	primaryEntityLogics       map[int]*LogicUnit
+	primaryEntityLogicsRunner *RuntimeLimiter
+
+	// for additional specialised entity logics
+	logicUnitComponentRunner *RuntimeLimiter
 
 	totalRuntime *float64
 }
 
 func NewWorld(width int, height int) *World {
 	w := &World{
-		Width:              float64(width),
-		Height:             float64(height),
-		Events:             NewEventBus(),
-		idGen:              utils.NewIDGenerator(),
-		systems:            make(map[string]System),
-		systemsIDs:         make(map[System]int),
-		systemsRunner:      NewRuntimeLimiter(),
-		worldLogics:        make(map[string]*LogicUnit),
-		worldLogicsRunner:  NewRuntimeLimiter(),
-		entityLogics:       make(map[int]*LogicUnit),
-		entityLogicsRunner: NewRuntimeLimiter(),
+		Width:                     float64(width),
+		Height:                    float64(height),
+		Events:                    NewEventBus(),
+		IdGen:                     utils.NewIDGenerator(),
+		systems:                   make(map[string]System),
+		systemsIDs:                make(map[System]int),
+		systemsRunner:             NewRuntimeLimiter(),
+		worldLogics:               make(map[string]*LogicUnit),
+		worldLogicsRunner:         NewRuntimeLimiter(),
+		primaryEntityLogics:       make(map[int]*LogicUnit),
+		primaryEntityLogicsRunner: NewRuntimeLimiter(),
+		logicUnitComponentRunner:  NewRuntimeLimiter(),
 	}
+	// init entitymanager
 	w.em = NewEntityManager(w)
+	// register generic taglist
+	w.em.components.AddComponent("TagList,GenericTags")
+	// register generic logic
+	w.em.components.AddComponent("LogicUnit,GenericLogic")
 	return w
 }
 
@@ -61,7 +71,8 @@ func (w *World) Update(allowance float64) (overrun_ms float64) {
 		allowance-float64(time.Since(t0).Nanoseconds())/1.0e6,
 		w.systemsRunner,
 		w.worldLogicsRunner,
-		w.entityLogicsRunner)
+		w.primaryEntityLogicsRunner,
+		w.logicUnitComponentRunner)
 	total := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	if w.totalRuntime == nil {
 		w.totalRuntime = &total
@@ -72,12 +83,8 @@ func (w *World) Update(allowance float64) (overrun_ms float64) {
 }
 
 func (w *World) RegisterComponents(specs []string) {
-	// register generic taglist
-	w.em.components.AddComponent("TagList,GenericTags")
-	// register generic logic
-	w.em.components.AddComponent("LogicUnit,GenericLogic")
 	// register given specs
-	for spec := range specs {
+	for _, spec := range specs {
 		w.em.components.AddComponent(spec)
 	}
 }
@@ -85,7 +92,7 @@ func (w *World) RegisterComponents(specs []string) {
 func (w *World) AddSystems(systems ...System) {
 	// add all systems
 	for _, s := range systems {
-		w.ensureComponents(s.GetComponentDeps())
+		w.RegisterComponents(s.GetComponentDeps())
 		w.addSystem(s)
 	}
 	// link up all systems' dependencies
@@ -101,7 +108,7 @@ func (w *World) addSystem(s System) {
 		panic(fmt.Sprintf("double-add of system %s", name))
 	}
 	w.systems[name] = s
-	ID := w.idGen.Next()
+	ID := w.IdGen.Next()
 	w.systemsIDs[s] = ID
 	s.LinkWorld(w)
 	logicName := fmt.Sprintf("%s-update", name)
@@ -194,7 +201,7 @@ func (w *World) AddWorldLogic(Name string, F func()) *LogicUnit {
 		name:    Name,
 		f:       F,
 		active:  false,
-		worldID: w.idGen.Next(),
+		worldID: w.IdGen.Next(),
 	}
 	w.worldLogics[Name] = l
 	w.worldLogicsRunner.Add(l)
@@ -230,38 +237,55 @@ func (w *World) SetWorldLogicActiveState(name string, state bool) {
 	}
 }
 
-func (w *World) AddEntityLogic(e *Entity, F func()) *LogicUnit {
-	l := e.MakeLogicUnit(F)
-	w.entityLogics[e.ID] = l
-	w.entityLogicsRunner.Add(l)
+func (w *World) SetPrimaryEntityLogic(e *Entity, F func()) *LogicUnit {
+	// idempotent remove
+	w.RemovePrimaryEntityLogic(e)
+	l := e.MakeLogicUnit("primary", F)
+	w.primaryEntityLogics[e.ID] = l
+	w.primaryEntityLogicsRunner.Add(l)
 	return l
 }
 
-func (w *World) RemoveEntityLogic(e *Entity) {
-	if logic, ok := w.entityLogics[e.ID]; ok {
-		w.entityLogicsRunner.Remove(logic.worldID)
-		delete(w.entityLogics, e.ID)
+func (w *World) RemovePrimaryEntityLogic(e *Entity) {
+	if logic, ok := w.primaryEntityLogics[e.ID]; ok {
+		w.primaryEntityLogicsRunner.Remove(logic.worldID)
+		delete(w.primaryEntityLogics, e.ID)
+	}
+}
+
+func (w *World) RemoveAllLogics(e *Entity) {
+	w.RemovePrimaryEntityLogic(e)
+	for _, logic := range e.Logics {
+		w.logicUnitComponentRunner.Remove(logic.worldID)
 	}
 }
 
 func (w *World) ActivateAllEntityLogics() {
-	w.entityLogicsRunner.ActivateAll()
+	w.primaryEntityLogicsRunner.ActivateAll()
+	w.logicUnitComponentRunner.ActivateAll()
 }
 
 func (w *World) DeactivateAllEntityLogics() {
-	w.entityLogicsRunner.DeactivateAll()
+	w.primaryEntityLogicsRunner.DeactivateAll()
+	w.logicUnitComponentRunner.DeactivateAll()
 }
 
 func (w *World) ActivateEntityLogic(e *Entity) {
-	w.setEntityLogicActiveState(e, true)
+	w.setEntityPrimaryLogicActiveState(e, true)
+	for _, logic := range e.Logics {
+		logic.active = true
+	}
 }
 
 func (w *World) DeactivateEntityLogic(e *Entity) {
-	w.setEntityLogicActiveState(e, false)
+	w.setEntityPrimaryLogicActiveState(e, false)
+	for _, logic := range e.Logics {
+		logic.active = false
+	}
 }
 
-func (w *World) setEntityLogicActiveState(e *Entity, state bool) {
-	if logic, ok := w.entityLogics[e.ID]; ok {
+func (w *World) setEntityPrimaryLogicActiveState(e *Entity, state bool) {
+	if logic, ok := w.primaryEntityLogics[e.ID]; ok {
 		logic.active = state
 	}
 }
@@ -275,7 +299,7 @@ func (w *World) DumpStats() (stats map[string](map[string]float64)) {
 	stats = make(map[string](map[string]float64))
 	systemStats, systemTotal := w.systemsRunner.DumpStats()
 	worldStats, worldTotal := w.worldLogicsRunner.DumpStats()
-	entityStats, entityTotal := w.entityLogicsRunner.DumpStats()
+	entityStats, entityTotal := w.primaryEntityLogicsRunner.DumpStats()
 	stats["system"] = systemStats
 	stats["world"] = worldStats
 	stats["entity"] = entityStats

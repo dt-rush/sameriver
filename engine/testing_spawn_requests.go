@@ -18,7 +18,9 @@ func testingSpawnSimple(em EntityManagerInterface) (*Entity, error) {
 
 func testingSpawnPosition(
 	em EntityManagerInterface, pos Vec2D) (*Entity, error) {
-	return em.Spawn([]string{}, ComponentSet{Position: &pos})
+	return em.Spawn([]string{}, MakeComponentSet(map[string]interface{}{
+		"Vec2D,Position": pos,
+	}))
 }
 
 func testingSpawnTagged(
@@ -29,45 +31,41 @@ func testingSpawnTagged(
 func testingSpawnSpatial(
 	em EntityManagerInterface, pos Vec2D, box Vec2D) (*Entity, error) {
 	return em.Spawn([]string{},
-		ComponentSet{
-			Position: &pos,
-			Box:      &box,
-		},
-	)
+		MakeComponentSet(map[string]interface{}{
+			"Vec2D,Position": pos,
+			"Vec2D,Box":      box,
+		}))
 }
 
 func testingSpawnCollision(em EntityManagerInterface) (*Entity, error) {
 	return em.Spawn([]string{},
-		ComponentSet{
-			Position: &Vec2D{10, 10},
-			Box:      &Vec2D{4, 4},
-		},
-	)
+		MakeComponentSet(map[string]interface{}{
+			"Vec2D,Position": Vec2D{10, 10},
+			"Vec2D,Box":      Vec2D{4, 4},
+		}))
 }
 
 func testingSpawnSteering(em EntityManagerInterface) (*Entity, error) {
 	mass := 3.0
 	maxV := 3.0
 	return em.Spawn([]string{},
-		ComponentSet{
-			Position:       &Vec2D{0, 0},
-			Velocity:       &Vec2D{0, 0},
-			MaxVelocity:    &maxV,
-			MovementTarget: &Vec2D{1, 1},
-			Steer:          &Vec2D{0, 0},
-			Mass:           &mass,
-		},
-	)
+		MakeComponentSet(map[string]interface{}{
+			"Vec2D,Position":       Vec2D{0, 0},
+			"Vec2D,Velocity":       Vec2D{0, 0},
+			"Float64,MaxVelocity":  maxV,
+			"Vec2D,MovementTarget": Vec2D{1, 1},
+			"Vec2D,Steer":          Vec2D{0, 0},
+			"Float64,Mass":         mass,
+		}))
 }
 
 func testingSpawnPhysics(em EntityManagerInterface) (*Entity, error) {
 	mass := 3.0
 	return em.Spawn([]string{},
-		ComponentSet{
-			Position: &Vec2D{10, 10},
-			Velocity: &Vec2D{0, 0},
-			Box:      &Vec2D{1, 1},
-			Mass:     &mass,
-		},
-	)
+		MakeComponentSet(map[string]interface{}{
+			"Vec2D,Position": Vec2D{10, 10},
+			"Vec2D,Velocity": Vec2D{0, 0},
+			"Vec2D,Box":      Vec2D{1, 1},
+			"Float64,Mass":   mass,
+		}))
 }
