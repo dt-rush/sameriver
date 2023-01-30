@@ -64,6 +64,32 @@ func TestLayeredRendererRender(t *testing.T) {
 	}
 }
 
+func TestLayeredRendererZIndexing(t *testing.T) {
+	lr := NewLayeredRenderer()
+	// add layer A
+	x := 0
+	lA := NewRenderLayer("la", 0, func(w *sdl.Window, r *sdl.Renderer) {
+		time.Sleep(1 * time.Millisecond)
+		x++
+	})
+	// add layer B
+	lB := NewRenderLayer("lb", 4, func(w *sdl.Window, r *sdl.Renderer) {
+		time.Sleep(1 * time.Millisecond)
+		x *= 3
+	})
+	// add B first, even though A is a lower Zindex and should render first
+	lr.AddLayer(lB)
+	lr.AddLayer(lA)
+	// render and get elapsed time
+	elapsed := lr.Render(nil, nil)
+	if x != 3 {
+		t.Fatal("Render() did not render in order")
+	}
+	if elapsed < 2 {
+		t.Fatal("did not return elapsed time properly")
+	}
+}
+
 func TestLayeredRendererByName(t *testing.T) {
 	lr := NewLayeredRenderer()
 	// add layer A
