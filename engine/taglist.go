@@ -4,6 +4,12 @@ type TagList struct {
 	Tags map[string]bool
 }
 
+func NewTagList() TagList {
+	l := TagList{}
+	l.Tags = make(map[string]bool)
+	return l
+}
+
 func (l *TagList) Has(tags ...string) bool {
 	ok := true
 	for _, tag := range tags {

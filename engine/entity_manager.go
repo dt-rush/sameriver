@@ -125,6 +125,7 @@ func (m *EntityManager) EntityHasTag(e *Entity, tag string) bool {
 func (m *EntityManager) TagEntity(e *Entity, tags ...string) {
 	if !m.EntityHasComponent(e, "GenericTags") {
 		e.ComponentBitArray.SetBit(uint64(m.components.ixs["GenericTags"]))
+		*e.GetTagList("GenericTags") = NewTagList()
 	}
 	for _, tag := range tags {
 		e.GetTagList("GenericTags").Add(tag)

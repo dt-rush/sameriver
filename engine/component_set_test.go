@@ -16,16 +16,23 @@ func TestValidateComponentSetFields(t *testing.T) {
 }
 
 func TestComponentSetToBitArray(t *testing.T) {
-	cs := fullZeroedComponentSet()
-	cs.ToBitArray()
+	w := testingWorld()
+	l := NewTagList()
+	cs := MakeComponentSet(map[string]interface{}{
+		"TagList,GenericTag": &l,
+	})
+	w.em.components.BitArrayFromComponentSet(cs)
 }
 
 func TestComponentSetApply(t *testing.T) {
 	w := testingWorld()
 	e, _ := testingSpawnSimple(w)
-	cs := fullZeroedComponentSet()
-	w.ApplyComponentSet(cs)(e)
-	if !e.ComponentBitArray.Equals(cs.ToBitArray()) {
-		t.Fatal("failed to modify bitarray")
+	l := NewTagList()
+	cs := MakeComponentSet(map[string]interface{}{
+		"TagList,GenericTag": &l,
+	})
+	w.em.components.ApplyComponentSet(e, cs)
+	if !e.ComponentBitArray.Equals(w.em.components.BitArrayFromComponentSet(cs)) {
+		t.Fatal("failed to apply componentset according to bitarray")
 	}
 }
