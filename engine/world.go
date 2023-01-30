@@ -102,7 +102,7 @@ func (w *World) AddSystems(systems ...System) {
 }
 
 func (w *World) addSystem(s System) {
-	w.assertSystemTypeValid(reflect.TypeOf(s))
+	w.assertSystemValid(s)
 	name := reflect.TypeOf(s).Elem().Name()
 	if _, ok := w.systems[name]; ok {
 		panic(fmt.Sprintf("double-add of system %s", name))
@@ -120,6 +120,15 @@ func (w *World) addSystem(s System) {
 			active:  true})
 }
 
+func (w *World) assertSystemValid(s System) {
+	t := reflect.TypeOf(s)
+	typeName := t.Elem().Name()
+	if _, ok := s.(System); !ok {
+		panic(fmt.Sprintf("Can't add object of type %s - doesn't implement System interface", typeName))
+	}
+	w.assertSystemTypeValid(t)
+}
+
 func (w *World) assertSystemTypeValid(t reflect.Type) {
 	if t.Kind() != reflect.Ptr {
 		panic("Implementers of engine.System must be pointer-receivers")
@@ -127,7 +136,7 @@ func (w *World) assertSystemTypeValid(t reflect.Type) {
 	typeName := t.Elem().Name()
 	validName, _ := regexp.MatchString(".+System$", typeName)
 	if !validName {
-		panic(fmt.Sprintf("implementers of System must have a name "+
+		panic(fmt.Sprintf("Implementers of System must have a name "+
 			"matching regexp .+System$. %s did not", typeName))
 	}
 }

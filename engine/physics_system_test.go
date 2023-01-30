@@ -12,12 +12,12 @@ func TestPhysicsSystemMotion(t *testing.T) {
 	w.AddSystems(ps)
 	e, _ := testingSpawnPhysics(w)
 	*e.GetVec2D("Velocity") = Vec2D{1, 1}
-	pos := e.GetVec2D("Position")
+	pos := *e.GetVec2D("Position")
 	// Update twice since physics system won't run the first time(needs a dt)
 	w.Update(FRAME_SLEEP_MS / 2)
 	time.Sleep(FRAME_SLEEP)
 	w.Update(FRAME_SLEEP_MS / 2)
-	if e.GetVec2D("Position") == pos {
+	if *e.GetVec2D("Position") == pos {
 		t.Fatal("failed to update position")
 	}
 }

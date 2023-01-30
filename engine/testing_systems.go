@@ -39,8 +39,8 @@ func (s *testDependentSystem) GetComponentDeps() []string {
 type testNonPointerReceiverSystem struct {
 }
 
-func newTestNonPointerReceiverSystem() *testNonPointerReceiverSystem {
-	return &testNonPointerReceiverSystem{}
+func newTestNonPointerReceiverSystem() testNonPointerReceiverSystem {
+	return testNonPointerReceiverSystem{}
 }
 func (s testNonPointerReceiverSystem) LinkWorld(w *World) {}
 func (s testNonPointerReceiverSystem) Update()            {}

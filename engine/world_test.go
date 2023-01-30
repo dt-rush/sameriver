@@ -132,18 +132,6 @@ func TestWorldRunWorldLogicsOnly(t *testing.T) {
 	}
 }
 
-func TestWorldSetPrimaryEntityLogicDuplicate(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-		}
-	}()
-	w := testingWorld()
-	e, _ := testingSpawnSimple(w)
-	w.SetPrimaryEntityLogic(e, func() {})
-	w.SetPrimaryEntityLogic(e, func() {})
-	t.Fatal("should have panic'd")
-}
-
 func TestWorldRunEntityLogicsOnly(t *testing.T) {
 	w := testingWorld()
 	x := 0

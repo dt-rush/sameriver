@@ -71,8 +71,8 @@ func TestCollisionFilter(t *testing.T) {
 	w, _, _, e := testingSetupCollision()
 	coin, _ := w.Spawn([]string{"coin"},
 		MakeComponentSet(map[string]interface{}{
-			"Vec2D,Position": e.GetVec2D("Position"),
-			"Vec2D,Box":      e.GetVec2D("Box"),
+			"Vec2D,Position": *e.GetVec2D("Position"),
+			"Vec2D,Box":      *e.GetVec2D("Box"),
 		}))
 	predicate := func(ev Event) bool {
 		c := ev.Data.(CollisionData)
