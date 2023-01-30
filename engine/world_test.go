@@ -132,15 +132,15 @@ func TestWorldRunWorldLogicsOnly(t *testing.T) {
 	}
 }
 
-func TestWorldAddEntityLogicDuplicate(t *testing.T) {
+func TestWorldSetPrimaryEntityLogicDuplicate(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 		}
 	}()
 	w := testingWorld()
 	e, _ := testingSpawnSimple(w)
-	w.AddEntityLogic(e, func() {})
-	w.AddEntityLogic(e, func() {})
+	w.SetPrimaryEntityLogic(e, func() {})
+	w.SetPrimaryEntityLogic(e, func() {})
 	t.Fatal("should have panic'd")
 }
 
@@ -148,7 +148,7 @@ func TestWorldRunEntityLogicsOnly(t *testing.T) {
 	w := testingWorld()
 	x := 0
 	e, _ := testingSpawnSimple(w)
-	w.AddEntityLogic(e, func() { x += 1 })
+	w.SetPrimaryEntityLogic(e, func() { x += 1 })
 	w.ActivateAllEntityLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 1 {
@@ -184,12 +184,12 @@ func TestWorldRemoveWorldLogic(t *testing.T) {
 	}
 }
 
-func TestWorldRemoveEntityLogic(t *testing.T) {
+func TestWorldRemovePrimaryEntityLogic(t *testing.T) {
 	w := testingWorld()
 	x := 0
 	e, _ := testingSpawnSimple(w)
-	w.AddEntityLogic(e, func() { x += 1 })
-	w.RemoveEntityLogic(e)
+	w.SetPrimaryEntityLogic(e, func() { x += 1 })
+	w.RemovePrimaryEntityLogic(e)
 	for i := 0; i < 32; i++ {
 		w.Update(FRAME_SLEEP_MS)
 	}
@@ -256,7 +256,7 @@ func TestWorldActivateEntityLogic(t *testing.T) {
 	w := testingWorld()
 	x := 0
 	e, _ := testingSpawnSimple(w)
-	w.AddEntityLogic(e, func() { x += 1 })
+	w.SetPrimaryEntityLogic(e, func() { x += 1 })
 	w.ActivateEntityLogic(e)
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 1 {
@@ -270,7 +270,7 @@ func TestWorldActivateAllEntityLogics(t *testing.T) {
 	n := 16
 	for i := 0; i < n; i++ {
 		e, _ := testingSpawnSimple(w)
-		w.AddEntityLogic(e, func() { x += 1 })
+		w.SetPrimaryEntityLogic(e, func() { x += 1 })
 	}
 	w.ActivateAllEntityLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
@@ -283,7 +283,7 @@ func TestWorldDeactivateEntityLogic(t *testing.T) {
 	w := testingWorld()
 	x := 0
 	e, _ := testingSpawnSimple(w)
-	w.AddEntityLogic(e, func() { x += 1 })
+	w.SetPrimaryEntityLogic(e, func() { x += 1 })
 	w.DeactivateEntityLogic(e)
 	if x != 0 {
 		t.Fatal("deactivated logic ran")
@@ -296,7 +296,7 @@ func TestWorldDeativateAllEntityLogics(t *testing.T) {
 	n := 16
 	for i := 0; i < n; i++ {
 		e, _ := testingSpawnSimple(w)
-		w.AddEntityLogic(e, func() { x += 1 })
+		w.SetPrimaryEntityLogic(e, func() { x += 1 })
 		w.ActivateEntityLogic(e)
 	}
 	w.DeactivateAllEntityLogics()
@@ -322,7 +322,7 @@ func TestWorldDumpStats(t *testing.T) {
 	// their entries in the overall DumpStats()
 	systemStats, _ := w.systemsRunner.DumpStats()
 	worldStats, _ := w.worldLogicsRunner.DumpStats()
-	entityStats, _ := w.entityLogicsRunner.DumpStats()
+	entityStats, _ := w.primaryEntityLogicsRunner.DumpStats()
 	if !reflect.DeepEqual(stats["system"], systemStats) {
 		t.Fatal("system stats dump was not equal to systemsRunner stats dump")
 	}

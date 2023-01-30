@@ -16,8 +16,8 @@ func TestEventBusSimpleEventFilterMatching(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
 		"SimpleCollisionFilter",
-		SimpleEventFilter(COLLISION_EVENT))
-	ev.Publish(COLLISION_EVENT, nil)
+		SimpleEventFilter("collision"))
+	ev.Publish("collision", nil)
 	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
@@ -32,9 +32,9 @@ func TestEventBusMaxCapacity(t *testing.T) {
 	ev := NewEventBus()
 	_ = ev.Subscribe(
 		"SimpleCollisionFilter",
-		SimpleEventFilter(COLLISION_EVENT))
+		SimpleEventFilter("collision"))
 	for i := 0; i < EVENT_SUBSCRIBER_CHANNEL_CAPACITY+4; i++ {
-		ev.Publish(COLLISION_EVENT, nil)
+		ev.Publish("collision", nil)
 	}
 }
 
@@ -42,9 +42,9 @@ func TestEventBusDeactivatedSubscriber(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
 		"SimpleCollisionFilter",
-		SimpleEventFilter(COLLISION_EVENT))
+		SimpleEventFilter("collision"))
 	ec.Deactivate()
-	ev.Publish(COLLISION_EVENT, nil)
+	ev.Publish("collision", nil)
 	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
@@ -57,8 +57,8 @@ func TestEventBusSimpleEventFilterNonMatching(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
 		"SimpleCollisionFilter",
-		SimpleEventFilter(COLLISION_EVENT))
-	ev.Publish(SPAWNREQUEST_EVENT, nil)
+		SimpleEventFilter("collision"))
+	ev.Publish("spawn-request", nil)
 	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
@@ -77,12 +77,12 @@ func TestEventBusDataEventFilterMatching(t *testing.T) {
 	ec := ev.Subscribe(
 		"PredicateCollisionFilter",
 		PredicateEventFilter(
-			COLLISION_EVENT,
+			"collision",
 			func(e Event) bool {
 				return e.Data.(CollisionData) == collision
 			}),
 	)
-	ev.Publish(COLLISION_EVENT, collision)
+	ev.Publish("collision", collision)
 	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:
@@ -101,12 +101,12 @@ func TestEventBusDataEventFilterNonMatching(t *testing.T) {
 	ec := ev.Subscribe(
 		"PredicateCollisionFilter",
 		PredicateEventFilter(
-			COLLISION_EVENT,
+			"collision",
 			func(e Event) bool {
 				return e.Data.(CollisionData) == collision
 			}),
 	)
-	ev.Publish(COLLISION_EVENT,
+	ev.Publish("collision",
 		CollisionData{
 			This:  &Entity{ID: 7},
 			Other: &Entity{ID: 9},
@@ -124,9 +124,9 @@ func TestEventBusUnsubscribe(t *testing.T) {
 	ev := NewEventBus()
 	ec := ev.Subscribe(
 		"SimpleCollisionFilter",
-		SimpleEventFilter(COLLISION_EVENT))
+		SimpleEventFilter("collision"))
 	ev.Unsubscribe(ec)
-	ev.Publish(COLLISION_EVENT, nil)
+	ev.Publish("collision", nil)
 	time.Sleep(FRAME_SLEEP)
 	select {
 	case _ = <-ec.C:

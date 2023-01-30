@@ -5,7 +5,7 @@ import (
 )
 
 func TestNewEventChannel(t *testing.T) {
-	q := &EventFilter{eventType: SPAWNREQUEST_EVENT}
+	q := &EventFilter{eventType: "spawn-request"}
 	ec := NewEventChannel("testchannel", q)
 	if !(ec.IsActive() &&
 		ec.C != nil &&

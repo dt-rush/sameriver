@@ -24,6 +24,7 @@ type ComponentSet struct {
 // and whose values are interface{} for the value
 func MakeComponentSet(input map[string]interface{}) ComponentSet {
 	cs := ComponentSet{
+		names:        make(map[string]bool),
 		vec2DMap:     make(map[string]Vec2D),
 		logicUnitMap: make(map[string]*LogicUnit),
 		boolMap:      make(map[string]bool),

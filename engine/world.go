@@ -58,7 +58,7 @@ func NewWorld(width int, height int) *World {
 	// register generic taglist
 	w.em.components.AddComponent("TagList,GenericTags")
 	// register generic logic
-	w.em.components.AddComponent("LogicUnit,GenericLogic")
+	w.em.components.AddComponent("*LogicUnit,GenericLogic")
 	return w
 }
 

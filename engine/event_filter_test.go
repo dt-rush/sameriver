@@ -5,11 +5,11 @@ import (
 )
 
 func TestEventFilterSimple(t *testing.T) {
-	f := SimpleEventFilter(SPAWNREQUEST_EVENT)
-	if !f.Test(Event{Type: SPAWNREQUEST_EVENT}) {
+	f := SimpleEventFilter("spawn-request")
+	if !f.Test(Event{Type: "spawn-request"}) {
 		t.Fatal("did not test true for matching event type")
 	}
-	if f.Test(Event{Type: COLLISION_EVENT}) {
+	if f.Test(Event{Type: "collision"}) {
 		t.Fatal("tested true for non-matching event type")
 	}
 }
@@ -21,9 +21,9 @@ func TestEventFilterPredicate(t *testing.T) {
 		return c.This == entity
 	}
 	event := Event{
-		Type: COLLISION_EVENT,
+		Type: "collision",
 		Data: CollisionData{This: entity}}
-	f := PredicateEventFilter(COLLISION_EVENT, pred)
+	f := PredicateEventFilter("collision", pred)
 	if !f.Test(event) {
 		t.Fatal("filter did not match, should have")
 	}
@@ -32,13 +32,14 @@ func TestEventFilterPredicate(t *testing.T) {
 func TestEventFilterCollision(t *testing.T) {
 	this := &Entity{ID: 100}
 	other := &Entity{ID: 100}
-	predicate := func(c CollisionData) bool {
+	predicate := func(ev Event) bool {
+		c := ev.Data.(CollisionData)
 		return c.This == this && c.Other == other
 	}
 	event := Event{
-		Type: COLLISION_EVENT,
+		Type: "collision",
 		Data: CollisionData{This: this, Other: other}}
-	f := CollisionEventFilter(predicate)
+	f := PredicateEventFilter("collision", predicate)
 	if !f.Test(event) {
 		t.Fatal("filter did not match, should have")
 	}
