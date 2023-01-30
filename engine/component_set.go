@@ -18,6 +18,32 @@ type ComponentSet struct {
 	spriteMap    map[string]Sprite
 	tagListMap   map[string]TagList
 	genericMap   map[string]interface{}
+	customMap    map[string]interface{}
+	cccs         map[string]CustomContiguousComponent
+}
+
+func MakeCustomComponentSet(
+	input map[string]interface{},
+	customs map[string]interface{},
+	cccs map[string]CustomContiguousComponent) ComponentSet {
+
+	baseCS := MakeComponentSet(input)
+	for spec, value := range customs {
+		// decode spec string
+		split := strings.Split(spec, ",")
+		kind := split[0]
+		name := split[1]
+		if kind != "Custom" {
+			panic(fmt.Sprintf("custom component spec should have type Custom, got: %s", kind))
+		}
+		// take note in names map that this component name occurs
+		baseCS.names[name] = true
+		baseCS.customMap[name] = value
+		// store the interface object itself so ComponentTable.ApplyComponentSet()
+		// can call its ApplyToEntity() function to set the value
+		baseCS.cccs[name] = cccs[name]
+	}
+	return baseCS
 }
 
 // takes as input a map whose keys are components specified by {kind},{name}
@@ -34,6 +60,8 @@ func MakeComponentSet(input map[string]interface{}) ComponentSet {
 		spriteMap:    make(map[string]Sprite),
 		tagListMap:   make(map[string]TagList),
 		genericMap:   make(map[string]interface{}),
+		customMap:    make(map[string]interface{}),
+		cccs:         make(map[string]CustomContiguousComponent),
 	}
 	for spec, value := range input {
 		// decode spec string

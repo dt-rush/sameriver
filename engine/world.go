@@ -89,6 +89,13 @@ func (w *World) RegisterComponents(specs []string) {
 	}
 }
 
+func (w *World) RegisterCCCs(customs []CustomContiguousComponent) {
+	// register custom contiguous components
+	for _, custom := range customs {
+		w.em.components.AddCCC(custom)
+	}
+}
+
 func (w *World) AddSystems(systems ...System) {
 	// add all systems
 	for _, s := range systems {
@@ -313,7 +320,7 @@ func (w *World) DumpStats() (stats map[string](map[string]float64)) {
 	stats["system"] = systemStats
 	stats["world"] = worldStats
 	stats["primaryEntity"] = primaryEntityStats
-	stats["logicUnits"] = logicUnitStats
+	stats["logicUnit"] = logicUnitStats
 	stats["totals"] = make(map[string]float64)
 	stats["totals"]["system"] = systemTotal
 	stats["totals"]["world"] = worldTotal

@@ -26,6 +26,7 @@ type ComponentTable struct {
 	spriteMap    map[string][]Sprite
 	tagListMap   map[string][]TagList
 	genericMap   map[string][]interface{}
+	cccMap       map[string]CustomContiguousComponent
 }
 
 func NewComponentTable() *ComponentTable {
@@ -42,7 +43,21 @@ func NewComponentTable() *ComponentTable {
 	ct.spriteMap = make(map[string][]Sprite)
 	ct.tagListMap = make(map[string][]TagList)
 	ct.genericMap = make(map[string][]interface{})
+	ct.cccMap = make(map[string]CustomContiguousComponent)
 	return ct
+}
+
+func (ct *ComponentTable) nameAndIndex(name string) bool {
+	if _, ok := ct.names[name]; ok {
+		return true
+	} else {
+		ct.names[name] = true
+	}
+	// increment index and store (used for bitarray generation)
+	ct.ixs[name] = ct.next_ix
+	ct.ixs_rev[ct.next_ix] = name
+	ct.next_ix++
+	return false
 }
 
 func (ct *ComponentTable) AddComponent(spec string) {
@@ -52,39 +67,44 @@ func (ct *ComponentTable) AddComponent(spec string) {
 	name := split[1]
 
 	// guard against double insertion (many say it's a great time, but not here)
-	if _, ok := ct.names[name]; ok {
+	if already := ct.nameAndIndex(name); already {
 		Logger.Println(fmt.Sprintf("Component with name %s already exists in components table", name))
 		return
-	} else {
-		ct.names[name] = true
 	}
-	// increment index and store (used for bitarray generation)
-	ct.ixs[name] = ct.next_ix
-	ct.ixs_rev[ct.next_ix] = name
-	ct.next_ix++
+
 	// create table in appropriate map
 	switch kind {
 	case "Vec2D":
-		ct.vec2DMap[name] = make([]Vec2D, MAX_ENTITIES)
+		ct.vec2DMap[name] = make([]Vec2D, MAX_ENTITIES, MAX_ENTITIES)
 	case "*LogicUnit":
-		ct.logicUnitMap[name] = make([]*LogicUnit, MAX_ENTITIES)
+		ct.logicUnitMap[name] = make([]*LogicUnit, MAX_ENTITIES, MAX_ENTITIES)
 	case "Bool":
-		ct.boolMap[name] = make([]bool, MAX_ENTITIES)
+		ct.boolMap[name] = make([]bool, MAX_ENTITIES, MAX_ENTITIES)
 	case "Int":
-		ct.intMap[name] = make([]int, MAX_ENTITIES)
+		ct.intMap[name] = make([]int, MAX_ENTITIES, MAX_ENTITIES)
 	case "Float64":
-		ct.float64Map[name] = make([]float64, MAX_ENTITIES)
+		ct.float64Map[name] = make([]float64, MAX_ENTITIES, MAX_ENTITIES)
 	case "String":
-		ct.stringMap[name] = make([]string, MAX_ENTITIES)
+		ct.stringMap[name] = make([]string, MAX_ENTITIES, MAX_ENTITIES)
 	case "Sprite":
-		ct.spriteMap[name] = make([]Sprite, MAX_ENTITIES)
+		ct.spriteMap[name] = make([]Sprite, MAX_ENTITIES, MAX_ENTITIES)
 	case "TagList":
-		ct.tagListMap[name] = make([]TagList, MAX_ENTITIES)
+		ct.tagListMap[name] = make([]TagList, MAX_ENTITIES, MAX_ENTITIES)
 	case "Generic":
-		ct.genericMap[name] = make([]interface{}, MAX_ENTITIES)
+		ct.genericMap[name] = make([]interface{}, MAX_ENTITIES, MAX_ENTITIES)
 	default:
 		panic(fmt.Sprintf("added component of kind %s has no case in component_table.go", kind))
 	}
+}
+
+func (ct *ComponentTable) AddCCC(custom CustomContiguousComponent) {
+	// guard against double insertion (many say it's a great time, but not here)
+	if already := ct.nameAndIndex(custom.Name()); already {
+		Logger.Println(fmt.Sprintf("Component with name %s already exists in components table", custom.Name()))
+		return
+	}
+	ct.cccMap[custom.Name()] = custom
+	custom.AllocateTable(MAX_ENTITIES)
 }
 
 func (ct *ComponentTable) VerifyComponentSet(cs ComponentSet) (bool, string) {
@@ -169,6 +189,9 @@ func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs ComponentSet) {
 	for name, x := range cs.genericMap {
 		ct.genericMap[name][e.ID] = x
 	}
+	for name, x := range cs.customMap {
+		cs.cccs[name].Set(e, x)
+	}
 }
 
 func (ct *ComponentTable) BitArrayFromNames(names []string) bitarray.BitArray {
@@ -233,4 +256,13 @@ func (e *Entity) GetTagList(name string) *TagList {
 }
 func (e *Entity) GetGenericComponent(name string) *interface{} {
 	return &e.World.em.components.genericMap[name][e.ID]
+}
+
+// NOTE: we have to provide a get and set method since we can't
+// return a pointer to interface{}
+func (e *Entity) GetCustom(name string) interface{} {
+	return e.World.em.components.cccMap[name].Get(e)
+}
+func (e *Entity) SetCustom(name string, x interface{}) {
+	e.World.em.components.cccMap[name].Set(e, x)
 }

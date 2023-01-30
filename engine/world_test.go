@@ -310,15 +310,20 @@ func TestWorldDumpStats(t *testing.T) {
 	// their entries in the overall DumpStats()
 	systemStats, _ := w.systemsRunner.DumpStats()
 	worldStats, _ := w.worldLogicsRunner.DumpStats()
-	entityStats, _ := w.primaryEntityLogicsRunner.DumpStats()
+	primaryEntityStats, _ := w.primaryEntityLogicsRunner.DumpStats()
+	logicUnitStats, _ := w.logicUnitComponentRunner.DumpStats()
+
 	if !reflect.DeepEqual(stats["system"], systemStats) {
 		t.Fatal("system stats dump was not equal to systemsRunner stats dump")
 	}
 	if !reflect.DeepEqual(stats["world"], worldStats) {
 		t.Fatal("world stats dump was not equal to worldLogicsRunner stats dump")
 	}
-	if !reflect.DeepEqual(stats["entity"], entityStats) {
-		t.Fatal("entity stats dump was not equal to entityLogicsRunner stats dump")
+	if !reflect.DeepEqual(stats["primaryEntity"], primaryEntityStats) {
+		t.Fatal("primary entity stats dump was not equal to primaryEntityLogicsRunner stats dump")
+	}
+	if !reflect.DeepEqual(stats["logicUnit"], logicUnitStats) {
+		t.Fatal("logic unit stats dump was not equal to logicUnitComponentRunner stats dump")
 	}
 	// test stats string
 	statsString := w.DumpStatsString()
