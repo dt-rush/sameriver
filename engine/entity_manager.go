@@ -14,7 +14,7 @@ type EntityManager struct {
 	// list of entities currently spawned (whether active or not)
 	entities [MAX_ENTITIES]*Entity
 	// Component data for entities
-	components ComponentTable
+	components *ComponentTable
 	// EntityTable stores: a list of allocated Entitys and a
 	// list of available IDs from previous deallocations
 	entityTable *EntityTable
@@ -75,8 +75,11 @@ func (m *EntityManager) setActiveState(e *Entity, state bool) {
 		} else {
 			m.entityTable.active--
 		}
-		// start / stop logic accordingly
-		m.components.Logic[e.ID].active = state
+		// start / stop all logics of this entity accordingly
+		// TODO: fetch from e.Logics and set active for each one
+		for _, logic := range e.Logics {
+			logic.active = state
+		}
 		// set active state
 		e.Active = state
 		// notify any listening lists
@@ -114,17 +117,17 @@ func (m *EntityManager) EntityHasComponent(e *Entity, name string) bool {
 }
 
 func (m *EntityManager) EntityHasTag(e *Entity, tag string) bool {
-	return m.EntityHasComponent(e, "TagList") &&
+	return m.EntityHasComponent(e, "GenericTags") &&
 		e.GetTagList("GenericTags").Has(tag)
 }
 
 // apply the given tags to the given entity
 func (m *EntityManager) TagEntity(e *Entity, tags ...string) {
-	if !m.EntityHasComponent(e, TAGLIST_COMPONENT) {
-		e.ComponentBitArray.SetBit(TAGLIST_COMPONENT)
+	if !m.EntityHasComponent(e, "GenericTags") {
+		e.ComponentBitArray.SetBit(uint64(m.components.ixs["GenericTags"]))
 	}
 	for _, tag := range tags {
-		m.components.TagList[e.ID].Add(tag)
+		e.GetTagList("GenericTags").Add(tag)
 		if e.Active {
 			m.createEntitiesWithTagListIfNeeded(tag)
 		}
@@ -143,8 +146,7 @@ func (m *EntityManager) TagEntities(entities []*Entity, tag string) {
 
 // Remove a tag from an entity
 func (m *EntityManager) UntagEntity(e *Entity, tag string) {
-	list := m.components.TagList[e.ID]
-	list.Remove(tag)
+	e.GetTagList("GenericTags").Remove(tag)
 	m.checkActiveEntity(e)
 }
 
@@ -189,7 +191,7 @@ func (m *EntityManager) DumpEntities() string {
 		if e == nil {
 			continue
 		}
-		tags := m.components.TagList[e.ID]
+		tags := e.GetTagList("GenericTags")
 		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",
 			e.ID, tags)
 		buffer.WriteString(entityRepresentation)

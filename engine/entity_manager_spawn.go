@@ -8,6 +8,7 @@ import (
 type SpawnRequestData struct {
 	Components ComponentSet
 	Tags       []string
+	UniqueTag  string
 }
 
 // get the current number of requests in the channel and only process
@@ -94,14 +95,14 @@ func (m *EntityManager) doSpawn(
 	// add the entity to the list of current entities
 	m.entities[e.ID] = e
 	// set the bitarray for this entity
-	e.ComponentBitArray = m.Components.BitArrayFromComponentSet(components)
+	e.ComponentBitArray = m.components.BitArrayFromComponentSet(components)
 	// copy the data inNto the component storage for each component
-	m.Components.ApplyComponentSet(e, components)
+	m.components.ApplyComponentSet(e, components)
 	// create (if doesn't exist) entitiesWithTag lists for each tag
 	m.TagEntity(e, tags...)
 	// apply the unique tag if provided
 	if uniqueTag != "" {
-		m.createEntitiesWithTagListIfNeeded(uniqueTag)
+		m.TagEntity(e, uniqueTag)
 	}
 	// set entity active and notify entity is active
 	m.setActiveState(e, true)

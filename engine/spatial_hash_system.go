@@ -79,8 +79,8 @@ func (h *SpatialHashSystem) scanAndInsertEntities() {
 	for _, e := range h.spatialEntities.entities {
 		// we shift the position to the bottom-left because
 		// the logic is simpler to read that way
-		pos := &h.w.em.components.Position[e.ID]
-		box := &h.w.em.components.Box[e.ID]
+		pos := e.GetVec2D("Position")
+		box := e.GetVec2D("Box")
 		pos.ShiftCenterToBottomLeft(box)
 		defer pos.ShiftBottomLeftToCenter(box)
 		// find out how many cells the entity spans in x and y (almost always 0,

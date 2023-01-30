@@ -74,6 +74,8 @@ func (w *World) Update(allowance float64) (overrun_ms float64) {
 func (w *World) RegisterComponents(specs []string) {
 	// register generic taglist
 	w.em.components.AddComponent("TagList,GenericTags")
+	// register generic logic
+	w.em.components.AddComponent("LogicUnit,GenericLogic")
 	// register given specs
 	for spec := range specs {
 		w.em.components.AddComponent(spec)

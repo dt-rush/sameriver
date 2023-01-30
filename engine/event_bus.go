@@ -51,7 +51,12 @@ func (ev *EventBus) Subscribe(
 
 // Remove a subscriber
 func (ev *EventBus) Unsubscribe(c *EventChannel) {
-	removeEventChannelFromSlice(&ev.subscriberList.channels[c.filter.eventType], c)
+	eventType := c.filter.eventType
+	channels, ok := ev.subscriberList.channels[eventType]
+	if ok {
+		channels = removeEventChannelFromSlice(channels, c)
+		ev.subscriberList.channels[eventType] = channels
+	}
 }
 
 // notify subscribers to a certain event

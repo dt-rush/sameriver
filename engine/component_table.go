@@ -86,12 +86,13 @@ func (ct *ComponentTable) AddComponent(spec string) {
 	}
 }
 
-func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs *ComponentSet) {
+func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs ComponentSet) {
 	for name, v := range cs.vec2DMap {
 		ct.vec2DMap[name][e.ID] = v
 	}
 	for name, l := range cs.logicUnitMap {
 		ct.logicUnitMap[name][e.ID] = l
+		e.Logics[l.name] = &l
 	}
 	for name, b := range cs.boolMap {
 		ct.boolMap[name][e.ID] = b
@@ -124,7 +125,7 @@ func (ct *ComponentTable) BitArrayFromNames(names []string) bitarray.BitArray {
 	return b
 }
 
-func (ct *ComponentTable) BitArrayFromComponentSet(cs *ComponentSet) bitarray.BitArray {
+func (ct *ComponentTable) BitArrayFromComponentSet(cs ComponentSet) bitarray.BitArray {
 	b := bitarray.NewBitArray(uint64(len(ct.ixs)))
 	for name, _ := range cs.names {
 		b.SetBit(uint64(ct.ixs[name]))

@@ -56,6 +56,7 @@ func (t *EntityTable) allocateID() (*Entity, error) {
 		WorldID:   t.idGen.Next(),
 		Active:    false,
 		Despawned: false,
+		Logics:    make(map[string]*LogicUnit),
 	}
 	t.currentEntities[entity] = true
 	return entity, nil

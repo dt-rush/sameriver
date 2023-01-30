@@ -17,15 +17,16 @@ type Entity struct {
 	ComponentBitArray bitarray.BitArray
 	ListsMutex        sync.RWMutex
 	Lists             []*UpdatedEntityList
+	Logics            map[string]*LogicUnit
 }
 
-func (e *Entity) LogicUnitName() string {
-	return fmt.Sprintf("entity-logic-%d", e.ID)
+func (e *Entity) LogicUnitName(name string) string {
+	return fmt.Sprintf("entity-logic-%d-%s", e.ID, name)
 }
 
-func (e *Entity) MakeLogicUnit(F func()) *LogicUnit {
-	return &LogicUnit{
-		name:    e.LogicUnitName(),
+func (e *Entity) MakeLogicUnit(name string, F func()) LogicUnit {
+	return LogicUnit{
+		name:    e.LogicUnitName(name),
 		f:       F,
 		active:  false,
 		worldID: e.WorldID,
