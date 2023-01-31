@@ -26,6 +26,9 @@ type RuntimeLimiter struct {
 	// the LogicUnit is coupled, it's Parent (for System.Update() instances,
 	// this is the System, for world LogicUnits this is the LogicUnit itself
 	// This is needed to support efficient delete and activate/deactivate
+	//
+	// key: logicunit worldID
+	// value: index
 	indexes map[int]int
 	// used to keep a running average of the entire runtime
 	totalRuntime_ms *float64
@@ -67,12 +70,12 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			(hasEstimate && estimate <= allowance_ms) ||
 			(hasEstimate && estimate > allowance_ms && r.runIX == r.startIX) {
 			t0 = time.Now()
-			if logic.active {
+			dt_ms := float64(time.Since(logic.lastRun).Nanoseconds()) / 1.0e6
+			if logic.active && (logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)) {
 				// if we've never run before, skip running with dt_ms 0
 				// we'll get it next time :)
 				if !logic.lastRun.IsZero() {
-					dt := float64(time.Since(logic.lastRun).Nanoseconds()) / 1.0e6
-					logic.f(dt)
+					logic.f(dt_ms)
 				}
 				logic.lastRun = time.Now()
 			}

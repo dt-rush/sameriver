@@ -109,6 +109,12 @@ func (w *World) RegisterSystems(systems ...System) {
 	}
 }
 
+func (w *World) SetSystemSchedule(systemName string, period_ms float64) {
+	system := w.systems[systemName]
+	systemLogicWorldID := w.systemsIDs[system]
+	w.runtimeSharer.SetSchedule("systems", systemLogicWorldID, period_ms)
+}
+
 func (w *World) addSystem(s System) {
 	w.assertSystemValid(s)
 	name := reflect.TypeOf(s).Elem().Name()
@@ -119,7 +125,7 @@ func (w *World) addSystem(s System) {
 	ID := w.IdGen.Next()
 	w.systemsIDs[s] = ID
 	s.LinkWorld(w)
-	logicName := fmt.Sprintf("%s-update", name)
+	logicName := fmt.Sprintf("%s", name)
 	w.runtimeSharer.AddLogic("systems",
 		&LogicUnit{
 			name:    logicName,
@@ -222,6 +228,13 @@ func (w *World) AddWorldLogic(Name string, F func(dt_ms float64)) *LogicUnit {
 	}
 	w.worldLogics[Name] = l
 	w.runtimeSharer.AddLogic("world", l)
+	return l
+}
+
+func (w *World) AddWorldLogicWithSchedule(Name string, F func(dt_ms float64), period_ms float64) *LogicUnit {
+	l := w.AddWorldLogic(Name, F)
+	runSchedule := utils.NewTimeAccumulator(period_ms)
+	l.runSchedule = &runSchedule
 	return l
 }
 
