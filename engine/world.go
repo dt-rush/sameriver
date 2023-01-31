@@ -210,7 +210,7 @@ func (w *World) linkSystemDependencies(s System) {
 	}
 }
 
-func (w *World) AddWorldLogic(Name string, F func()) *LogicUnit {
+func (w *World) AddWorldLogic(Name string, F func(dt_ms float64)) *LogicUnit {
 	if _, ok := w.worldLogics[Name]; ok {
 		panic(fmt.Sprintf("double-add of world logic %s", Name))
 	}
@@ -241,16 +241,14 @@ func (w *World) DeactivateAllWorldLogics() {
 }
 
 func (w *World) ActivateWorldLogic(name string) {
-	w.SetWorldLogicActiveState(name, true)
+	if logic, ok := w.worldLogics[name]; ok {
+		logic.Activate()
+	}
 }
 
 func (w *World) DeactivateWorldLogic(name string) {
-	w.SetWorldLogicActiveState(name, false)
-}
-
-func (w *World) SetWorldLogicActiveState(name string, state bool) {
 	if logic, ok := w.worldLogics[name]; ok {
-		logic.active = state
+		logic.Deactivate()
 	}
 }
 
@@ -279,13 +277,13 @@ func (w *World) DeactivateAllEntityLogics() {
 
 func (w *World) ActivateEntityLogics(e *Entity) {
 	for _, logic := range e.Logics {
-		logic.active = true
+		logic.Activate()
 	}
 }
 
 func (w *World) DeactivateEntityLogics(e *Entity) {
 	for _, logic := range e.Logics {
-		logic.active = false
+		logic.Deactivate()
 	}
 }
 

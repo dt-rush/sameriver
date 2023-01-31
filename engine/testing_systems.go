@@ -13,7 +13,7 @@ func newTestSystem() *testSystem {
 	return &testSystem{}
 }
 func (s *testSystem) LinkWorld(w *World) {}
-func (s *testSystem) Update() {
+func (s *testSystem) Update(dt_ms float64) {
 	time.Sleep(1 * time.Millisecond)
 	s.updates += 1
 }
@@ -29,8 +29,8 @@ type testDependentSystem struct {
 func newTestDependentSystem() *testDependentSystem {
 	return &testDependentSystem{}
 }
-func (s *testDependentSystem) LinkWorld(w *World) {}
-func (s *testDependentSystem) Update()            {}
+func (s *testDependentSystem) LinkWorld(w *World)   {}
+func (s *testDependentSystem) Update(dt_ms float64) {}
 func (s *testDependentSystem) GetComponentDeps() []string {
 	return []string{}
 }
@@ -42,8 +42,8 @@ type testNonPointerReceiverSystem struct {
 func newTestNonPointerReceiverSystem() testNonPointerReceiverSystem {
 	return testNonPointerReceiverSystem{}
 }
-func (s testNonPointerReceiverSystem) LinkWorld(w *World) {}
-func (s testNonPointerReceiverSystem) Update()            {}
+func (s testNonPointerReceiverSystem) LinkWorld(w *World)   {}
+func (s testNonPointerReceiverSystem) Update(dt_ms float64) {}
 func (s testNonPointerReceiverSystem) GetComponentDeps() []string {
 	return []string{}
 }
@@ -55,8 +55,8 @@ type testSystemThatIsMisnamed struct {
 func newTestSystemThatIsMisnamed() *testSystemThatIsMisnamed {
 	return &testSystemThatIsMisnamed{}
 }
-func (s *testSystemThatIsMisnamed) LinkWorld(w *World) {}
-func (s *testSystemThatIsMisnamed) Update()            {}
+func (s *testSystemThatIsMisnamed) LinkWorld(w *World)   {}
+func (s *testSystemThatIsMisnamed) Update(dt_ms float64) {}
 func (s *testSystemThatIsMisnamed) GetComponentDeps() []string {
 	return []string{}
 }
@@ -69,8 +69,8 @@ type testDependentNonPointerSystem struct {
 func newTestDependentNonPointerSystem() *testDependentNonPointerSystem {
 	return &testDependentNonPointerSystem{}
 }
-func (s *testDependentNonPointerSystem) LinkWorld(w *World) {}
-func (s *testDependentNonPointerSystem) Update()            {}
+func (s *testDependentNonPointerSystem) LinkWorld(w *World)   {}
+func (s *testDependentNonPointerSystem) Update(dt_ms float64) {}
 func (s *testDependentNonPointerSystem) GetComponentDeps() []string {
 	return []string{}
 }
@@ -83,8 +83,8 @@ type testDependentNonSystemSystem struct {
 func newTestDependentNonSystemSystem() *testDependentNonSystemSystem {
 	return &testDependentNonSystemSystem{}
 }
-func (s *testDependentNonSystemSystem) LinkWorld(w *World) {}
-func (s *testDependentNonSystemSystem) Update()            {}
+func (s *testDependentNonSystemSystem) LinkWorld(w *World)   {}
+func (s *testDependentNonSystemSystem) Update(dt_ms float64) {}
 func (s *testDependentNonSystemSystem) GetComponentDeps() []string {
 	return []string{}
 }

@@ -53,7 +53,7 @@ func (s *SpatialHashSystem) LinkWorld(w *World) {
 			w.em.components.BitArrayFromNames([]string{"Position", "Box"})))
 }
 
-func (h *SpatialHashSystem) Update() {
+func (h *SpatialHashSystem) Update(dt_ms float64) {
 	// clear any old data and run the computation
 	h.clearTable()
 	h.scanAndInsertEntities()

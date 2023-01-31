@@ -13,7 +13,7 @@ func TestRuntimeLimiterAdd(t *testing.T) {
 		logic := &LogicUnit{
 			name:    name,
 			worldID: i,
-			f:       func() {},
+			f:       func(dt_ms float64) {},
 			active:  true}
 		r.Add(logic)
 		if !(len(r.logicUnits) > 0 &&
@@ -32,7 +32,7 @@ func TestRuntimeLimiterAddDuplicate(t *testing.T) {
 	logic := &LogicUnit{
 		name:    "logic",
 		worldID: 0,
-		f:       func() {},
+		f:       func(dt_ms float64) {},
 		active:  true}
 	r.Add(logic)
 	r.Add(logic)
@@ -46,11 +46,13 @@ func TestRuntimeLimiterRun(t *testing.T) {
 	r.Add(&LogicUnit{
 		name:    name,
 		worldID: 0,
-		f:       func() { x += 1 },
+		f:       func(dt_ms float64) { x += 1 },
 		active:  true})
+	r.Run(1)
 	for i := 0; i < 32; i++ {
 		r.Run(FRAME_SLEEP_MS)
 	}
+	Logger.Println(x)
 	if x != 32 {
 		t.Fatal("didn't run logic")
 	}
@@ -65,8 +67,9 @@ func TestRuntimeLimiterOverrun(t *testing.T) {
 	r.Add(&LogicUnit{
 		name:    "logic",
 		worldID: 0,
-		f:       func() { time.Sleep(150 * time.Millisecond) },
+		f:       func(dt_ms float64) { time.Sleep(150 * time.Millisecond) },
 		active:  true})
+	r.Run(1)
 	remaining_ms := r.Run(100)
 	if remaining_ms > 0 {
 		t.Fatal("overrun time not calculated properly")
@@ -81,8 +84,9 @@ func TestRuntimeLimiterUnderrun(t *testing.T) {
 	r.Add(&LogicUnit{
 		name:    "logic",
 		worldID: 0,
-		f:       func() { time.Sleep(100 * time.Millisecond) },
+		f:       func(dt_ms float64) { time.Sleep(100 * time.Millisecond) },
 		active:  true})
+	r.Run(1)
 	remaining_ms := r.Run(300)
 	if !(remaining_ms > 0 && remaining_ms <= 200) {
 		t.Fatal("underrun time not calculated properly")
@@ -95,13 +99,14 @@ func TestRuntimeLimiterLimiting(t *testing.T) {
 	r.Add(&LogicUnit{
 		name:    "logic-slow",
 		worldID: 0,
-		f:       func() { time.Sleep(10 * time.Millisecond) },
+		f:       func(dt_ms float64) { time.Sleep(10 * time.Millisecond) },
 		active:  true})
 	r.Add(&LogicUnit{
 		name:    "logic-slow",
 		worldID: 1,
-		f:       func() { fastRan = true },
+		f:       func(dt_ms float64) { fastRan = true },
 		active:  true})
+	r.Run(1)
 	r.Run(2)
 	if fastRan {
 		t.Fatal("continued running logic despite using up allowed milliseconds")
@@ -113,7 +118,7 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 	r.Add(&LogicUnit{
 		name:    "dummy",
 		worldID: 0,
-		f:       func() {},
+		f:       func(dt_ms float64) {},
 		active:  true})
 	x := 0
 	name := "l1"
@@ -121,7 +126,7 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 	r.Add(&LogicUnit{
 		name:    name,
 		worldID: 1,
-		f: func() {
+		f: func(dt_ms float64) {
 			x += 1
 			time.Sleep(time.Duration(ms_duration) * time.Millisecond)
 		},
@@ -146,7 +151,7 @@ func TestRuntimeLimiterRemove(t *testing.T) {
 	logic := &LogicUnit{
 		name:    name,
 		worldID: 0,
-		f:       func() { x += 1 },
+		f:       func(dt_ms float64) { x += 1 },
 		active:  true}
 	r.Add(logic)
 	// run logic a few times so that it has runtimeEstimate data
@@ -185,7 +190,7 @@ func TestRuntimeLimitShare(t *testing.T) {
 			sharer.AddLogic("basic", &LogicUnit{
 				name:    fmt.Sprintf("basic-%d", i),
 				worldID: w.IdGen.Next(),
-				f: func() {
+				f: func(dt_ms float64) {
 					time.Sleep(SLEEP)
 					counters[i] += 1
 				},
@@ -199,7 +204,7 @@ func TestRuntimeLimitShare(t *testing.T) {
 			sharer.AddLogic("extra", &LogicUnit{
 				name:    fmt.Sprintf("extra-%d", i),
 				worldID: w.IdGen.Next(),
-				f: func() {
+				f: func(dt_ms float64) {
 					time.Sleep(SLEEP)
 					counters[i] += 1
 				},
@@ -209,7 +214,8 @@ func TestRuntimeLimitShare(t *testing.T) {
 	for i := 0; i < LOOPS; i++ {
 		sharer.Share((N+M)*SLEEP + 100)
 	}
-	expected := N*LOOPS + M*LOOPS
+	// -1 because the first run just sets the logicunits `lastRun` time.Time
+	expected := N*(LOOPS-1) + M*(LOOPS-1)
 	sum := 0
 	for _, counter := range counters {
 		sum += counter
@@ -234,7 +240,7 @@ func TestRuntimeLimitShareInsertWhileRunning(t *testing.T) {
 		sharer.AddLogic("basic", &LogicUnit{
 			name:    fmt.Sprintf("basic-%d", i),
 			worldID: w.IdGen.Next(),
-			f: func() {
+			f: func(dt_ms float64) {
 				time.Sleep(SLEEP)
 				counter += 1
 			},
@@ -252,7 +258,7 @@ func TestRuntimeLimitShareInsertWhileRunning(t *testing.T) {
 		sharer.Share(5 * N * SLEEP)
 	}
 	Logger.Printf("Result: %d", counter)
-	expected := N*LOOPS + 3
+	expected := N*(LOOPS-1) + (3 - 1)
 	if counter != expected {
 		t.Fatal("didn't share runtime properly")
 	}
@@ -265,7 +271,7 @@ func TestRuntimeLimiterInsertAppending(t *testing.T) {
 		logic := &LogicUnit{
 			name:    name,
 			worldID: i,
-			f:       func() {},
+			f:       func(dt_ms float64) {},
 			active:  true}
 		r.Add(logic)
 		if !(len(r.logicUnits) > 0 &&

@@ -68,7 +68,13 @@ func (r *RuntimeLimiter) Run(allowance float64) (remaining float64) {
 			(hasEstimate && estimate > allowance && r.runIX == r.startIX) {
 			t0 = time.Now()
 			if logic.active {
-				logic.f()
+				// if we've never run before, skip running with dt_ms 0
+				// we'll get it next time :)
+				if !logic.lastRun.IsZero() {
+					dt := float64(time.Since(logic.lastRun).Nanoseconds()) / 1.0e6
+					logic.f(dt)
+				}
+				logic.lastRun = time.Now()
 			}
 			elapsed = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 			// update estimate stat
@@ -146,6 +152,7 @@ func (r *RuntimeLimiter) Remove(l *LogicUnit) bool {
 	if index < r.runIX {
 		r.runIX--
 	}
+	// success!
 	return true
 }
 
