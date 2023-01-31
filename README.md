@@ -55,9 +55,7 @@ sameriver
 
 ### 0. What is it?
 
-A game engine which takes advantage of go's language features to define 
-concurrently-executing entity and world logic relative to a 
-traditional synchronous game loop ("input, update, draw").
+A game engine written in Go.
 
 ### 1. Development
 
@@ -113,8 +111,7 @@ The currently running scene is updated each game loop iteration, receiving:
 
 * keyboard state via a call to a `HandleKeyboardState (keyboard_state []uint8)` method
 * delta-time updates via a call to an `Update (dt_ms float64)` method
-* possibly^1 a call to a `Draw (window *sdl.Window, renderer *sdl.Renderer)` method.
+* a call to a `Draw (window *sdl.Window, renderer *sdl.Renderer)` method.
 
 Scenes are initialized and loaded in the background while a singleton loading scene will be displayed until the new scene is ready to take over.
 
-^1. It's possible that the game loop will not draw every iteration in order to keep a certain framerate
