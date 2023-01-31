@@ -7,4 +7,4 @@ test:
 
 deps:
 	./install_deps.sh
-	./install_godeps.sh 
+	go mod tidy
