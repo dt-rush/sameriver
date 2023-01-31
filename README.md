@@ -119,4 +119,6 @@ You call World.RegisterComponents() and World.RegisterSystems() to set up the en
 
 You can call World.AddLogic() to add world logic funcs (Logic funcs will receive (dt_ms float64) where dt_ms is the ms since the func last ran)
 
+Your scene should call `World.Update(allowance_ms)` every `Scene.Update()`.
+
 See world.go for the full suite of functions available.
