@@ -128,10 +128,12 @@ func (w *World) addSystem(s System) {
 	logicName := fmt.Sprintf("%s", name)
 	w.runtimeSharer.AddLogic("systems",
 		&LogicUnit{
-			name:    logicName,
-			worldID: w.systemsIDs[s],
-			f:       s.Update,
-			active:  true})
+			name:        logicName,
+			worldID:     w.systemsIDs[s],
+			f:           s.Update,
+			active:      true,
+			runSchedule: nil,
+		})
 }
 
 func (w *World) assertSystemValid(s System) {
@@ -221,10 +223,11 @@ func (w *World) AddWorldLogic(Name string, F func(dt_ms float64)) *LogicUnit {
 		panic(fmt.Sprintf("double-add of world logic %s", Name))
 	}
 	l := &LogicUnit{
-		name:    Name,
-		f:       F,
-		active:  true,
-		worldID: w.IdGen.Next(),
+		name:        Name,
+		f:           F,
+		active:      true,
+		worldID:     w.IdGen.Next(),
+		runSchedule: nil,
 	}
 	w.worldLogics[Name] = l
 	w.runtimeSharer.AddLogic("world", l)
@@ -236,7 +239,7 @@ func (w *World) AddWorldLogicWithSchedule(Name string, F func(dt_ms float64), pe
 	runSchedule := utils.NewTimeAccumulator(period_ms)
 	Logger.Println("Created worldlogic runschedule")
 	Logger.Printf("%v", runSchedule)
-	l.runSchedule = &runSchedule
+	*l.runSchedule = runSchedule
 	return l
 }
 

@@ -74,14 +74,10 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			(hasEstimate && estimate > allowance_ms && r.runIX == r.startIX) {
 			t0 = time.Now()
 			dt_ms := float64(time.Since(logic.lastRun).Nanoseconds()) / 1.0e6
-			Logger.Printf("Going to run logic %s...", logic.name)
-			Logger.Printf("logic.runSchedule is %v...", logic.runSchedule)
 			if logic.active && (logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)) {
-				Logger.Println("Running f(dt_ms)...")
 				logic.f(dt_ms)
 				logic.lastRun = time.Now()
 			}
-			Logger.Println("past conditional.")
 			elapsed_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 			// update estimate stat
 			if !hasEstimate {
@@ -111,7 +107,6 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 	if overunder_ms < 0 {
 		r.overrun = true
 	}
-	Logger.Printf("done runner.")
 	return overunder_ms
 }
 

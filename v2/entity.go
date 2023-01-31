@@ -27,10 +27,11 @@ func (e *Entity) LogicUnitName(name string) string {
 
 func (e *Entity) makeLogicUnit(name string, F func(dt_ms float64)) *LogicUnit {
 	return &LogicUnit{
-		name:    e.LogicUnitName(name),
-		f:       F,
-		active:  true,
-		worldID: e.World.IdGen.Next(),
+		name:        e.LogicUnitName(name),
+		f:           F,
+		active:      true,
+		worldID:     e.World.IdGen.Next(),
+		runSchedule: nil,
 	}
 }
 
