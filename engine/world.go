@@ -63,6 +63,7 @@ func NewWorld(width int, height int) *World {
 func (w *World) Update(allowance float64) (overrun_ms float64) {
 	t0 := time.Now()
 	w.em.Update(FRAME_SLEEP_MS / 2)
+
 	// systems update functions, world logic, and entity logic can use
 	// whatever time is left over after entity manager update
 	allowance -= float64(time.Since(t0).Nanoseconds()) / 1.0e6

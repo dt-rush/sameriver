@@ -191,7 +191,6 @@ func TestWorldActivateWorldLogic(t *testing.T) {
 	x := 0
 	name := "l1"
 	w.AddWorldLogic(name, func() { x += 1 })
-	w.ActivateWorldLogic(name)
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 1 {
 		t.Fatal("logic should have been active and run - did not")
@@ -231,11 +230,12 @@ func TestWorldDeativateAllWorldLogics(t *testing.T) {
 	for i := 0; i < n; i++ {
 		name := fmt.Sprintf("logic-%d", i)
 		w.AddWorldLogic(name, func() { x += 1 })
-		w.ActivateWorldLogic(name)
 	}
+	w.Update(FRAME_SLEEP_MS / 2)
 	w.DeactivateAllWorldLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
-	if x != 0 {
+	Logger.Println(x)
+	if x != 16 {
 		t.Fatal("logics all should have been deactivated, but some ran")
 	}
 }
@@ -285,9 +285,10 @@ func TestWorldDeativateAllEntityLogics(t *testing.T) {
 		e, _ := testingSpawnSimple(w)
 		e.AddLogic("incrementer", func() { x += 1 })
 	}
+	w.Update(FRAME_SLEEP_MS / 2)
 	w.DeactivateAllEntityLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
-	if x != 0 {
+	if x != 16 {
 		t.Fatal("logics all should have been deactivated, but some ran")
 	}
 }
