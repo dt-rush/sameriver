@@ -114,7 +114,6 @@ gameloop:
 		elapsed_ms := float64(time.Since(loopStart) / 1e6)
 		overrun_ms = elapsed_ms - FRAME_DURATION_INT
 		if overrun_ms < 0 {
-			Logger.Println("sleeping...")
 			time.Sleep(time.Duration(-overrun_ms * float64(time.Millisecond)))
 		}
 	}
