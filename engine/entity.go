@@ -48,6 +48,12 @@ func (e *Entity) RemoveLogic(name string) {
 	delete(e.Logics, name)
 }
 
+func (e *Entity) RemoveAllLogics() {
+	for _, l := range e.Logics {
+		e.World.removeEntityLogic(e, l)
+	}
+}
+
 func (e *Entity) ActivateLogics() {
 	for _, logic := range e.Logics {
 		logic.active = true

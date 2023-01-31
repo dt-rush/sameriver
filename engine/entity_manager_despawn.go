@@ -33,6 +33,7 @@ func (m *EntityManager) Despawn(e *Entity) {
 		e.Despawned = true
 		m.entityTable.deallocate(e)
 		m.entities[e.ID] = nil
+		e.RemoveAllLogics()
 		m.setActiveState(e, false)
 	}
 }
