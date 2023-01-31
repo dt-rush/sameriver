@@ -94,23 +94,29 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (remaining_ms float64, 
 
 	remaining_ms = allowance_ms
 	ran := 0
-	// TODO: scale perRunner_ms somehow; if one runner is using all its time,
-	// but others aren't using all theirs, then the extra time within allowance_ms
-	// should go to the runner hitting its limit based on this simple division
 	perRunner_ms := allowance_ms / float64(len(r.runners))
-	// while we have allowance_ms, try to cycle all the way around
-	for allowance_ms >= 0 && ran < len(r.runners) {
-		runner := r.runners[r.runIX]
-		overunder_ms := runner.Run(perRunner_ms)
-		used := perRunner_ms - overunder_ms
-		allowance_ms -= used
-		// increment to run next runner even if runner.Finished() isn't true
-		// this means it will get another chance to finish itself when its
-		// turn comes back around
-		r.runIX = (r.runIX + 1) % len(r.runners)
-		ran++
+	// while we have allowance_ms, keep trying to run all runners
+	// note: everybody gets firsts before anyone gets seconds
+	// and, to avoid spinning way too many times when load is light,
+	// we have MAX_LOOPS set to an arbitrary 20 (20 update cycles per
+	// frame is not bad)
+	MAX_LOOPS := 20
+	loops := 0
+	for allowance_ms >= 0 && loops < MAX_LOOPS {
+		for allowance_ms >= 0 && ran < len(r.runners) {
+			runner := r.runners[r.runIX]
+			overunder_ms := runner.Run(perRunner_ms)
+			used := perRunner_ms - overunder_ms
+			allowance_ms -= used
+			// increment to run next runner even if runner.Finished() isn't true
+			// this means it will get another chance to finish itself when its
+			// turn comes back around
+			r.runIX = (r.runIX + 1) % len(r.runners)
+			ran++
+		}
+		starved = len(r.runners) - ran
+		loops++
 	}
-	starved = len(r.runners) - ran
 	return allowance_ms, starved
 }
 

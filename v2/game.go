@@ -90,7 +90,10 @@ gameloop:
 			// if we overran last loop, we get proportionally less time this loop
 			// (this keeps frame-rate steady while we try to run scene.Update() as
 			// often as possible)
-			allowance_ms := FRAME_DURATION_INT - overrun_ms
+			allowance_ms := float64(FRAME_DURATION_INT)
+			if overrun_ms > 0 {
+				allowance_ms -= overrun_ms
+			}
 			scene.Update(dt_ms, allowance_ms)
 			lastUpdate = time.Now()
 			select {
@@ -103,7 +106,6 @@ gameloop:
 			default:
 			}
 		}
-		// sleep FRAME_DURATION - elapsed if > 0
 		// (World.runtimeSharer shares an allowance of engine.FRAME_DURATION
 		// among all {systems,world,entities} logics. This is the max it can
 		// share per Update(). If it goes over, elapsed will be > FRAME_DURATION
@@ -111,6 +113,10 @@ gameloop:
 		// every fpsTicker tick anyway, so
 		elapsed_ms := float64(time.Since(loopStart) / 1e6)
 		overrun_ms = elapsed_ms - FRAME_DURATION_INT
+		if overrun_ms < 0 {
+			Logger.Println("sleeping...")
+			time.Sleep(time.Duration(-overrun_ms * float64(time.Millisecond)))
+		}
 	}
 	// once gameloop ends, get next scene and destroy scene if transient
 	nextScene := scene.NextScene()
