@@ -2,6 +2,8 @@ package sameriver
 
 import (
 	"fmt"
+
+	"github.com/dt-rush/sameriver/v2/utils"
 )
 
 type AddRemoveLogicEvent struct {
@@ -85,6 +87,14 @@ func (r *RuntimeLimitSharer) DeactivateAll(runnerName string) {
 		panic(fmt.Sprintf("Trying to deactivate all in runtimeLimiter with name %s - doesn't exist", runnerName))
 	}
 	r.runnerMap[runnerName].DeactivateAll()
+}
+
+func (r *RuntimeLimitSharer) SetSchedule(runnerName string, logicWorldID int, period_ms float64) {
+	runner := r.runnerMap[runnerName]
+	logicIX := runner.indexes[logicWorldID]
+	logic := runner.logicUnits[logicIX]
+	runSchedule := utils.NewTimeAccumulator(period_ms)
+	logic.runSchedule = &runSchedule
 }
 
 func (r *RuntimeLimitSharer) Share(allowance_ms float64) (remaining_ms float64, starved int) {
