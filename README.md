@@ -85,15 +85,15 @@ windows: mingw env packages (install from source)
 
 The engine is built on an "entity-component-system" architecture, in which:
 
-**Components** are collections of a certain type of data indexed by the ID's of entities. For example, the velocity component is a `[MAX_ENTITIES]Vec2D`.
+**Components** are collections of a certain type of data indexed by the ID's of entities. For example, the velocity component is a `[MAX_ENTITIES]Vec2D`. -- see `component_table.go`
 
-**Entities** are merely the set of components indexed by an ID (entities can also be active or inactive)
+**Entities** are conceptually an ID which indexes the component data, and Logics that run every `World.Update()`, and Funcs that can be called by string-name (entities can be active or inactive) -- see `entity.go`
 
-**Systems** are collections of logic which operate on subsets of entities selected for by an arbitrary query
+**Systems** are collections of logic which run every World.Update() and usually operate on subsets of entities selected for by an arbitrary query -- see `collision_system.go` for an example system (Users can also define and provide their own systems by implementing the `System` interface)
 
 There are also some **Managers** which are sort of like the glue holding the engine together, or providing services.
 
-The **`EntityManager`** is a particularly important central part of the engine.
+The **`EntityManager`** is a particularly important central part of the engine. - see `entity_manager.go`, `entity_manager_spawn.go`, etc.
 
 ##### 3.a.ii. scenes
 
@@ -106,8 +106,17 @@ All scenes will be registered and stored with the singleton Game object, and can
 The currently running scene is updated each game loop iteration, receiving:
 
 * keyboard state via a call to a `HandleKeyboardState (keyboard_state []uint8)` method
-* delta-time updates via a call to an `Update (dt_ms float64)` method
+* delta-time updates via a call to an `Update (dt_ms float64, allowance_ms float64)` method (allowance_ms should be passed to `World.Update()` if this scene is using a World)
 * a call to a `Draw (window *sdl.Window, renderer *sdl.Renderer)` method.
 
 Scenes are initialized and loaded in the background while a singleton loading scene will be displayed until the new scene is ready to take over.
 
+##### 3.a.iii. worlds
+
+Worlds are where the magic actually happens. 
+
+You call World.RegisterComponents() and World.RegisterSystems() to set up the entity-components and the systems that will run.
+
+You can call World.AddLogic() to add world logic funcs (Logic funcs will receive (dt_ms float64) where dt_ms is the ms since the func last ran)
+
+See world.go for the full suite of functions available.
