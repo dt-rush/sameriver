@@ -60,14 +60,14 @@ func NewWorld(width int, height int) *World {
 	return w
 }
 
-func (w *World) Update(allowance float64) (overrun_ms float64) {
+func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	t0 := time.Now()
-	w.em.Update(FRAME_SLEEP_MS / 2)
+	w.em.Update(FRAME_DURATION_INT / 2)
 
 	// systems update functions, world logic, and entity logic can use
 	// whatever time is left over after entity manager update
-	allowance -= float64(time.Since(t0).Nanoseconds()) / 1.0e6
-	overunder, starved := w.runtimeSharer.Share(allowance)
+	allowance_ms -= float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	overunder_ms, starved := w.runtimeSharer.Share(allowance_ms)
 	if starved > 0 {
 		Logger.Println("Starvation of RuntimeLimiters occuring in World.Update(); Logic Units will be getting run less frequently.")
 	}
@@ -78,7 +78,7 @@ func (w *World) Update(allowance float64) (overrun_ms float64) {
 	} else {
 		*w.totalRuntime = (*w.totalRuntime + total) / 2.0
 	}
-	return overunder
+	return overunder_ms
 }
 
 func (w *World) RegisterComponents(specs []string) {

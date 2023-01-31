@@ -28,8 +28,8 @@ type RuntimeLimiter struct {
 	// This is needed to support efficient delete and activate/deactivate
 	indexes map[int]int
 	// used to keep a running average of the entire runtime
-	totalRuntime *float64
-	// overrun flag gets set whenever we are exceeding the allowance
+	totalRuntime_ms *float64
+	// overrun flag gets set whenever we are exceeding the allowance_ms
 	overrun bool
 }
 
@@ -41,31 +41,31 @@ func NewRuntimeLimiter() *RuntimeLimiter {
 	}
 }
 
-func (r *RuntimeLimiter) Run(allowance float64) (remaining float64) {
+func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 	r.startIX = r.runIX
 	r.finished = false
 	tStart := time.Now()
 	r.overrun = false
-	remaining = allowance
+	remaining_ms = allowance_ms
 	if len(r.logicUnits) == 0 {
 		r.finished = true
 		return
 	}
-	for remaining > 0 && len(r.logicUnits) > 0 {
+	for remaining_ms > 0 && len(r.logicUnits) > 0 {
 		logic := r.logicUnits[r.runIX]
 		estimate, hasEstimate := r.runtimeEstimates[logic]
 		var t0 time.Time
-		var elapsed float64
+		var elapsed_ms float64
 		// if we've already run at least one, quit early on estimated overrun
-		if (r.runIX != r.startIX) && hasEstimate && (estimate > allowance) {
+		if (r.runIX != r.startIX) && hasEstimate && (estimate > allowance_ms) {
 			r.overrun = true
-			return remaining
+			return remaining_ms
 		}
 		// else, we're either at the first func, or we have no estimate for this
-		// one, or the estimate is within allowance. SO run it
+		// one, or the estimate is within allowance_ms. SO run it
 		if !hasEstimate ||
-			(hasEstimate && estimate <= allowance) ||
-			(hasEstimate && estimate > allowance && r.runIX == r.startIX) {
+			(hasEstimate && estimate <= allowance_ms) ||
+			(hasEstimate && estimate > allowance_ms && r.runIX == r.startIX) {
 			t0 = time.Now()
 			if logic.active {
 				// if we've never run before, skip running with dt_ms 0
@@ -76,36 +76,36 @@ func (r *RuntimeLimiter) Run(allowance float64) (remaining float64) {
 				}
 				logic.lastRun = time.Now()
 			}
-			elapsed = float64(time.Since(t0).Nanoseconds()) / 1.0e6
+			elapsed_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 			// update estimate stat
 			if !hasEstimate {
-				r.runtimeEstimates[logic] = elapsed
+				r.runtimeEstimates[logic] = elapsed_ms
 			} else {
 				r.runtimeEstimates[logic] =
-					(r.runtimeEstimates[logic] + elapsed) / 2.0
+					(r.runtimeEstimates[logic] + elapsed_ms) / 2.0
 			}
 		}
-		remaining -= elapsed
+		remaining_ms -= elapsed_ms
 		r.runIX = (r.runIX + 1) % len(r.logicUnits)
 		if r.runIX == r.startIX {
 			r.finished = true
 			break
 		}
 	}
-	total := float64(time.Since(tStart).Nanoseconds()) / 1.0e6
-	// maintain moving average of totalRuntime
-	if r.totalRuntime == nil {
-		r.totalRuntime = &total
+	total_ms := float64(time.Since(tStart).Nanoseconds()) / 1.0e6
+	// maintain moving average of totalRuntime_ms
+	if r.totalRuntime_ms == nil {
+		r.totalRuntime_ms = &total_ms
 	} else {
-		*r.totalRuntime = (*r.totalRuntime + total) / 2.0
+		*r.totalRuntime_ms = (*r.totalRuntime_ms + total_ms) / 2.0
 	}
-	r.totalRuntime = r.totalRuntime
-	// return overunder
-	overunder := allowance - total
-	if overunder < 0 {
+	r.totalRuntime_ms = r.totalRuntime_ms
+	// return overunder_ms
+	overunder_ms := allowance_ms - total_ms
+	if overunder_ms < 0 {
 		r.overrun = true
 	}
-	return overunder
+	return overunder_ms
 }
 
 func (r *RuntimeLimiter) Add(logic *LogicUnit) {
@@ -181,8 +181,8 @@ func (r *RuntimeLimiter) DumpStats() (stats map[string]float64, total float64) {
 			stats[l.name] = 0.0
 		}
 	}
-	if r.totalRuntime != nil {
-		total = *r.totalRuntime
+	if r.totalRuntime_ms != nil {
+		total = *r.totalRuntime_ms
 	}
 	return
 }

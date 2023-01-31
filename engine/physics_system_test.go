@@ -14,9 +14,9 @@ func TestPhysicsSystemMotion(t *testing.T) {
 	*e.GetVec2D("Velocity") = Vec2D{1, 1}
 	pos := *e.GetVec2D("Position")
 	// Update twice since physics system won't run the first time(needs a dt)
-	w.Update(FRAME_SLEEP_MS / 2)
-	time.Sleep(FRAME_SLEEP)
-	w.Update(FRAME_SLEEP_MS / 2)
+	w.Update(FRAME_DURATION_INT / 2)
+	time.Sleep(FRAME_DURATION)
+	w.Update(FRAME_DURATION_INT / 2)
 	if *e.GetVec2D("Position") == pos {
 		t.Fatal("failed to update position")
 	}
@@ -42,7 +42,7 @@ func TestPhysicsSystemBounds(t *testing.T) {
 		*pos = Vec2D{512, 512}
 		*vel = d
 		for i := 0; i < 64; i++ {
-			w.Update(FRAME_SLEEP_MS / 2)
+			w.Update(FRAME_DURATION_INT / 2)
 			time.Sleep(1 * time.Millisecond)
 		}
 		if !RectWithinRect(pos, box, &worldCenter, &worldTopRight) {

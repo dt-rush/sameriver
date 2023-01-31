@@ -7,7 +7,7 @@ import (
 
 func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) {
 	w := testingWorld()
-	cs := NewCollisionSystem(FRAME_SLEEP / 2)
+	cs := NewCollisionSystem(FRAME_DURATION / 2)
 	w.RegisterSystems(
 		NewSpatialHashSystem(1, 1),
 		cs,
@@ -25,9 +25,9 @@ func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) 
 func TestCollisionSystem(t *testing.T) {
 	w, _, ec, e := testingSetupCollision()
 	w.Update(1)
-	w.Update(FRAME_SLEEP_MS / 2)
+	w.Update(FRAME_DURATION_INT / 2)
 	// sleep long enough for the event to appear on the channel
-	time.Sleep(FRAME_SLEEP)
+	time.Sleep(FRAME_DURATION)
 	select {
 	case _ = <-ec.C:
 		break
@@ -36,9 +36,9 @@ func TestCollisionSystem(t *testing.T) {
 	}
 	// move the enitity so it no longer collides
 	*e.GetVec2D("Position") = Vec2D{100, 100}
-	w.Update(FRAME_SLEEP_MS / 2)
+	w.Update(FRAME_DURATION_INT / 2)
 	// sleep long enough for the event to appear on the channel
-	time.Sleep(FRAME_SLEEP)
+	time.Sleep(FRAME_DURATION)
 	if len(ec.C) != 1 {
 		t.Fatal("collision event occurred but entities were not overlapping")
 	}
@@ -47,8 +47,8 @@ func TestCollisionSystem(t *testing.T) {
 func TestCollisionRateLimit(t *testing.T) {
 	w, cs, ec, e := testingSetupCollision()
 	w.Update(1)
-	w.Update(FRAME_SLEEP_MS / 2)
-	time.Sleep(FRAME_SLEEP)
+	w.Update(FRAME_DURATION_INT / 2)
+	time.Sleep(FRAME_DURATION)
 	if len(ec.C) == 4 {
 		t.Fatal("collision rate-limiter didn't prevent collision duplication")
 	}
@@ -56,13 +56,13 @@ func TestCollisionRateLimit(t *testing.T) {
 		_ = <-ec.C
 	}
 	// wait for rate limit to die
-	time.Sleep(FRAME_SLEEP)
+	time.Sleep(FRAME_DURATION)
 	// check if we can reset the rate lmiiter
-	w.Update(FRAME_SLEEP_MS / 2)
+	w.Update(FRAME_DURATION_INT / 2)
 	cs.rateLimiterArray.Reset(e)
-	w.Update(FRAME_SLEEP_MS / 2)
+	w.Update(FRAME_DURATION_INT / 2)
 	// sleep long enough for the event to appear on the channel
-	time.Sleep(FRAME_SLEEP)
+	time.Sleep(FRAME_DURATION)
 	if len(ec.C) != 4 {
 		t.Fatal("collision rate-limiter reset did not allow second collision")
 	}
@@ -82,9 +82,9 @@ func TestCollisionFilter(t *testing.T) {
 	ec := w.Events.Subscribe("PredicateCollisionFilter",
 		PredicateEventFilter("collision", predicate))
 	w.Update(1)
-	w.Update(FRAME_SLEEP_MS / 2)
+	w.Update(FRAME_DURATION_INT / 2)
 	// sleep long enough for the event to appear on the channel
-	time.Sleep(FRAME_SLEEP)
+	time.Sleep(FRAME_DURATION)
 	select {
 	case ev := <-ec.C:
 		if !predicate(ev) {

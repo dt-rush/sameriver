@@ -27,7 +27,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 		entityCells[e] = cells
 	}
 	w.Update(1)
-	w.Update(FRAME_SLEEP_MS / 2)
+	w.Update(FRAME_DURATION_INT / 2)
 	for e, cells := range entityCells {
 		for _, cell := range cells {
 			inCell := false
@@ -60,7 +60,7 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 	}
 	e, _ := testingSpawnSpatial(w, pos, box)
 	w.Update(1)
-	w.Update(FRAME_SLEEP_MS / 2)
+	w.Update(FRAME_DURATION_INT / 2)
 	for _, cell := range cells {
 		inCell := false
 		for _, entity := range sh.Table[cell[0]][cell[1]] {
@@ -82,8 +82,8 @@ func TestSpatialHashTableCopy(t *testing.T) {
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 	testingSpawnSpatial(w, Vec2D{1, 1}, Vec2D{1, 1})
-	w.Update(FRAME_SLEEP_MS / 2)
-	w.Update(FRAME_SLEEP_MS / 2)
+	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_DURATION_INT / 2)
 	table := sh.Table
 	tableCopy := sh.TableCopy()
 	if table[0][0][0] != tableCopy[0][0][0] {
@@ -107,7 +107,7 @@ func TestSpatialHashTableToString(t *testing.T) {
 			Vec2D{rand.Float64() * 1024, rand.Float64() * 1024},
 			Vec2D{5, 5})
 	}
-	w.Update(FRAME_SLEEP_MS)
+	w.Update(FRAME_DURATION_INT)
 	s1 := sh.Table.String()
 	if len(s1) < len(s0) {
 		t.Fatal("spatial hash did not show entities in its String() representation")

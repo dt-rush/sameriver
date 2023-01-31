@@ -50,7 +50,7 @@ func TestRuntimeLimiterRun(t *testing.T) {
 		active:  true})
 	r.Run(1)
 	for i := 0; i < 32; i++ {
-		r.Run(FRAME_SLEEP_MS)
+		r.Run(FRAME_DURATION_INT)
 	}
 	Logger.Println(x)
 	if x != 32 {
@@ -132,7 +132,7 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 		},
 		active: true})
 	// since it's never run before, running the logic will set its estimate
-	r.Run(FRAME_SLEEP_MS)
+	r.Run(FRAME_DURATION_INT)
 	// now we try to run it again, but give it no time to run (exceeds estimate)
 	r.Run(float64(ms_duration) / 10.0)
 	if x == 2 {
@@ -156,7 +156,7 @@ func TestRuntimeLimiterRemove(t *testing.T) {
 	r.Add(logic)
 	// run logic a few times so that it has runtimeEstimate data
 	for i := 0; i < 32; i++ {
-		r.Run(FRAME_SLEEP_MS)
+		r.Run(FRAME_DURATION_INT)
 	}
 	// remove it
 	Logger.Println(fmt.Sprintf("Removing logic: %s", logic.name))

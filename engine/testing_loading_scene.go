@@ -4,9 +4,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-//
 // mockup loading scene
-//
 type testingLoadingScene struct {
 	initRan                bool
 	updateRan              bool
@@ -22,7 +20,7 @@ func (s *testingLoadingScene) Name() string {
 func (s *testingLoadingScene) Init(game *Game, config map[string]string) {
 	s.initRan = true
 }
-func (s *testingLoadingScene) Update(dt_ms float64) {
+func (s *testingLoadingScene) Update(dt_ms float64, allowance_ms float64) {
 	s.updateRan = true
 }
 func (s *testingLoadingScene) Draw(window *sdl.Window, renderer *sdl.Renderer) {
