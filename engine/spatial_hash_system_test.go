@@ -26,6 +26,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 		e, _ := testingSpawnSpatial(w, posbox[0], posbox[1])
 		entityCells[e] = cells
 	}
+	w.Update(1)
 	w.Update(FRAME_SLEEP_MS / 2)
 	for e, cells := range entityCells {
 		for _, cell := range cells {
@@ -58,6 +59,7 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 		[2]int{2, 2},
 	}
 	e, _ := testingSpawnSpatial(w, pos, box)
+	w.Update(1)
 	w.Update(FRAME_SLEEP_MS / 2)
 	for _, cell := range cells {
 		inCell := false
@@ -80,6 +82,7 @@ func TestSpatialHashTableCopy(t *testing.T) {
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 	testingSpawnSpatial(w, Vec2D{1, 1}, Vec2D{1, 1})
+	w.Update(FRAME_SLEEP_MS / 2)
 	w.Update(FRAME_SLEEP_MS / 2)
 	table := sh.Table
 	tableCopy := sh.TableCopy()

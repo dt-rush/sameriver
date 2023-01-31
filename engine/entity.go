@@ -23,7 +23,7 @@ func (e *Entity) LogicUnitName(name string) string {
 	return fmt.Sprintf("entity-logic-%d-%s", e.ID, name)
 }
 
-func (e *Entity) makeLogicUnit(name string, F func()) *LogicUnit {
+func (e *Entity) makeLogicUnit(name string, F func(dt_ms float64)) *LogicUnit {
 	return &LogicUnit{
 		name:    e.LogicUnitName(name),
 		f:       F,
@@ -32,7 +32,7 @@ func (e *Entity) makeLogicUnit(name string, F func()) *LogicUnit {
 	}
 }
 
-func (e *Entity) AddLogic(name string, F func()) *LogicUnit {
+func (e *Entity) AddLogic(name string, F func(dt_ms float64)) *LogicUnit {
 	l := e.makeLogicUnit(name, F)
 	e.Logics[name] = l
 	e.World.addEntityLogic(e, l)
@@ -55,13 +55,13 @@ func (e *Entity) RemoveAllLogics() {
 
 func (e *Entity) ActivateLogics() {
 	for _, logic := range e.Logics {
-		logic.active = true
+		logic.Activate()
 	}
 }
 
 func (e *Entity) DeactivateLogics() {
 	for _, logic := range e.Logics {
-		logic.active = false
+		logic.Deactivate()
 	}
 }
 

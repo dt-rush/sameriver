@@ -2,6 +2,6 @@ package engine
 
 type System interface {
 	LinkWorld(w *World)
-	Update()
+	Update(dt_ms float64)
 	GetComponentDeps() []string
 }

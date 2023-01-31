@@ -24,6 +24,7 @@ func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) 
 
 func TestCollisionSystem(t *testing.T) {
 	w, _, ec, e := testingSetupCollision()
+	w.Update(1)
 	w.Update(FRAME_SLEEP_MS / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_SLEEP)
@@ -45,7 +46,7 @@ func TestCollisionSystem(t *testing.T) {
 
 func TestCollisionRateLimit(t *testing.T) {
 	w, cs, ec, e := testingSetupCollision()
-	w.Update(FRAME_SLEEP_MS / 2)
+	w.Update(1)
 	w.Update(FRAME_SLEEP_MS / 2)
 	time.Sleep(FRAME_SLEEP)
 	if len(ec.C) == 4 {
@@ -80,6 +81,7 @@ func TestCollisionFilter(t *testing.T) {
 	}
 	ec := w.Events.Subscribe("PredicateCollisionFilter",
 		PredicateEventFilter("collision", predicate))
+	w.Update(1)
 	w.Update(FRAME_SLEEP_MS / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_SLEEP)

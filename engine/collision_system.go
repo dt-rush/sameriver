@@ -90,7 +90,7 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 // by goroutine 2 ("Event filtering and sending"), but we rate-limit sending
 // events for each possible collision [i][j] using the rate limiter at [i][j]
 // in rateLimiters, so if we already sent one within the timeout, we just move on.
-func (s *CollisionSystem) Update() {
+func (s *CollisionSystem) Update(dt_ms float64) {
 	// NOTE: The ID's in collidableEntities are in sorted order,
 	// so the rateLimiterArray access condition that i < j is respected
 	// check each possible collison between entities in the list by doing a
