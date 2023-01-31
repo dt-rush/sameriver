@@ -3,8 +3,8 @@
 all: deps test
 
 test:
-	go test -v -coverprofile=coverage.txt ./engine
+	cd v2 && go test -v -coverprofile=../coverage.txt .
 
 deps:
 	./install_deps.sh
-	go mod tidy
+	cd v2 && go mod tidy
