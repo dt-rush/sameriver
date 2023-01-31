@@ -165,8 +165,6 @@ func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs ComponentSet) {
 	}
 	for name, l := range cs.logicUnitMap {
 		ct.logicUnitMap[name][e.ID] = l
-		e.Logics[l.name] = l
-		e.World.logicUnitComponentRunner.Add(l)
 	}
 	for name, b := range cs.boolMap {
 		ct.boolMap[name][e.ID] = b

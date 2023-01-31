@@ -136,7 +136,7 @@ func TestWorldRunEntityLogicsOnly(t *testing.T) {
 	w := testingWorld()
 	x := 0
 	e, _ := testingSpawnSimple(w)
-	w.SetPrimaryEntityLogic(e, func() { x += 1 })
+	e.AddLogic("incrementer", func() { x += 1 })
 	w.ActivateAllEntityLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 1 {
@@ -172,12 +172,12 @@ func TestWorldRemoveWorldLogic(t *testing.T) {
 	}
 }
 
-func TestWorldRemovePrimaryEntityLogic(t *testing.T) {
+func TestWorldRemoveEntityLogic(t *testing.T) {
 	w := testingWorld()
 	x := 0
 	e, _ := testingSpawnSimple(w)
-	w.SetPrimaryEntityLogic(e, func() { x += 1 })
-	w.RemovePrimaryEntityLogic(e)
+	e.AddLogic("incrementer", func() { x += 1 })
+	e.RemoveLogic("incrementer")
 	for i := 0; i < 32; i++ {
 		w.Update(FRAME_SLEEP_MS)
 	}
@@ -240,12 +240,11 @@ func TestWorldDeativateAllWorldLogics(t *testing.T) {
 	}
 }
 
-func TestWorldActivateEntityLogic(t *testing.T) {
+func TestWorldEntityLogicActiveDefault(t *testing.T) {
 	w := testingWorld()
 	x := 0
 	e, _ := testingSpawnSimple(w)
-	w.SetPrimaryEntityLogic(e, func() { x += 1 })
-	w.ActivateEntityLogic(e)
+	e.AddLogic("incrementer", func() { x += 1 })
 	w.Update(FRAME_SLEEP_MS / 2)
 	if x != 1 {
 		t.Fatal("logic should have been active and run - did not")
@@ -258,7 +257,7 @@ func TestWorldActivateAllEntityLogics(t *testing.T) {
 	n := 16
 	for i := 0; i < n; i++ {
 		e, _ := testingSpawnSimple(w)
-		w.SetPrimaryEntityLogic(e, func() { x += 1 })
+		e.AddLogic("incrementer", func() { x += 1 })
 	}
 	w.ActivateAllEntityLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
@@ -271,8 +270,8 @@ func TestWorldDeactivateEntityLogic(t *testing.T) {
 	w := testingWorld()
 	x := 0
 	e, _ := testingSpawnSimple(w)
-	w.SetPrimaryEntityLogic(e, func() { x += 1 })
-	w.DeactivateEntityLogic(e)
+	e.AddLogic("incrementer", func() { x += 1 })
+	w.DeactivateEntityLogics(e)
 	if x != 0 {
 		t.Fatal("deactivated logic ran")
 	}
@@ -284,8 +283,7 @@ func TestWorldDeativateAllEntityLogics(t *testing.T) {
 	n := 16
 	for i := 0; i < n; i++ {
 		e, _ := testingSpawnSimple(w)
-		w.SetPrimaryEntityLogic(e, func() { x += 1 })
-		w.ActivateEntityLogic(e)
+		e.AddLogic("incrementer", func() { x += 1 })
 	}
 	w.DeactivateAllEntityLogics()
 	w.Update(FRAME_SLEEP_MS / 2)
@@ -308,22 +306,18 @@ func TestWorldDumpStats(t *testing.T) {
 	}
 	// test whether individual runtime limiter DumpStats() corresponds to
 	// their entries in the overall DumpStats()
-	systemStats, _ := w.systemsRunner.DumpStats()
-	worldStats, _ := w.worldLogicsRunner.DumpStats()
-	primaryEntityStats, _ := w.primaryEntityLogicsRunner.DumpStats()
-	logicUnitStats, _ := w.logicUnitComponentRunner.DumpStats()
+	systemStats, _ := w.runtimeSharer.runnerMap["systems"].DumpStats()
+	worldStats, _ := w.runtimeSharer.runnerMap["world"].DumpStats()
+	entityStats, _ := w.runtimeSharer.runnerMap["entities"].DumpStats()
 
-	if !reflect.DeepEqual(stats["system"], systemStats) {
+	if !reflect.DeepEqual(stats["systems"], systemStats) {
 		t.Fatal("system stats dump was not equal to systemsRunner stats dump")
 	}
 	if !reflect.DeepEqual(stats["world"], worldStats) {
 		t.Fatal("world stats dump was not equal to worldLogicsRunner stats dump")
 	}
-	if !reflect.DeepEqual(stats["primaryEntity"], primaryEntityStats) {
+	if !reflect.DeepEqual(stats["entities"], entityStats) {
 		t.Fatal("primary entity stats dump was not equal to primaryEntityLogicsRunner stats dump")
-	}
-	if !reflect.DeepEqual(stats["logicUnit"], logicUnitStats) {
-		t.Fatal("logic unit stats dump was not equal to logicUnitComponentRunner stats dump")
 	}
 	// test stats string
 	statsString := w.DumpStatsString()

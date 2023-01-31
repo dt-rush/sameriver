@@ -19,40 +19,34 @@ type World struct {
 	Events *EventBus
 	em     *EntityManager
 
-	systems       map[string]System
-	systemsRunner *RuntimeLimiter
+	systems map[string]System
 	// this is needed to associate ID's with Systems, since System is an
 	// interface, not a struct type like LogicUnit that can have a name field
 	systemsIDs map[System]int
 
-	worldLogics       map[string]*LogicUnit
-	worldLogicsRunner *RuntimeLimiter
+	worldLogics map[string]*LogicUnit
 
-	// for primary entity logics
-	primaryEntityLogics       map[int]*LogicUnit
-	primaryEntityLogicsRunner *RuntimeLimiter
-
-	// for additional specialised entity logics
-	logicUnitComponentRunner *RuntimeLimiter
+	// for sharing runtime among the various runtimelimiter kinds
+	// and contains the RuntimeLimiters to which we Add() LogicUnits
+	runtimeSharer *RuntimeLimitSharer
 
 	totalRuntime *float64
 }
 
 func NewWorld(width int, height int) *World {
 	w := &World{
-		Width:                     float64(width),
-		Height:                    float64(height),
-		Events:                    NewEventBus(),
-		IdGen:                     utils.NewIDGenerator(),
-		systems:                   make(map[string]System),
-		systemsIDs:                make(map[System]int),
-		systemsRunner:             NewRuntimeLimiter(),
-		worldLogics:               make(map[string]*LogicUnit),
-		worldLogicsRunner:         NewRuntimeLimiter(),
-		primaryEntityLogics:       make(map[int]*LogicUnit),
-		primaryEntityLogicsRunner: NewRuntimeLimiter(),
-		logicUnitComponentRunner:  NewRuntimeLimiter(),
+		Width:         float64(width),
+		Height:        float64(height),
+		Events:        NewEventBus(),
+		IdGen:         utils.NewIDGenerator(),
+		systems:       make(map[string]System),
+		systemsIDs:    make(map[System]int),
+		worldLogics:   make(map[string]*LogicUnit),
+		runtimeSharer: NewRuntimeLimitSharer(),
 	}
+	w.runtimeSharer.RegisterRunner("systems")
+	w.runtimeSharer.RegisterRunner("world")
+	w.runtimeSharer.RegisterRunner("entities")
 	// init entitymanager
 	w.em = NewEntityManager(w)
 	// register generic taglist
@@ -67,12 +61,12 @@ func (w *World) Update(allowance float64) (overrun_ms float64) {
 	w.em.Update(FRAME_SLEEP_MS / 2)
 	// systems update functions, world logic, and entity logic can use
 	// whatever time is left over after entity manager update
-	overunder := RuntimeLimitShare(
-		allowance-float64(time.Since(t0).Nanoseconds())/1.0e6,
-		w.systemsRunner,
-		w.worldLogicsRunner,
-		w.primaryEntityLogicsRunner,
-		w.logicUnitComponentRunner)
+	allowance -= float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	overunder, starved := w.runtimeSharer.Share(allowance)
+	if starved > 0 {
+		Logger.Println("Starvation of RuntimeLimiters occuring in World.Update(); Logic Units will be getting run less frequently.")
+	}
+	// maintain total runtime moving average
 	total := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	if w.totalRuntime == nil {
 		w.totalRuntime = &total
@@ -119,7 +113,7 @@ func (w *World) addSystem(s System) {
 	w.systemsIDs[s] = ID
 	s.LinkWorld(w)
 	logicName := fmt.Sprintf("%s-update", name)
-	w.systemsRunner.Add(
+	w.runtimeSharer.AddLogic("systems",
 		&LogicUnit{
 			name:    logicName,
 			worldID: w.systemsIDs[s],
@@ -220,23 +214,23 @@ func (w *World) AddWorldLogic(Name string, F func()) *LogicUnit {
 		worldID: w.IdGen.Next(),
 	}
 	w.worldLogics[Name] = l
-	w.worldLogicsRunner.Add(l)
+	w.runtimeSharer.AddLogic("world", l)
 	return l
 }
 
 func (w *World) RemoveWorldLogic(Name string) {
 	if logic, ok := w.worldLogics[Name]; ok {
-		w.worldLogicsRunner.Remove(logic.worldID)
+		w.runtimeSharer.RemoveLogic("world", logic)
 		delete(w.worldLogics, Name)
 	}
 }
 
 func (w *World) ActivateAllWorldLogics() {
-	w.worldLogicsRunner.ActivateAll()
+	w.runtimeSharer.ActivateAll("world")
 }
 
 func (w *World) DeactivateAllWorldLogics() {
-	w.worldLogicsRunner.DeactivateAll()
+	w.runtimeSharer.DeactivateAll("world")
 }
 
 func (w *World) ActivateWorldLogic(name string) {
@@ -253,56 +247,38 @@ func (w *World) SetWorldLogicActiveState(name string, state bool) {
 	}
 }
 
-func (w *World) SetPrimaryEntityLogic(e *Entity, F func()) *LogicUnit {
-	// idempotent remove
-	w.RemovePrimaryEntityLogic(e)
-	l := e.MakeLogicUnit("primary", F)
-	w.primaryEntityLogics[e.ID] = l
-	w.primaryEntityLogicsRunner.Add(l)
+func (w *World) addEntityLogic(e *Entity, l *LogicUnit) *LogicUnit {
+	w.runtimeSharer.AddLogic("entities", l)
 	return l
 }
 
-func (w *World) RemovePrimaryEntityLogic(e *Entity) {
-	if logic, ok := w.primaryEntityLogics[e.ID]; ok {
-		w.primaryEntityLogicsRunner.Remove(logic.worldID)
-		delete(w.primaryEntityLogics, e.ID)
-	}
+func (w *World) removeEntityLogic(e *Entity, l *LogicUnit) {
+	w.runtimeSharer.RemoveLogic("entities", l)
 }
 
-func (w *World) RemoveAllLogics(e *Entity) {
-	w.RemovePrimaryEntityLogic(e)
-	for _, logic := range e.Logics {
-		w.logicUnitComponentRunner.Remove(logic.worldID)
+func (w *World) RemoveAllEntityLogics(e *Entity) {
+	for _, l := range e.Logics {
+		w.runtimeSharer.RemoveLogic("entities", l)
 	}
 }
 
 func (w *World) ActivateAllEntityLogics() {
-	w.primaryEntityLogicsRunner.ActivateAll()
-	w.logicUnitComponentRunner.ActivateAll()
+	w.runtimeSharer.ActivateAll("entities")
 }
 
 func (w *World) DeactivateAllEntityLogics() {
-	w.primaryEntityLogicsRunner.DeactivateAll()
-	w.logicUnitComponentRunner.DeactivateAll()
+	w.runtimeSharer.DeactivateAll("entities")
 }
 
-func (w *World) ActivateEntityLogic(e *Entity) {
-	w.setEntityPrimaryLogicActiveState(e, true)
+func (w *World) ActivateEntityLogics(e *Entity) {
 	for _, logic := range e.Logics {
 		logic.active = true
 	}
 }
 
-func (w *World) DeactivateEntityLogic(e *Entity) {
-	w.setEntityPrimaryLogicActiveState(e, false)
+func (w *World) DeactivateEntityLogics(e *Entity) {
 	for _, logic := range e.Logics {
 		logic.active = false
-	}
-}
-
-func (w *World) setEntityPrimaryLogicActiveState(e *Entity, state bool) {
-	if logic, ok := w.primaryEntityLogics[e.ID]; ok {
-		logic.active = state
 	}
 }
 
@@ -311,27 +287,14 @@ func (w *World) String() string {
 	return "TODO"
 }
 
-func (w *World) DumpStats() (stats map[string](map[string]float64)) {
-	stats = make(map[string](map[string]float64))
-	systemStats, systemTotal := w.systemsRunner.DumpStats()
-	worldStats, worldTotal := w.worldLogicsRunner.DumpStats()
-	primaryEntityStats, primaryEntityTotal := w.primaryEntityLogicsRunner.DumpStats()
-	logicUnitStats, logicUnitTotal := w.logicUnitComponentRunner.DumpStats()
-	stats["system"] = systemStats
-	stats["world"] = worldStats
-	stats["primaryEntity"] = primaryEntityStats
-	stats["logicUnit"] = logicUnitStats
-	stats["totals"] = make(map[string]float64)
-	stats["totals"]["system"] = systemTotal
-	stats["totals"]["world"] = worldTotal
-	stats["totals"]["primaryEntity"] = primaryEntityTotal
-	stats["totals"]["logicUnit"] = logicUnitTotal
+func (w *World) DumpStats() map[string](map[string]float64) {
+	stats := w.runtimeSharer.DumpStats()
 	if w.totalRuntime != nil {
 		stats["totals"]["total"] = *w.totalRuntime
 	} else {
 		stats["totals"]["total"] = 0.0
 	}
-	return
+	return stats
 }
 
 func (w *World) DumpStatsString() string {

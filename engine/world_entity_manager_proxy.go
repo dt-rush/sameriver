@@ -25,12 +25,12 @@ func (w *World) QueueDespawn(e *Entity) {
 
 func (w *World) Despawn(e *Entity) {
 	w.em.Despawn(e)
-	w.RemoveAllLogics(e)
+	w.RemoveAllEntityLogics(e)
 }
 
 func (w *World) DespawnAll() {
 	for e, _ := range w.em.GetCurrentEntitiesSetCopy() {
-		w.RemoveAllLogics(e)
+		w.RemoveAllEntityLogics(e)
 	}
 	w.em.DespawnAll()
 }

@@ -76,11 +76,8 @@ func (m *EntityManager) setActiveState(e *Entity, state bool) {
 			m.entityTable.active--
 		}
 		// start / stop all logics of this entity accordingly
-		if e.PrimaryLogic != nil {
-			e.PrimaryLogic.active = state
-		}
-		for _, logic := range e.Logics {
-			logic.active = state
+		for _, l := range e.Logics {
+			l.active = state
 		}
 		// set active state
 		e.Active = state
