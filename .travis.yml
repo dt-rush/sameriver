@@ -1,12 +1,9 @@
+dist: focal
+
 language: go
 
 go:
   - "1.19.x"
-
-addons:
-  apt:
-    packages:
-      g++-9
 
 # env: 
 #   - AUDIODEV=null
