@@ -17,3 +17,8 @@ func (fs *FuncSet) Add(name string, f func(interface{}) interface{}) {
 func (fs *FuncSet) Remove(name string) {
 	delete(fs.funcs, name)
 }
+
+func (fs *FuncSet) Has(name string) bool {
+	_, ok := fs.funcs[name]
+	return ok
+}
