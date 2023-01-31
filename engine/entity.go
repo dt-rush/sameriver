@@ -17,7 +17,6 @@ type Entity struct {
 	ComponentBitArray bitarray.BitArray
 	ListsMutex        sync.RWMutex
 	Lists             []*UpdatedEntityList
-	PrimaryLogic      *LogicUnit
 	Logics            map[string]*LogicUnit
 }
 
@@ -25,12 +24,39 @@ func (e *Entity) LogicUnitName(name string) string {
 	return fmt.Sprintf("entity-logic-%d-%s", e.ID, name)
 }
 
-func (e *Entity) MakeLogicUnit(name string, F func()) *LogicUnit {
+func (e *Entity) makeLogicUnit(name string, F func()) *LogicUnit {
 	return &LogicUnit{
 		name:    e.LogicUnitName(name),
 		f:       F,
 		active:  true,
 		worldID: e.World.IdGen.Next(),
+	}
+}
+
+func (e *Entity) AddLogic(name string, F func()) *LogicUnit {
+	l := e.makeLogicUnit(name, F)
+	e.Logics[name] = l
+	e.World.addEntityLogic(e, l)
+	return l
+}
+
+func (e *Entity) RemoveLogic(name string) {
+	if _, ok := e.Logics[name]; !ok {
+		panic(fmt.Sprintf("Trying to remove logic %s - but entity doesn't have it!", name))
+	}
+	e.World.removeEntityLogic(e, e.Logics[name])
+	delete(e.Logics, name)
+}
+
+func (e *Entity) ActivateLogics() {
+	for _, logic := range e.Logics {
+		logic.active = true
+	}
+}
+
+func (e *Entity) DeactivateLogics() {
+	for _, logic := range e.Logics {
+		logic.active = false
 	}
 }
 

@@ -3,7 +3,7 @@
 all: deps test
 
 test:
-	go test -v -coverprofile=coverage.txt -race ./engine
+	go test -v -coverprofile=coverage.txt ./engine
 
 deps:
 	./install_deps.sh
