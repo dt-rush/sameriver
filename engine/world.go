@@ -306,6 +306,10 @@ func (w *World) GetFunc(name string) func(interface{}) interface{} {
 	return w.funcs.funcs[name]
 }
 
+func (w *World) HasFunc(name string) bool {
+	return w.funcs.Has(name)
+}
+
 func (w *World) String() string {
 	// TODO: implement
 	return "TODO"
