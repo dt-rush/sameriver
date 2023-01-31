@@ -94,7 +94,6 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (remaining_ms float64, 
 
 	remaining_ms = allowance_ms
 	ran := 0
-	perRunner_ms := allowance_ms / float64(len(r.runners))
 	// while we have allowance_ms, keep trying to run all runners
 	// note: everybody gets firsts before anyone gets seconds
 	// and, to avoid spinning way too many times when load is light,
@@ -103,6 +102,7 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (remaining_ms float64, 
 	MAX_LOOPS := 20
 	loops := 0
 	for allowance_ms >= 0 && loops < MAX_LOOPS {
+		perRunner_ms := allowance_ms / float64(len(r.runners))
 		for allowance_ms >= 0 && ran < len(r.runners) {
 			runner := r.runners[r.runIX]
 			overunder_ms := runner.Run(perRunner_ms)
