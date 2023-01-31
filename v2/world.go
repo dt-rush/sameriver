@@ -50,11 +50,22 @@ func NewWorld(width int, height int) *World {
 		funcs:         NewFuncSet(),
 		runtimeSharer: NewRuntimeLimitSharer(),
 	}
+	w.runtimeSharer.RegisterRunner("entity-manager")
 	w.runtimeSharer.RegisterRunner("systems")
 	w.runtimeSharer.RegisterRunner("world")
 	w.runtimeSharer.RegisterRunner("entities")
 	// init entitymanager
 	w.em = NewEntityManager(w)
+	w.runtimeSharer.AddLogic("entity-manager",
+		&LogicUnit{
+			name:    "entity-manager",
+			worldID: w.IdGen.Next(),
+			f: func(dt_ms float64) {
+				w.em.Update(FRAME_DURATION_INT / 2)
+			},
+			active:      true,
+			runSchedule: nil,
+		})
 	// register generic taglist
 	w.em.components.AddComponent("TagList,GenericTags")
 	return w
@@ -63,10 +74,6 @@ func NewWorld(width int, height int) *World {
 func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	t0 := time.Now()
 	w.em.Update(FRAME_DURATION_INT / 2)
-
-	// systems update functions, world logic, and entity logic can use
-	// whatever time is left over after entity manager update
-	allowance_ms -= float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	overunder_ms, starved := w.runtimeSharer.Share(allowance_ms)
 	if starved > 0 {
 		Logger.Println("Starvation of RuntimeLimiters occuring in World.Update(); Logic Units will be getting run less frequently.")

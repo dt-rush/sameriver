@@ -49,7 +49,7 @@ func NewEntityManager(w *World) *EntityManager {
 
 // called once per scene Update() for scenes holding an entity manager
 func (m *EntityManager) Update(allowance_ms float64) float64 {
-	// TODO: implement this using a RuntimeLimiter
+	// TODO: base spawning off allowance. Spawn enough and do no more.
 	t0 := time.Now()
 	m.processDespawnChannel()
 	m.processSpawnChannel()
