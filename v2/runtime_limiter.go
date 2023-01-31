@@ -56,6 +56,9 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 	}
 	for remaining_ms > 0 && len(r.logicUnits) > 0 {
 		logic := r.logicUnits[r.runIX]
+		if !logic.lastRun.IsZero() {
+			logic.lastRun = time.Now()
+		}
 		estimate, hasEstimate := r.runtimeEstimates[logic]
 		var t0 time.Time
 		var elapsed_ms float64
@@ -71,12 +74,9 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			(hasEstimate && estimate > allowance_ms && r.runIX == r.startIX) {
 			t0 = time.Now()
 			dt_ms := float64(time.Since(logic.lastRun).Nanoseconds()) / 1.0e6
+			Logger.Printf("Going to run logic %s...", logic.name)
 			if logic.active && (logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)) {
-				// if we've never run before, skip running with dt_ms 0
-				// we'll get it next time :)
-				if !logic.lastRun.IsZero() {
-					logic.f(dt_ms)
-				}
+				logic.f(dt_ms)
 				logic.lastRun = time.Now()
 			}
 			elapsed_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
