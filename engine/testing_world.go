@@ -12,7 +12,7 @@ func testingWorldWithAllLogicTypes() (*World, *testSystem, *int, *int) {
 	w := testingWorld()
 	// add system
 	ts := newTestSystem()
-	w.AddSystems(ts)
+	w.RegisterSystems(ts)
 	// add world logic
 	worldUpdates := 0
 	entityUpdates := 0
