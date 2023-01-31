@@ -13,9 +13,11 @@ func NewTimeAccumulator(period_ms float64) TimeAccumulator {
 }
 
 func (t *TimeAccumulator) Tick(dt float64) bool {
+	Logger.Println("In Tick()")
 	t.accum += dt
 	had_tick := false
 	for t.accum >= t.period_ms {
+		Logger.Println("t.accum >= t.period_ms")
 		t.accum -= t.period_ms
 		had_tick = true
 	}

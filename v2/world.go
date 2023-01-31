@@ -234,6 +234,8 @@ func (w *World) AddWorldLogic(Name string, F func(dt_ms float64)) *LogicUnit {
 func (w *World) AddWorldLogicWithSchedule(Name string, F func(dt_ms float64), period_ms float64) *LogicUnit {
 	l := w.AddWorldLogic(Name, F)
 	runSchedule := utils.NewTimeAccumulator(period_ms)
+	Logger.Println("Created worldlogic runschedule")
+	Logger.Printf("%v", runSchedule)
 	l.runSchedule = &runSchedule
 	return l
 }
