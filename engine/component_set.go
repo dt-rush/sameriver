@@ -9,17 +9,16 @@ type ComponentSet struct {
 	// names of all components given values in this set
 	names map[string]bool
 	// data storage
-	vec2DMap     map[string]Vec2D
-	logicUnitMap map[string]*LogicUnit
-	boolMap      map[string]bool
-	intMap       map[string]int
-	float64Map   map[string]float64
-	stringMap    map[string]string
-	spriteMap    map[string]Sprite
-	tagListMap   map[string]TagList
-	genericMap   map[string]interface{}
-	customMap    map[string]interface{}
-	cccs         map[string]CustomContiguousComponent
+	vec2DMap   map[string]Vec2D
+	boolMap    map[string]bool
+	intMap     map[string]int
+	float64Map map[string]float64
+	stringMap  map[string]string
+	spriteMap  map[string]Sprite
+	tagListMap map[string]TagList
+	genericMap map[string]interface{}
+	customMap  map[string]interface{}
+	cccs       map[string]CustomContiguousComponent
 }
 
 func MakeCustomComponentSet(
@@ -50,18 +49,17 @@ func MakeCustomComponentSet(
 // and whose values are interface{} for the value
 func MakeComponentSet(input map[string]interface{}) ComponentSet {
 	cs := ComponentSet{
-		names:        make(map[string]bool),
-		vec2DMap:     make(map[string]Vec2D),
-		logicUnitMap: make(map[string]*LogicUnit),
-		boolMap:      make(map[string]bool),
-		intMap:       make(map[string]int),
-		float64Map:   make(map[string]float64),
-		stringMap:    make(map[string]string),
-		spriteMap:    make(map[string]Sprite),
-		tagListMap:   make(map[string]TagList),
-		genericMap:   make(map[string]interface{}),
-		customMap:    make(map[string]interface{}),
-		cccs:         make(map[string]CustomContiguousComponent),
+		names:      make(map[string]bool),
+		vec2DMap:   make(map[string]Vec2D),
+		boolMap:    make(map[string]bool),
+		intMap:     make(map[string]int),
+		float64Map: make(map[string]float64),
+		stringMap:  make(map[string]string),
+		spriteMap:  make(map[string]Sprite),
+		tagListMap: make(map[string]TagList),
+		genericMap: make(map[string]interface{}),
+		customMap:  make(map[string]interface{}),
+		cccs:       make(map[string]CustomContiguousComponent),
 	}
 	for spec, value := range input {
 		// decode spec string
@@ -75,10 +73,6 @@ func MakeComponentSet(input map[string]interface{}) ComponentSet {
 		case "Vec2D":
 			if v, ok := value.(Vec2D); ok {
 				cs.vec2DMap[name] = v
-			}
-		case "*LogicUnit":
-			if l, ok := value.(*LogicUnit); ok {
-				cs.logicUnitMap[name] = l
 			}
 		case "Bool":
 			if b, ok := value.(bool); ok {

@@ -17,16 +17,15 @@ type ComponentTable struct {
 	names   map[string]bool
 
 	// data storage
-	vec2DMap     map[string][]Vec2D
-	logicUnitMap map[string][]*LogicUnit
-	boolMap      map[string][]bool
-	intMap       map[string][]int
-	float64Map   map[string][]float64
-	stringMap    map[string][]string
-	spriteMap    map[string][]Sprite
-	tagListMap   map[string][]TagList
-	genericMap   map[string][]interface{}
-	cccMap       map[string]CustomContiguousComponent
+	vec2DMap   map[string][]Vec2D
+	boolMap    map[string][]bool
+	intMap     map[string][]int
+	float64Map map[string][]float64
+	stringMap  map[string][]string
+	spriteMap  map[string][]Sprite
+	tagListMap map[string][]TagList
+	genericMap map[string][]interface{}
+	cccMap     map[string]CustomContiguousComponent
 }
 
 func NewComponentTable() *ComponentTable {
@@ -35,7 +34,6 @@ func NewComponentTable() *ComponentTable {
 	ct.ixs_rev = make(map[int]string)
 	ct.names = make(map[string]bool)
 	ct.vec2DMap = make(map[string][]Vec2D)
-	ct.logicUnitMap = make(map[string][]*LogicUnit)
 	ct.boolMap = make(map[string][]bool)
 	ct.intMap = make(map[string][]int)
 	ct.float64Map = make(map[string][]float64)
@@ -68,10 +66,6 @@ func (ct *ComponentTable) ComponentExists(spec string) bool {
 	switch kind {
 	case "Vec2D":
 		if _, ok := ct.vec2DMap[name]; ok {
-			return true
-		}
-	case "*LogicUnit":
-		if _, ok := ct.logicUnitMap[name]; ok {
 			return true
 		}
 	case "Bool":
@@ -124,8 +118,6 @@ func (ct *ComponentTable) AddComponent(spec string) {
 	switch kind {
 	case "Vec2D":
 		ct.vec2DMap[name] = make([]Vec2D, MAX_ENTITIES, MAX_ENTITIES)
-	case "*LogicUnit":
-		ct.logicUnitMap[name] = make([]*LogicUnit, MAX_ENTITIES, MAX_ENTITIES)
 	case "Bool":
 		ct.boolMap[name] = make([]bool, MAX_ENTITIES, MAX_ENTITIES)
 	case "Int":
@@ -159,11 +151,6 @@ func (ct *ComponentTable) VerifyComponentSet(cs ComponentSet) (bool, string) {
 	for name, _ := range cs.vec2DMap {
 		if _, ok := ct.vec2DMap[name]; !ok {
 			return false, fmt.Sprintf("%s not found in vec2DMap", name)
-		}
-	}
-	for name, _ := range cs.logicUnitMap {
-		if _, ok := ct.logicUnitMap[name]; !ok {
-			return false, fmt.Sprintf("%s not found in logicUnitMap", name)
 		}
 	}
 	for name, _ := range cs.boolMap {
@@ -210,9 +197,6 @@ func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs ComponentSet) {
 	}
 	for name, v := range cs.vec2DMap {
 		ct.vec2DMap[name][e.ID] = v
-	}
-	for name, l := range cs.logicUnitMap {
-		ct.logicUnitMap[name][e.ID] = l
 	}
 	for name, b := range cs.boolMap {
 		ct.boolMap[name][e.ID] = b
@@ -278,9 +262,6 @@ func (ct *ComponentTable) BitArrayToString(b bitarray.BitArray) string {
 
 func (e *Entity) GetVec2D(name string) *Vec2D {
 	return &e.World.em.components.vec2DMap[name][e.ID]
-}
-func (e *Entity) GetLogicUnit(name string) *LogicUnit {
-	return e.World.em.components.logicUnitMap[name][e.ID]
 }
 func (e *Entity) GetBool(name string) *bool {
 	return &e.World.em.components.boolMap[name][e.ID]

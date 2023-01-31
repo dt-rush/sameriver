@@ -57,6 +57,7 @@ func (t *EntityTable) allocateID() (*Entity, error) {
 		Active:    false,
 		Despawned: false,
 		Logics:    make(map[string]*LogicUnit),
+		funcs:     NewFuncSet(),
 	}
 	t.currentEntities[entity] = true
 	return entity, nil
