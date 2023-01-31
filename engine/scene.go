@@ -16,7 +16,7 @@ type Scene interface {
 
 	Init(game *Game, config map[string]string)
 
-	Update(dt_ms float64)
+	Update(dt_ms float64, allowance_ms float64)
 	Draw(window *sdl.Window, renderer *sdl.Renderer)
 	HandleKeyboardState(keyboard_state []uint8)
 	HandleKeyboardEvent(keyboard_event *sdl.KeyboardEvent)

@@ -69,8 +69,9 @@ func (g *Game) run() {
 
 func (g *Game) RunScene(scene Scene, endScene chan bool) Scene {
 	Logger.Printf("started: %s ▷", scene.Name())
-	fpsTicker := time.NewTicker(FRAME_SLEEP)
+	fpsTicker := time.NewTicker(FRAME_DURATION)
 	lastUpdate := time.Now()
+	overrun_ms := 0.0
 gameloop:
 	for {
 		loopStart := time.Now()
@@ -85,7 +86,12 @@ gameloop:
 			sdl.Do(func() {
 				g.handleKeyboard(scene)
 			})
-			scene.Update(float64(time.Since(lastUpdate).Nanoseconds()) / 1e6)
+			dt_ms := float64(time.Since(lastUpdate).Nanoseconds()) / 1e6
+			// if we overran last loop, we get proportionally less time this loop
+			// (this keeps frame-rate steady while we try to run scene.Update() as
+			// often as possible)
+			allowance_ms := FRAME_DURATION_INT - overrun_ms
+			scene.Update(dt_ms, allowance_ms)
 			lastUpdate = time.Now()
 			select {
 			case _ = <-fpsTicker.C:
@@ -97,13 +103,14 @@ gameloop:
 			default:
 			}
 		}
-		// sleep if we have time ("buffer time")
-		elapsed := time.Since(loopStart) / 1e6 * time.Millisecond
-		if elapsed > FRAME_SLEEP {
-			continue
-		} else {
-			sdl.Delay(uint32((FRAME_SLEEP - elapsed) / time.Millisecond))
-		}
+		// sleep FRAME_DURATION - elapsed if > 0
+		// (World.runtimeSharer shares an allowance of engine.FRAME_DURATION
+		// among all {systems,world,entities} logics. This is the max it can
+		// share per Update(). If it goes over, elapsed will be > FRAME_DURATION
+		// and we'll skip any sleeping. Note that scene.Draw() only occurs
+		// every fpsTicker tick anyway, so
+		elapsed_ms := float64(time.Since(loopStart) / 1e6)
+		overrun_ms = elapsed_ms - FRAME_DURATION_INT
 	}
 	// once gameloop ends, get next scene and destroy scene if transient
 	nextScene := scene.NextScene()

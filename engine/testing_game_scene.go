@@ -5,9 +5,7 @@ import (
 	"time"
 )
 
-//
 // mockup game scene
-//
 type testingGameScene struct {
 	accum_ms float64
 
@@ -24,9 +22,9 @@ func (s *testingGameScene) Name() string {
 }
 func (s *testingGameScene) Init(game *Game, config map[string]string) {
 	s.initRan = true
-	time.Sleep(8 * FRAME_SLEEP)
+	time.Sleep(8 * FRAME_DURATION)
 }
-func (s *testingGameScene) Update(dt_ms float64) {
+func (s *testingGameScene) Update(dt_ms float64, allowance_ms float64) {
 	s.updateRan = true
 	s.accum_ms += dt_ms
 }
@@ -40,7 +38,7 @@ func (s *testingGameScene) HandleKeyboardEvent(keyboard_event *sdl.KeyboardEvent
 	s.handleKeyboardEventRan = true
 }
 func (s *testingGameScene) IsDone() bool {
-	return s.accum_ms >= 8*FRAME_SLEEP_MS
+	return s.accum_ms >= 8*FRAME_DURATION_INT
 }
 func (s *testingGameScene) NextScene() Scene {
 	s.nextSceneRan = true

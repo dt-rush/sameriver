@@ -18,7 +18,7 @@ func TestEventBusSimpleEventFilterMatching(t *testing.T) {
 		"SimpleCollisionFilter",
 		SimpleEventFilter("collision"))
 	ev.Publish("collision", nil)
-	time.Sleep(FRAME_SLEEP)
+	time.Sleep(FRAME_DURATION)
 	select {
 	case _ = <-ec.C:
 		break
@@ -45,7 +45,7 @@ func TestEventBusDeactivatedSubscriber(t *testing.T) {
 		SimpleEventFilter("collision"))
 	ec.Deactivate()
 	ev.Publish("collision", nil)
-	time.Sleep(FRAME_SLEEP)
+	time.Sleep(FRAME_DURATION)
 	select {
 	case _ = <-ec.C:
 		t.Fatal("event was received on deactivated EventChannel")
@@ -59,7 +59,7 @@ func TestEventBusSimpleEventFilterNonMatching(t *testing.T) {
 		"SimpleCollisionFilter",
 		SimpleEventFilter("collision"))
 	ev.Publish("spawn-request", nil)
-	time.Sleep(FRAME_SLEEP)
+	time.Sleep(FRAME_DURATION)
 	select {
 	case _ = <-ec.C:
 		t.Fatal("simple event Filter sent event to wrong type channel")
@@ -83,7 +83,7 @@ func TestEventBusDataEventFilterMatching(t *testing.T) {
 			}),
 	)
 	ev.Publish("collision", collision)
-	time.Sleep(FRAME_SLEEP)
+	time.Sleep(FRAME_DURATION)
 	select {
 	case _ = <-ec.C:
 		break
@@ -111,7 +111,7 @@ func TestEventBusDataEventFilterNonMatching(t *testing.T) {
 			This:  &Entity{ID: 7},
 			Other: &Entity{ID: 9},
 		})
-	time.Sleep(FRAME_SLEEP)
+	time.Sleep(FRAME_DURATION)
 	select {
 	case _ = <-ec.C:
 		t.Fatal("collision event Filter matched for wrong event data")
@@ -127,7 +127,7 @@ func TestEventBusUnsubscribe(t *testing.T) {
 		SimpleEventFilter("collision"))
 	ev.Unsubscribe(ec)
 	ev.Publish("collision", nil)
-	time.Sleep(FRAME_SLEEP)
+	time.Sleep(FRAME_DURATION)
 	select {
 	case _ = <-ec.C:
 		t.Fatal("received event on unsubscribed channel")

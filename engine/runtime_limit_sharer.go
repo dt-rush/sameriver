@@ -87,20 +87,23 @@ func (r *RuntimeLimitSharer) DeactivateAll(runnerName string) {
 	r.runnerMap[runnerName].DeactivateAll()
 }
 
-func (r *RuntimeLimitSharer) Share(allowance float64) (remaining float64, starved int) {
+func (r *RuntimeLimitSharer) Share(allowance_ms float64) (remaining_ms float64, starved int) {
 	// process addition and removal of logics (they get buffered in a channel
 	// so we aren't adding logics while iterating logics)
 	r.ProcessAddRemoveLogics()
 
-	remaining = allowance
+	remaining_ms = allowance_ms
 	ran := 0
-	perRunner := allowance / float64(len(r.runners))
-	// while we have allowance, try to cycle all the way around
-	for allowance >= 0 && ran < len(r.runners) {
+	// TODO: scale perRunner_ms somehow; if one runner is using all its time,
+	// but others aren't using all theirs, then the extra time within allowance_ms
+	// should go to the runner hitting its limit based on this simple division
+	perRunner_ms := allowance_ms / float64(len(r.runners))
+	// while we have allowance_ms, try to cycle all the way around
+	for allowance_ms >= 0 && ran < len(r.runners) {
 		runner := r.runners[r.runIX]
-		overunder := runner.Run(perRunner)
-		used := perRunner - overunder
-		allowance -= used
+		overunder_ms := runner.Run(perRunner_ms)
+		used := perRunner_ms - overunder_ms
+		allowance_ms -= used
 		// increment to run next runner even if runner.Finished() isn't true
 		// this means it will get another chance to finish itself when its
 		// turn comes back around
@@ -108,7 +111,7 @@ func (r *RuntimeLimitSharer) Share(allowance float64) (remaining float64, starve
 		ran++
 	}
 	starved = len(r.runners) - ran
-	return allowance, starved
+	return allowance_ms, starved
 }
 
 func (r *RuntimeLimitSharer) DumpStats() map[string](map[string]float64) {

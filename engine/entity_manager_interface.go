@@ -1,7 +1,7 @@
 package engine
 
 type EntityManagerInterface interface {
-	Update(allowance float64) float64
+	Update(allowance_ms float64) float64
 
 	Spawn(tags []string, components ComponentSet) (*Entity, error)
 	QueueSpawn(tags []string, components ComponentSet)
