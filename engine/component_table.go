@@ -60,6 +60,54 @@ func (ct *ComponentTable) nameAndIndex(name string) bool {
 	return false
 }
 
+func (ct *ComponentTable) ComponentExists(spec string) bool {
+	// decode spec string
+	split := strings.Split(spec, ",")
+	kind := split[0]
+	name := split[1]
+	switch kind {
+	case "Vec2D":
+		if _, ok := ct.vec2DMap[name]; ok {
+			return true
+		}
+	case "*LogicUnit":
+		if _, ok := ct.logicUnitMap[name]; ok {
+			return true
+		}
+	case "Bool":
+		if _, ok := ct.boolMap[name]; ok {
+			return true
+		}
+	case "Int":
+		if _, ok := ct.intMap[name]; ok {
+			return true
+		}
+	case "Float64":
+		if _, ok := ct.float64Map[name]; ok {
+			return true
+		}
+	case "String":
+		if _, ok := ct.stringMap[name]; ok {
+			return true
+		}
+	case "Sprite":
+		if _, ok := ct.spriteMap[name]; ok {
+			return true
+		}
+	case "TagList":
+		if _, ok := ct.tagListMap[name]; ok {
+			return true
+		}
+	case "Generic":
+		if _, ok := ct.genericMap[name]; ok {
+			return true
+		}
+	default:
+		panic(fmt.Sprintf("added component of kind %s has no case in component_table.go", kind))
+	}
+	return false
+}
+
 func (ct *ComponentTable) AddComponent(spec string) {
 	// decode spec string
 	split := strings.Split(spec, ",")
@@ -68,7 +116,6 @@ func (ct *ComponentTable) AddComponent(spec string) {
 
 	// guard against double insertion (many say it's a great time, but not here)
 	if already := ct.nameAndIndex(name); already {
-		Logger.Println(fmt.Sprintf("Component with name %s already exists in components table", name))
 		return
 	}
 
@@ -100,7 +147,6 @@ func (ct *ComponentTable) AddComponent(spec string) {
 func (ct *ComponentTable) AddCCC(custom CustomContiguousComponent) {
 	// guard against double insertion (many say it's a great time, but not here)
 	if already := ct.nameAndIndex(custom.Name()); already {
-		Logger.Println(fmt.Sprintf("Component with name %s already exists in components table", custom.Name()))
 		return
 	}
 	ct.cccMap[custom.Name()] = custom

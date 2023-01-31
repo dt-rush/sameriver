@@ -79,7 +79,9 @@ func (w *World) Update(allowance float64) (overrun_ms float64) {
 func (w *World) RegisterComponents(specs []string) {
 	// register given specs
 	for _, spec := range specs {
-		w.em.components.AddComponent(spec)
+		if !w.em.components.ComponentExists(spec) {
+			w.em.components.AddComponent(spec)
+		}
 	}
 }
 
