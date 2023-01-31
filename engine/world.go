@@ -24,7 +24,12 @@ type World struct {
 	// interface, not a struct type like LogicUnit that can have a name field
 	systemsIDs map[System]int
 
+	// logics invoked regularly by runtimeSharer
 	worldLogics map[string]*LogicUnit
+
+	// funcs that can be called by name with data and get a result,
+	// or to produce an effect
+	funcs *FuncSet
 
 	// for sharing runtime among the various runtimelimiter kinds
 	// and contains the RuntimeLimiters to which we Add() LogicUnits
@@ -42,6 +47,7 @@ func NewWorld(width int, height int) *World {
 		systems:       make(map[string]System),
 		systemsIDs:    make(map[System]int),
 		worldLogics:   make(map[string]*LogicUnit),
+		funcs:         NewFuncSet(),
 		runtimeSharer: NewRuntimeLimitSharer(),
 	}
 	w.runtimeSharer.RegisterRunner("systems")
@@ -51,8 +57,6 @@ func NewWorld(width int, height int) *World {
 	w.em = NewEntityManager(w)
 	// register generic taglist
 	w.em.components.AddComponent("TagList,GenericTags")
-	// register generic logic
-	w.em.components.AddComponent("*LogicUnit,GenericLogic")
 	return w
 }
 
@@ -282,6 +286,24 @@ func (w *World) DeactivateEntityLogics(e *Entity) {
 	for _, logic := range e.Logics {
 		logic.active = false
 	}
+}
+
+func (w *World) AddFuncs(funcs map[string](func(interface{}) interface{})) {
+	for name, f := range funcs {
+		w.funcs.Add(name, f)
+	}
+}
+
+func (w *World) AddFunc(name string, f func(interface{}) interface{}) {
+	w.funcs.Add(name, f)
+}
+
+func (w *World) RemoveFunc(name string) {
+	w.funcs.Remove(name)
+}
+
+func (w *World) GetFunc(name string) func(interface{}) interface{} {
+	return w.funcs.funcs[name]
 }
 
 func (w *World) String() string {

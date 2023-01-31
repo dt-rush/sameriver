@@ -3,7 +3,6 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"sync"
 
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
@@ -15,9 +14,9 @@ type Entity struct {
 	Active            bool
 	Despawned         bool
 	ComponentBitArray bitarray.BitArray
-	ListsMutex        sync.RWMutex
 	Lists             []*UpdatedEntityList
 	Logics            map[string]*LogicUnit
+	funcs             *FuncSet
 }
 
 func (e *Entity) LogicUnitName(name string) string {
@@ -64,6 +63,24 @@ func (e *Entity) DeactivateLogics() {
 	for _, logic := range e.Logics {
 		logic.active = false
 	}
+}
+
+func (e *Entity) AddFuncs(funcs map[string](func(interface{}) interface{})) {
+	for name, f := range funcs {
+		e.funcs.Add(name, f)
+	}
+}
+
+func (e *Entity) AddFunc(name string, f func(interface{}) interface{}) {
+	e.funcs.Add(name, f)
+}
+
+func (e *Entity) RemoveFunc(name string) {
+	e.funcs.Remove(name)
+}
+
+func (e *Entity) GetFunc(name string) func(interface{}) interface{} {
+	return e.funcs.funcs[name]
 }
 
 func EntitySliceToString(entities []*Entity) string {
