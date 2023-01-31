@@ -4,16 +4,24 @@ import (
 	"fmt"
 )
 
+type AddRemoveLogicEvent struct {
+	addRemove  bool
+	runnerName string
+	l          *LogicUnit
+}
+
 type RuntimeLimitSharer struct {
-	runIX     int
-	runners   []*RuntimeLimiter
-	runnerMap map[string]*RuntimeLimiter
+	runIX            int
+	runners          []*RuntimeLimiter
+	runnerMap        map[string]*RuntimeLimiter
+	addRemoveChannel chan AddRemoveLogicEvent
 }
 
 func NewRuntimeLimitSharer() *RuntimeLimitSharer {
 	r := &RuntimeLimitSharer{
-		runners:   make([]*RuntimeLimiter, 0),
-		runnerMap: make(map[string]*RuntimeLimiter),
+		runners:          make([]*RuntimeLimiter, 0),
+		runnerMap:        make(map[string]*RuntimeLimiter),
+		addRemoveChannel: make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
 	}
 	return r
 }
@@ -27,18 +35,42 @@ func (r *RuntimeLimitSharer) RegisterRunner(name string) {
 	r.runnerMap[name] = runner
 }
 
-func (r *RuntimeLimitSharer) AddLogic(runnerName string, l *LogicUnit) {
-	if _, ok := r.runnerMap[runnerName]; !ok {
-		panic(fmt.Sprintf("Trying to add to runtimeLimiter with name %s - doesn't exist", runnerName))
+func (r *RuntimeLimitSharer) ProcessAddRemoveLogics() {
+	for len(r.addRemoveChannel) > 0 {
+		ev := <-r.addRemoveChannel
+		l := ev.l
+		runnerName := ev.runnerName
+		if ev.addRemove {
+			// add
+			if _, ok := r.runnerMap[runnerName]; !ok {
+				panic(fmt.Sprintf("Trying to add to runtimeLimiter with name %s - doesn't exist", runnerName))
+			}
+			r.runnerMap[runnerName].Add(l)
+		} else {
+			// remove
+			if _, ok := r.runnerMap[runnerName]; !ok {
+				panic(fmt.Sprintf("Trying to remove from runtimeLimiter with name %s - doesn't exist", runnerName))
+			}
+			r.runnerMap[runnerName].Remove(l)
+		}
 	}
-	r.runnerMap[runnerName].Add(l)
+}
+
+func (r *RuntimeLimitSharer) AddLogic(runnerName string, l *LogicUnit) {
+	r.addRemoveChannel <- AddRemoveLogicEvent{
+		addRemove:  true,
+		runnerName: runnerName,
+		l:          l,
+	}
 }
 
 func (r *RuntimeLimitSharer) RemoveLogic(runnerName string, l *LogicUnit) {
-	if _, ok := r.runnerMap[runnerName]; !ok {
-		panic(fmt.Sprintf("Trying to remove from runtimeLimiter with name %s - doesn't exist", runnerName))
+
+	r.addRemoveChannel <- AddRemoveLogicEvent{
+		addRemove:  false,
+		runnerName: runnerName,
+		l:          l,
 	}
-	r.runnerMap[runnerName].Remove(l)
 }
 
 func (r *RuntimeLimitSharer) ActivateAll(runnerName string) {
@@ -56,6 +88,10 @@ func (r *RuntimeLimitSharer) DeactivateAll(runnerName string) {
 }
 
 func (r *RuntimeLimitSharer) Share(allowance float64) (remaining float64, starved int) {
+	// process addition and removal of logics (they get buffered in a channel
+	// so we aren't adding logics while iterating logics)
+	r.ProcessAddRemoveLogics()
+
 	remaining = allowance
 	ran := 0
 	perRunner := allowance / float64(len(r.runners))

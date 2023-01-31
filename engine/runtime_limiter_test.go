@@ -220,6 +220,44 @@ func TestRuntimeLimitShare(t *testing.T) {
 	}
 }
 
+func TestRuntimeLimitShareInsertWhileRunning(t *testing.T) {
+	w := testingWorld()
+	sharer := NewRuntimeLimitSharer()
+	counter := 0
+
+	const N = 3
+	const LOOPS = 5
+	const SLEEP = 16
+
+	sharer.RegisterRunner("basic")
+	insert := func(i int) {
+		sharer.AddLogic("basic", &LogicUnit{
+			name:    fmt.Sprintf("basic-%d", i),
+			worldID: w.IdGen.Next(),
+			f: func() {
+				time.Sleep(SLEEP)
+				counter += 1
+			},
+			active: true})
+	}
+	for i := 0; i < N; i++ {
+		insert(i)
+	}
+	for i := 0; i < LOOPS; i++ {
+		// insert with 3 loops left to go
+		if i == LOOPS-3 {
+			insert(N + i)
+		}
+		// ensure there's always enough time to run every one
+		sharer.Share(5 * N * SLEEP)
+	}
+	Logger.Printf("Result: %d", counter)
+	expected := N*LOOPS + 3
+	if counter != expected {
+		t.Fatal("didn't share runtime properly")
+	}
+}
+
 func TestRuntimeLimiterInsertAppending(t *testing.T) {
 	r := NewRuntimeLimiter()
 	for i := 0; i < 32; i++ {
