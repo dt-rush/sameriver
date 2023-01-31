@@ -8,7 +8,7 @@ import (
 func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) {
 	w := testingWorld()
 	cs := NewCollisionSystem(FRAME_SLEEP / 2)
-	w.AddSystems(
+	w.RegisterSystems(
 		NewSpatialHashSystem(1, 1),
 		cs,
 	)

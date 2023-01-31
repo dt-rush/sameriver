@@ -96,7 +96,7 @@ func (w *World) RegisterCCCs(customs []CustomContiguousComponent) {
 	}
 }
 
-func (w *World) AddSystems(systems ...System) {
+func (w *World) RegisterSystems(systems ...System) {
 	// add all systems
 	for _, s := range systems {
 		w.RegisterComponents(s.GetComponentDeps())

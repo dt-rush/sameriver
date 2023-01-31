@@ -10,7 +10,7 @@ import (
 func TestSpatialHashInsertion(t *testing.T) {
 	w := NewWorld(100, 100)
 	sh := NewSpatialHashSystem(10, 10)
-	w.AddSystems(sh)
+	w.RegisterSystems(sh)
 	testData := map[[2]Vec2D][][2]int{
 		[2]Vec2D{Vec2D{5, 5}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
 		[2]Vec2D{Vec2D{1, 1}, Vec2D{1, 1}}:   [][2]int{[2]int{0, 0}},
@@ -48,7 +48,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 func TestSpatialHashLargeEntity(t *testing.T) {
 	w := NewWorld(100, 100)
 	sh := NewSpatialHashSystem(10, 10)
-	w.AddSystems(sh)
+	w.RegisterSystems(sh)
 	pos := Vec2D{20, 20}
 	box := Vec2D{5, 5}
 	cells := [][2]int{
@@ -78,7 +78,7 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 func TestSpatialHashTableCopy(t *testing.T) {
 	w := NewWorld(100, 100)
 	sh := NewSpatialHashSystem(10, 10)
-	w.AddSystems(sh)
+	w.RegisterSystems(sh)
 	testingSpawnSpatial(w, Vec2D{1, 1}, Vec2D{1, 1})
 	w.Update(FRAME_SLEEP_MS / 2)
 	table := sh.Table
@@ -96,7 +96,7 @@ func TestSpatialHashTableToString(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	w := testingWorld()
 	sh := NewSpatialHashSystem(10, 10)
-	w.AddSystems(sh)
+	w.RegisterSystems(sh)
 	table := sh.Table
 	s0 := table.String()
 	for i := 0; i < 500; i++ {

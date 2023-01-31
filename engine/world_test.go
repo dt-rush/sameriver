@@ -13,25 +13,25 @@ func TestCanConstructWorld(t *testing.T) {
 	}
 }
 
-func TestWorldAddSystems(t *testing.T) {
+func TestWorldRegisterSystems(t *testing.T) {
 	w := testingWorld()
-	w.AddSystems(newTestSystem())
+	w.RegisterSystems(newTestSystem())
 }
 
-func TestWorldAddSystemsDuplicate(t *testing.T) {
+func TestWorldRegisterSystemsDuplicate(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 		}
 	}()
 	w := testingWorld()
-	w.AddSystems(newTestSystem(), newTestSystem())
+	w.RegisterSystems(newTestSystem(), newTestSystem())
 	t.Fatal("should have panic'd")
 }
 
 func TestWorldAddDependentSystems(t *testing.T) {
 	w := testingWorld()
 	dep := newTestDependentSystem()
-	w.AddSystems(
+	w.RegisterSystems(
 		newTestSystem(),
 		dep,
 	)
@@ -46,7 +46,7 @@ func TestWorldUnresolvedSystemDependency(t *testing.T) {
 		}
 	}()
 	w := testingWorld()
-	w.AddSystems(
+	w.RegisterSystems(
 		newTestDependentSystem(),
 	)
 	t.Fatal("should have panic'd")
@@ -58,7 +58,7 @@ func TestWorldNonPointerReceiverSystem(t *testing.T) {
 		}
 	}()
 	w := testingWorld()
-	w.AddSystems(
+	w.RegisterSystems(
 		newTestNonPointerReceiverSystem(),
 	)
 	t.Fatal("should have panic'd")
@@ -70,7 +70,7 @@ func TestWorldMisnamedSystem(t *testing.T) {
 		}
 	}()
 	w := testingWorld()
-	w.AddSystems(
+	w.RegisterSystems(
 		newTestSystemThatIsMisnamed(),
 	)
 	t.Fatal("should have panic'd")
@@ -82,7 +82,7 @@ func TestWorldSystemDependencyNonPointer(t *testing.T) {
 		}
 	}()
 	w := testingWorld()
-	w.AddSystems(
+	w.RegisterSystems(
 		newTestDependentNonPointerSystem(),
 	)
 	t.Fatal("should have panic'd")
@@ -94,7 +94,7 @@ func TestWorldSystemDependencyNonSystem(t *testing.T) {
 		}
 	}()
 	w := testingWorld()
-	w.AddSystems(
+	w.RegisterSystems(
 		newTestDependentNonSystemSystem(),
 	)
 	t.Fatal("should have panic'd")
@@ -103,7 +103,7 @@ func TestWorldSystemDependencyNonSystem(t *testing.T) {
 func TestWorldRunSystemsOnly(t *testing.T) {
 	w := testingWorld()
 	ts := newTestSystem()
-	w.AddSystems(ts)
+	w.RegisterSystems(ts)
 	w.Update(FRAME_SLEEP_MS / 2)
 	if ts.updates == 0 {
 		t.Fatal("failed to update system")
