@@ -210,7 +210,7 @@ func (w *World) AddWorldLogic(Name string, F func()) *LogicUnit {
 	l := &LogicUnit{
 		name:    Name,
 		f:       F,
-		active:  false,
+		active:  true,
 		worldID: w.IdGen.Next(),
 	}
 	w.worldLogics[Name] = l
