@@ -56,7 +56,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 	}
 	for remaining_ms > 0 && len(r.logicUnits) > 0 {
 		logic := r.logicUnits[r.runIX]
-		if !logic.lastRun.IsZero() {
+		if logic.lastRun.IsZero() {
 			logic.lastRun = time.Now()
 		}
 		estimate, hasEstimate := r.runtimeEstimates[logic]
