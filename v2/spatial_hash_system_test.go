@@ -45,6 +45,36 @@ func TestSpatialHashInsertion(t *testing.T) {
 	}
 }
 
+func TestSpatialHashMany(t *testing.T) {
+	w := NewWorld(100, 100)
+	sh := NewSpatialHashSystem(10, 10)
+	w.RegisterSystems(sh)
+	for i := 0; i < 300; i++ {
+		testingSpawnSpatial(w,
+			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
+			Vec2D{5, 5})
+	}
+	w.Update(FRAME_DURATION_INT / 2)
+	n_entities := w.em.entityTable.active
+	seen := make(map[*Entity]bool)
+	found := 0
+	table := sh.TableCopy()
+	for x := 0; x < 10; x++ {
+		for y := 0; y < 10; y++ {
+			cell := table[x][y]
+			for _, e := range cell {
+				if _, ok := seen[e]; !ok {
+					found++
+					seen[e] = true
+				}
+			}
+		}
+	}
+	if found != n_entities {
+		t.Fatal("Some entities were not in any cell!")
+	}
+}
+
 func TestSpatialHashLargeEntity(t *testing.T) {
 	w := NewWorld(100, 100)
 	sh := NewSpatialHashSystem(10, 10)

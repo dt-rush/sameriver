@@ -3,12 +3,19 @@ package sameriver
 import (
 	"bytes"
 	"fmt"
+	"runtime"
+	"sync"
 	"unsafe"
 )
 
 // the actual cell data structure is a cellDimension x cellDimension array of
 // entities
 type SpatialHashTable [][][]*Entity
+
+type CellInsert struct {
+	x, y int
+	e    *Entity
+}
 
 // used to compute the spatial hash tables given a list of entities
 type SpatialHashSystem struct {
@@ -76,34 +83,68 @@ func (h *SpatialHashSystem) clearTable() {
 func (h *SpatialHashSystem) scanAndInsertEntities() {
 	cellSizeX := h.w.Width / float64(h.GridX)
 	cellSizeY := h.w.Height / float64(h.GridX)
-	for _, e := range h.spatialEntities.entities {
 
-		// we shift the position to the bottom-left because
-		// the logic is simpler to read that way
-		pos := e.GetVec2D("Position")
-		box := e.GetVec2D("Box")
-		pos.ShiftCenterToBottomLeft(box)
-		defer pos.ShiftBottomLeftToCenter(box)
-		// find out how many cells the entity spans in x and y (almost always 0,
-		// but we want to be thorough, and the fact that it's got a predictable
-		// pattern 99% of the time means that branch prediction should help us)
-		cellX0 := int(pos.X / cellSizeX)
-		cellX1 := int((pos.X + box.X) / cellSizeX)
-		cellY0 := int(pos.Y / cellSizeY)
-		cellY1 := int((pos.Y + box.Y) / cellSizeY)
-		// walk through each cell the entity touches by starting in the bottom-
-		// -left and walking according to cellsHigh and cellsWide
-		for x := cellX0; x <= cellX1; x++ {
-			for y := cellY0; y <= cellY1; y++ {
-				if x < 0.0 || x > h.GridX-1 ||
-					y < 0.0 || y > h.GridY-1 {
-					continue
-				}
-				cell := &h.Table[x][y]
-				*cell = append(*cell, e)
-			}
+	// create the channel to receive append instructions
+	appendChan := make(chan CellInsert, 100)
+
+	// start a go routine to perform the append operation
+	go func() {
+		for {
+			insert := <-appendChan
+			cell := &h.Table[insert.x][insert.y]
+			*cell = append(*cell, insert.e)
 		}
+	}()
+
+	// divide the entities slice into n chunks
+	n := runtime.NumCPU()
+	chunkSize := len(h.spatialEntities.entities) / n
+	chunks := make([][]*Entity, n)
+	for i := 0; i < n; i++ {
+		start := i * chunkSize
+		end := (i + 1) * chunkSize
+		if i == n-1 {
+			end = len(h.spatialEntities.entities)
+		}
+		chunks[i] = h.spatialEntities.entities[start:end]
 	}
+
+	// start n workers to process each chunk of entities
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(chunk []*Entity) {
+			defer wg.Done()
+			for _, e := range chunk {
+				pos := e.GetVec2D("Position")
+				box := e.GetVec2D("Box")
+				// we shift the position to the bottom-left because
+				// the logic is simpler to read that way
+				pos.ShiftCenterToBottomLeft(box)
+				defer pos.ShiftBottomLeftToCenter(box)
+				// find out how many cells the entity spans in x and y (almost
+				// always just 1 cell, but we want to be thorough, and the fact that
+				// it's got a predictable pattern 99% of the time means that
+				// branch prediction should help us)
+				cellX0 := int(pos.X / cellSizeX)
+				cellX1 := int((pos.X + box.X) / cellSizeX)
+				cellY0 := int(pos.Y / cellSizeY)
+				cellY1 := int((pos.Y + box.Y) / cellSizeY)
+				// walk through each cell the entity touches by starting in the bottom-
+				// -left and walking according to cellsHigh and cellsWide
+				for x := cellX0; x <= cellX1; x++ {
+					for y := cellY0; y <= cellY1; y++ {
+						if x < 0.0 || x > h.GridX-1 ||
+							y < 0.0 || y > h.GridY-1 {
+							continue
+						}
+						appendChan <- CellInsert{x: x, y: y, e: e}
+					}
+				}
+			}
+		}(chunks[i])
+	}
+	wg.Wait()
 }
 
 // get a *copy* of the current table which is safe to hold onto, mutate, etc.
