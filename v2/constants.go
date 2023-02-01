@@ -23,6 +23,9 @@ const MAX_ENTITIES = 1600
 const COLLISION_RATELIMIT_TIMEOUT_MS = 300
 
 const EVENT_PUBLISH_CHANNEL_CAPACITY = MAX_ENTITIES / 4
-const EVENT_SUBSCRIBER_CHANNEL_CAPACITY = 64
+
+// a subscriber getting 4096 events in a single update tick is insane,
+// but memory is plentiful so, allow some capacity to build up
+const EVENT_SUBSCRIBER_CHANNEL_CAPACITY = 4096
 
 const ADD_REMOVE_LOGIC_CHANNEL_CAPACITY = MAX_ENTITIES / 4

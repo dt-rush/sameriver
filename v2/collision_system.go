@@ -97,7 +97,8 @@ func (s *CollisionSystem) Update(dt_ms float64) {
 	// handshake pattern
 	for x := 0; x < s.sh.GridX; x++ {
 		for y := 0; y < s.sh.GridY; y++ {
-			s.checkEntities(s.sh.Table[x][y])
+			entities := s.sh.Table[x][y]
+			s.checkEntities(entities)
 		}
 	}
 }
@@ -109,17 +110,17 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 	// so maybe spatial hash didn't run but an entity or world logic did, to
 	// despawn one of the tokens still stored in the last-computed spatial hash
 	// table).
-	for ix := uint16(0); ix < uint16(len(entities)); ix++ {
+	for ix := 0; ix < len(entities); ix++ {
 		i := entities[ix]
 		if i.Despawned {
 			continue
 		}
-		for jx := ix + 1; jx < uint16(len(entities)); jx++ {
+		for jx := ix + 1; jx < len(entities); jx++ {
 			j := entities[jx]
 			if j.Despawned {
 				continue
 			}
-			// required that i.ID , j.ID for the rate limiter array
+			// required that i.ID < j.ID for the rate limiter array
 			if j.ID < i.ID {
 				j, i = i, j
 			}

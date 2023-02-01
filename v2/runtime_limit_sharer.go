@@ -43,19 +43,27 @@ func (r *RuntimeLimitSharer) ProcessAddRemoveLogics() {
 		l := ev.l
 		runnerName := ev.runnerName
 		if ev.addRemove {
-			// add
-			if _, ok := r.runnerMap[runnerName]; !ok {
-				panic(fmt.Sprintf("Trying to add to runtimeLimiter with name %s - doesn't exist", runnerName))
-			}
-			r.runnerMap[runnerName].Add(l)
+			r.addLogicImmediately(runnerName, l)
 		} else {
-			// remove
-			if _, ok := r.runnerMap[runnerName]; !ok {
-				panic(fmt.Sprintf("Trying to remove from runtimeLimiter with name %s - doesn't exist", runnerName))
-			}
-			r.runnerMap[runnerName].Remove(l)
+			r.removeLogicImmediately(runnerName, l)
 		}
 	}
+}
+
+func (r *RuntimeLimitSharer) addLogicImmediately(runnerName string, l *LogicUnit) {
+	// add
+	if _, ok := r.runnerMap[runnerName]; !ok {
+		panic(fmt.Sprintf("Trying to add to runtimeLimiter with name %s - doesn't exist", runnerName))
+	}
+	r.runnerMap[runnerName].Add(l)
+}
+
+func (r *RuntimeLimitSharer) removeLogicImmediately(runnerName string, l *LogicUnit) {
+	// remove
+	if _, ok := r.runnerMap[runnerName]; !ok {
+		panic(fmt.Sprintf("Trying to remove from runtimeLimiter with name %s - doesn't exist", runnerName))
+	}
+	r.runnerMap[runnerName].Remove(l)
 }
 
 func (r *RuntimeLimitSharer) AddLogic(runnerName string, l *LogicUnit) {

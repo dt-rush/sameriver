@@ -79,6 +79,9 @@ func (ev *EventBus) notifySubscribers(e Event) {
 				notifyFull(c)
 				// spawn a goroutine to do the channel send since we don't
 				// want a hang here to affect other subscribers
+				// (note: if you severely overrun, even these goroutines
+				// will add up and cause problems)
+				// TODO: count how many of these are waiting and warn if too high
 				go func() {
 					c.C <- e
 				}()

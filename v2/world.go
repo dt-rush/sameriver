@@ -133,7 +133,11 @@ func (w *World) addSystem(s System) {
 	w.systemsIDs[s] = ID
 	s.LinkWorld(w)
 	logicName := fmt.Sprintf("%s", name)
-	w.runtimeSharer.AddLogic("systems",
+	// add logic immediately rather than wait for runtimeSharer.Share() to
+	// process the add/remove logic channel so that if we call SetSystemSchedule()
+	// immediately after RegisterSystems(), the LogicUnit will be in the runner
+	// to set the runSchedule on
+	w.runtimeSharer.addLogicImmediately("systems",
 		&LogicUnit{
 			name:        logicName,
 			worldID:     w.systemsIDs[s],
