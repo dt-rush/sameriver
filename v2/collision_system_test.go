@@ -45,12 +45,11 @@ func TestCollisionSystem(t *testing.T) {
 
 func TestCollisionSystemMany(t *testing.T) {
 	w, _, ec, _ := testingSetupCollision()
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 100; i++ {
 		testingSpawnCollisionRandom(w)
 	}
 	Logger.Printf("%d entities.", len(w.em.entityTable.currentEntities))
 	w.SetSystemSchedule("CollisionSystem", 5)
-	time.Sleep(5 * FRAME_DURATION)
 	w.Update(FRAME_DURATION_INT / 2)
 	time.Sleep(5 * FRAME_DURATION)
 	w.Update(FRAME_DURATION_INT / 2)

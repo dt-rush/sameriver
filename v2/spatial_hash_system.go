@@ -83,15 +83,14 @@ func (h *SpatialHashSystem) clearTable() {
 func (h *SpatialHashSystem) scanAndInsertEntities() {
 
 	// create the channel to receive append instructions
-	appendChan := make(chan CellInsert, 100)
-	// used for the append goroutine to know the workgroup is done
-	// and to signal it finished appending
-	finishChan := make(chan bool)
+	appendCh := make(chan *CellInsert, 100)
 	// used to wait for all the workers to finish
 	var wg sync.WaitGroup
+	// used to wait for the appender to finish its work
+	finishCh := make(chan bool)
 
 	// start a go routine to perform the append operation
-	go h.cellInsertAppender(appendChan, finishChan)
+	go h.cellInsertAppender(appendCh, finishCh)
 
 	// divide the entities slice into n chunks
 	chunks := h.chunkEntities()
@@ -101,14 +100,13 @@ func (h *SpatialHashSystem) scanAndInsertEntities() {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			h.scanAndInsertWorker(chunks[i], appendChan)
+			h.scanAndInsertWorker(chunks[i], appendCh)
 		}(i)
 	}
 	wg.Wait()
-	// notify appender
-	finishChan <- false
+	close(appendCh)
 	// wait for appender done
-	<-finishChan
+	<-finishCh
 }
 
 func (h *SpatialHashSystem) chunkEntities() [][]*Entity {
@@ -126,7 +124,7 @@ func (h *SpatialHashSystem) chunkEntities() [][]*Entity {
 	return chunks
 }
 
-func (h *SpatialHashSystem) scanAndInsertWorker(chunk []*Entity, appendChan chan CellInsert) {
+func (h *SpatialHashSystem) scanAndInsertWorker(chunk []*Entity, appendCh chan *CellInsert) {
 	cellSizeX := h.w.Width / float64(h.GridX)
 	cellSizeY := h.w.Height / float64(h.GridX)
 	for _, e := range chunk {
@@ -152,37 +150,25 @@ func (h *SpatialHashSystem) scanAndInsertWorker(chunk []*Entity, appendChan chan
 					y < 0.0 || y > h.GridY-1 {
 					continue
 				}
-				appendChan <- CellInsert{x: x, y: y, e: e}
+				appendCh <- &CellInsert{x: x, y: y, e: e}
 			}
 		}
 	}
 }
 
 func (h *SpatialHashSystem) cellInsertAppender(
-	appendChan chan CellInsert, finishChan chan bool) {
+	appendCh chan *CellInsert, finishCh chan bool) {
 
-	// receive CellInsert events until finishChan sends an event,
-	// then begin checking if len(appendChan) == 0 after each loop
-	readyToEnd := false
+	// receive CellInsert events until the channel is closed
 	for {
-		// try to get append
-		select {
-		case insert := <-appendChan:
-			cell := &h.Table[insert.x][insert.y]
-			*cell = append(*cell, insert.e)
-		default:
+		insert := <-appendCh
+		if insert == nil {
+			break
 		}
-		// try to get workers-finished message
-		select {
-		case <-finishChan:
-			readyToEnd = true
-		default:
-			if readyToEnd && len(appendChan) == 0 {
-				finishChan <- true
-				return
-			}
-		}
+		cell := &h.Table[insert.x][insert.y]
+		*cell = append(*cell, insert.e)
 	}
+	finishCh <- true
 }
 
 // get a *copy* of the current table which is safe to hold onto, mutate, etc.

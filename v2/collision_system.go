@@ -33,12 +33,19 @@
 package sameriver
 
 import (
+	"runtime"
+	"sync"
 	"time"
 )
 
 type CollisionData struct {
 	This  *Entity
 	Other *Entity
+}
+
+type EntityPair struct {
+	A *Entity
+	B *Entity
 }
 
 type CollisionSystem struct {
@@ -108,10 +115,28 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 	// table might have been despawned since the last time a spatial hash
 	// was computed (not every system is guaranteed to run every update loop,
 	// so maybe spatial hash didn't run but an entity or world logic did, to
-	// despawn one of the tokens still stored in the last-computed spatial hash
-	// table).
+	// despawn one of the *Entity objects still stored in the last-computed
+	// spatial hash table).
+	var wg sync.WaitGroup
+	entitiesCh := make(chan *EntityPair)
+
+	workers := runtime.NumCPU()
+
+	// launch workers
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.checkEntityWorker(entitiesCh)
+		}()
+	}
+
+	// send work to workers
 	for ix := 0; ix < len(entities); ix++ {
 		i := entities[ix]
+		if i == nil {
+			Logger.Println("NIL????")
+		}
 		if i.Despawned {
 			continue
 		}
@@ -124,10 +149,25 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 			if j.ID < i.ID {
 				j, i = i, j
 			}
-			if !s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Limited() &&
-				s.TestCollision(i, j) {
-				s.DoCollide(i, j)
-			}
+			entitiesCh <- &EntityPair{i, j}
+		}
+	}
+
+	Logger.Println("closing ch")
+	close(entitiesCh)
+	wg.Wait()
+}
+
+func (s *CollisionSystem) checkEntityWorker(entitiesCh chan *EntityPair) {
+	for {
+		entityPair := <-entitiesCh
+		if entityPair == nil {
+			return
+		}
+		i, j := entityPair.A, entityPair.B
+		if !s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Limited() &&
+			s.TestCollision(i, j) {
+			s.DoCollide(i, j)
 		}
 	}
 }
