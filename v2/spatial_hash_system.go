@@ -48,7 +48,7 @@ func (s *SpatialHashSystem) GetComponentDeps() []string {
 func (s *SpatialHashSystem) LinkWorld(w *World) {
 	s.w = w
 	// get a list of spatial entities
-	s.spatialEntities = w.em.GetUpdatedEntityList(
+	s.spatialEntities = w.em.GetSortedUpdatedEntityList(
 		EntityFilterFromComponentBitArray("spatial",
 			w.em.components.BitArrayFromNames([]string{"Position", "Box"})))
 }

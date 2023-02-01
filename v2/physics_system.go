@@ -16,7 +16,7 @@ func (s *PhysicsSystem) GetComponentDeps() []string {
 
 func (s *PhysicsSystem) LinkWorld(w *World) {
 	s.w = w
-	s.physicsEntities = w.em.GetUpdatedEntityList(
+	s.physicsEntities = w.em.GetSortedUpdatedEntityList(
 		EntityFilterFromComponentBitArray(
 			"physical",
 			w.em.components.BitArrayFromNames([]string{"Position", "Velocity", "Box", "Mass"})))
