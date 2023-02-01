@@ -22,6 +22,19 @@ func TestPhysicsSystemMotion(t *testing.T) {
 	}
 }
 
+func TestPhysicsSystemMany(t *testing.T) {
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+	for i := 0; i < 500; i++ {
+		testingSpawnPhysics(w)
+	}
+	// Update twice since physics system won't run the first time(needs a dt)
+	w.Update(FRAME_DURATION_INT / 2)
+	time.Sleep(FRAME_DURATION)
+	w.Update(FRAME_DURATION_INT / 2)
+}
+
 func TestPhysicsSystemBounds(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
