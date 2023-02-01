@@ -134,9 +134,6 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 	// send work to workers
 	for ix := 0; ix < len(entities); ix++ {
 		i := entities[ix]
-		if i == nil {
-			Logger.Println("NIL????")
-		}
 		if i.Despawned {
 			continue
 		}
@@ -153,7 +150,6 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 		}
 	}
 
-	Logger.Println("closing ch")
 	close(entitiesCh)
 	wg.Wait()
 }
