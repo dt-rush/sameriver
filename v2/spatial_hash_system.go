@@ -77,6 +77,7 @@ func (h *SpatialHashSystem) scanAndInsertEntities() {
 	cellSizeX := h.w.Width / float64(h.GridX)
 	cellSizeY := h.w.Height / float64(h.GridX)
 	for _, e := range h.spatialEntities.entities {
+
 		// we shift the position to the bottom-left because
 		// the logic is simpler to read that way
 		pos := e.GetVec2D("Position")
@@ -86,16 +87,14 @@ func (h *SpatialHashSystem) scanAndInsertEntities() {
 		// find out how many cells the entity spans in x and y (almost always 0,
 		// but we want to be thorough, and the fact that it's got a predictable
 		// pattern 99% of the time means that branch prediction should help us)
-		cellsWide := box.X / cellSizeX
-		cellsHigh := box.Y / cellSizeY
-		cellX := pos.X / cellSizeX
-		cellY := pos.Y / cellSizeY
+		cellX0 := int(pos.X / cellSizeX)
+		cellX1 := int((pos.X + box.X) / cellSizeX)
+		cellY0 := int(pos.Y / cellSizeY)
+		cellY1 := int((pos.Y + box.Y) / cellSizeY)
 		// walk through each cell the entity touches by starting in the bottom-
 		// -left and walking according to cellsHigh and cellsWide
-		for ix := 0.0; ix < cellsWide+1; ix++ {
-			for iy := 0.0; iy < cellsHigh+1; iy++ {
-				x := int(cellX + ix)
-				y := int(cellY + iy)
+		for x := cellX0; x <= cellX1; x++ {
+			for y := cellY0; y <= cellY1; y++ {
 				if x < 0.0 || x > h.GridX-1 ||
 					y < 0.0 || y > h.GridY-1 {
 					continue

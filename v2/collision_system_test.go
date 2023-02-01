@@ -24,7 +24,6 @@ func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) 
 
 func TestCollisionSystem(t *testing.T) {
 	w, _, ec, e := testingSetupCollision()
-	w.Update(1)
 	w.Update(FRAME_DURATION_INT / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
@@ -41,6 +40,27 @@ func TestCollisionSystem(t *testing.T) {
 	time.Sleep(FRAME_DURATION)
 	if len(ec.C) != 1 {
 		t.Fatal("collision event occurred but entities were not overlapping")
+	}
+}
+
+func TestCollisionSystemMany(t *testing.T) {
+	w, _, ec, _ := testingSetupCollision()
+	for i := 0; i < 50; i++ {
+		testingSpawnCollisionRandom(w)
+	}
+	Logger.Printf("%d entities.", len(w.em.entityTable.currentEntities))
+	w.SetSystemSchedule("CollisionSystem", 5)
+	time.Sleep(5 * FRAME_DURATION)
+	w.Update(FRAME_DURATION_INT / 2)
+	time.Sleep(5 * FRAME_DURATION)
+	w.Update(FRAME_DURATION_INT / 2)
+	// sleep long enough for the event to appear on the channel
+	time.Sleep(FRAME_DURATION)
+	select {
+	case _ = <-ec.C:
+		break
+	default:
+		t.Fatal("collision event wasn't received within 1 frame")
 	}
 }
 

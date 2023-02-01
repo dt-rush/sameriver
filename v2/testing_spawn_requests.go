@@ -1,5 +1,9 @@
 package sameriver
 
+import (
+	"math/rand"
+)
+
 func testingSimpleSpawnRequest() SpawnRequestData {
 	return SpawnRequestData{Tags: []string{}, Components: ComponentSet{}}
 }
@@ -42,6 +46,14 @@ func testingSpawnCollision(em EntityManagerInterface) (*Entity, error) {
 		MakeComponentSet(map[string]interface{}{
 			"Vec2D,Position": Vec2D{10, 10},
 			"Vec2D,Box":      Vec2D{4, 4},
+		}))
+}
+
+func testingSpawnCollisionRandom(em EntityManagerInterface) (*Entity, error) {
+	return em.Spawn([]string{},
+		MakeComponentSet(map[string]interface{}{
+			"Vec2D,Position": Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
+			"Vec2D,Box":      Vec2D{5, 5},
 		}))
 }
 

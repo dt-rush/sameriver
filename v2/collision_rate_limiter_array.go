@@ -33,7 +33,7 @@ import (
 // i | 0 0 0 0 1 1 1 2 2 3
 // j | 1 2 3 4 2 3 4 3 4 4
 //
-//	r r r r r r r r r r
+// ____r r r r r r r r r r
 type CollisionRateLimiterArray struct {
 	backingArray []*utils.RateLimiter
 	arr          [][]*utils.RateLimiter
