@@ -148,6 +148,6 @@ func (s *CollisionSystem) TestCollision(i *Entity, j *Entity) bool {
 	iBox := i.GetVec2D("Box")
 	jPos := j.GetVec2D("Position")
 	jBox := j.GetVec2D("Box")
-	intersects := RectIntersectsRect(iPos, iBox, jPos, jBox)
+	intersects := RectIntersectsRect(*iPos, *iBox, *jPos, *jBox)
 	return intersects
 }

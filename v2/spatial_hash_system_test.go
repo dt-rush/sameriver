@@ -105,6 +105,53 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 	}
 }
 
+func TestSpatialHashCellsWithinDistance(t *testing.T) {
+	w := NewWorld(100, 100)
+	sh := NewSpatialHashSystem(10, 10)
+	w.RegisterSystems(sh)
+
+	box := Vec2D{0.01, 0.01}
+
+	// we're checking the radius at 0, 0, the corner of the world
+	cells := sh.CellsWithinDistance(Vec2D{0, 0}, box, 25.0)
+	if len(cells) != 8 {
+		t.Fatal(fmt.Sprintf("circle centered at 0, 0 of radius 25 should touch 8 cells; got %d: %v", len(cells), cells))
+	}
+	cells = sh.CellsWithinDistance(Vec2D{0, 0}, box, 29.0)
+	if len(cells) != 9 {
+		t.Fatal(fmt.Sprintf("circle centered at 0, 0 of radius 29 should touch 9 cells; got %d: %v", len(cells), cells))
+	}
+	// now check from a position not quite at the corner
+	cells = sh.CellsWithinDistance(Vec2D{20, 20}, box, 29.0)
+	if len(cells) != 25 {
+		t.Fatal(fmt.Sprintf("circle centered at 20, 20 of radius 29 should touch 25 cells; got %d: %v", len(cells), cells))
+	}
+	cells = sh.CellsWithinDistance(Vec2D{20, 20}, box, 7.0)
+	if len(cells) != 4 {
+		t.Fatal(fmt.Sprintf("circle centered at 20, 20 of radius 7 should touch 4 cells; got %d: %v", len(cells), cells))
+	}
+	cells = sh.CellsWithinDistance(Vec2D{25, 25}, box, 1.0)
+	if len(cells) != 1 {
+		t.Fatal(fmt.Sprintf("circle centered at 25, 25 of radius 1 should touch 1 cell; got %d: %v", len(cells), cells))
+	}
+}
+
+/*
+func TestSpatialHashEntitiesPotentiallyWithinDistance(t *testing.T) {
+	w := NewWorld(100, 100)
+	sh := NewSpatialHashSystem(10, 10)
+	w.RegisterSystems(sh)
+
+	e, _ := testingSpawnPosition(w, Vec2D{20, 20})
+
+	entities = sh.EntitiesPotentiallyWithinDistance(e, 29.0)
+	if len(entities) != 8 {
+		t.Fatal(fmt.Sprintf("circle centered at 20, 20 of radius 29 should have caught 8 entities; got %d", len(entities)))
+	}
+
+}
+*/
+
 func TestSpatialHashTableCopy(t *testing.T) {
 	w := NewWorld(100, 100)
 	sh := NewSpatialHashSystem(10, 10)

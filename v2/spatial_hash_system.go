@@ -3,6 +3,7 @@ package sameriver
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"unsafe"
 )
 
@@ -72,27 +73,30 @@ func (h *SpatialHashSystem) clearTable() {
 	}
 }
 
+// find out how many cells the box centered at pos spans in x and y
+func (h *SpatialHashSystem) CellRangeOfRect(pos, box Vec2D) (cellX0, cellX1, cellY0, cellY1 int) {
+	cellSizeX := h.w.Width / float64(h.GridX)
+	cellSizeY := h.w.Height / float64(h.GridY)
+	clamp := func(x, min, max int) int {
+		return int(math.Min(float64(max), math.Max(float64(x), float64(min))))
+	}
+	cellX0 = clamp(int(pos.X/cellSizeX), 0, h.GridX)
+	cellX1 = clamp(int((pos.X+box.X)/cellSizeX), 0, h.GridX)
+	cellY0 = clamp(int(pos.Y/cellSizeY), 0, h.GridY)
+	cellY1 = clamp(int((pos.Y+box.Y)/cellSizeY), 0, h.GridY)
+	return cellX0, cellX1, cellY0, cellY1
+}
+
 // used to iterate the entities and send them to the right cells
 func (h *SpatialHashSystem) scanAndInsertEntities() {
-	cellSizeX := h.w.Width / float64(h.GridX)
-	cellSizeY := h.w.Height / float64(h.GridX)
 	for _, e := range h.spatialEntities.entities {
-
-		// we shift the position to the bottom-left because
-		// the logic is simpler to read that way
 		pos := e.GetVec2D("Position")
 		box := e.GetVec2D("Box")
-		pos.ShiftCenterToBottomLeft(box)
-		defer pos.ShiftBottomLeftToCenter(box)
-		// find out how many cells the entity spans in x and y (almost always 0,
-		// but we want to be thorough, and the fact that it's got a predictable
-		// pattern 99% of the time means that branch prediction should help us)
-		cellX0 := int(pos.X / cellSizeX)
-		cellX1 := int((pos.X + box.X) / cellSizeX)
-		cellY0 := int(pos.Y / cellSizeY)
-		cellY1 := int((pos.Y + box.Y) / cellSizeY)
-		// walk through each cell the entity touches by starting in the bottom-
-		// -left and walking according to cellsHigh and cellsWide
+
+		// walk through each cell the entity touches by
+		// starting in the bottom-left and walking cell by cell
+		// through each row to the top-right
+		cellX0, cellX1, cellY0, cellY1 := h.CellRangeOfRect(pos.ShiftedCenterToBottomLeft(*box), *box)
 		for x := cellX0; x <= cellX1; x++ {
 			for y := cellY0; y <= cellY1; y++ {
 				if x < 0.0 || x > h.GridX-1 ||
@@ -117,6 +121,90 @@ func (h *SpatialHashSystem) TableCopy() SpatialHashTable {
 		}
 	}
 	return t2
+}
+
+func (h *SpatialHashSystem) GetCellPosAndBox(x, y int) (pos, box Vec2D) {
+	cellSizeX := h.w.Width / float64(h.GridX)
+	cellSizeY := h.w.Height / float64(h.GridY)
+	pos = Vec2D{
+		float64(x) * cellSizeX,
+		float64(y) * cellSizeY}
+	box = Vec2D{
+		cellSizeX,
+		cellSizeY}
+	return pos, box
+}
+
+// calculate which cells are within the distance d from the closest
+// point on the box centered at pos (imagine a rounded-corner box
+// extending d past the limits of the box)
+func (h *SpatialHashSystem) CellsWithinDistance(pos, box Vec2D, d float64) [][2]int {
+	cells := make([][2]int, 0)
+
+	// first approximate which cells might be valid by simply
+	// extending the box by +d in each direction
+	approximatorPos := pos.ShiftedCenterToBottomLeft(box).Sub(Vec2D{d, d})
+	approximatorBox := box.Add(Vec2D{2 * d, 2 * d})
+	cellX0, cellX1, cellY0, cellY1 := h.CellRangeOfRect(approximatorPos, approximatorBox)
+	candidateCells := make([][2]int, 0)
+	for x := cellX0; x <= cellX1; x++ {
+		for y := cellY0; y <= cellY1; y++ {
+			candidateCells = append(candidateCells, [2]int{x, y})
+		}
+	}
+	for _, cellXY := range candidateCells {
+		cellPos, cellBox := h.GetCellPosAndBox(cellXY[0], cellXY[1])
+		if RectWithinDistanceOfRect(cellPos, cellBox, pos, box, d) {
+			cells = append(cells, cellXY)
+		}
+	}
+	return cells
+}
+
+// extend the box +d on all sides and return the cells it touches
+// (NOTE: the corners will slightly over-estimate since they should
+// truly be rounded)
+// but it's a faster calculation
+func (h *SpatialHashSystem) CellsWithinApproxDistance(pos, box Vec2D, d float64) [][2]int {
+	approximatorPos := pos.ShiftedCenterToBottomLeft(box).Sub(Vec2D{d, d})
+	approximatorBox := box.Add(Vec2D{2 * d, 2 * d})
+	cellX0, cellX1, cellY0, cellY1 := h.CellRangeOfRect(approximatorPos, approximatorBox)
+	candidateCells := make([][2]int, 0)
+	for x := cellX0; x <= cellX1; x++ {
+		for y := cellY0; y <= cellY1; y++ {
+			candidateCells = append(candidateCells, [2]int{x, y})
+		}
+	}
+	return candidateCells
+}
+
+// uses the approx distance since it's faster. Overestimates slightly diagonally.
+func (h *SpatialHashSystem) EntitiesWithinDistanceApprox(pos, box Vec2D, d float64) []*Entity {
+	results := make([]*Entity, 0)
+	cells := h.CellsWithinApproxDistance(pos, box, d)
+	// for each cell, append its entities to results
+	for _, cell := range cells {
+		x := cell[0]
+		y := cell[1]
+		results = append(results, h.Table[x][y]...)
+	}
+	return results
+}
+
+func (h *SpatialHashSystem) EntitiesWithinDistance(pos, box Vec2D, d float64) []*Entity {
+	candidates := h.EntitiesWithinDistanceApprox(pos, box, d)
+	results := make([]*Entity, 0)
+	for _, e := range candidates {
+		ePos := *e.GetVec2D("Position")
+		eBox := *e.GetVec2D("Box")
+		if RectWithinDistanceOfRect(
+			pos.ShiftedCenterToBottomLeft(box), box,
+			ePos.ShiftedCenterToBottomLeft(eBox), eBox,
+			d) {
+			results = append(results, e)
+		}
+	}
+	return results
 }
 
 // turn a SpatialHashTable into a String representation (NOTE: do *NOT* call
@@ -146,3 +234,48 @@ func (table *SpatialHashTable) String() string {
 	buffer.WriteString(fmt.Sprintf("] (using %d bytes)", size))
 	return buffer.String()
 }
+
+/*
+func (h *SpatialHashSystem) EntitiesWithinDistance(pos, box Vec2D, d float64) []*Entity {
+	// algorithm from stackoverflow user Nick Alger
+	// https://stackoverflow.com/a/65107290
+	boxDist := func(aMin, aMax, bMin, bMax Vec2D) float64 {
+		entrywiseMaxZero := func(vec Vec2D) Vec2D {
+			return Vec2D{
+				math.Max(0, vec.X),
+				math.Max(0, vec.Y),
+			}
+		}
+		euclidNorm := func(vec Vec2D) float64 {
+			return math.Sqrt(vec.X*vec.X + vec.Y*vec.Y)
+		}
+		u := entrywiseMaxZero(aMin.Sub(bMax))
+		v := entrywiseMaxZero(bMin.Sub(aMax))
+		unorm := euclidNorm(u)
+		vnorm := euclidNorm(v)
+		return math.Sqrt(unorm*unorm + vnorm*vnorm)
+	}
+	inDist := func(j *Entity) bool {
+		// place the boxes in space according to the position
+		iBox := box
+		jBox := j.GetVec2D("Box")
+		iPos := pos
+		jPos := j.GetVec2D("Position")
+		// lower-left and upper-right corners
+		iMin := iPos.ShiftedCenterToBottomLeft(&iBox)
+		iMax := iMin.Add(iBox)
+		jMin := jPos.ShiftedCenterToBottomLeft(jBox)
+		jMax := jMin.Add(*jBox)
+		return boxDist(iMin, iMax, jMin, jMax) < d
+	}
+
+	candidates := h.EntitiesPotentiallyWithinDistance(pos, box, d)
+	results := make([]*Entity, 0)
+	for _, e := range candidates {
+		if inDist(e) {
+			results = append(results, e)
+		}
+	}
+	return results
+}
+*/
