@@ -21,7 +21,7 @@ func (as *GOAPActionSet) thoseThatHelpFulfill(ws GOAPWorldState) *GOAPActionSet 
 	for _, action := range as.set {
 		effState := NewGOAPWorldState(nil)
 		effState = effState.applyAction(action)
-		if effState.isSubset(ws) {
+		if effState.partlyCoversDoesntConflict(ws) {
 			helpers.Add(action)
 		}
 	}

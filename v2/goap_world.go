@@ -82,13 +82,19 @@ func (ws GOAPWorldState) fulfills(other GOAPWorldState) bool {
 	return true
 }
 
-func (ws GOAPWorldState) isSubset(other GOAPWorldState) bool {
-	for name, _ := range other.Vals {
-		if ws.get(name) == other.get(name) {
-			return true
+func (ws GOAPWorldState) partlyCoversDoesntConflict(other GOAPWorldState) bool {
+	hits := 0
+	misses := 0
+	for name, _ := range ws.Vals {
+		if _, ok := other.Vals[name]; ok {
+			if ws.get(name) == other.get(name) {
+				hits++
+			} else {
+				misses++
+			}
 		}
 	}
-	return false
+	return hits > 0 && misses == 0
 }
 
 func (ws GOAPWorldState) unfulfilledBy(action GOAPAction) GOAPWorldState {

@@ -2,6 +2,7 @@ package sameriver
 
 import (
 	"fmt"
+	"time"
 
 	"testing"
 )
@@ -82,12 +83,12 @@ func TestGOAPWorldStateUnfulfilledByCtx(t *testing.T) {
 	}
 }
 
-func TestGOAPWorldStateIsSubset(t *testing.T) {
+func TestGOAPWorldStatePartlyCoversDoesntConflict(t *testing.T) {
 	wsA := NewGOAPWorldState(
 		map[string]GOAPState{
 			"hasAxe":   true,
 			"hasGlove": true,
-			"atTree":   false,
+			"atTree":   true,
 		},
 	)
 	wsB := NewGOAPWorldState(
@@ -95,16 +96,25 @@ func TestGOAPWorldStateIsSubset(t *testing.T) {
 			"hasAxe": true,
 		},
 	)
-	if !wsB.isSubset(wsA) {
-		t.Fatal("wsB should be subset of wsA")
+	if !wsB.partlyCoversDoesntConflict(wsA) {
+		t.Fatal("wsB should partly cover wsA")
 	}
 	wsC := NewGOAPWorldState(
 		map[string]GOAPState{
 			"hasAxe": false,
 		},
 	)
-	if wsC.isSubset(wsA) {
-		t.Fatal("wsC should not be subset of wsA")
+	if wsC.partlyCoversDoesntConflict(wsA) {
+		t.Fatal("wsC should not partly cover wsA")
+	}
+	wsD := NewGOAPWorldState(
+		map[string]GOAPState{
+			"hasAxe": true,
+			"atTree": false,
+		},
+	)
+	if wsD.partlyCoversDoesntConflict(wsA) {
+		t.Fatal("wsD should conflict with wsA")
 	}
 }
 
@@ -921,8 +931,10 @@ func TestGOAPPlannerHardest(t *testing.T) {
 		},
 	)
 
+	t0 := time.Now()
 	plans := p.Plans(ws, want)
-	Logger.Printf("Found %d plans.", len(plans))
+	dt := time.Since(t0).Nanoseconds()
+	Logger.Printf("Found %d plans from %d actions in %f ms", len(plans), len(p.actions.set), (float64(dt) / 1000000.0))
 
 	Logger.Println("==========")
 	Logger.Println("VALID PLANS:")

@@ -59,6 +59,9 @@ func (p *GOAPPlanner) Plans(
 		if len(here.want.Vals) == 0 || world.fulfills(here.want) {
 			if p.validateForward(world, here.path, goal) {
 				results = append(results, here.path)
+				if len(results) == 2 {
+					return results
+				}
 			}
 		} else {
 			traverseFulfillers(here.path, here.want)
