@@ -8,8 +8,7 @@ var EmptyGOAPState = map[string]GOAPState{}
 // a state val which can *set* modal values in the worldstate as the
 // action chain runs forward
 type GOAPCtxStateVal struct {
-	name string
-	val  bool
-	get  func(ws GOAPWorldState) bool
-	set  func(ws *GOAPWorldState)
+	val bool
+	get func(ws GOAPWorldState) bool
+	set func(ws *GOAPWorldState)
 }

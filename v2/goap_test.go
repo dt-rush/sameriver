@@ -50,8 +50,7 @@ func TestGOAPWorldStateUnfulfilledByCtx(t *testing.T) {
 		},
 	)
 	hasAxeCtx := GOAPCtxStateVal{
-		name: "hasAxe",
-		val:  true,
+		val: true,
 		get: func(ws GOAPWorldState) bool {
 			return true
 		},
@@ -161,8 +160,7 @@ func TestGOAPWorldStateApplyActionSimple(t *testing.T) {
 func TestGOAPWorldStateFulfillsCtx(t *testing.T) {
 	axeDistance := 2
 	ctxAtAxe := GOAPCtxStateVal{
-		name: "atAxe",
-		val:  true,
+		val: true,
 		get: func(ws GOAPWorldState) bool {
 			return axeDistance < 5
 		},
@@ -185,8 +183,7 @@ func TestGOAPWorldStateFulfillsCtx(t *testing.T) {
 func TestGOAPWorldStateApplyActionCtx(t *testing.T) {
 	ws := NewGOAPWorldState(nil)
 	ctxAtAxe := GOAPCtxStateVal{
-		name: "atAxe",
-		val:  true,
+		val: true,
 		get: func(ws GOAPWorldState) bool {
 			return true
 		},
@@ -204,7 +201,7 @@ func TestGOAPWorldStateApplyActionCtx(t *testing.T) {
 	ws = ws.applyAction(goToAxe)
 	goal := NewGOAPWorldState(
 		map[string]GOAPState{
-			"atAxe": true,
+			"atAxe": ctxAtAxe,
 		},
 	)
 	if !ws.fulfills(goal) {
@@ -222,11 +219,10 @@ func TestGOAPWorldStateSetModal(t *testing.T) {
 	axePos := Vec2D{11, 11}
 
 	ctxAtAxe := GOAPCtxStateVal{
-		name: "atAxe",
-		val:  true,
+		val: true,
 		get: func(ws GOAPWorldState) bool {
 			Logger.Println("in get...")
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			ourPos := ws.GetModal(e, "Position").(Vec2D)
 			_, _, d := ourPos.Distance(axePos)
 			return d < 2
 		},
@@ -251,7 +247,7 @@ func TestGOAPWorldStateSetModal(t *testing.T) {
 
 	goal := NewGOAPWorldState(
 		map[string]GOAPState{
-			"atAxe": true,
+			"atAxe": ctxAtAxe,
 		},
 	)
 	Logger.Println("testing if ws.fulfills(goal)")
@@ -294,11 +290,10 @@ func TestGOAPActionPresFulfilledCtx(t *testing.T) {
 	axePos := Vec2D{11, 11}
 
 	ctxAtAxe := GOAPCtxStateVal{
-		name: "atAxe",
-		val:  true,
+		val: true,
 		get: func(ws GOAPWorldState) bool {
 			Logger.Println("in get...")
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			ourPos := ws.GetModal(e, "Position").(Vec2D)
 			_, _, d := ourPos.Distance(axePos)
 			return d < 2
 		},
@@ -323,7 +318,7 @@ func TestGOAPActionPresFulfilledCtx(t *testing.T) {
 	getAxe := GOAPAction{
 		name: "getAxe",
 		pres: map[string]GOAPState{
-			"atAxe": true,
+			"atAxe": ctxAtAxe,
 		},
 		effs: map[string]GOAPState{
 			"hasAxe": true,
@@ -414,10 +409,9 @@ func TestGOAPPlannerBasic(t *testing.T) {
 	axePos := Vec2D{11, 11}
 
 	ctxAtAxe := GOAPCtxStateVal{
-		name: "atAxe",
-		val:  true,
+		val: true,
 		get: func(ws GOAPWorldState) bool {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			ourPos := ws.GetModal(e, "Position").(Vec2D)
 			_, _, d := ourPos.Distance(axePos)
 			return d < 2
 
@@ -439,7 +433,7 @@ func TestGOAPPlannerBasic(t *testing.T) {
 		name: "getAxe",
 		cost: 1,
 		pres: map[string]GOAPState{
-			"atAxe": true,
+			"atAxe": ctxAtAxe,
 		},
 		effs: map[string]GOAPState{
 			"hasAxe": true,
@@ -464,6 +458,251 @@ func TestGOAPPlannerBasic(t *testing.T) {
 	}
 }
 
+func TestGOAPPlannerBasicMultiSuccess(t *testing.T) {
+
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+	e, _ := testingSpawnPhysics(w)
+
+	ws := NewGOAPWorldState(map[string]GOAPState{
+		"bakeryHasBread":    true,
+		"smokehouseHasFish": true,
+	})
+
+	bakeryPos := Vec2D{11, 11}
+	smokehousePos := Vec2D{-11, 11}
+
+	ctxAtBakery := GOAPCtxStateVal{
+		val: true,
+		get: func(ws GOAPWorldState) bool {
+			ourPos := ws.GetModal(e, "Position").(Vec2D)
+			_, _, d := ourPos.Distance(bakeryPos)
+			return d < 2
+
+		},
+		set: func(ws *GOAPWorldState) {
+			nearBakery := bakeryPos.Add(Vec2D{1, 0})
+			ws.SetModal(e, "Position", nearBakery)
+		},
+	}
+	goToBakery := GOAPAction{
+		name: "goToBakery",
+		cost: 1,
+		pres: EmptyGOAPState,
+		effs: map[string]GOAPState{
+			"atBakery": ctxAtBakery,
+		},
+	}
+	getBreadFromBakery := GOAPAction{
+		name: "getBreadFromBakery",
+		cost: 1,
+		pres: map[string]GOAPState{
+			"atBakery":       ctxAtBakery,
+			"bakeryHasBread": true,
+		},
+		effs: map[string]GOAPState{
+			"hasBread": true,
+			"hasFood":  true,
+		},
+	}
+
+	ctxAtSmokehouse := GOAPCtxStateVal{
+		val: true,
+		get: func(ws GOAPWorldState) bool {
+			ourPos := ws.GetModal(e, "Position").(Vec2D)
+			_, _, d := ourPos.Distance(smokehousePos)
+			return d < 2
+
+		},
+		set: func(ws *GOAPWorldState) {
+			nearSmokehouse := smokehousePos.Add(Vec2D{1, 0})
+			ws.SetModal(e, "Position", nearSmokehouse)
+		},
+	}
+	goToSmokehouse := GOAPAction{
+		name: "goToSmokehouse",
+		cost: 1,
+		pres: EmptyGOAPState,
+		effs: map[string]GOAPState{
+			"atSmokehouse": ctxAtSmokehouse,
+		},
+	}
+	getFishFromSmokehouse := GOAPAction{
+		name: "getFishFromSmokehouse",
+		cost: 1,
+		pres: map[string]GOAPState{
+			"atSmokehouse":      ctxAtSmokehouse,
+			"smokehouseHasFish": true,
+		},
+		effs: map[string]GOAPState{
+			"hasFish": true,
+			"hasFood": true,
+		},
+	}
+
+	eat := GOAPAction{
+		name: "eat",
+		cost: 1,
+		pres: map[string]GOAPState{
+			"hasFood": true,
+		},
+		effs: map[string]GOAPState{
+			"sated": true,
+		},
+	}
+
+	p := NewGOAPPlanner(e)
+	p.AddActions(
+		goToBakery,
+		getBreadFromBakery,
+		goToSmokehouse,
+		getFishFromSmokehouse,
+		eat,
+	)
+
+	want := NewGOAPWorldState(
+		map[string]GOAPState{
+			"sated": true,
+		},
+	)
+
+	plans := p.Plans(ws, want)
+	Logger.Printf("Found %d plans.", len(plans))
+
+	Logger.Println("==========")
+	Logger.Println("VALID PLANS:")
+	for _, plan := range plans {
+		Logger.Println(GOAPPlanToString(plan))
+	}
+	Logger.Println("==========")
+
+	if len(plans) != 2 {
+		t.Fatal("Should have found 2 plans (bakery, smokehouse)")
+	}
+}
+
+func TestGOAPPlannerBasicMultiFailure(t *testing.T) {
+
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+	e, _ := testingSpawnPhysics(w)
+
+	ws := NewGOAPWorldState(nil)
+
+	bakeryPos := Vec2D{11, 11}
+	smokehousePos := Vec2D{-11, 11}
+
+	ctxAtBakery := GOAPCtxStateVal{
+		val: true,
+		get: func(ws GOAPWorldState) bool {
+			ourPos := ws.GetModal(e, "Position").(Vec2D)
+			_, _, d := ourPos.Distance(bakeryPos)
+			return d < 2
+
+		},
+		set: func(ws *GOAPWorldState) {
+			nearBakery := bakeryPos.Add(Vec2D{1, 0})
+			ws.SetModal(e, "Position", nearBakery)
+		},
+	}
+	goToBakery := GOAPAction{
+		name: "goToBakery",
+		cost: 1,
+		pres: EmptyGOAPState,
+		effs: map[string]GOAPState{
+			"atBakery": ctxAtBakery,
+		},
+	}
+	getBreadFromBakery := GOAPAction{
+		name: "getBreadFromBakery",
+		cost: 1,
+		pres: map[string]GOAPState{
+			"atBakery":       ctxAtBakery,
+			"bakeryHasBread": true,
+		},
+		effs: map[string]GOAPState{
+			"hasBread": true,
+			"hasFood":  true,
+		},
+	}
+
+	ctxAtSmokehouse := GOAPCtxStateVal{
+		val: true,
+		get: func(ws GOAPWorldState) bool {
+			ourPos := ws.GetModal(e, "Position").(Vec2D)
+			_, _, d := ourPos.Distance(smokehousePos)
+			return d < 2
+
+		},
+		set: func(ws *GOAPWorldState) {
+			nearSmokehouse := smokehousePos.Add(Vec2D{1, 0})
+			ws.SetModal(e, "Position", nearSmokehouse)
+		},
+	}
+	goToSmokehouse := GOAPAction{
+		name: "goToSmokehouse",
+		cost: 1,
+		pres: EmptyGOAPState,
+		effs: map[string]GOAPState{
+			"atSmokehouse": ctxAtSmokehouse,
+		},
+	}
+	getFishFromSmokehouse := GOAPAction{
+		name: "getFishFromSmokehouse",
+		cost: 1,
+		pres: map[string]GOAPState{
+			"atSmokehouse":      ctxAtSmokehouse,
+			"smokehouseHasFish": true,
+		},
+		effs: map[string]GOAPState{
+			"hasFish": true,
+			"hasFood": true,
+		},
+	}
+
+	eat := GOAPAction{
+		name: "eat",
+		cost: 1,
+		pres: map[string]GOAPState{
+			"hasFood": true,
+		},
+		effs: map[string]GOAPState{
+			"sated": true,
+		},
+	}
+
+	p := NewGOAPPlanner(e)
+	p.AddActions(
+		goToBakery,
+		getBreadFromBakery,
+		goToSmokehouse,
+		getFishFromSmokehouse,
+		eat,
+	)
+
+	want := NewGOAPWorldState(
+		map[string]GOAPState{
+			"sated": true,
+		},
+	)
+
+	plans := p.Plans(ws, want)
+	Logger.Printf("Found %d plans.", len(plans))
+
+	Logger.Println("==========")
+	Logger.Println("VALID PLANS:")
+	for _, plan := range plans {
+		Logger.Println(GOAPPlanToString(plan))
+	}
+	Logger.Println("==========")
+
+	if len(plans) != 0 {
+		t.Fatal("Should have found 0 plans (no bread in bakery or fish in smokehouse)")
+	}
+}
+
 func TestGOAPPlannerHarder(t *testing.T) {
 
 	w := testingWorld()
@@ -477,8 +716,7 @@ func TestGOAPPlannerHarder(t *testing.T) {
 	glovePos := Vec2D{2, 2}
 
 	ctxAtAxe := GOAPCtxStateVal{
-		name: "atAxe",
-		val:  true,
+		val: true,
 		get: func(ws GOAPWorldState) bool {
 			ourPos := ws.GetModal(e, "Position").(Vec2D)
 			_, _, d := ourPos.Distance(axePos)
@@ -509,8 +747,7 @@ func TestGOAPPlannerHarder(t *testing.T) {
 	}
 
 	ctxAtGlove := GOAPCtxStateVal{
-		name: "atGlove",
-		val:  true,
+		val: true,
 		get: func(ws GOAPWorldState) bool {
 			ourPos := ws.GetModal(e, "Position").(Vec2D)
 			_, _, d := ourPos.Distance(glovePos)
@@ -580,8 +817,7 @@ func TestGOAPPlannerHardest(t *testing.T) {
 	treePos := Vec2D{-7, -7}
 
 	ctxAtAxe := GOAPCtxStateVal{
-		name: "atAxe",
-		val:  true,
+		val: true,
 		get: func(ws GOAPWorldState) bool {
 			ourPos := ws.GetModal(e, "Position").(Vec2D)
 			_, _, d := ourPos.Distance(axePos)
@@ -612,8 +848,7 @@ func TestGOAPPlannerHardest(t *testing.T) {
 	}
 
 	ctxAtGlove := GOAPCtxStateVal{
-		name: "atGlove",
-		val:  true,
+		val: true,
 		get: func(ws GOAPWorldState) bool {
 			ourPos := ws.GetModal(e, "Position").(Vec2D)
 			_, _, d := ourPos.Distance(glovePos)
@@ -644,8 +879,7 @@ func TestGOAPPlannerHardest(t *testing.T) {
 	}
 
 	ctxAtTree := GOAPCtxStateVal{
-		name: "atTree",
-		val:  true,
+		val: true,
 		get: func(ws GOAPWorldState) bool {
 			ourPos := ws.GetModal(e, "Position").(Vec2D)
 			_, _, d := ourPos.Distance(treePos)
