@@ -83,17 +83,11 @@ func (ws GOAPWorldState) fulfills(other GOAPWorldState) bool {
 }
 
 func (ws GOAPWorldState) isSubset(other GOAPWorldState) bool {
-	// Logger.Println("        isSubset")
-	// Logger.Printf("        ws: %v", ws)
-	// Logger.Printf("        other: %v", other)
 	for name, _ := range other.Vals {
-		// Logger.Printf("        %s?", name)
 		if ws.get(name) == other.get(name) {
-			// Logger.Printf("        true")
 			return true
 		}
 	}
-	// Logger.Printf("        false")
 	return false
 }
 

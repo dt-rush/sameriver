@@ -43,58 +43,27 @@ func (p *GOAPPlanner) Plans(
 
 	pq := GOAPPriorityQueue{}
 	traverseFulfillers := func(path []GOAPAction, want GOAPWorldState) {
-		// Logger.Println("------------------------")
-		// Logger.Println("traversing to fulfill:")
-		// Logger.Println(want.Vals)
-		// Logger.Println("...")
 		fulfillers := p.actions.thoseThatHelpFulfill(want)
-		// Logger.Println("fulfillers:")
-		// for _, action := range fulfillers.set {
-		// 	Logger.Println(action.name)
-		// }
 		for _, action := range fulfillers.set {
 			unfulfilled := want.unfulfilledBy(action)
-			// Logger.Printf("unfulfilled by %s:", action.name)
-			// Logger.Println(unfulfilled)
 			want := unfulfilled.mergeActionPres(action)
-			// Logger.Println("want:")
-			// Logger.Println(want)
-			// Logger.Printf("Pushing %s...", action.name)
 			pq.Push(&GOAPPQueueItem{
 				path: append([]GOAPAction{action}, path...),
 				want: want,
 			})
-			// Logger.Println("---")
 		}
 	}
 	traverseFulfillers([]GOAPAction{}, goal)
 	for pq.Len() > 0 {
 		here := pq.Pop().(*GOAPPQueueItem)
-		// Logger.Println("------------")
-		// Logger.Println("exploring path:")
-		// Logger.Println(GOAPPlanToString(here.path))
-		// Logger.Printf("%d wants.", len(here.want.Vals))
-		// Logger.Println("wants:")
-		// Logger.Println(here.want.Vals)
 		if len(here.want.Vals) == 0 || world.fulfills(here.want) {
-			// test chain forward
-			// Logger.Println("found possible solution:")
-			// Logger.Println(GOAPPlanToString(here.path))
 			if p.validateForward(world, here.path, goal) {
-				// Logger.Println("Valid solution!")
 				results = append(results, here.path)
 			}
 		} else {
 			traverseFulfillers(here.path, here.want)
 		}
 	}
-
-	Logger.Println("==========")
-	Logger.Println("VALID PLANS:")
-	for _, plan := range results {
-		Logger.Println(GOAPPlanToString(plan))
-	}
-	Logger.Println("==========")
 
 	return results
 }

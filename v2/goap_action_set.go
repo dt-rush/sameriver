@@ -18,12 +18,9 @@ func (as *GOAPActionSet) Add(actions ...GOAPAction) {
 
 func (as *GOAPActionSet) thoseThatHelpFulfill(ws GOAPWorldState) *GOAPActionSet {
 	helpers := NewGOAPActionSet()
-	// Logger.Printf("    thoseThatHelpFulfill %s", ws.Vals)
 	for _, action := range as.set {
 		effState := NewGOAPWorldState(nil)
 		effState = effState.applyAction(action)
-		// Logger.Printf("    effState of %s:", action.name)
-		// Logger.Printf("    %s", effState.Vals)
 		if effState.isSubset(ws) {
 			helpers.Add(action)
 		}

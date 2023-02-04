@@ -553,6 +553,17 @@ func TestGOAPPlannerHarder(t *testing.T) {
 	plans := p.Plans(ws, want)
 	Logger.Printf("Found %d plans.", len(plans))
 
+	Logger.Println("==========")
+	Logger.Println("VALID PLANS:")
+	for _, plan := range plans {
+		Logger.Println(GOAPPlanToString(plan))
+	}
+	Logger.Println("==========")
+
+	if len(plans) != 2 {
+		t.Fatal("Should have found 2 valid plans (glove,axe) or (axe,glove)")
+	}
+
 }
 
 func TestGOAPPlannerHardest(t *testing.T) {
@@ -678,5 +689,16 @@ func TestGOAPPlannerHardest(t *testing.T) {
 
 	plans := p.Plans(ws, want)
 	Logger.Printf("Found %d plans.", len(plans))
+
+	Logger.Println("==========")
+	Logger.Println("VALID PLANS:")
+	for _, plan := range plans {
+		Logger.Println(GOAPPlanToString(plan))
+	}
+	Logger.Println("==========")
+
+	if len(plans) != 2 {
+		t.Fatal("Should have found 2 valid plans (glove,axe,gototree) or (axe,glove,gototree)")
+	}
 
 }
