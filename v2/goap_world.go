@@ -4,23 +4,25 @@ import (
 	"fmt"
 )
 
-// state values are either bool or GOAPCtxState (bool resolved by get())
-type GOAPState interface{}
-
-var EmptyGOAPState = map[string]GOAPState{}
-
-// a state val whose value must be read from the entity/world
-// and which can *set* values in the worldstate (and modal) as the action
-// chain runs forward
-type GOAPCtxStateVal struct {
-	name string
-	get  func() bool
-	set  func(ws *GOAPWorldState)
-}
-
 type GOAPWorldState struct {
 	Vals  map[string]GOAPState
 	modal map[string]interface{}
+}
+
+func (ws GOAPWorldState) copyOf() GOAPWorldState {
+	copyVals := make(map[string]GOAPState)
+	for k, v := range ws.Vals {
+		copyVals[k] = v
+	}
+	copyModal := make(map[string]interface{})
+	for k, v := range ws.modal {
+		copyModal[k] = v
+	}
+	copyWS := GOAPWorldState{
+		copyVals,
+		copyModal,
+	}
+	return copyWS
 }
 
 func NewGOAPWorldState(vals map[string]GOAPState) GOAPWorldState {
@@ -52,17 +54,18 @@ func (ws GOAPWorldState) SetModal(e *Entity, name string, val interface{}) {
 
 func (ws GOAPWorldState) get(name string) interface{} {
 	if ctxStateVal, ok := ws.Vals[name].(GOAPCtxStateVal); ok {
-		Logger.Printf("%s .get()...", name)
-		return ctxStateVal.get()
+		return ctxStateVal.val
 	} else {
 		return ws.Vals[name]
 	}
 }
 
 func (ws GOAPWorldState) applyAction(action GOAPAction) GOAPWorldState {
+	ws = ws.copyOf()
 	for name, val := range action.effs {
 		if ctxStateVal, ok := val.(GOAPCtxStateVal); ok {
-			ws.Vals[name] = ctxStateVal
+			ctxStateVal.set(&ws)
+			ws.Vals[name] = ctxStateVal.val
 		} else {
 			ws.Vals[name] = val
 		}
@@ -80,53 +83,42 @@ func (ws GOAPWorldState) fulfills(other GOAPWorldState) bool {
 }
 
 func (ws GOAPWorldState) isSubset(other GOAPWorldState) bool {
+	// Logger.Println("        isSubset")
+	// Logger.Printf("        ws: %v", ws)
+	// Logger.Printf("        other: %v", other)
 	for name, _ := range other.Vals {
+		// Logger.Printf("        %s?", name)
 		if ws.get(name) == other.get(name) {
+			// Logger.Printf("        true")
 			return true
 		}
 	}
+	// Logger.Printf("        false")
 	return false
 }
 
-type GOAPAction struct {
-	name string
-	// values are either bool or GOAPCtxState (bool resolved by get())
-	pres map[string]GOAPState
-	effs map[string]GOAPState
-}
-
-func (a *GOAPAction) presFulfilled(ws GOAPWorldState) bool {
-	state := NewGOAPWorldState(nil)
-	for name, val := range a.pres {
-		state.Vals[name] = val
-	}
-	return ws.fulfills(state)
-}
-
-type GOAPActionSet struct {
-	set map[string]GOAPAction
-}
-
-func NewGOAPActionSet() *GOAPActionSet {
-	return &GOAPActionSet{
-		set: make(map[string]GOAPAction),
-	}
-}
-
-func (as *GOAPActionSet) Add(actions ...GOAPAction) {
-	for _, action := range actions {
-		as.set[action.name] = action
-	}
-}
-
-func (as *GOAPActionSet) thoseThatHelpFulfill(ws GOAPWorldState) *GOAPActionSet {
-	helpers := NewGOAPActionSet()
-	for _, action := range as.set {
-		effState := NewGOAPWorldState(nil)
-		effState.applyAction(action)
-		if effState.isSubset(ws) {
-			helpers.Add(action)
+func (ws GOAPWorldState) unfulfilledBy(action GOAPAction) GOAPWorldState {
+	ws = ws.copyOf()
+	for name, val := range action.effs {
+		if ctxStateVal, ok := val.(GOAPCtxStateVal); ok {
+			val = ctxStateVal.val
+		}
+		if _, ok := ws.Vals[name]; ok {
+			if ws.Vals[name] == val {
+				delete(ws.Vals, name)
+			}
 		}
 	}
-	return helpers
+	return ws
+}
+
+func (ws GOAPWorldState) mergeActionPres(action GOAPAction) GOAPWorldState {
+	ws = ws.copyOf()
+	for name, val := range action.pres {
+		if ctxStateVal, ok := val.(GOAPCtxStateVal); ok {
+			val = ctxStateVal.val
+		}
+		ws.Vals[name] = val
+	}
+	return ws
 }
