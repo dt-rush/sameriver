@@ -17,7 +17,7 @@ type ComponentSet struct {
 	spriteMap  map[string]Sprite
 	tagListMap map[string]TagList
 	genericMap map[string]interface{}
-	customMap  map[string]interface{}
+	cccMap     map[string]interface{}
 	cccs       map[string]CustomContiguousComponent
 }
 
@@ -37,7 +37,7 @@ func MakeCustomComponentSet(
 		}
 		// take note in names map that this component name occurs
 		baseCS.names[name] = true
-		baseCS.customMap[name] = value
+		baseCS.cccMap[name] = value
 		// store the interface object itself so ComponentTable.ApplyComponentSet()
 		// can call its ApplyToEntity() function to set the value
 		baseCS.cccs[name] = cccs[name]
@@ -58,7 +58,7 @@ func MakeComponentSet(input map[string]interface{}) ComponentSet {
 		spriteMap:  make(map[string]Sprite),
 		tagListMap: make(map[string]TagList),
 		genericMap: make(map[string]interface{}),
-		customMap:  make(map[string]interface{}),
+		cccMap:     make(map[string]interface{}),
 		cccs:       make(map[string]CustomContiguousComponent),
 	}
 	for spec, value := range input {

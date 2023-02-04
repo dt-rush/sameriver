@@ -19,6 +19,7 @@ type Entity struct {
 	Lists             []*UpdatedEntityList
 	Logics            map[string]*LogicUnit
 	funcs             *FuncSet
+	Mind              map[string]interface{}
 }
 
 func (e *Entity) LogicUnitName(name string) string {

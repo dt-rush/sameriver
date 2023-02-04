@@ -8,6 +8,18 @@ import (
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
+var COMPONENT_KINDS = []string{
+	"Vec2D",
+	"Bool",
+	"Int",
+	"Float64",
+	"String",
+	"Sprite",
+	"TagList",
+	"Generic",
+	"Custom",
+}
+
 type ComponentTable struct {
 	em *EntityManager
 
@@ -15,6 +27,7 @@ type ComponentTable struct {
 	ixs     map[string]int
 	ixs_rev map[int]string
 	names   map[string]bool
+	kinds   map[string]string
 
 	// data storage
 	vec2DMap   map[string][]Vec2D
@@ -33,6 +46,8 @@ func NewComponentTable() *ComponentTable {
 	ct.ixs = make(map[string]int)
 	ct.ixs_rev = make(map[int]string)
 	ct.names = make(map[string]bool)
+	ct.kinds = make(map[string]string)
+
 	ct.vec2DMap = make(map[string][]Vec2D)
 	ct.boolMap = make(map[string][]bool)
 	ct.intMap = make(map[string][]int)
@@ -63,41 +78,8 @@ func (ct *ComponentTable) ComponentExists(spec string) bool {
 	split := strings.Split(spec, ",")
 	kind := split[0]
 	name := split[1]
-	switch kind {
-	case "Vec2D":
-		if _, ok := ct.vec2DMap[name]; ok {
-			return true
-		}
-	case "Bool":
-		if _, ok := ct.boolMap[name]; ok {
-			return true
-		}
-	case "Int":
-		if _, ok := ct.intMap[name]; ok {
-			return true
-		}
-	case "Float64":
-		if _, ok := ct.float64Map[name]; ok {
-			return true
-		}
-	case "String":
-		if _, ok := ct.stringMap[name]; ok {
-			return true
-		}
-	case "Sprite":
-		if _, ok := ct.spriteMap[name]; ok {
-			return true
-		}
-	case "TagList":
-		if _, ok := ct.tagListMap[name]; ok {
-			return true
-		}
-	case "Generic":
-		if _, ok := ct.genericMap[name]; ok {
-			return true
-		}
-	default:
-		panic(fmt.Sprintf("added component of kind %s has no case in component_table.go", kind))
+	if k, ok := ct.kinds[name]; ok {
+		return kind == k
 	}
 	return false
 }
@@ -118,20 +100,28 @@ func (ct *ComponentTable) AddComponent(spec string) {
 	switch kind {
 	case "Vec2D":
 		ct.vec2DMap[name] = make([]Vec2D, MAX_ENTITIES, MAX_ENTITIES)
+		ct.kinds[name] = "Vec2D"
 	case "Bool":
 		ct.boolMap[name] = make([]bool, MAX_ENTITIES, MAX_ENTITIES)
+		ct.kinds[name] = "Bool"
 	case "Int":
 		ct.intMap[name] = make([]int, MAX_ENTITIES, MAX_ENTITIES)
+		ct.kinds[name] = "Int"
 	case "Float64":
 		ct.float64Map[name] = make([]float64, MAX_ENTITIES, MAX_ENTITIES)
+		ct.kinds[name] = "Float64"
 	case "String":
 		ct.stringMap[name] = make([]string, MAX_ENTITIES, MAX_ENTITIES)
+		ct.kinds[name] = "String"
 	case "Sprite":
 		ct.spriteMap[name] = make([]Sprite, MAX_ENTITIES, MAX_ENTITIES)
+		ct.kinds[name] = "Sprite"
 	case "TagList":
 		ct.tagListMap[name] = make([]TagList, MAX_ENTITIES, MAX_ENTITIES)
+		ct.kinds[name] = "TagList"
 	case "Generic":
 		ct.genericMap[name] = make([]interface{}, MAX_ENTITIES, MAX_ENTITIES)
+		ct.kinds[name] = "Generic"
 	default:
 		panic(fmt.Sprintf("added component of kind %s has no case in component_table.go", kind))
 	}
@@ -144,57 +134,60 @@ func (ct *ComponentTable) AddCCC(custom CustomContiguousComponent) {
 		return
 	}
 	ct.cccMap[custom.Name()] = custom
+	ct.kinds[custom.Name()] = "Custom"
 	custom.AllocateTable(MAX_ENTITIES)
 }
 
-func (ct *ComponentTable) VerifyComponentSet(cs ComponentSet) (bool, string) {
+func (ct *ComponentTable) AssertValidComponentSet(cs ComponentSet) {
 	for name, _ := range cs.vec2DMap {
 		if _, ok := ct.vec2DMap[name]; !ok {
-			return false, fmt.Sprintf("%s not found in vec2DMap", name)
+			panic("%s not found in vec2DMap")
 		}
 	}
 	for name, _ := range cs.boolMap {
 		if _, ok := ct.boolMap[name]; !ok {
-			return false, fmt.Sprintf("%s not found in boolMap", name)
+			panic("%s not found in boolMap")
 		}
 	}
 	for name, _ := range cs.intMap {
 		if _, ok := ct.intMap[name]; !ok {
-			return false, fmt.Sprintf("%s not found in intMap", name)
+			panic("%s not found in intMap")
 		}
 	}
 	for name, _ := range cs.float64Map {
 		if _, ok := ct.float64Map[name]; !ok {
-			return false, fmt.Sprintf("%s not found in float64Map", name)
+			panic("%s not found in float64Map")
 		}
 	}
 	for name, _ := range cs.stringMap {
 		if _, ok := ct.stringMap[name]; !ok {
-			return false, fmt.Sprintf("%s not found in stringMap", name)
+			panic("%s not found in stringMap")
 		}
 	}
 	for name, _ := range cs.spriteMap {
 		if _, ok := ct.spriteMap[name]; !ok {
-			return false, fmt.Sprintf("%s not found in spriteMap", name)
+			panic("%s not found in spriteMap")
 		}
 	}
 	for name, _ := range cs.tagListMap {
 		if _, ok := ct.tagListMap[name]; !ok {
-			return false, fmt.Sprintf("%s not found in tagListMap", name)
+			panic("%s not found in tagListMap")
 		}
 	}
 	for name, _ := range cs.genericMap {
 		if _, ok := ct.genericMap[name]; !ok {
-			return false, fmt.Sprintf("%s not found in genericMap", name)
+			panic("%s not found in genericMap")
 		}
 	}
-	return true, "valid component set"
+	for name, _ := range cs.cccMap {
+		if _, ok := ct.cccMap[name]; !ok {
+			panic("%s not found in cccMap")
+		}
+	}
 }
 
 func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs ComponentSet) {
-	if ok, msg := ct.VerifyComponentSet(cs); !ok {
-		panic(fmt.Sprintf("Invalid ComponentSet Application: %s", msg))
-	}
+	ct.AssertValidComponentSet(cs)
 	for name, v := range cs.vec2DMap {
 		ct.vec2DMap[name][e.ID] = v
 	}
@@ -219,7 +212,7 @@ func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs ComponentSet) {
 	for name, x := range cs.genericMap {
 		ct.genericMap[name][e.ID] = x
 	}
-	for name, x := range cs.customMap {
+	for name, x := range cs.cccMap {
 		cs.cccs[name].Set(e, x)
 	}
 }
@@ -283,6 +276,31 @@ func (e *Entity) GetTagList(name string) *TagList {
 }
 func (e *Entity) GetGenericComponent(name string) *interface{} {
 	return &e.World.em.components.genericMap[name][e.ID]
+}
+func (e *Entity) GetVal(name string) interface{} {
+	kind := e.World.em.components.kinds[name]
+	switch kind {
+	case "Vec2D":
+		return &e.World.em.components.vec2DMap[name][e.ID]
+	case "Bool":
+		return &e.World.em.components.boolMap[name][e.ID]
+	case "Int":
+		return &e.World.em.components.intMap[name][e.ID]
+	case "Float64":
+		return &e.World.em.components.float64Map[name][e.ID]
+	case "String":
+		return &e.World.em.components.stringMap[name][e.ID]
+	case "Sprite":
+		return &e.World.em.components.spriteMap[name][e.ID]
+	case "TagList":
+		return &e.World.em.components.tagListMap[name][e.ID]
+	case "Generic":
+		return &e.World.em.components.genericMap[name][e.ID]
+	case "Custom":
+		return e.World.em.components.cccMap[name].Get(e)
+	default:
+		panic(fmt.Sprintf("Can't get component %s - it doesn't seem to exist", name))
+	}
 }
 
 // NOTE: we have to provide a get and set method since we can't
