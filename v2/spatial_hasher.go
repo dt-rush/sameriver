@@ -155,7 +155,7 @@ func (h *SpatialHasher) CellsWithinDistance(pos, box Vec2D, d float64) [][2]int 
 // (NOTE: the corners will slightly over-estimate since they should
 // truly be rounded)
 // but it's a faster calculation
-func (h *SpatialHasher) CellsWithinApproxDistance(pos, box Vec2D, d float64) [][2]int {
+func (h *SpatialHasher) CellsWithinDistanceApprox(pos, box Vec2D, d float64) [][2]int {
 	approximatorPos := pos.ShiftedCenterToBottomLeft(box).Sub(Vec2D{d, d})
 	approximatorBox := box.Add(Vec2D{2 * d, 2 * d})
 	cellX0, cellX1, cellY0, cellY1 := h.CellRangeOfRect(approximatorPos, approximatorBox)
@@ -172,7 +172,7 @@ func (h *SpatialHasher) CellsWithinApproxDistance(pos, box Vec2D, d float64) [][
 func (h *SpatialHasher) EntitiesWithinDistanceApprox(pos, box Vec2D, d float64) []*Entity {
 	results := make([]*Entity, 0)
 	found := make(map[int]*Entity)
-	cells := h.CellsWithinApproxDistance(pos, box, d)
+	cells := h.CellsWithinDistanceApprox(pos, box, d)
 	// for each cell, note that we found the entity in the map
 	// initial naive slice append was quadruple-counting entities that
 	// sat on the intersection of four cells, etc.
