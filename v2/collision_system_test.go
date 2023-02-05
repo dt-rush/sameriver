@@ -16,9 +16,7 @@ func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) 
 	testingSpawnCollision(w)
 	e, _ := testingSpawnCollision(w)
 	// subscribe to collision events
-	ec := w.Events.Subscribe(
-		"SimpleCollisionFilter",
-		SimpleEventFilter("collision"))
+	ec := w.Events.Subscribe(SimpleEventFilter("collision"))
 	return w, cs, ec, e
 }
 
@@ -98,8 +96,7 @@ func TestCollisionFilter(t *testing.T) {
 		c := ev.Data.(CollisionData)
 		return c.This == e && c.Other == coin
 	}
-	ec := w.Events.Subscribe("PredicateCollisionFilter",
-		PredicateEventFilter("collision", predicate))
+	ec := w.Events.Subscribe(PredicateEventFilter("collision", predicate))
 	w.Update(1)
 	w.Update(FRAME_DURATION_INT / 2)
 	// sleep long enough for the event to appear on the channel

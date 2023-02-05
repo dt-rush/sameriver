@@ -33,16 +33,14 @@ type EntityManager struct {
 // Construct a new entity manager
 func NewEntityManager(w *World) *EntityManager {
 	em := &EntityManager{
-		w:               w,
-		components:      NewComponentTable(),
-		entityTable:     NewEntityTable(w.IdGen),
-		lists:           make(map[string]*UpdatedEntityList),
-		entitiesWithTag: make(map[string]*UpdatedEntityList),
-		uniqueEntities:  make(map[string]*Entity),
-		spawnSubscription: w.Events.Subscribe("EntityManager::SpawnRequest",
-			SimpleEventFilter("spawn-request")),
-		despawnSubscription: w.Events.Subscribe("EntityManager::DespawnRequest",
-			SimpleEventFilter("despawn-request")),
+		w:                   w,
+		components:          NewComponentTable(),
+		entityTable:         NewEntityTable(w.IdGen),
+		lists:               make(map[string]*UpdatedEntityList),
+		entitiesWithTag:     make(map[string]*UpdatedEntityList),
+		uniqueEntities:      make(map[string]*Entity),
+		spawnSubscription:   w.Events.Subscribe(SimpleEventFilter("spawn-request")),
+		despawnSubscription: w.Events.Subscribe(SimpleEventFilter("despawn-request")),
 	}
 	return em
 }
