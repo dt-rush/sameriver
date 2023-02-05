@@ -146,7 +146,7 @@ func TestSpatialHashEntitiesWithinDistance(t *testing.T) {
 
 	near := make([]*Entity, 0)
 	far := make([]*Entity, 0)
-	for spawnRadius := 30.0; spawnRadius <= 50; spawnRadius += 20 {
+	for spawnRadius := 30.0; spawnRadius <= 38; spawnRadius += 8 {
 		for i := 0.0; i < 360; i += 10 {
 			theta := 2.0 * math.Pi * (i / 360)
 			offset := Vec2D{
@@ -176,23 +176,53 @@ func TestSpatialHashEntitiesWithinDistance(t *testing.T) {
 			t.Fatal("Did not find expected near entity")
 		}
 	}
+	for _, eFar := range far {
+		if indexOfEntityInSlice(&nearGot, eFar) != -1 {
+			t.Fatal("Shouldn't have returned far entity")
+		}
+	}
 }
 
-/*
-func TestSpatialHashEntitiesPotentiallyWithinDistance(t *testing.T) {
+func TestSpatialHashEntitiesWithinDistanceApprox(t *testing.T) {
 	w := NewWorld(100, 100)
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 
-	e, _ := testingSpawnPosition(w, Vec2D{20, 20})
+	e, _ := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
 
-	entities = sh.EntitiesPotentiallyWithinDistance(e, 29.0)
-	if len(entities) != 8 {
-		t.Fatal(fmt.Sprintf("circle centered at 20, 20 of radius 29 should have caught 8 entities; got %d", len(entities)))
+	near := make([]*Entity, 0)
+	far := make([]*Entity, 0)
+	for spawnRadius := 30.0; spawnRadius <= 38; spawnRadius += 8 {
+		for i := 0.0; i < 360; i += 10 {
+			theta := 2.0 * math.Pi * (i / 360)
+			offset := Vec2D{
+				spawnRadius * math.Cos(theta),
+				spawnRadius * math.Sin(theta),
+			}
+			spawned, _ := testingSpawnSpatial(w,
+				e.GetVec2D("Position").Add(offset),
+				Vec2D{5, 5})
+			if spawnRadius == 30.0 {
+				near = append(near, spawned)
+			} else {
+				far = append(far, spawned)
+			}
+		}
 	}
-
+	w.Update(FRAME_DURATION_INT / 2)
+	nearGot := sh.hasher.EntitiesWithinDistanceApprox(
+		*e.GetVec2D("Position"),
+		*e.GetVec2D("Box"),
+		30.0)
+	if len(nearGot) != 73 {
+		t.Fatal(fmt.Sprintf("Should be 37 near entities; got %d", len(nearGot)))
+	}
+	for _, eNear := range near {
+		if indexOfEntityInSlice(&nearGot, eNear) == -1 {
+			t.Fatal("Did not find expected near entity")
+		}
+	}
 }
-*/
 
 func TestSpatialHashTableCopy(t *testing.T) {
 	w := NewWorld(100, 100)
