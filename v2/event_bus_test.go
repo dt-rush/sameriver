@@ -14,9 +14,7 @@ func TestEventBusConstructEventBus(t *testing.T) {
 
 func TestEventBusSimpleEventFilterMatching(t *testing.T) {
 	ev := NewEventBus()
-	ec := ev.Subscribe(
-		"SimpleCollisionFilter",
-		SimpleEventFilter("collision"))
+	ec := ev.Subscribe(SimpleEventFilter("collision"))
 	ev.Publish("collision", nil)
 	time.Sleep(FRAME_DURATION)
 	select {
@@ -30,9 +28,7 @@ func TestEventBusSimpleEventFilterMatching(t *testing.T) {
 
 func TestEventBusMaxCapacity(t *testing.T) {
 	ev := NewEventBus()
-	_ = ev.Subscribe(
-		"SimpleCollisionFilter",
-		SimpleEventFilter("collision"))
+	_ = ev.Subscribe(SimpleEventFilter("collision"))
 	for i := 0; i < EVENT_SUBSCRIBER_CHANNEL_CAPACITY+4; i++ {
 		ev.Publish("collision", nil)
 	}
@@ -40,9 +36,7 @@ func TestEventBusMaxCapacity(t *testing.T) {
 
 func TestEventBusDeactivatedSubscriber(t *testing.T) {
 	ev := NewEventBus()
-	ec := ev.Subscribe(
-		"SimpleCollisionFilter",
-		SimpleEventFilter("collision"))
+	ec := ev.Subscribe(SimpleEventFilter("collision"))
 	ec.Deactivate()
 	ev.Publish("collision", nil)
 	time.Sleep(FRAME_DURATION)
@@ -55,9 +49,7 @@ func TestEventBusDeactivatedSubscriber(t *testing.T) {
 
 func TestEventBusSimpleEventFilterNonMatching(t *testing.T) {
 	ev := NewEventBus()
-	ec := ev.Subscribe(
-		"SimpleCollisionFilter",
-		SimpleEventFilter("collision"))
+	ec := ev.Subscribe(SimpleEventFilter("collision"))
 	ev.Publish("spawn-request", nil)
 	time.Sleep(FRAME_DURATION)
 	select {
@@ -75,7 +67,6 @@ func TestEventBusDataEventFilterMatching(t *testing.T) {
 		Other: &Entity{ID: 1},
 	}
 	ec := ev.Subscribe(
-		"PredicateCollisionFilter",
 		PredicateEventFilter(
 			"collision",
 			func(e Event) bool {
@@ -99,7 +90,6 @@ func TestEventBusDataEventFilterNonMatching(t *testing.T) {
 		Other: &Entity{ID: 1},
 	}
 	ec := ev.Subscribe(
-		"PredicateCollisionFilter",
 		PredicateEventFilter(
 			"collision",
 			func(e Event) bool {
@@ -122,9 +112,7 @@ func TestEventBusDataEventFilterNonMatching(t *testing.T) {
 
 func TestEventBusUnsubscribe(t *testing.T) {
 	ev := NewEventBus()
-	ec := ev.Subscribe(
-		"SimpleCollisionFilter",
-		SimpleEventFilter("collision"))
+	ec := ev.Subscribe(SimpleEventFilter("collision"))
 	ev.Unsubscribe(ec)
 	ev.Publish("collision", nil)
 	time.Sleep(FRAME_DURATION)

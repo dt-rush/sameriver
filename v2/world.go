@@ -31,6 +31,9 @@ type World struct {
 	// or to produce an effect
 	funcs *FuncSet
 
+	// blackboards that entity's can join to share events and state
+	blackboards map[string]*Blackboard
+
 	// for sharing runtime among the various runtimelimiter kinds
 	// and contains the RuntimeLimiters to which we Add() LogicUnits
 	runtimeSharer *RuntimeLimitSharer
@@ -48,6 +51,7 @@ func NewWorld(width int, height int) *World {
 		systemsIDs:    make(map[System]int),
 		worldLogics:   make(map[string]*LogicUnit),
 		funcs:         NewFuncSet(),
+		blackboards:   make(map[string]*Blackboard),
 		runtimeSharer: NewRuntimeLimitSharer(),
 	}
 	w.runtimeSharer.RegisterRunner("entity-manager")
@@ -334,6 +338,13 @@ func (w *World) GetFunc(name string) func(interface{}) interface{} {
 
 func (w *World) HasFunc(name string) bool {
 	return w.funcs.Has(name)
+}
+
+func (w *World) Blackboard(name string) *Blackboard {
+	if _, ok := w.blackboards[name]; !ok {
+		w.blackboards[name] = NewBlackboard(name)
+	}
+	return w.blackboards[name]
 }
 
 func (w *World) String() string {

@@ -8,15 +8,13 @@ type EventChannel struct {
 	active *atomic.Uint32
 	C      chan Event
 	filter *EventFilter
-	name   string
 }
 
-func NewEventChannel(name string, q *EventFilter) *EventChannel {
+func NewEventChannel(q *EventFilter) *EventChannel {
 	return &EventChannel{
 		active: atomic.NewUint32(1),
 		C:      make(chan (Event), EVENT_SUBSCRIBER_CHANNEL_CAPACITY),
-		filter: q,
-		name:   name}
+		filter: q}
 }
 
 func (c *EventChannel) Activate() {

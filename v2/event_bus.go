@@ -33,15 +33,14 @@ func NewEventBus() *EventBus {
 }
 
 func (ev *EventBus) Publish(t string, data interface{}) {
-	go ev.notifySubscribers(Event{t, data})
+	ev.notifySubscribers(Event{t, data})
 }
 
 // Subscribe to listen for game events defined by a Filter
-func (ev *EventBus) Subscribe(
-	name string, q *EventFilter) *EventChannel {
+func (ev *EventBus) Subscribe(q *EventFilter) *EventChannel {
 
 	// Create a channel to return to the user
-	c := NewEventChannel(name, q)
+	c := NewEventChannel(q)
 	// Add the channel to the subscriber list for its type
 	ev.subscriberList.channels[q.eventType] = append(
 		ev.subscriberList.channels[q.eventType], c)
@@ -66,8 +65,7 @@ func (ev *EventBus) notifySubscribers(e Event) {
 	eventsLog("⚹: %s\n", e.Type)
 
 	var notifyFull = func(c *EventChannel) {
-		Logger.Printf("⚠ event subscriber channel #%s for events of "+
-			"type %s is full\n", c.name, e.Type)
+		Logger.Printf("⚠ event subscriber channel for events of type %s is full\n", e.Type)
 	}
 
 	for _, c := range ev.subscriberList.channels[e.Type] {

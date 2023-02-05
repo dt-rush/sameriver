@@ -6,17 +6,16 @@ import (
 
 func TestNewEventChannel(t *testing.T) {
 	q := &EventFilter{eventType: "spawn-request"}
-	ec := NewEventChannel("testchannel", q)
+	ec := NewEventChannel(q)
 	if !(ec.IsActive() &&
 		ec.C != nil &&
-		ec.filter == q &&
-		ec.name == "testchannel") {
+		ec.filter == q) {
 		t.Fatal("did not construct properly")
 	}
 }
 
 func TestNewEventChannelActivateDeactivate(t *testing.T) {
-	ec := NewEventChannel("testchannel", nil)
+	ec := NewEventChannel(nil)
 	ec.Deactivate()
 	if ec.IsActive() {
 		t.Fatal("Deactivate() didn't change result of IsActive()")
@@ -28,7 +27,7 @@ func TestNewEventChannelActivateDeactivate(t *testing.T) {
 }
 
 func TestEventChannelDrain(t *testing.T) {
-	ec := NewEventChannel("testchannel", nil)
+	ec := NewEventChannel(nil)
 	for i := 0; i < EVENT_SUBSCRIBER_CHANNEL_CAPACITY; i++ {
 		ec.C <- Event{}
 	}
