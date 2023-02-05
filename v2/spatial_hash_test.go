@@ -2,6 +2,7 @@ package sameriver
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"testing"
 	"time"
@@ -110,7 +111,7 @@ func TestSpatialHashCellsWithinDistance(t *testing.T) {
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 
-	box := Vec2D{0.01, 0.01}
+	box := Vec2D{0, 0}
 
 	// we're checking the radius at 0, 0, the corner of the world
 	cells := sh.hasher.CellsWithinDistance(Vec2D{0, 0}, box, 25.0)
@@ -133,6 +134,47 @@ func TestSpatialHashCellsWithinDistance(t *testing.T) {
 	cells = sh.hasher.CellsWithinDistance(Vec2D{25, 25}, box, 1.0)
 	if len(cells) != 1 {
 		t.Fatal(fmt.Sprintf("circle centered at 25, 25 of radius 1 should touch 1 cell; got %d: %v", len(cells), cells))
+	}
+}
+
+func TestSpatialHashEntitiesWithinDistance(t *testing.T) {
+	w := NewWorld(100, 100)
+	sh := NewSpatialHashSystem(10, 10)
+	w.RegisterSystems(sh)
+
+	e, _ := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
+
+	near := make([]*Entity, 0)
+	far := make([]*Entity, 0)
+	for spawnRadius := 30.0; spawnRadius <= 50; spawnRadius += 20 {
+		for i := 0.0; i < 360; i += 10 {
+			theta := 2.0 * math.Pi * (i / 360)
+			offset := Vec2D{
+				spawnRadius * math.Cos(theta),
+				spawnRadius * math.Sin(theta),
+			}
+			spawned, _ := testingSpawnSpatial(w,
+				e.GetVec2D("Position").Add(offset),
+				Vec2D{5, 5})
+			if spawnRadius == 30.0 {
+				near = append(near, spawned)
+			} else {
+				far = append(far, spawned)
+			}
+		}
+	}
+	w.Update(FRAME_DURATION_INT / 2)
+	nearGot := sh.hasher.EntitiesWithinDistance(
+		*e.GetVec2D("Position"),
+		*e.GetVec2D("Box"),
+		30.0)
+	if len(nearGot) != 37 {
+		t.Fatal(fmt.Sprintf("Should be 37 near entities; got %d", len(nearGot)))
+	}
+	for _, eNear := range near {
+		if indexOfEntityInSlice(&nearGot, eNear) == -1 {
+			t.Fatal("Did not find expected near entity")
+		}
 	}
 }
 

@@ -171,12 +171,20 @@ func (h *SpatialHasher) CellsWithinApproxDistance(pos, box Vec2D, d float64) [][
 // uses the approx distance since it's faster. Overestimates slightly diagonally.
 func (h *SpatialHasher) EntitiesWithinDistanceApprox(pos, box Vec2D, d float64) []*Entity {
 	results := make([]*Entity, 0)
+	found := make(map[int]*Entity)
 	cells := h.CellsWithinApproxDistance(pos, box, d)
-	// for each cell, append its entities to results
+	// for each cell, note that we found the entity in the map
+	// initial naive slice append was quadruple-counting entities that
+	// sat on the intersection of four cells, etc.
 	for _, cell := range cells {
 		x := cell[0]
 		y := cell[1]
-		results = append(results, h.Table[x][y]...)
+		for _, e := range h.Table[x][y] {
+			found[e.ID] = e
+		}
+	}
+	for _, e := range found {
+		results = append(results, e)
 	}
 	return results
 }
