@@ -59,8 +59,8 @@ func (w *World) UniqueTaggedEntity(tag string) (*Entity, error) {
 	return w.em.UniqueTaggedEntity(tag)
 }
 
-func (w *World) EntitiesWithTag(tag string) *UpdatedEntityList {
-	return w.em.EntitiesWithTag(tag)
+func (w *World) UpdatedEntitiesWithTag(tag string) *UpdatedEntityList {
+	return w.em.UpdatedEntitiesWithTag(tag)
 }
 
 func (w *World) EntityHasComponent(e *Entity, name string) bool {

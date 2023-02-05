@@ -24,7 +24,7 @@ type EntityManagerInterface interface {
 	GetCurrentEntitiesSetCopy() map[*Entity]bool
 
 	UniqueTaggedEntity(tag string) (*Entity, error)
-	EntitiesWithTag(tag string) *UpdatedEntityList
+	UpdatedEntitiesWithTag(tag string) *UpdatedEntityList
 	EntityHasComponent(e *Entity, name string) bool
 	EntityHasTag(e *Entity, tag string) bool
 

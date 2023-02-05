@@ -20,3 +20,34 @@ func (w *World) PredicateEntities(entities []*Entity, p func(*Entity) bool) []*E
 	}
 	return results
 }
+
+func (w *World) EntitiesWithTags(tags ...string) []*Entity {
+	entities := make([]*Entity, 0)
+	for e, _ := range w.em.entityTable.currentEntities {
+		has := true
+		for _, tag := range tags {
+			has = has && w.EntityHasTag(e, tag)
+		}
+		if has {
+			entities = append(entities, e)
+		}
+	}
+	return entities
+}
+
+func (w *World) ActiveEntitiesWithTags(tags ...string) []*Entity {
+	entities := make([]*Entity, 0)
+	for e, _ := range w.em.entityTable.currentEntities {
+		if !e.Active {
+			continue
+		}
+		has := true
+		for _, tag := range tags {
+			has = has && w.EntityHasTag(e, tag)
+		}
+		if has {
+			entities = append(entities, e)
+		}
+	}
+	return entities
+}

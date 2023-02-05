@@ -146,7 +146,7 @@ func EntityManagerInterfaceTestEntitiesWithTag(
 
 	tag := "tag1"
 	testingSpawnTagged(em, tag)
-	tagged := em.EntitiesWithTag(tag)
+	tagged := em.UpdatedEntitiesWithTag(tag)
 	if tagged.Length() == 0 {
 		t.Fatal("failed to find Spawned entity in EntitiesWithTag")
 	}
@@ -180,7 +180,7 @@ func EntityManagerInterfaceTestTagUntagEntity(
 	e, _ := testingSpawnSimple(em)
 	tag := "tag1"
 	em.TagEntity(e, tag)
-	tagged := em.EntitiesWithTag(tag)
+	tagged := em.UpdatedEntitiesWithTag(tag)
 	empty := tagged.Length() == 0
 	if empty {
 		t.Fatal("failed to find Spawned entity in EntitiesWithTag")
@@ -238,7 +238,7 @@ func EntityManagerInterfaceTestDeactivateActivateEntity(
 	e, _ := testingSpawnSimple(em)
 	tag := "tag1"
 	em.TagEntity(e, tag)
-	tagged := em.EntitiesWithTag(tag)
+	tagged := em.UpdatedEntitiesWithTag(tag)
 	em.Deactivate(e)
 	if tagged.Length() != 0 {
 		t.Fatal("entity was not removed from list after Deactivate()")
