@@ -35,7 +35,7 @@ type World struct {
 	// and contains the RuntimeLimiters to which we Add() LogicUnits
 	runtimeSharer *RuntimeLimitSharer
 
-	totalRuntime *float64
+	totalRuntimeAvg_ms *float64
 }
 
 func NewWorld(width int, height int) *World {
@@ -80,10 +80,10 @@ func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	}
 	// maintain total runtime moving average
 	total := float64(time.Since(t0).Nanoseconds()) / 1.0e6
-	if w.totalRuntime == nil {
-		w.totalRuntime = &total
+	if w.totalRuntimeAvg_ms == nil {
+		w.totalRuntimeAvg_ms = &total
 	} else {
-		*w.totalRuntime = (*w.totalRuntime + total) / 2.0
+		*w.totalRuntimeAvg_ms = (*w.totalRuntimeAvg_ms + total) / 2.0
 	}
 	return overunder_ms
 }
@@ -343,8 +343,9 @@ func (w *World) String() string {
 
 func (w *World) DumpStats() map[string](map[string]float64) {
 	stats := w.runtimeSharer.DumpStats()
-	if w.totalRuntime != nil {
-		stats["totals"]["total"] = *w.totalRuntime
+	// add total Update() runtime avg
+	if w.totalRuntimeAvg_ms != nil {
+		stats["totals"]["total"] = *w.totalRuntimeAvg_ms
 	} else {
 		stats["totals"]["total"] = 0.0
 	}

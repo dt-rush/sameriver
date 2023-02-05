@@ -95,9 +95,9 @@ func (s *CollisionSystem) Update(dt_ms float64) {
 	// so the rateLimiterArray access condition that i < j is respected
 	// check each possible collison between entities in the list by doing a
 	// handshake pattern
-	for x := 0; x < s.sh.GridX; x++ {
-		for y := 0; y < s.sh.GridY; y++ {
-			entities := s.sh.Table[x][y]
+	for x := 0; x < s.sh.hasher.GridX; x++ {
+		for y := 0; y < s.sh.hasher.GridY; y++ {
+			entities := s.sh.hasher.Entities(x, y)
 			s.checkEntities(entities)
 		}
 	}
@@ -148,6 +148,6 @@ func (s *CollisionSystem) TestCollision(i *Entity, j *Entity) bool {
 	iBox := i.GetVec2D("Box")
 	jPos := j.GetVec2D("Position")
 	jBox := j.GetVec2D("Box")
-	intersects := RectIntersectsRect(iPos, iBox, jPos, jBox)
+	intersects := RectIntersectsRect(*iPos, *iBox, *jPos, *jBox)
 	return intersects
 }

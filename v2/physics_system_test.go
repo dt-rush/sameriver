@@ -58,7 +58,7 @@ func TestPhysicsSystemBounds(t *testing.T) {
 			w.Update(FRAME_DURATION_INT / 2)
 			time.Sleep(1 * time.Millisecond)
 		}
-		if !RectWithinRect(pos, box, &worldCenter, &worldTopRight) {
+		if !RectWithinRect(*pos, *box, worldCenter, worldTopRight) {
 			t.Fatal(fmt.Sprintf("traveling with velocity %v placed entity "+
 				"outside world (at position %v, box %v)", *vel, *pos, *box))
 		}

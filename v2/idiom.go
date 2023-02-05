@@ -35,6 +35,7 @@ func removeAtIndexInEntitySlice(slice *[]*Entity, index int) {
 	*slice = (*slice)[:last_ix]
 }
 
+// TODO: reverse arguments and remove pointer (we're not modifying!)
 func indexOfEntityInSlice(slice *[]*Entity, x *Entity) int {
 	for i, v := range *slice {
 		if v == x {

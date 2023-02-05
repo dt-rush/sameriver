@@ -98,7 +98,7 @@ func (m *EntityManager) UniqueTaggedEntity(tag string) (*Entity, error) {
 	}
 }
 
-func (m *EntityManager) EntitiesWithTag(tag string) *UpdatedEntityList {
+func (m *EntityManager) UpdatedEntitiesWithTag(tag string) *UpdatedEntityList {
 	m.createEntitiesWithTagListIfNeeded(tag)
 	return m.entitiesWithTag[tag]
 }

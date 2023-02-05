@@ -29,7 +29,8 @@ func (s *PhysicsSystem) Update(dt_ms float64) {
 		// the logic is simpler to read that way
 		pos := e.GetVec2D("Position")
 		box := e.GetVec2D("Box")
-		pos.ShiftCenterToBottomLeft(box)
+		pos.ShiftCenterToBottomLeft(*box)
+		defer pos.ShiftBottomLeftToCenter(*box)
 		// calculate velocity
 		vel := e.GetVec2D("Velocity")
 		dx := vel.X * dt_ms
@@ -56,7 +57,5 @@ func (s *PhysicsSystem) Update(dt_ms float64) {
 			// otherwise move in y freely
 			pos.Y += dy
 		}
-		// unshift position back to center
-		pos.ShiftBottomLeftToCenter(box)
 	}
 }
