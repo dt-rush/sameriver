@@ -1,8 +1,16 @@
 package sameriver
 
-func (w *World) PredicateEntities(p func(*Entity) bool) []*Entity {
-	results := make([]*Entity, 0)
+func (w *World) PredicateAllEntities(p func(*Entity) bool) []*Entity {
+	entities := make([]*Entity, 0)
 	for e, _ := range w.em.entityTable.currentEntities {
+		entities = append(entities, e)
+	}
+	return w.PredicateEntities(entities, p)
+}
+
+func (w *World) PredicateEntities(entities []*Entity, p func(*Entity) bool) []*Entity {
+	results := make([]*Entity, 0)
+	for _, e := range entities {
 		if !e.Active {
 			continue
 		}
@@ -12,29 +20,3 @@ func (w *World) PredicateEntities(p func(*Entity) bool) []*Entity {
 	}
 	return results
 }
-
-/*
-func (w *World) CellsWithinDistance(e *Entity, d float64) [][2]int {
-	if sh, ok := w.systems["SpatialHashSystem"]; !ok {
-		panic("Can't call CellsWithinDistance without SpatialHashSystem!")
-	} else {
-		return sh.(*SpatialHashSystem).CellsWithinDistance(*e.GetVec2D("Position"), d)
-	}
-}
-
-func (w *World) EntitiesPotentiallyWithinDistance(e *Entity, d float64) []*Entity {
-	if sh, ok := w.systems["SpatialHashSystem"]; !ok {
-		panic("Can't call EntitiesPotentaillyWithinDistance without SpatialHashSystem!")
-	} else {
-		return sh.(*SpatialHashSystem).EntitiesPotentiallyWithinDistance(e, d)
-	}
-}
-
-func (w *World) EntitiesWithinDistance(e *Entity, d float64) []*Entity {
-	if sh, ok := w.systems["SpatialHashSystem"]; !ok {
-		panic("Can't call EntitiesWithinDistance without SpatialHashSystem!")
-	} else {
-		return sh.(*SpatialHashSystem).EntitiesWithinDistance(e, d)
-	}
-}
-*/

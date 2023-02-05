@@ -2,6 +2,7 @@ package sameriver
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
 )
@@ -326,4 +327,54 @@ func TestWorldDumpStats(t *testing.T) {
 		t.Fatal("statsString is empty")
 	}
 
+}
+
+func TestWorldPredicateEntities(t *testing.T) {
+	w := NewWorld(100, 100)
+	sh := NewSpatialHashSystem(10, 10)
+	w.RegisterSystems(sh)
+
+	e, _ := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
+	w.TagEntity(e, "tree")
+
+	near := make([]*Entity, 0)
+	nTrees := 0
+	for spawnRadius := 30.0; spawnRadius <= 38; spawnRadius += 8 {
+		for i := 0.0; i < 360; i += 10 {
+			theta := 2.0 * math.Pi * (i / 360)
+			offset := Vec2D{
+				spawnRadius * math.Cos(theta),
+				spawnRadius * math.Sin(theta),
+			}
+			spawned, _ := testingSpawnSpatial(w,
+				e.GetVec2D("Position").Add(offset),
+				Vec2D{5, 5})
+			if int(i)%20 == 0 {
+				w.TagEntity(spawned, "tree")
+				nTrees++
+			}
+			if spawnRadius == 30.0 {
+				near = append(near, spawned)
+			}
+		}
+	}
+	w.Update(FRAME_DURATION_INT / 2)
+	nearGot := sh.hasher.EntitiesWithinDistance(
+		*e.GetVec2D("Position"),
+		*e.GetVec2D("Box"),
+		30.0)
+	if len(nearGot) != 37 {
+		t.Fatal(fmt.Sprintf("Should be 37 near entities; got %d", len(nearGot)))
+	}
+	isTree := func(e *Entity) bool {
+		return w.EntityHasTag(e, "tree")
+	}
+	treesFound := w.PredicateEntities(nearGot, isTree)
+	if len(treesFound) != 19 {
+		t.Fatal("Should have found 19 near trees (1 original, 18 radial)")
+	}
+	allTrees := w.PredicateAllEntities(isTree)
+	if len(allTrees) != 37 {
+		t.Fatal("Should have found 37 trees in the world (1 original, 18 radial x 2 layers")
+	}
 }
