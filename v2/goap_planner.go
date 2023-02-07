@@ -2,11 +2,16 @@ package sameriver
 
 import (
 	"bytes"
+	"os"
 )
 
-type GOAPPlan []GOAPAction
+func debugGOAPPrintf(s string, args ...any) {
+	if val, ok := os.LookupEnv("DEBUG_GOAP"); ok && val == "true" {
+		Logger.Printf(s, args...)
+	}
+}
 
-func GOAPPlanToString(plan GOAPPlan) string {
+func GOAPPlanToString(plan []*GOAPAction) string {
 	var buf bytes.Buffer
 	buf.WriteString("[")
 	for i, action := range plan {
@@ -20,38 +25,50 @@ func GOAPPlanToString(plan GOAPPlan) string {
 }
 
 type GOAPPlanner struct {
-	e       *Entity
-	actions *GOAPActionSet
+	e    *Entity
+	eval *GOAPEvaluator
 }
 
 func NewGOAPPlanner(e *Entity) *GOAPPlanner {
 	return &GOAPPlanner{
-		e:       e,
-		actions: NewGOAPActionSet(),
+		e:    e,
+		eval: NewGOAPEvaluator(),
 	}
 }
 
-func (p *GOAPPlanner) AddActions(actions ...GOAPAction) {
-	p.actions.Add(actions...)
-}
-
+/*
 func (p *GOAPPlanner) Plans(
-	world GOAPWorldState,
-	goal GOAPWorldState) []GOAPPlan {
+	world *GOAPWorldState,
+	goal *GOAPWorldState) [][]GOAPAction {
 
-	results := make([]GOAPPlan, 0)
+	results := make([][]GOAPAction, 0)
 
 	pq := GOAPPriorityQueue{}
-	traverseFulfillers := func(path []GOAPAction, want GOAPWorldState) {
-		fulfillers := p.actions.thoseThatHelpFulfill(want)
+	traverseFulfillers := func(path []GOAPAction, want *GOAPWorldState) {
+		debugGOAPPrintf("--------------------------")
+		Logger.Println("backtrack path: ")
+		debugGOAPPrintf(GOAPPlanToString(path))
+		debugGOAPPrintf("traversing fulfillers of want: %v", want)
+		fulfillers := p.actions.thoseThatHelpFulfill(want, path)
+		debugGOAPPrintf("fulfillers:")
+		for _, fulfiller := range fulfillers.set {
+			debugGOAPPrintf("    %v", fulfiller.name)
+		}
 		for _, action := range fulfillers.set {
-			unfulfilled := want.unfulfilledBy(action)
+			// TODO: what are we doing here?
+			prependedPath := make([]GOAPAction, len(path))
+			copy(prependedPath, path)
+			prependedPath = append([]GOAPAction{action}, path...)
+			debugGOAPPrintf("        Unfulfilled by %s:", action.name)
+			unfulfilled := want.unfulfilledBy(path)
+			debugGOAPPrintf("        %v", unfulfilled)
 			want := unfulfilled.mergeActionPres(action)
 			pq.Push(&GOAPPQueueItem{
 				path: append([]GOAPAction{action}, path...),
 				want: want,
 			})
 		}
+		debugGOAPPrintf("--------------------------")
 	}
 	traverseFulfillers([]GOAPAction{}, goal)
 	for pq.Len() > 0 {
@@ -72,9 +89,9 @@ func (p *GOAPPlanner) Plans(
 }
 
 func (p *GOAPPlanner) validateForward(
-	world GOAPWorldState,
+	world *GOAPWorldState,
 	path []GOAPAction,
-	goal GOAPWorldState) bool {
+	goal *GOAPWorldState) bool {
 
 	for _, action := range path {
 		if !action.presFulfilled(world) {
@@ -86,3 +103,4 @@ func (p *GOAPPlanner) validateForward(
 	return world.fulfills(goal)
 
 }
+*/

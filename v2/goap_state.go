@@ -1,14 +1,26 @@
 package sameriver
 
-// state values are either bool or GOAPCtxState (bool resolved by get())
-type GOAPState interface{}
-
-var EmptyGOAPState = map[string]GOAPState{}
+type IntOrFunc interface{}
 
 // a state val which can *set* modal values in the worldstate as the
-// action chain runs forward
-type GOAPCtxStateVal struct {
-	val bool
-	get func(ws GOAPWorldState) bool
-	set func(ws *GOAPWorldState)
+// action chain runs forward, and which can *read* modal values when
+// an action's pre is being checked
+type GOAPModalVal struct {
+	// the var name this value will be used with
+	name string
+	// a func that is used when this state val appears in a pre
+	// eg. "atTree,=": atTreeModal
+	// where ctxAtTree.valAsPre will look in the modal state for the entity
+	// position and return 0 if not at the tree, 1 if at the tree
+	//
+	// also used to *re-evaluate* a state var's value during applyAction
+	// (eg. if we had a modal var involving atTree, it will set atTree: 0
+	// when our modal position has moved away from the tree)
+	check func(ws *GOAPWorldState) int
+	// either an int or a func(int) int, representing the value of this stateval
+	// when it appears in an eff, to be added to the world state
+	valAsEff int
+	// a func that is used when this state val appears in an eff, modifying
+	// modal state
+	effModalSet func(ws *GOAPWorldState)
 }
