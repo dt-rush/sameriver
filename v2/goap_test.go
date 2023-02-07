@@ -8,14 +8,25 @@ import (
 )
 
 func printWorldState(ws *GOAPWorldState) {
+	if ws == nil {
+		Logger.Println("    nil")
+		return
+	}
 	for name, val := range ws.vals {
 		Logger.Printf("    %s: %d", name, val)
 	}
 }
 
 func printGoal(g *GOAPGoal) {
-	for spec, goalVal := range g.goals {
-		Logger.Printf("    %s: %d", spec, goalVal.val)
+	if g == nil {
+		Logger.Println("    nil")
+		return
+	}
+	for varName, interval := range g.goals {
+		Logger.Printf("    want %s: [%.0f, %.0f]", varName, interval.a, interval.b)
+	}
+	for varName, _ := range g.fulfilled {
+		Logger.Printf("    fulfilled: %s", varName)
 	}
 }
 
@@ -23,6 +34,107 @@ func printDiffs(diffs map[string]int) {
 	for name, diff := range diffs {
 		Logger.Printf("    %s: %d", name, diff)
 	}
+}
+
+func TestGOAPGoalMerged(t *testing.T) {
+
+	doTest := func(g1, g2, expected *GOAPGoal, expectedOk bool) {
+		goalEqLeft := func(g1, g2 *GOAPGoal) bool {
+			for name, interval1 := range g1.goals {
+				interval2, ok := g2.goals[name]
+				if !ok {
+					return false
+				}
+				if *interval1 != *interval2 {
+					return false
+				}
+			}
+			return true
+		}
+		goalEq := func(g1, g2 *GOAPGoal) bool {
+			return goalEqLeft(g1, g2) && goalEqLeft(g2, g1)
+		}
+
+		Logger.Println("Merging goals:")
+		Logger.Println("g1:")
+		printGoal(g1)
+		Logger.Println("g2:")
+		printGoal(g2)
+
+		merged, ok := g1.prependingMerge(g2)
+		Logger.Println("merged:")
+		printGoal(merged)
+
+		if !expectedOk == ok {
+			t.Fatal(fmt.Sprintf("Merging goals should've been ok: %t", expectedOk))
+		}
+		if expectedOk && !goalEq(merged, expected) {
+			Logger.Println("Failure! Should've merged to:")
+			printGoal(expected)
+			t.Fatal("Did not get expected goal merge result")
+		}
+	}
+
+	doTest(
+		NewGOAPGoal(map[string]int{
+			"hasAxe,=": 1,
+			"atTree,=": 1,
+		}),
+		NewGOAPGoal(map[string]int{
+			"atGlove,=": 1,
+		}),
+		NewGOAPGoal(map[string]int{
+			"atGlove,=": 1,
+			"hasAxe,=":  1,
+			"atTree,=":  1,
+		}),
+		true,
+	)
+
+	doTest(
+		NewGOAPGoal(map[string]int{
+			"hasAxe,=": 1,
+			"atTree,=": 1,
+		}),
+		NewGOAPGoal(map[string]int{
+			"atTree,=": 0,
+		}),
+		nil,
+		false,
+	)
+
+	doTest(
+		NewGOAPGoal(map[string]int{
+			"drunk,>": 0,
+		}),
+		NewGOAPGoal(map[string]int{
+			"drunk,>=": 3,
+		}),
+		NewGOAPGoal(map[string]int{
+			"drunk,>=": 3,
+		}),
+		true,
+	)
+
+	wantToBeWasted := NewGOAPGoal(map[string]int{
+		"drunk,>": 10,
+	})
+	fulfilledGoal := NewGOAPGoal(nil)
+	fulfilledGoal.fulfilled["drunk"] = true
+	Logger.Println("Merging goals:")
+	Logger.Println("wantToBeWasted:")
+	printGoal(wantToBeWasted)
+	Logger.Println("fulfilledGoal:")
+	printGoal(fulfilledGoal)
+
+	merged, ok := wantToBeWasted.prependingMerge(fulfilledGoal)
+	if ok {
+		Logger.Println("merged:")
+		printGoal(merged)
+	} else {
+		Logger.Println("invalid merge")
+	}
+
 }
 
 func TestGOAPGoalRemaining(t *testing.T) {
@@ -33,20 +145,20 @@ func TestGOAPGoalRemaining(t *testing.T) {
 		expectedRemaining []string,
 	) {
 
-		goalRemaining, diffs := g.goalRemaining(ws)
+		remaining, diffs := g.remaining(ws)
 
 		Logger.Printf("goal:")
 		printGoal(g)
 		Logger.Printf("state:")
 		printWorldState(ws)
-		Logger.Printf("goalRemaining:")
-		printGoal(goalRemaining)
+		Logger.Printf("remaining:")
+		printGoal(remaining)
 		Logger.Printf("diffs:")
 		printDiffs(diffs)
 		Logger.Println("-------------------")
 
-		if len(goalRemaining.goals) != nRemaining {
-			t.Fatal(fmt.Sprintf("Should have had %d goals remaining, had %d", nRemaining, len(goalRemaining.goals)))
+		if len(remaining.goals) != nRemaining {
+			t.Fatal(fmt.Sprintf("Should have had %d goals remaining, had %d", nRemaining, len(remaining.goals)))
 		}
 		for _, name := range expectedRemaining {
 			if diffVal, ok := diffs[name]; !ok || diffVal == 0 {
@@ -390,7 +502,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 		"atTree,=": 1,
 	})
 	appliedState := eval.applyAction(goToTree, NewGOAPWorldState(nil))
-	goalRemaining, diffs := g.goalRemaining(appliedState)
+	remaining, diffs := g.remaining(appliedState)
 	Logger.Println("goal:")
 	printGoal(g)
 	Logger.Println("state after applying goToTree:")
@@ -399,8 +511,8 @@ func TestGOAPActionModalVal(t *testing.T) {
 		t.Fatal("atTree should've been 1 after goToTree")
 	}
 	Logger.Println("goal remaining:")
-	printGoal(goalRemaining)
-	if len(goalRemaining.goals) != 0 {
+	printGoal(remaining)
+	if len(remaining.goals) != 0 {
 		t.Fatal("Goal should have been satisfied")
 	}
 	Logger.Println("diffs:")
@@ -410,8 +522,8 @@ func TestGOAPActionModalVal(t *testing.T) {
 		"atTree,=": 1,
 		"drunk,>=": 10,
 	})
-	goalRemaining, _ = g2.goalRemaining(appliedState)
-	if len(goalRemaining.goals) != 1 {
+	remaining, _ = g2.remaining(appliedState)
+	if len(remaining.goals) != 1 {
 		t.Fatal("drunk goal should be unfulfilled by atTree state")
 	}
 
@@ -493,23 +605,65 @@ func TestGOAPPlannerDeepen(t *testing.T) {
 	})
 	path := []*GOAPAction{}
 
-	newPaths, solutions := p.deepen(start, path, goal)
-	if len(solutions) != 0 {
-		t.Fatal("Should not have found a solution")
-	}
+	newPaths := p.deepen(start, path, goal)
 	if len(newPaths) != 1 {
 		t.Fatal("Should have found 1 path")
+	}
+	if len(newPaths[0].remaining.goals) == 0 {
+		t.Fatal("Should not have fulfilled the goal")
 	}
 
 	goal = NewGOAPGoal(map[string]int{
 		"drunk,=": 1,
 	})
-	newPaths, solutions = p.deepen(start, path, goal)
-	if len(solutions) != 1 {
-		t.Fatal("Should have found a solution")
-	}
-	if len(newPaths) != 0 {
+	newPaths = p.deepen(start, path, goal)
+	if len(newPaths[0].remaining.goals) != 0 {
 		t.Fatal("Should not have found an unfulfilled path")
+	}
+}
+
+func TestGOAPPlannerBasic(t *testing.T) {
+
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+	e, _ := testingSpawnPhysics(w)
+
+	p := NewGOAPPlanner(e)
+
+	hasBoozeModal := GOAPModalVal{
+		name: "hasBooze",
+		check: func(ws *GOAPWorldState) int {
+			return 1
+		},
+		effModalSet: func(ws *GOAPWorldState) {
+		},
+	}
+	drink := NewGOAPActionModal(map[string]interface{}{
+		"name": "drink",
+		"cost": 1,
+		"pres": map[string]int{
+			"hasBooze,>": 0,
+		},
+		"effs": map[string]int{
+			"drunk,+":    1,
+			"hasBooze,-": 1,
+		},
+	})
+
+	p.eval.addModalVals(hasBoozeModal)
+	p.eval.addActions(drink)
+
+	start := NewGOAPWorldState(nil)
+	goal := NewGOAPGoal(map[string]int{
+		"drunk,>=": 3,
+	})
+	solution, ok := p.Plan(start, goal, 50)
+
+	if ok {
+		Logger.Println(GOAPPathToString(solution))
+	} else {
+		Logger.Println("Didn't find a solution.")
 	}
 }
 

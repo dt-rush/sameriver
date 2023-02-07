@@ -81,16 +81,6 @@ func (e *GOAPEvaluator) presFulfilled(a *GOAPAction, ws *GOAPWorldState) bool {
 	for varName, checkF := range a.preModalChecks {
 		modifiedWS.vals[varName] = checkF(ws)
 	}
-	remaining, _ := a.pres.goalRemaining(modifiedWS)
+	remaining, _ := a.pres.remaining(modifiedWS)
 	return len(remaining.goals) == 0
 }
-
-/*
-func (ws GOAPWorldState) mergeActionPres(action GOAPAction) GOAPWorldState {
-	ws = ws.copyOf()
-	for name, val := range action.pres {
-		ws.vals[name] = resolveGOAPStateVal(val)
-	}
-	return ws
-}
-*/

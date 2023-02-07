@@ -1,20 +1,19 @@
 package sameriver
 
 import (
-// "container/heap"
+	"container/heap"
 )
 
 type GOAPPQueueItem struct {
-	path []GOAPAction
-	want GOAPGoal
+	path []*GOAPAction
+	goal *GOAPGoal
 	cost int
 	// The index is needed by update and is maintained
 	// by the heap.Interface methods.
 	index int // The index of the item in the heap.
 }
 
-/*
-func NewGOAPPQueueItem(path []GOAPAction, want *GOAPWorldState) *GOAPPQueueItem {
+func NewGOAPPQueueItem(path []*GOAPAction, goal *GOAPGoal) *GOAPPQueueItem {
 	// add path cost
 	cost := 0
 	for _, action := range path {
@@ -26,10 +25,10 @@ func NewGOAPPQueueItem(path []GOAPAction, want *GOAPWorldState) *GOAPPQueueItem 
 		}
 	}
 	// add heuristic (number of unfulfilled state vars remaining)
-	cost += len(want.vals)
+	cost += len(goal.goals)
 	return &GOAPPQueueItem{
 		path,
-		want,
+		goal,
 		cost,
 		-1, // going to be set on Push() anyway
 	}
@@ -40,7 +39,7 @@ type GOAPPriorityQueue []*GOAPPQueueItem
 func (pq GOAPPriorityQueue) Len() int { return len(pq) }
 
 func (pq GOAPPriorityQueue) Less(i, j int) bool {
-	// We want Pop to give us the lowest cost
+	// We goal Pop to give us the lowest cost
 	return pq[i].cost < pq[j].cost
 }
 
@@ -71,12 +70,10 @@ func (pq *GOAPPriorityQueue) Pop() any {
 // Item in the queue.
 func (pq *GOAPPriorityQueue) update(
 	item *GOAPPQueueItem,
-	path []GOAPAction,
+	path []*GOAPAction,
 	cost int) {
 
 	item.path = path
 	item.cost = cost
 	heap.Fix(pq, item.index)
 }
-
-*/

@@ -1,0 +1,62 @@
+
+
+start: {}
+want: {drunk 3}
+
+traverse:
+-----------------
+    want: {drunk gte(3)}
+    path: []
+
+    thosethatfulfill:
+
+        fulfillers = []
+
+        for action in range actions {
+
+            - action drink:
+                eff = {
+                    "drunk,+": 1
+                }
+                appliedPath = [drink] + []
+                    start: {}
+                    (drink.eff.drunk.val(0) = 1)
+                    result -> {drunk: 1}
+                movesToward(start, result, want)?
+                    for var, comparator := range want.goals
+                        start:
+                            {} (drunk: 0}
+                        :
+                            {drunk: 1}
+                        want: {drunk: 3}
+                            for var in range want {
+                                drunk:
+                                    abs(3-1) < abs(3-0)
+                                    return true
+                if movesToward {
+                    fulfillers = append(fulfillers, {action, path, result})
+
+        return fulfillers
+
+    for {path, result} in range(fulfillers):
+
+        - path[0] (drink)
+            updatedWant = want.copyOf():
+            for var, val in range want {
+                if result[var] == val {
+                    delete(updatedWant, var)
+            updatedWant.mergePres(drink)
+                for var, val in range drink.pres {
+                    updatedWant[var] = val
+            heuristic = len(updatedWant) + path.cost
+            push({path, updatedWant}, heuristic)
+
+
+
+
+
+
+
+
+pre:
+                hasDrink(1): <pre-val f(ws) { return ws.getModal("inventory.drink") }>
