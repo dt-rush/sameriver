@@ -399,7 +399,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 				return 0
 			}
 		},
-		effModalSet: func(ws *GOAPWorldState) {
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			nearTree := treePos.Add(Vec2D{1, 0})
 			ws.SetModal(e, "Position", &nearTree)
 		},
@@ -416,12 +416,12 @@ func TestGOAPActionModalVal(t *testing.T) {
 				return 0
 			}
 		},
-		effModalSet: func(ws *GOAPWorldState) {
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			nearOcean := oceanPos.Add(Vec2D{1, 0})
 			ws.SetModal(e, "Position", &nearOcean)
 		},
 	}
-	goToTree := NewGOAPActionModal(map[string]interface{}{
+	goToTree := NewGOAPAction(map[string]interface{}{
 		"name": "goToTree",
 		"cost": 1,
 		"pres": nil,
@@ -429,7 +429,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 			"atTree,=": 1,
 		},
 	})
-	chopTree := NewGOAPActionModal(map[string]interface{}{
+	chopTree := NewGOAPAction(map[string]interface{}{
 		"name": "chopTree",
 		"cost": 1,
 		"pres": map[string]int{
@@ -440,7 +440,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 			"woodChopped,+": 1,
 		},
 	})
-	hugTree := NewGOAPActionModal(map[string]interface{}{
+	hugTree := NewGOAPAction(map[string]interface{}{
 		"name": "hugTree",
 		"cost": 1,
 		"pres": map[string]int{
@@ -450,7 +450,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 			"connectionToNature,+": 2,
 		},
 	})
-	goToOcean := NewGOAPActionModal(map[string]interface{}{
+	goToOcean := NewGOAPAction(map[string]interface{}{
 		"name": "goToOcean",
 		"cost": 1,
 		"pres": nil,
@@ -579,12 +579,13 @@ func TestGOAPPlannerDeepen(t *testing.T) {
 	hasBoozeModal := GOAPModalVal{
 		name: "hasBooze",
 		check: func(ws *GOAPWorldState) int {
-			return 1 // TODO
+			// simulate infinite booze supply
+			return 1
 		},
-		effModalSet: func(ws *GOAPWorldState) {
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 		},
 	}
-	drink := NewGOAPActionModal(map[string]interface{}{
+	drink := NewGOAPAction(map[string]interface{}{
 		"name": "drink",
 		"cost": 1,
 		"pres": map[string]int{
@@ -634,19 +635,20 @@ func TestGOAPPlannerBasic(t *testing.T) {
 	hasBoozeModal := GOAPModalVal{
 		name: "hasBooze",
 		check: func(ws *GOAPWorldState) int {
+			// simulate infinite booze supply
 			return 1
 		},
-		effModalSet: func(ws *GOAPWorldState) {
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 		},
 	}
-	drink := NewGOAPActionModal(map[string]interface{}{
+	drink := NewGOAPAction(map[string]interface{}{
 		"name": "drink",
 		"cost": 1,
 		"pres": map[string]int{
 			"hasBooze,>": 0,
 		},
 		"effs": map[string]int{
-			"drunk,+":    1,
+			"drunk,+":    2,
 			"hasBooze,-": 1,
 		},
 	})
@@ -656,7 +658,7 @@ func TestGOAPPlannerBasic(t *testing.T) {
 
 	start := NewGOAPWorldState(nil)
 	goal := NewGOAPGoal(map[string]int{
-		"drunk,>=": 3,
+		"drunk,>=": 5,
 	})
 	solution, ok := p.Plan(start, goal, 50)
 
@@ -664,6 +666,66 @@ func TestGOAPPlannerBasic(t *testing.T) {
 		Logger.Println(GOAPPathToString(solution))
 	} else {
 		Logger.Println("Didn't find a solution.")
+	}
+}
+
+func TestGOAPPlannerAlanWatts(t *testing.T) {
+
+	w := testingWorld()
+	w.RegisterComponents([]string{"Int,BoozeAmount"})
+
+	e, _ := w.Spawn([]string{}, MakeComponentSet(map[string]interface{}{
+		"Int,BoozeAmount": 10,
+	}))
+
+	p := NewGOAPPlanner(e)
+
+	hasBoozeModal := GOAPModalVal{
+		name: "hasBooze",
+		check: func(ws *GOAPWorldState) int {
+			amount := ws.GetModal(e, "BoozeAmount").(*int)
+			return *amount
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			amount := ws.GetModal(e, "BoozeAmount").(*int)
+			if op == "-" {
+				newVal := *amount - x
+				ws.SetModal(e, "BoozeAmount", &newVal)
+			}
+		},
+	}
+	drink := NewGOAPAction(map[string]interface{}{
+		"name": "drink",
+		"cost": 1,
+		"pres": map[string]int{
+			"hasBooze,>": 0,
+		},
+		"effs": map[string]int{
+			"drunk,+":    2,
+			"hasBooze,-": 1,
+		},
+	})
+
+	p.eval.addModalVals(hasBoozeModal)
+	p.eval.addActions(drink)
+
+	start := NewGOAPWorldState(nil)
+	goal := NewGOAPGoal(map[string]int{
+		"drunk,>=": 20,
+	})
+	solution, ok := p.Plan(start, goal, 50)
+	Logger.Println("Alan Watt's plan:")
+	Logger.Println(GOAPPathToString(solution))
+
+	if !ok {
+		t.Fatal("Should have found a solution with ten booze")
+	}
+
+	*e.GetInt("BoozeAmount") = 5
+	solution, ok = p.Plan(start, goal, 50)
+
+	if ok {
+		t.Fatal("Should not have found a plan with five booze")
 	}
 }
 

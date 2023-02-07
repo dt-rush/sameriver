@@ -46,17 +46,19 @@ func (e *GOAPEvaluator) addActions(actions ...*GOAPAction) {
 
 func (e *GOAPEvaluator) applyAction(action *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState) {
 	newWS = ws.copyOf()
-	for spec, f := range action.effs {
+	for spec, eff := range action.effs {
 		split := strings.Split(spec, ",")
-		varName := split[0]
-		if x, ok := ws.vals[varName]; ok {
-			newWS.vals[varName] = f(x)
+		varName, op := split[0], split[1]
+		var x int
+		if val, ok := ws.vals[varName]; ok {
+			x = val
 		} else {
-			newWS.vals[varName] = f(0)
+			x = 0
 		}
+		newWS.vals[varName] = eff.f(x)
 		// do modal set
 		if setter, ok := action.effModalSetters[varName]; ok {
-			setter(newWS)
+			setter(newWS, op, eff.val)
 		}
 	}
 	// re-check any modal vals

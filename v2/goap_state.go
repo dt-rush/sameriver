@@ -22,5 +22,5 @@ type GOAPModalVal struct {
 	valAsEff int
 	// a func that is used when this state val appears in an eff, modifying
 	// modal state
-	effModalSet func(ws *GOAPWorldState)
+	effModalSet func(ws *GOAPWorldState, op string, x int)
 }

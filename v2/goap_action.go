@@ -9,8 +9,13 @@ type GOAPAction struct {
 	cost            IntOrFunc // (interface{})
 	pres            *GOAPGoal
 	preModalChecks  map[string]func(ws *GOAPWorldState) int
-	effs            map[string]func(int) int
-	effModalSetters map[string]func(ws *GOAPWorldState)
+	effs            map[string]*GOAPEff
+	effModalSetters map[string]func(ws *GOAPWorldState, op string, x int)
+}
+
+type GOAPEff struct {
+	val int
+	f   func(int) int
 }
 
 func GOAPEffFunc(op string, val int) func(int) int {
@@ -42,43 +47,16 @@ func NewGOAPAction(def map[string]interface{}) *GOAPAction {
 		cost:            cost,
 		pres:            NewGOAPGoal(pres),
 		preModalChecks:  make(map[string]func(ws *GOAPWorldState) int),
-		effModalSetters: make(map[string]func(ws *GOAPWorldState)),
+		effModalSetters: make(map[string]func(ws *GOAPWorldState, op string, x int)),
 	}
-	a.effs = make(map[string]func(int) int)
+	a.effs = make(map[string]*GOAPEff)
 	for spec, val := range effs {
 		split := strings.Split(spec, ",")
-		varName := split[0]
 		op := split[1]
-		a.effs[varName] = GOAPEffFunc(op, val)
-	}
-	return a
-}
-
-func NewGOAPActionModal(def map[string]interface{}) *GOAPAction {
-
-	name := def["name"].(string)
-	cost := def["cost"].(int)
-	var pres map[string]int
-	if def["pres"] == nil {
-		pres = nil
-	} else {
-		pres = def["pres"].(map[string]int)
-	}
-	effs := def["effs"].(map[string]int)
-
-	a := &GOAPAction{
-		name:            name,
-		cost:            cost,
-		pres:            NewGOAPGoal(pres),
-		preModalChecks:  make(map[string]func(ws *GOAPWorldState) int),
-		effModalSetters: make(map[string]func(ws *GOAPWorldState)),
-	}
-	a.effs = make(map[string]func(int) int)
-	for spec, val := range effs {
-		split := strings.Split(spec, ",")
-		varName := split[0]
-		op := split[1]
-		a.effs[varName] = GOAPEffFunc(op, val)
+		a.effs[spec] = &GOAPEff{
+			val,
+			GOAPEffFunc(op, val),
+		}
 	}
 	return a
 }

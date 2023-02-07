@@ -133,6 +133,8 @@ func (p *GOAPPlanner) Plan(
 				// we push to a pqueue so we can, at the end, pop the
 				// solution with the least cost
 				resultPq.Push(here)
+			} else {
+				debugGOAPPrintf("found an invalid solution on validateForward()")
 			}
 		} else {
 			p.traverseFulfillers(pq, start, here.path, here.goal)
