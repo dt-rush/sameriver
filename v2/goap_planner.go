@@ -90,7 +90,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 	goal *GOAPGoal) {
 
 	debugGOAPPrintf("--------------------------")
-	Logger.Println("backtrack path so far: ")
+	debugGOAPPrintf("backtrack path so far: ")
 	debugGOAPPrintf(GOAPPathToString(path))
 	debugGOAPPrintf("traversing fulfillers of goal:")
 	debugPrintGOAPGoal(goal)
