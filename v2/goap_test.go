@@ -194,42 +194,53 @@ func TestGOAPActionPresFulfilled(t *testing.T) {
 		}
 	}
 
-	drinkAction := NewGOAPAction("drink", 1,
-		map[string]int{
+	// NOTE: both of these in reality should be modal
+	goToAxe := NewGOAPAction(map[string]interface{}{
+		"name": "goToAxe",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"atAxe,=": 1,
+		},
+	})
+	drink := NewGOAPAction(map[string]interface{}{
+		"name": "drink",
+		"cost": 1,
+		"pres": map[string]int{
 			"hasBooze,>": 0,
 		},
-		map[string]int{
+		"effs": map[string]int{
 			"hasBooze,-": 1,
 		},
-	)
+	})
 
 	doDrinkTest := func(has int, expected bool) {
 		doTest(
 			NewGOAPWorldState(map[string]int{
 				"hasBooze": has,
 			}),
-			drinkAction,
+			drink,
 			expected,
 		)
 	}
-
-	doDrinkTest(0, false)
-	doDrinkTest(1, true)
-	doDrinkTest(2, true)
-
-	chopTree := NewGOAPAction(
-		"chopTree", 1,
-		map[string]int{
+	chopTree := NewGOAPAction(map[string]interface{}{
+		"name": "chopTree",
+		"cost": 1,
+		"pres": map[string]int{
 			"hasGlove,>": 0,
 			"hasAxe,>":   0,
 			"atTree,=":   1,
 		},
-		map[string]int{
+		"effs": map[string]int{
 			"treeFelled,=": 1,
 		},
-	)
+	})
 
-	eval.addActions(chopTree)
+	eval.addActions(goToAxe, drink, chopTree)
+
+	doDrinkTest(0, false)
+	doDrinkTest(1, true)
+	doDrinkTest(2, true)
 
 	if !eval.presFulfilled(
 		chopTree,
@@ -299,37 +310,40 @@ func TestGOAPActionModalVal(t *testing.T) {
 			ws.SetModal(e, "Position", &nearOcean)
 		},
 	}
-	goToTree := NewGOAPActionModal(
-		"goToTree", 1,
-		nil,
-		nil,
-		map[string]GOAPStateVal{
+	goToTree := NewGOAPActionModal(map[string]interface{}{
+		"name":   "goToTree",
+		"cost":   1,
+		"pres":   nil,
+		"checks": nil,
+		"effs": map[string]GOAPStateVal{
 			"atTree,=": atTreeModal,
 		},
-	)
-	hugTree := NewGOAPActionModal(
-		"hugTree", 1,
+	})
+	hugTree := NewGOAPActionModal(map[string]interface{}{
+		"name": "hugTree",
+		"cost": 1,
 		// pres
-		map[string]int{
+		"pres": map[string]int{
 			"atTree,=": 1,
 		},
 		// pre vars to be resolved by modalvals
-		map[string]GOAPModalVal{
+		"checks": map[string]GOAPModalVal{
 			"atTree": atTreeModal,
 		},
 		// effects
-		map[string]GOAPStateVal{
+		"effs": map[string]GOAPStateVal{
 			"connectionToNature,+": 2,
 		},
-	)
-	goToOcean := NewGOAPActionModal(
-		"goToOcean", 1,
-		nil,
-		nil,
-		map[string]GOAPStateVal{
+	})
+	goToOcean := NewGOAPActionModal(map[string]interface{}{
+		"name":   "goToOcean",
+		"cost":   1,
+		"pres":   nil,
+		"checks": nil,
+		"effs": map[string]GOAPStateVal{
 			"atOcean,=": atOceanModal,
 		},
-	)
+	})
 
 	eval.addModalVals(atTreeModal, atOceanModal)
 	eval.addActions(goToTree, hugTree, goToOcean)

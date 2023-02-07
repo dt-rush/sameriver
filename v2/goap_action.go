@@ -28,11 +28,16 @@ func GOAPEffFunc(op string, val int) func(int) int {
 	}
 }
 
-func NewGOAPAction(
-	name string,
-	cost int,
-	pres map[string]int,
-	effs map[string]int) *GOAPAction {
+func NewGOAPAction(def map[string]interface{}) *GOAPAction {
+	name := def["name"].(string)
+	cost := def["cost"].(int)
+	var pres map[string]int
+	if def["pres"] == nil {
+		pres = nil
+	} else {
+		pres = def["pres"].(map[string]int)
+	}
+	effs := def["effs"].(map[string]int)
 
 	a := &GOAPAction{
 		name:            name,
@@ -51,12 +56,23 @@ func NewGOAPAction(
 	return a
 }
 
-func NewGOAPActionModal(
-	name string,
-	cost int,
-	pres map[string]int,
-	preModalChecks map[string]GOAPModalVal,
-	effs map[string]GOAPStateVal) *GOAPAction {
+func NewGOAPActionModal(def map[string]interface{}) *GOAPAction {
+
+	name := def["name"].(string)
+	cost := def["cost"].(int)
+	var pres map[string]int
+	if def["pres"] == nil {
+		pres = nil
+	} else {
+		pres = def["pres"].(map[string]int)
+	}
+	var preModalChecks map[string]GOAPModalVal
+	if def["checks"] == nil {
+		preModalChecks = nil
+	} else {
+		preModalChecks = def["preModalChecks"].(map[string]GOAPModalVal)
+	}
+	effs := def["effs"].(map[string]GOAPStateVal)
 
 	a := &GOAPAction{
 		name:            name,
