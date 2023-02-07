@@ -45,7 +45,7 @@ func NewGOAPGoal(def map[string]int) *GOAPGoal {
 	return g
 }
 
-func (g GOAPGoal) goalRemaining(ws *GOAPWorldState) (goalRemaining *GOAPGoal, diffs map[string]int) {
+func (g *GOAPGoal) goalRemaining(ws *GOAPWorldState) (goalRemaining *GOAPGoal, diffs map[string]int) {
 	goalRemaining = NewGOAPGoal(nil)
 	diffs = make(map[string]int)
 	for spec, goalVal := range g.goals {
@@ -104,7 +104,7 @@ func (g GOAPGoal) goalRemaining(ws *GOAPWorldState) (goalRemaining *GOAPGoal, di
 	return goalRemaining, diffs
 }
 
-func (g GOAPGoal) stateCloserInSomeVar(after, before *GOAPWorldState) (closer bool, afterRemaining *GOAPGoal) {
+func (g *GOAPGoal) stateCloserInSomeVar(after, before *GOAPWorldState) (closer bool, afterRemaining *GOAPGoal) {
 	afterRemaining, afterDiffs := g.goalRemaining(after)
 	_, beforeDiffs := g.goalRemaining(before)
 	for varName, _ := range beforeDiffs {
@@ -113,4 +113,17 @@ func (g GOAPGoal) stateCloserInSomeVar(after, before *GOAPWorldState) (closer bo
 		}
 	}
 	return false, afterRemaining
+}
+
+func (g *GOAPGoal) merged(other *GOAPGoal) *GOAPGoal {
+	result := &GOAPGoal{
+		goals: make(map[string]GOAPGoalVal),
+	}
+	// first, copy this goal's vals in
+	for spec, val := range g.goals {
+		result.goals[spec] = val
+	}
+	// now........ the monstrous task
+	// TODO
+	return result
 }

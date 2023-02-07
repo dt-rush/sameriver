@@ -23,7 +23,25 @@ func (e *GOAPEvaluator) addModalVals(vals ...GOAPModalVal) {
 }
 
 func (e *GOAPEvaluator) addActions(actions ...*GOAPAction) {
-	e.actions.Add(actions...)
+	for _, action := range actions {
+		e.actions.Add(action)
+		// link up modal setters for effs matching modal varnames
+		for spec, _ := range action.effs {
+			split := strings.Split(spec, ",")
+			varName := split[0]
+			if modal, ok := e.modalVals[varName]; ok {
+				action.effModalSetters[varName] = modal.effModalSet
+			}
+		}
+		// link up modal checks for pres matching modal varnames
+		for spec, _ := range action.pres.goals {
+			split := strings.Split(spec, ",")
+			varName := split[0]
+			if modal, ok := e.modalVals[varName]; ok {
+				action.preModalChecks[varName] = modal.check
+			}
+		}
+	}
 }
 
 func (e *GOAPEvaluator) applyAction(action *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState) {
@@ -60,8 +78,8 @@ func (e *GOAPEvaluator) applyPath(path []*GOAPAction, ws *GOAPWorldState) *GOAPW
 
 func (e *GOAPEvaluator) presFulfilled(a *GOAPAction, ws *GOAPWorldState) bool {
 	modifiedWS := ws.copyOf()
-	for varName, modalVal := range a.preModalChecks {
-		modifiedWS.vals[varName] = modalVal.check(ws)
+	for varName, checkF := range a.preModalChecks {
+		modifiedWS.vals[varName] = checkF(ws)
 	}
 	remaining, _ := a.pres.goalRemaining(modifiedWS)
 	return len(remaining.goals) == 0

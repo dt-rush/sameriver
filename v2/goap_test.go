@@ -287,7 +287,6 @@ func TestGOAPActionModalVal(t *testing.T) {
 				return 0
 			}
 		},
-		valAsEff: 1,
 		effModalSet: func(ws *GOAPWorldState) {
 			nearTree := treePos.Add(Vec2D{1, 0})
 			ws.SetModal(e, "Position", &nearTree)
@@ -305,49 +304,51 @@ func TestGOAPActionModalVal(t *testing.T) {
 				return 0
 			}
 		},
-		valAsEff: 1,
 		effModalSet: func(ws *GOAPWorldState) {
 			nearOcean := oceanPos.Add(Vec2D{1, 0})
 			ws.SetModal(e, "Position", &nearOcean)
 		},
 	}
 	goToTree := NewGOAPActionModal(map[string]interface{}{
-		"name":   "goToTree",
-		"cost":   1,
-		"pres":   nil,
-		"checks": nil,
-		"effs": map[string]GOAPStateVal{
-			"atTree,=": atTreeModal,
+		"name": "goToTree",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"atTree,=": 1,
+		},
+	})
+	chopTree := NewGOAPActionModal(map[string]interface{}{
+		"name": "chopTree",
+		"cost": 1,
+		"pres": map[string]int{
+			"atTree,=": 1,
+			"hasAxe,>": 0,
+		},
+		"effs": map[string]int{
+			"woodChopped,+": 1,
 		},
 	})
 	hugTree := NewGOAPActionModal(map[string]interface{}{
 		"name": "hugTree",
 		"cost": 1,
-		// pres
 		"pres": map[string]int{
 			"atTree,=": 1,
 		},
-		// pre vars to be resolved by modalvals
-		"checks": map[string]GOAPModalVal{
-			"atTree": atTreeModal,
-		},
-		// effects
-		"effs": map[string]GOAPStateVal{
+		"effs": map[string]int{
 			"connectionToNature,+": 2,
 		},
 	})
 	goToOcean := NewGOAPActionModal(map[string]interface{}{
-		"name":   "goToOcean",
-		"cost":   1,
-		"pres":   nil,
-		"checks": nil,
-		"effs": map[string]GOAPStateVal{
-			"atOcean,=": atOceanModal,
+		"name": "goToOcean",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"atOcean,=": 1,
 		},
 	})
 
 	eval.addModalVals(atTreeModal, atOceanModal)
-	eval.addActions(goToTree, hugTree, goToOcean)
+	eval.addActions(goToTree, hugTree, chopTree, goToOcean)
 
 	//
 	// test presfulfilled
@@ -374,6 +375,13 @@ func TestGOAPActionModalVal(t *testing.T) {
 		t.Fatal("regardless of what worldstate says, modal pre should decide and should've been true based on entity position = tree position")
 	}
 
+	axeWS := NewGOAPWorldState(map[string]int{
+		"hasAxe": 1,
+	})
+	if !eval.presFulfilled(chopTree, axeWS) {
+		t.Fatal("mix of modal and basic world state vals should fulfill pre")
+	}
+
 	//
 	// test applyAction
 	//
@@ -392,8 +400,20 @@ func TestGOAPActionModalVal(t *testing.T) {
 	}
 	Logger.Println("goal remaining:")
 	printGoal(goalRemaining)
+	if len(goalRemaining.goals) != 0 {
+		t.Fatal("Goal should have been satisfied")
+	}
 	Logger.Println("diffs:")
 	printDiffs(diffs)
+
+	g2 := NewGOAPGoal(map[string]int{
+		"atTree,=": 1,
+		"drunk,>=": 10,
+	})
+	goalRemaining, _ = g2.goalRemaining(appliedState)
+	if len(goalRemaining.goals) != 1 {
+		t.Fatal("drunk goal should be unfulfilled by atTree state")
+	}
 
 	//
 	// test modal effect of applyAction
@@ -444,7 +464,15 @@ func TestGOAPPlannerDeepen(t *testing.T) {
 
 	p := NewGOAPPlanner(e)
 
-	drink := NewGOAPAction(map[string]interface{}{
+	hasBoozeModal := GOAPModalVal{
+		name: "hasBooze",
+		check: func(ws *GOAPWorldState) int {
+			return 1 // TODO
+		},
+		effModalSet: func(ws *GOAPWorldState) {
+		},
+	}
+	drink := NewGOAPActionModal(map[string]interface{}{
 		"name": "drink",
 		"cost": 1,
 		"pres": map[string]int{
@@ -456,6 +484,7 @@ func TestGOAPPlannerDeepen(t *testing.T) {
 		},
 	})
 
+	p.eval.addModalVals(hasBoozeModal)
 	p.eval.addActions(drink)
 
 	start := NewGOAPWorldState(nil)
