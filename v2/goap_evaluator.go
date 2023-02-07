@@ -76,21 +76,3 @@ func (ws GOAPWorldState) mergeActionPres(action GOAPAction) GOAPWorldState {
 	return ws
 }
 */
-
-// TODO: have the GOAPPlanner contain a GOAPEvaluator,
-// and move the AddModalVal and AddAction to GOAPPlanner
-/*
-func (e *GOAPEvaluator) thoseThatCanPrepend(
-	start GOAPWorldState,
-	path []GOAPAction,
-	goal GOAPGoal) (prependers *GOAPActionSet, solutions [][]GOAPAction) {
-
-	helpers := NewGOAPActionSet()
-	for _, action := range e.actions.set {
-		if action.movesToward(ws, path) {
-			helpers.Add(action)
-		}
-	}
-	return helpers
-}
-*/

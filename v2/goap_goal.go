@@ -9,8 +9,6 @@ type GOAPGoalVal struct {
 	comparator func(int) int
 }
 
-var EmptyGOAPGoal = NewGOAPGoal(nil)
-
 type GOAPGoal struct {
 	goals map[string]GOAPGoalVal
 }
@@ -32,8 +30,8 @@ func GOAPGoalFunc(op string, val int) func(int) int {
 	}
 }
 
-func NewGOAPGoal(def map[string]int) GOAPGoal {
-	g := GOAPGoal{
+func NewGOAPGoal(def map[string]int) *GOAPGoal {
+	g := &GOAPGoal{
 		goals: make(map[string]GOAPGoalVal),
 	}
 	for spec, val := range def {
@@ -47,7 +45,7 @@ func NewGOAPGoal(def map[string]int) GOAPGoal {
 	return g
 }
 
-func (g GOAPGoal) goalRemaining(ws *GOAPWorldState) (goalRemaining GOAPGoal, diffs map[string]int) {
+func (g GOAPGoal) goalRemaining(ws *GOAPWorldState) (goalRemaining *GOAPGoal, diffs map[string]int) {
 	goalRemaining = NewGOAPGoal(nil)
 	diffs = make(map[string]int)
 	for spec, goalVal := range g.goals {
@@ -76,28 +74,28 @@ func (g GOAPGoal) goalRemaining(ws *GOAPWorldState) (goalRemaining GOAPGoal, dif
 		switch op {
 		case ">=":
 			goalRemaining.goals[spec] = GOAPGoalVal{
-				diff,
-				GOAPGoalFunc(op, diff),
+				val:        diff,
+				comparator: GOAPGoalFunc(op, diff),
 			}
 		case ">":
 			goalRemaining.goals[spec] = GOAPGoalVal{
-				diff - 1,
-				GOAPGoalFunc(op, diff-1),
+				val:        diff - 1,
+				comparator: GOAPGoalFunc(op, diff-1),
 			}
 		case "=":
 			goalRemaining.goals[spec] = GOAPGoalVal{
-				diff,
-				GOAPGoalFunc(op, diff),
+				val:        diff,
+				comparator: GOAPGoalFunc(op, diff),
 			}
 		case "<=":
 			goalRemaining.goals[spec] = GOAPGoalVal{
-				diff,
-				GOAPGoalFunc(op, diff),
+				val:        diff,
+				comparator: GOAPGoalFunc(op, diff),
 			}
 		case "<":
 			goalRemaining.goals[spec] = GOAPGoalVal{
-				diff + 1,
-				GOAPGoalFunc(op, diff+1),
+				val:        diff + 1,
+				comparator: GOAPGoalFunc(op, diff+1),
 			}
 		default:
 			panic("Got an undefined op in goalRemaining() [valid: >=,>,=,<,<=]")
@@ -106,13 +104,13 @@ func (g GOAPGoal) goalRemaining(ws *GOAPWorldState) (goalRemaining GOAPGoal, dif
 	return goalRemaining, diffs
 }
 
-func (g GOAPGoal) stateCloserInSomeVar(after, before *GOAPWorldState) bool {
-	_, afterDiffs := g.goalRemaining(after)
+func (g GOAPGoal) stateCloserInSomeVar(after, before *GOAPWorldState) (closer bool, afterRemaining *GOAPGoal) {
+	afterRemaining, afterDiffs := g.goalRemaining(after)
 	_, beforeDiffs := g.goalRemaining(before)
 	for varName, _ := range beforeDiffs {
 		if intAbs(afterDiffs[varName]) < intAbs(beforeDiffs[varName]) {
-			return true
+			return true, afterRemaining
 		}
 	}
-	return false
+	return false, afterRemaining
 }

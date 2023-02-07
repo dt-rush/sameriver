@@ -9,7 +9,7 @@ type GOAPStateVal interface{}
 type GOAPAction struct {
 	name            string
 	cost            int
-	pres            GOAPGoal
+	pres            *GOAPGoal
 	preModalChecks  map[string]GOAPModalVal
 	effs            map[string]func(int) int
 	effModalSetters map[string]func(ws *GOAPWorldState)

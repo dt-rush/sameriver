@@ -13,7 +13,7 @@ func printWorldState(ws *GOAPWorldState) {
 	}
 }
 
-func printGoal(g GOAPGoal) {
+func printGoal(g *GOAPGoal) {
 	for spec, goalVal := range g.goals {
 		Logger.Printf("    %s: %d", spec, goalVal.val)
 	}
@@ -27,7 +27,7 @@ func printDiffs(diffs map[string]int) {
 
 func TestGOAPGoalRemaining(t *testing.T) {
 	doTest := func(
-		g GOAPGoal,
+		g *GOAPGoal,
 		ws *GOAPWorldState,
 		nRemaining int,
 		expectedRemaining []string,
@@ -98,8 +98,9 @@ func TestGOAPGoalRemaining(t *testing.T) {
 }
 
 func TestGOAPGoalStateCloserInSomeVar(t *testing.T) {
-	doTest := func(g GOAPGoal, before, after *GOAPWorldState, expect bool) {
-		if g.stateCloserInSomeVar(after, before) != expect {
+	doTest := func(g *GOAPGoal, before, after *GOAPWorldState, expect bool) {
+		closer, _ := g.stateCloserInSomeVar(after, before)
+		if closer != expect {
 			Logger.Println("Didn't get expected result for state B closer to goal than state A")
 			Logger.Println("goal:")
 			printGoal(g)
@@ -432,6 +433,55 @@ func TestGOAPActionModalVal(t *testing.T) {
 		t.Fatal("Should've had atTree=1 after goToTree")
 	}
 
+}
+
+func TestGOAPPlannerDeepen(t *testing.T) {
+
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+	e, _ := testingSpawnPhysics(w)
+
+	p := NewGOAPPlanner(e)
+
+	drink := NewGOAPAction(map[string]interface{}{
+		"name": "drink",
+		"cost": 1,
+		"pres": map[string]int{
+			"hasBooze,>": 0,
+		},
+		"effs": map[string]int{
+			"drunk,+":    1,
+			"hasBooze,-": 1,
+		},
+	})
+
+	p.eval.addActions(drink)
+
+	start := NewGOAPWorldState(nil)
+	goal := NewGOAPGoal(map[string]int{
+		"drunk,>=": 3,
+	})
+	path := []*GOAPAction{}
+
+	newPaths, solutions := p.deepen(start, path, goal)
+	if len(solutions) != 0 {
+		t.Fatal("Should not have found a solution")
+	}
+	if len(newPaths) != 1 {
+		t.Fatal("Should have found 1 path")
+	}
+
+	goal = NewGOAPGoal(map[string]int{
+		"drunk,=": 1,
+	})
+	newPaths, solutions = p.deepen(start, path, goal)
+	if len(solutions) != 1 {
+		t.Fatal("Should have found a solution")
+	}
+	if len(newPaths) != 0 {
+		t.Fatal("Should not have found an unfulfilled path")
+	}
 }
 
 /*
