@@ -26,7 +26,7 @@ func GOAPPathToString(plan []*GOAPAction) string {
 }
 
 func debugPrintGOAPGoal(g *GOAPGoal) {
-	if g == nil || len(g.goals) == 0 {
+	if g == nil || (len(g.goals) == 0 && len(g.fulfilled) == 0) {
 		debugGOAPPrintf("    nil")
 		return
 	}
@@ -34,6 +34,19 @@ func debugPrintGOAPGoal(g *GOAPGoal) {
 		split := strings.Split(spec, ",")
 		varName := split[0]
 		debugGOAPPrintf("    %s: [%.0f, %.0f]", varName, interval.a, interval.b)
+	}
+	for varName, _ := range g.fulfilled {
+		debugGOAPPrintf("    fulfilled: %s", varName)
+	}
+}
+
+func debugGOAPPrintGOAPWorldState(ws *GOAPWorldState) {
+	if ws == nil || len(ws.vals) == 0 {
+		debugGOAPPrintf("    nil")
+		return
+	}
+	for name, val := range ws.vals {
+		debugGOAPPrintf("    %s: %d", name, val)
 	}
 }
 
@@ -70,13 +83,17 @@ func (p *GOAPPlanner) deepen(
 
 	pathResult := p.eval.applyPath(path, start)
 	for _, action := range p.eval.actions.set {
+		debugGOAPPrintf("    --- considering prepending action %s", action.name)
 		newPath := prepend(action, path)
 		newResult := p.eval.applyPath(newPath, start)
 		closer, remaining := goal.stateCloserInSomeVar(newResult, pathResult)
-		if closer {
+		debugGOAPPrintf("    --- closer? %t", closer)
+		presMergedRemaining, ok := remaining.prependingMerge(action.pres)
+		if closer && ok {
+			debugGOAPPrintf("    --- OK!")
 			newPaths = append(newPaths, &GOAPPathAndRemaining{
 				path:      newPath,
-				remaining: remaining,
+				remaining: presMergedRemaining,
 			})
 		}
 	}
@@ -89,7 +106,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 	path []*GOAPAction,
 	goal *GOAPGoal) {
 
-	debugGOAPPrintf("--------------------------")
+	debugGOAPPrintf("traverse--------------------------")
 	debugGOAPPrintf("backtrack path so far: ")
 	debugGOAPPrintf(GOAPPathToString(path))
 	debugGOAPPrintf("traversing fulfillers of goal:")
@@ -97,25 +114,23 @@ func (p *GOAPPlanner) traverseFulfillers(
 	newPaths := p.deepen(start, path, goal)
 	debugGOAPPrintf("newPaths:")
 	for _, pathAndRemaining := range newPaths {
-		newPath := pathAndRemaining.path
+		newPath, newRemaining := pathAndRemaining.path, pathAndRemaining.remaining
 		debugGOAPPrintf("---")
 		debugGOAPPrintf("    %s", GOAPPathToString(newPath))
-
 		debugGOAPPrintf("    remaining for this path:")
 		debugPrintGOAPGoal(pathAndRemaining.remaining)
-		mergedGoal, ok := goal.prependingMerge(pathAndRemaining.remaining)
-		debugGOAPPrintf("    new merged goal:")
-		debugPrintGOAPGoal(mergedGoal)
-		if ok {
-			pq.Push(NewGOAPPQueueItem(newPath, mergedGoal))
-		}
+		pq.Push(NewGOAPPQueueItem(newPath, newRemaining))
 	}
+	debugGOAPPrintf("--------------------------/traverse")
 }
 
 func (p *GOAPPlanner) Plan(
 	start *GOAPWorldState,
 	goal *GOAPGoal,
 	maxIter int) (solution []*GOAPAction, ok bool) {
+
+	// populate start state with any modal vals at start
+	p.eval.populateModalStartState(start)
 
 	resultPq := &GOAPPriorityQueue{}
 
@@ -125,9 +140,18 @@ func (p *GOAPPlanner) Plan(
 
 	iter := 0
 	for iter < maxIter && pq.Len() > 0 && resultPq.Len() < 2 {
+		debugGOAPPrintf("=== iter ===")
 		here := pq.Pop().(*GOAPPQueueItem)
+		debugGOAPPrintf("here:")
+		debugGOAPPrintf(GOAPPathToString(here.path))
+		debugGOAPPrintf("start:")
+		debugGOAPPrintGOAPWorldState(start)
+		startRemaining, _ := here.goal.remaining(start)
 		debugGOAPPrintf("len(here.goal.goals) == %d", len(here.goal.goals))
-		if len(here.goal.goals) == 0 {
+		debugGOAPPrintf("len(startRemaining.goals) == %d", len(startRemaining.goals))
+		debugGOAPPrintf("startRemaining:")
+		debugPrintGOAPGoal(startRemaining)
+		if len(here.goal.goals) == 0 || len(startRemaining.goals) == 0 {
 			// potential solution!
 			if p.validateForward(start, here.path, goal) {
 				// we push to a pqueue so we can, at the end, pop the

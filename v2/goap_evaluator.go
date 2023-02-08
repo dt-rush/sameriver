@@ -22,6 +22,12 @@ func (e *GOAPEvaluator) addModalVals(vals ...GOAPModalVal) {
 	}
 }
 
+func (e *GOAPEvaluator) populateModalStartState(ws *GOAPWorldState) {
+	for varName, val := range e.modalVals {
+		ws.vals[varName] = val.check(ws)
+	}
+}
+
 func (e *GOAPEvaluator) addActions(actions ...*GOAPAction) {
 	for _, action := range actions {
 		e.actions.Add(action)

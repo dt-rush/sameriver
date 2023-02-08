@@ -8,7 +8,7 @@ import (
 )
 
 func printWorldState(ws *GOAPWorldState) {
-	if ws == nil {
+	if ws == nil || len(ws.vals) == 0 {
 		Logger.Println("    nil")
 		return
 	}
@@ -18,7 +18,7 @@ func printWorldState(ws *GOAPWorldState) {
 }
 
 func printGoal(g *GOAPGoal) {
-	if g == nil {
+	if g == nil || (len(g.goals) == 0 && len(g.fulfilled) == 0) {
 		Logger.Println("    nil")
 		return
 	}
@@ -99,8 +99,13 @@ func TestGOAPGoalMerged(t *testing.T) {
 		NewGOAPGoal(map[string]int{
 			"atTree,=": 0,
 		}),
-		nil,
-		false,
+		// NOTE: we favour the second goal in merge if an interval conflict
+		// arises; this is necessary for conflicting ("cyclic") goals
+		NewGOAPGoal(map[string]int{
+			"hasAxe,=": 1,
+			"atTree,=": 0,
+		}),
+		true,
 	)
 
 	doTest(
@@ -614,12 +619,14 @@ func TestGOAPPlannerDeepen(t *testing.T) {
 		t.Fatal("Should not have fulfilled the goal")
 	}
 
+	start = NewGOAPWorldState(nil)
+	path = []*GOAPAction{}
 	goal = NewGOAPGoal(map[string]int{
 		"drunk,=": 1,
 	})
 	newPaths = p.deepen(start, path, goal)
-	if len(newPaths[0].remaining.goals) != 0 {
-		t.Fatal("Should not have found an unfulfilled path")
+	if len(newPaths[0].remaining.goals) == 0 {
+		t.Fatal("Should have found a path (drink)")
 	}
 }
 
@@ -726,6 +733,94 @@ func TestGOAPPlannerAlanWatts(t *testing.T) {
 
 	if ok {
 		t.Fatal("Should not have found a plan with five booze")
+	}
+}
+
+func TestGOAPPlannerPurifyOneself(t *testing.T) {
+
+	w := testingWorld()
+	w.RegisterComponents([]string{"Int,BoozeAmount"})
+
+	e, _ := w.Spawn([]string{}, MakeComponentSet(map[string]interface{}{
+		"Int,BoozeAmount": 10,
+	}))
+
+	p := NewGOAPPlanner(e)
+
+	hasBoozeModal := GOAPModalVal{
+		name: "hasBooze",
+		check: func(ws *GOAPWorldState) int {
+			amount := ws.GetModal(e, "BoozeAmount").(*int)
+			return *amount
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			amount := ws.GetModal(e, "BoozeAmount").(*int)
+			if op == "-" {
+				newVal := *amount - x
+				ws.SetModal(e, "BoozeAmount", &newVal)
+			}
+			if op == "=" {
+				newVal := x
+				ws.SetModal(e, "BoozeAmount", &newVal)
+			}
+		},
+	}
+	drink := NewGOAPAction(map[string]interface{}{
+		"name": "drink",
+		"cost": 1,
+		"pres": map[string]int{
+			"hasBooze,>": 0,
+		},
+		"effs": map[string]int{
+			"drunk,+":    2,
+			"hasBooze,-": 1,
+		},
+	})
+	dropAllBooze := NewGOAPAction(map[string]interface{}{
+		"name": "dropAllBooze",
+		"cost": 1,
+		"pres": map[string]int{
+			"hasBooze,>": 0,
+		},
+		"effs": map[string]int{
+			"hasBooze,=": 0,
+		},
+	})
+	purifyOneself := NewGOAPAction(map[string]interface{}{
+		"name": "purifyOneself",
+		"cost": 1,
+		"pres": map[string]int{
+			"hasBooze,=": 0,
+		},
+		"effs": map[string]int{
+			"rituallyPure,=": 1,
+		},
+	})
+	enterTemple := NewGOAPAction(map[string]interface{}{
+		"name": "enterTemple",
+		"cost": 1,
+		"pres": map[string]int{
+			"rituallyPure,=": 1,
+		},
+		"effs": map[string]int{
+			"templeEntered,=": 1,
+		},
+	})
+
+	p.eval.addModalVals(hasBoozeModal)
+	p.eval.addActions(drink, dropAllBooze, purifyOneself, enterTemple)
+
+	start := NewGOAPWorldState(nil)
+	goal := NewGOAPGoal(map[string]int{
+		"drunk,>=":        3,
+		"templeEntered,=": 1,
+	})
+	solution, ok := p.Plan(start, goal, 50)
+	Logger.Println("Alan Watt's plan:")
+	Logger.Println(GOAPPathToString(solution))
+
+	if !ok {
+		t.Fatal("Should have found a solution")
 	}
 }
 

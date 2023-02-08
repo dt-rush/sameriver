@@ -113,7 +113,10 @@ func (g *GOAPGoal) remaining(ws *GOAPWorldState) (remaining *GOAPGoal, diffs map
 func (g *GOAPGoal) stateCloserInSomeVar(after, before *GOAPWorldState) (closer bool, afterRemaining *GOAPGoal) {
 	afterRemaining, afterDiffs := g.remaining(after)
 	_, beforeDiffs := g.remaining(before)
+	debugGOAPPrintf("*** stateCloserInSomeVar()")
 	for varName, _ := range beforeDiffs {
+		debugGOAPPrintf("*** %s,before: %d", varName, intAbs(beforeDiffs[varName]))
+		debugGOAPPrintf("*** %s,after:  %d", varName, intAbs(afterDiffs[varName]))
 		if intAbs(afterDiffs[varName]) < intAbs(beforeDiffs[varName]) {
 			return true, afterRemaining
 		}
@@ -138,9 +141,17 @@ func (g *GOAPGoal) prependingMerge(newPathGoal *GOAPGoal) (result *GOAPGoal, val
 				nameAlreadyInGoals = true
 				newInterval, ok := intervalB.merged(intervalA)
 				if !ok {
-					return nil, false
+					debugGOAPPrintf("interval conflict! favouring new:")
+					debugGOAPPrintf("%s: old:[%.0f, %.0f], new:[%.0f, %.0f]", varNameA, intervalA.a, intervalA.b, intervalB.a, intervalB.b)
+					// NOTE: we favour the new interval in the case of a conflict,
+					// since this is required to allow solutions where we have contradictory
+					// goals at different parts of the path
+					// (see TestGOAPPlannerPurifyOneself, where at one point, for purifyOneself,
+					// we want booze = 0, but for drink, earlier in the chain, we want booze > 1
+					result.goals[varNameA] = intervalB
+				} else {
+					result.goals[varNameA] = newInterval
 				}
-				result.goals[varNameA] = newInterval
 			}
 		}
 		if !nameAlreadyInGoals {
