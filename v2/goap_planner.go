@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"strings"
+	"time"
 )
 
 func debugGOAPPrintf(s string, args ...any) {
@@ -25,7 +26,7 @@ func GOAPPathToString(plan []*GOAPAction) string {
 	return buf.String()
 }
 
-func debugPrintGOAPGoal(g *GOAPGoal) {
+func debugGOAPPrintGoal(g *GOAPGoal) {
 	if g == nil || (len(g.goals) == 0 && len(g.fulfilled) == 0) {
 		debugGOAPPrintf("    nil")
 		return
@@ -40,7 +41,7 @@ func debugPrintGOAPGoal(g *GOAPGoal) {
 	}
 }
 
-func debugGOAPPrintGOAPWorldState(ws *GOAPWorldState) {
+func debugGOAPPrintWorldState(ws *GOAPWorldState) {
 	if ws == nil || len(ws.vals) == 0 {
 		debugGOAPPrintf("    nil")
 		return
@@ -55,11 +56,6 @@ type GOAPPlanner struct {
 	eval *GOAPEvaluator
 }
 
-type GOAPPathAndRemaining struct {
-	path      []*GOAPAction
-	remaining *GOAPGoal
-}
-
 func NewGOAPPlanner(e *Entity) *GOAPPlanner {
 	return &GOAPPlanner{
 		e:    e,
@@ -69,57 +65,41 @@ func NewGOAPPlanner(e *Entity) *GOAPPlanner {
 
 func (p *GOAPPlanner) deepen(
 	start *GOAPWorldState,
-	path []*GOAPAction,
-	goal *GOAPGoal) (newPaths []*GOAPPathAndRemaining) {
+	here *GOAPPQueueItem) (frontier []*GOAPPQueueItem) {
 
-	newPaths = make([]*GOAPPathAndRemaining, 0)
-
-	prepend := func(a *GOAPAction, path []*GOAPAction) []*GOAPAction {
-		prepended := make([]*GOAPAction, len(path))
-		copy(prepended, path)
-		prepended = append([]*GOAPAction{a}, path...)
-		return prepended
-	}
-
-	pathResult := p.eval.applyPath(path, start)
+	debugGOAPPrintf("deepen-----------------")
+	frontier = make([]*GOAPPQueueItem, 0)
 	for _, action := range p.eval.actions.set {
-		debugGOAPPrintf("    --- considering prepending action %s", action.name)
-		newPath := prepend(action, path)
-		newResult := p.eval.applyPath(newPath, start)
-		closer, remaining := goal.stateCloserInSomeVar(newResult, pathResult)
-		debugGOAPPrintf("    --- closer? %t", closer)
-		presMergedRemaining, ok := remaining.prependingMerge(action.pres)
-		if closer && ok {
-			debugGOAPPrintf("    --- OK!")
-			newPaths = append(newPaths, &GOAPPathAndRemaining{
-				path:      newPath,
-				remaining: presMergedRemaining,
-			})
+		debugGOAPPrintf("    ------------------------------ considering prepending action %s", action.name)
+		extended, useful := p.eval.prepend(start, action, here)
+		debugGOAPPrintf("    --- useful? %t", useful)
+		if !useful {
+			debugGOAPPrintf("    --- was not a useful prepending action")
+			continue
 		}
+		debugGOAPPrintf("    --- OK!")
+		debugGOAPPrintf("    ---=== frontier expanded to: %s", GOAPPathToString(extended.path))
+		frontier = append(frontier, extended)
 	}
-	return newPaths
+	debugGOAPPrintf("-----------------/deepen")
+	return frontier
 }
 
 func (p *GOAPPlanner) traverseFulfillers(
 	pq *GOAPPriorityQueue,
 	start *GOAPWorldState,
-	path []*GOAPAction,
-	goal *GOAPGoal) {
+	here *GOAPPQueueItem) {
 
 	debugGOAPPrintf("traverse--------------------------")
 	debugGOAPPrintf("backtrack path so far: ")
-	debugGOAPPrintf(GOAPPathToString(path))
-	debugGOAPPrintf("traversing fulfillers of goal:")
-	debugPrintGOAPGoal(goal)
-	newPaths := p.deepen(start, path, goal)
+	debugGOAPPrintf(GOAPPathToString(here.path))
+
+	frontier := p.deepen(start, here)
 	debugGOAPPrintf("newPaths:")
-	for _, pathAndRemaining := range newPaths {
-		newPath, newRemaining := pathAndRemaining.path, pathAndRemaining.remaining
+	for _, x := range frontier {
 		debugGOAPPrintf("---")
-		debugGOAPPrintf("    %s", GOAPPathToString(newPath))
-		debugGOAPPrintf("    remaining for this path:")
-		debugPrintGOAPGoal(pathAndRemaining.remaining)
-		pq.Push(NewGOAPPQueueItem(newPath, newRemaining))
+		debugGOAPPrintf("    %s", GOAPPathToString(x.path))
+		pq.Push(x)
 	}
 	debugGOAPPrintf("--------------------------/traverse")
 }
@@ -136,37 +116,56 @@ func (p *GOAPPlanner) Plan(
 
 	pq := &GOAPPriorityQueue{}
 
-	p.traverseFulfillers(pq, start, []*GOAPAction{}, goal)
+	backtrackRoot := &GOAPPQueueItem{
+		path:          []*GOAPAction{},
+		presRemaining: make(map[string]*GOAPGoal),
+		remaining:     goal,
+		nUnfulfilled:  len(goal.goals),
+		endState:      NewGOAPWorldState(nil),
+		cost:          0,
+		index:         -1, // going to be set by Push()
+	}
+	p.traverseFulfillers(pq, start, backtrackRoot)
 
 	iter := 0
+	// TODO: should we just pop out the *very first result*?
+	// why wait for 2 or exhausting the pq?
+	t0 := time.Now()
 	for iter < maxIter && pq.Len() > 0 && resultPq.Len() < 2 {
 		debugGOAPPrintf("=== iter ===")
 		here := pq.Pop().(*GOAPPQueueItem)
 		debugGOAPPrintf("here:")
 		debugGOAPPrintf(GOAPPathToString(here.path))
-		debugGOAPPrintf("start:")
-		debugGOAPPrintGOAPWorldState(start)
-		startRemaining, _ := here.goal.remaining(start)
-		debugGOAPPrintf("len(here.goal.goals) == %d", len(here.goal.goals))
-		debugGOAPPrintf("len(startRemaining.goals) == %d", len(startRemaining.goals))
-		debugGOAPPrintf("startRemaining:")
-		debugPrintGOAPGoal(startRemaining)
-		if len(here.goal.goals) == 0 || len(startRemaining.goals) == 0 {
-			// potential solution!
-			if p.validateForward(start, here.path, goal) {
-				// we push to a pqueue so we can, at the end, pop the
-				// solution with the least cost
-				resultPq.Push(here)
-			} else {
-				debugGOAPPrintf("found an invalid solution on validateForward()")
-			}
+		debugGOAPPrintf("(%d unfulfilled)", here.nUnfulfilled)
+
+		if here.nUnfulfilled == 0 {
+			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
+			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
+			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
+			debugGOAPPrintf("    SOLUTION: %s", GOAPPathToString(here.path))
+			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
+			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
+			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
+			resultPq.Push(here)
 		} else {
-			p.traverseFulfillers(pq, start, here.path, here.goal)
+			p.traverseFulfillers(pq, start, here)
 			iter++
 		}
 	}
 
+	dt := time.Since(t0).Milliseconds()
+	if iter >= maxIter {
+		debugGOAPPrintf("Took %d ms to reach max iter", dt)
+		debugGOAPPrintf("================================ REACHED MAX ITER !!!")
+	}
+	if pq.Len() == 0 && resultPq.Len() == 0 {
+		debugGOAPPrintf("Took %d ms to exhaust pq without solution", dt)
+	}
 	if resultPq.Len() > 0 {
+		debugGOAPPrintf("Took %d ms to find solution", dt)
+		if pq.Len() == 0 {
+			debugGOAPPrintf("Even though >0 solutions were found, exhausted pq")
+		}
 		return resultPq.Pop().(*GOAPPQueueItem).path, true
 	} else {
 		return nil, false

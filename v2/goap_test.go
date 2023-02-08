@@ -18,128 +18,23 @@ func printWorldState(ws *GOAPWorldState) {
 }
 
 func printGoal(g *GOAPGoal) {
-	if g == nil || (len(g.goals) == 0 && len(g.fulfilled) == 0) {
+	if g == nil || len(g.goals) == 0 {
 		Logger.Println("    nil")
 		return
 	}
 	for varName, interval := range g.goals {
-		Logger.Printf("    want %s: [%.0f, %.0f]", varName, interval.a, interval.b)
-	}
-	for varName, _ := range g.fulfilled {
-		Logger.Printf("    fulfilled: %s", varName)
+		Logger.Printf("    want %s: [%.0f, %.0f]", varName, interval.A, interval.B)
 	}
 }
 
-func printDiffs(diffs map[string]int) {
+func printDiffs(diffs map[string]float64) {
 	for name, diff := range diffs {
-		Logger.Printf("    %s: %d", name, diff)
+		Logger.Printf("    %s: %.0f", name, diff)
 	}
 }
 
-func TestGOAPGoalMerged(t *testing.T) {
-
-	doTest := func(g1, g2, expected *GOAPGoal, expectedOk bool) {
-		goalEqLeft := func(g1, g2 *GOAPGoal) bool {
-			for name, interval1 := range g1.goals {
-				interval2, ok := g2.goals[name]
-				if !ok {
-					return false
-				}
-				if *interval1 != *interval2 {
-					return false
-				}
-			}
-			return true
-		}
-		goalEq := func(g1, g2 *GOAPGoal) bool {
-			return goalEqLeft(g1, g2) && goalEqLeft(g2, g1)
-		}
-
-		Logger.Println("Merging goals:")
-		Logger.Println("g1:")
-		printGoal(g1)
-		Logger.Println("g2:")
-		printGoal(g2)
-
-		merged, ok := g1.prependingMerge(g2)
-		Logger.Println("merged:")
-		printGoal(merged)
-
-		if !expectedOk == ok {
-			t.Fatal(fmt.Sprintf("Merging goals should've been ok: %t", expectedOk))
-		}
-		if expectedOk && !goalEq(merged, expected) {
-			Logger.Println("Failure! Should've merged to:")
-			printGoal(expected)
-			t.Fatal("Did not get expected goal merge result")
-		}
-	}
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"hasAxe,=": 1,
-			"atTree,=": 1,
-		}),
-		NewGOAPGoal(map[string]int{
-			"atGlove,=": 1,
-		}),
-		NewGOAPGoal(map[string]int{
-			"atGlove,=": 1,
-			"hasAxe,=":  1,
-			"atTree,=":  1,
-		}),
-		true,
-	)
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"hasAxe,=": 1,
-			"atTree,=": 1,
-		}),
-		NewGOAPGoal(map[string]int{
-			"atTree,=": 0,
-		}),
-		// NOTE: we favour the second goal in merge if an interval conflict
-		// arises; this is necessary for conflicting ("cyclic") goals
-		NewGOAPGoal(map[string]int{
-			"hasAxe,=": 1,
-			"atTree,=": 0,
-		}),
-		true,
-	)
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"drunk,>": 0,
-		}),
-		NewGOAPGoal(map[string]int{
-			"drunk,>=": 3,
-		}),
-		NewGOAPGoal(map[string]int{
-			"drunk,>=": 3,
-		}),
-		true,
-	)
-
-	wantToBeWasted := NewGOAPGoal(map[string]int{
-		"drunk,>": 10,
-	})
-	fulfilledGoal := NewGOAPGoal(nil)
-	fulfilledGoal.fulfilled["drunk"] = true
-	Logger.Println("Merging goals:")
-	Logger.Println("wantToBeWasted:")
-	printGoal(wantToBeWasted)
-	Logger.Println("fulfilledGoal:")
-	printGoal(fulfilledGoal)
-
-	merged, ok := wantToBeWasted.prependingMerge(fulfilledGoal)
-	if ok {
-		Logger.Println("merged:")
-		printGoal(merged)
-	} else {
-		Logger.Println("invalid merge")
-	}
-
+func printPath(p *GOAPPath) {
+	Logger.Printf(GOAPPathToString(p))
 }
 
 func TestGOAPGoalRemaining(t *testing.T) {
@@ -150,23 +45,23 @@ func TestGOAPGoalRemaining(t *testing.T) {
 		expectedRemaining []string,
 	) {
 
-		remaining, diffs := g.remaining(ws)
+		remaining := g.remaining(ws)
 
 		Logger.Printf("goal:")
 		printGoal(g)
 		Logger.Printf("state:")
 		printWorldState(ws)
 		Logger.Printf("remaining:")
-		printGoal(remaining)
+		printGoal(remaining.goal)
 		Logger.Printf("diffs:")
-		printDiffs(diffs)
+		printDiffs(remaining.diffs)
 		Logger.Println("-------------------")
 
-		if len(remaining.goals) != nRemaining {
-			t.Fatal(fmt.Sprintf("Should have had %d goals remaining, had %d", nRemaining, len(remaining.goals)))
+		if len(remaining.goal.goals) != nRemaining {
+			t.Fatal(fmt.Sprintf("Should have had %d goals remaining, had %d", nRemaining, len(remaining.goal.goals)))
 		}
 		for _, name := range expectedRemaining {
-			if diffVal, ok := diffs[name]; !ok || diffVal == 0 {
+			if diffVal, ok := remaining.diffs[name]; !ok || diffVal == 0 {
 				t.Fatal(fmt.Sprintf("Should have had %s in diffs with value != 0", name))
 			}
 		}
@@ -214,46 +109,237 @@ func TestGOAPGoalRemaining(t *testing.T) {
 	)
 }
 
-func TestGOAPGoalStateCloserInSomeVar(t *testing.T) {
-	doTest := func(g *GOAPGoal, before, after *GOAPWorldState, expect bool) {
-		closer, _ := g.stateCloserInSomeVar(after, before)
-		if closer != expect {
-			Logger.Println("Didn't get expected result for state B closer to goal than state A")
-			Logger.Println("goal:")
-			printGoal(g)
-			Logger.Println("state A:")
-			printWorldState(before)
-			Logger.Println("state B:")
-			printWorldState(after)
-			t.Fatal("Didn't get expected result for stateCloserInSomeVar")
+func TestGOAPGoalRemainingsOfPath(t *testing.T) {
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+	w.RegisterComponents([]string{"Int,BoozeAmount"})
+
+	e, _ := testingSpawnPhysics(w)
+
+	p := NewGOAPPlanner(e)
+
+	hasBoozeModal := GOAPModalVal{
+		name: "hasBooze",
+		check: func(ws *GOAPWorldState) int {
+			amount := ws.GetModal(e, "BoozeAmount").(*int)
+			return *amount
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			amount := ws.GetModal(e, "BoozeAmount").(*int)
+			if op == "-" {
+				newVal := *amount - x
+				ws.SetModal(e, "BoozeAmount", &newVal)
+			}
+		},
+	}
+	drink := NewGOAPAction(map[string]interface{}{
+		"name": "drink",
+		"cost": 1,
+		"pres": map[string]int{
+			"hasBooze,>": 0,
+		},
+		"effs": map[string]int{
+			"drunk,+":    1,
+			"hasBooze,-": 1,
+		},
+	})
+
+	p.eval.AddModalVals(hasBoozeModal)
+	p.eval.AddActions(drink)
+
+	start := NewGOAPWorldState(nil)
+	p.eval.PopulateModalStartState(start)
+
+	goal := NewGOAPGoal(map[string]int{
+		"drunk,>=": 3,
+	})
+
+	path := NewGOAPPath([]*GOAPAction{drink, drink}, GOAP_PATH_PREPEND)
+
+	remaining := p.eval.remainingsOfPath(path, start, goal)
+
+	Logger.Printf("%d unfulfilled", remaining.nUnfulfilled)
+	printGoal(remaining.main.goal)
+	for _, pre := range remaining.pres {
+		printGoal(pre.goal)
+	}
+	if remaining.nUnfulfilled != 3 || len(remaining.main.goal.goals) != 1 {
+		t.Fatal("Remaining was not calculated properly")
+	}
+
+	path = NewGOAPPath([]*GOAPAction{drink, drink, drink}, GOAP_PATH_PREPEND)
+
+	remaining = p.eval.remainingsOfPath(path, start, goal)
+
+	Logger.Printf("%d unfulfilled", remaining.nUnfulfilled)
+	printGoal(remaining.main.goal)
+	for _, pre := range remaining.pres {
+		printGoal(pre.goal)
+	}
+	if remaining.nUnfulfilled != 3 || len(remaining.main.goal.goals) != 0 {
+		t.Fatal("Remaining was not calculated properly")
+	}
+
+	booze := e.GetInt("BoozeAmount")
+	*booze = 3
+	p.eval.PopulateModalStartState(start)
+
+	remaining = p.eval.remainingsOfPath(path, start, goal)
+
+	Logger.Printf("%d unfulfilled", remaining.nUnfulfilled)
+	printGoal(remaining.main.goal)
+	for _, pre := range remaining.pres {
+		printGoal(pre.goal)
+	}
+
+	if remaining.nUnfulfilled != 0 || len(remaining.main.goal.goals) != 0 {
+		t.Fatal("Remaining was not calculated properly")
+	}
+}
+
+func TestGOAPRemainingIsLess(t *testing.T) {
+
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+	w.RegisterComponents([]string{"Int,BoozeAmount"})
+
+	e, _ := testingSpawnPhysics(w)
+
+	p := NewGOAPPlanner(e)
+
+	hasBoozeModal := GOAPModalVal{
+		name: "hasBooze",
+		check: func(ws *GOAPWorldState) int {
+			amount := ws.GetModal(e, "BoozeAmount").(*int)
+			debugGOAPPrintf("                checked hasBooze: %d", *amount)
+			return *amount
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			amount := ws.GetModal(e, "BoozeAmount").(*int)
+			if op == "-" {
+				newVal := *amount - x
+				ws.SetModal(e, "BoozeAmount", &newVal)
+			}
+			if op == "+" {
+				debugGOAPPrintf("                adding to hasBooze: +%d", x)
+				newVal := *amount + x
+				ws.SetModal(e, "BoozeAmount", &newVal)
+			}
+		},
+	}
+	getBooze := NewGOAPAction(map[string]interface{}{
+		"name": "getBooze",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"hasBooze,+": 1,
+		},
+	})
+	drink := NewGOAPAction(map[string]interface{}{
+		"name": "drink",
+		"cost": 1,
+		"pres": map[string]int{
+			"hasBooze,>": 0,
+		},
+		"effs": map[string]int{
+			"drunk,+":    1,
+			"hasBooze,-": 1,
+		},
+	})
+	purifyOneself := NewGOAPAction(map[string]interface{}{
+		"name": "purifyOneself",
+		"cost": 1,
+		"pres": map[string]int{
+			"hasBooze,=": 0,
+		},
+		"effs": map[string]int{
+			"rituallyPure,=": 1,
+		},
+	})
+	chopTree := NewGOAPAction(map[string]interface{}{
+		"name": "chopTree",
+		"cost": 1,
+		"pres": map[string]int{
+			"hasGlove,>": 0,
+			"hasAxe,>":   0,
+			"atTree,=":   1,
+		},
+		"effs": map[string]int{
+			"treeFelled,=": 1,
+		},
+	})
+	openFridge := NewGOAPAction(map[string]interface{}{
+		"name": "openFridge",
+		"cost": 1,
+		"pres": map[string]int{
+			"fridgeOpen,=": 0,
+		},
+		"effs": map[string]int{
+			"fridgeOpen,=": 1,
+		},
+	})
+	closeFridge := NewGOAPAction(map[string]interface{}{
+		"name": "closeFridge",
+		"cost": 1,
+		"pres": map[string]int{
+			"fridgeOpen,=": 1,
+		},
+		"effs": map[string]int{
+			"fridgeOpen,=": 0,
+		},
+	})
+	getFoodFromFridge := NewGOAPAction(map[string]interface{}{
+		"name": "getFoodFromFridge",
+		"cost": 1,
+		"pres": map[string]int{
+			"fridgeOpen,=": 1,
+		},
+		"effs": map[string]int{
+			"hasFood,+": 1,
+		},
+	})
+
+	p.eval.AddModalVals(hasBoozeModal)
+	p.eval.AddActions(getBooze, drink, purifyOneself, chopTree, openFridge, getFoodFromFridge, closeFridge)
+
+	doTest := func(g *GOAPGoal, start *GOAPWorldState, before, after *GOAPPath, expect bool) {
+		Logger.Println("=================================================================")
+		Logger.Printf("Before: %s", GOAPPathToString(before))
+		Logger.Printf("After: %s", GOAPPathToString(after))
+		beforeRemaining := p.eval.remainingsOfPath(before, start, g)
+		afterRemaining := p.eval.remainingsOfPath(after, start, g)
+		Logger.Println("computing isCloser()...")
+		less := afterRemaining.isCloser(beforeRemaining)
+		if less != expect {
+			Logger.Println("!!!")
+			Logger.Println("!!!")
+			Logger.Println("!!!")
+			Logger.Println("Didn't get expected result for path after remainingIsLess than path before")
+			Logger.Println("!!!")
+			Logger.Println("!!!")
+			Logger.Println("!!!")
+			t.Fatal("Didn't get expected result for remainingIsLess()")
 		}
 	}
 
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"drunk,>=":       3,
-			"rituallyPure,=": 1,
-		}),
-		NewGOAPWorldState(map[string]int{
-			"drunk": 1,
-		}),
-		NewGOAPWorldState(map[string]int{
-			"drunk": 1,
-		}),
-		false,
-	)
+	start := NewGOAPWorldState(map[string]int{
+		"drunk": 1,
+	})
+	p.eval.PopulateModalStartState(start)
+
+	before := NewGOAPPath([]*GOAPAction{drink}, GOAP_PATH_PREPEND)
+	after := before.prepended(drink)
 
 	doTest(
 		NewGOAPGoal(map[string]int{
 			"drunk,>=":       3,
 			"rituallyPure,=": 1,
 		}),
-		NewGOAPWorldState(map[string]int{
-			"drunk": 1,
-		}),
-		NewGOAPWorldState(map[string]int{
-			"drunk": 2,
-		}),
+		start,
+		before,
+		after,
 		true,
 	)
 
@@ -262,23 +348,9 @@ func TestGOAPGoalStateCloserInSomeVar(t *testing.T) {
 			"drunk,>=":       3,
 			"rituallyPure,=": 1,
 		}),
-		NewGOAPWorldState(map[string]int{
-			"drunk": 1,
-		}),
-		NewGOAPWorldState(map[string]int{
-			"drunk":        1,
-			"rituallyPure": 1,
-		}),
-		true,
-	)
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"drunk,>=":       3,
-			"rituallyPure,=": 1,
-		}),
-		NewGOAPWorldState(nil),
-		NewGOAPWorldState(nil),
+		start,
+		before,
+		before,
 		false,
 	)
 
@@ -287,12 +359,74 @@ func TestGOAPGoalStateCloserInSomeVar(t *testing.T) {
 			"drunk,>=":       3,
 			"rituallyPure,=": 1,
 		}),
-		NewGOAPWorldState(map[string]int{
-			"drunk": 3,
+		start,
+		before,
+		before.appended(purifyOneself),
+		true,
+	)
+
+	doTest(
+		NewGOAPGoal(map[string]int{
+			"drunk,>=":       3,
+			"rituallyPure,=": 1,
 		}),
-		NewGOAPWorldState(map[string]int{
-			"drunk": 10,
+		start,
+		before,
+		before.prepended(purifyOneself),
+		true,
+	)
+
+	doTest(
+		NewGOAPGoal(map[string]int{
+			"drunk,>=": 3,
 		}),
+		start,
+		before,
+		before.prepended(chopTree),
+		false,
+	)
+
+	doTest(
+		NewGOAPGoal(map[string]int{
+			"drunk,>=": 3,
+		}),
+		start,
+		before,
+		before.prepended(getBooze),
+		true,
+	)
+
+	doTest(
+		NewGOAPGoal(map[string]int{
+			"drunk,>=": 3,
+		}),
+		start,
+		NewGOAPPath([]*GOAPAction{drink, drink, drink}, GOAP_PATH_PREPEND),
+		NewGOAPPath([]*GOAPAction{drink, drink, drink, drink}, GOAP_PATH_PREPEND),
+		false,
+	)
+
+	start.vals["fridgeOpen"] = 0
+
+	doTest(
+		NewGOAPGoal(map[string]int{
+			"hasFood,>=":   1,
+			"fridgeOpen,=": 0,
+		}),
+		start,
+		NewGOAPPath([]*GOAPAction{openFridge, getFoodFromFridge}, GOAP_PATH_PREPEND),
+		NewGOAPPath([]*GOAPAction{openFridge, getFoodFromFridge, closeFridge}, GOAP_PATH_APPEND),
+		true,
+	)
+
+	doTest(
+		NewGOAPGoal(map[string]int{
+			"hasFood,>=":   1,
+			"fridgeOpen,=": 0,
+		}),
+		start,
+		NewGOAPPath([]*GOAPAction{openFridge, getFoodFromFridge}, GOAP_PATH_PREPEND),
+		NewGOAPPath([]*GOAPAction{closeFridge, openFridge, getFoodFromFridge}, GOAP_PATH_PREPEND),
 		false,
 	)
 
@@ -354,7 +488,7 @@ func TestGOAPActionPresFulfilled(t *testing.T) {
 		},
 	})
 
-	eval.addActions(goToAxe, drink, chopTree)
+	eval.AddActions(goToAxe, drink, chopTree)
 
 	doDrinkTest(0, false)
 	doDrinkTest(1, true)
@@ -464,8 +598,8 @@ func TestGOAPActionModalVal(t *testing.T) {
 		},
 	})
 
-	eval.addModalVals(atTreeModal, atOceanModal)
-	eval.addActions(goToTree, hugTree, chopTree, goToOcean)
+	eval.AddModalVals(atTreeModal, atOceanModal)
+	eval.AddActions(goToTree, hugTree, chopTree, goToOcean)
 
 	//
 	// test presfulfilled
@@ -507,7 +641,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 		"atTree,=": 1,
 	})
 	appliedState := eval.applyAction(goToTree, NewGOAPWorldState(nil))
-	remaining, diffs := g.remaining(appliedState)
+	remaining := g.remaining(appliedState)
 	Logger.Println("goal:")
 	printGoal(g)
 	Logger.Println("state after applying goToTree:")
@@ -516,19 +650,19 @@ func TestGOAPActionModalVal(t *testing.T) {
 		t.Fatal("atTree should've been 1 after goToTree")
 	}
 	Logger.Println("goal remaining:")
-	printGoal(remaining)
-	if len(remaining.goals) != 0 {
+	printGoal(remaining.goal)
+	if len(remaining.goal.goals) != 0 {
 		t.Fatal("Goal should have been satisfied")
 	}
 	Logger.Println("diffs:")
-	printDiffs(diffs)
+	printDiffs(remaining.diffs)
 
 	g2 := NewGOAPGoal(map[string]int{
 		"atTree,=": 1,
 		"drunk,>=": 10,
 	})
-	remaining, _ = g2.remaining(appliedState)
-	if len(remaining.goals) != 1 {
+	remaining = g2.remaining(appliedState)
+	if len(remaining.goal.goals) != 1 {
 		t.Fatal("drunk goal should be unfulfilled by atTree state")
 	}
 
@@ -572,6 +706,110 @@ func TestGOAPActionModalVal(t *testing.T) {
 
 }
 
+func TestGOAPPlanSimple(t *testing.T) {
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+	e, _ := testingSpawnPhysics(w)
+
+	treePos := &Vec2D{19, 19}
+
+	atTreeModal := GOAPModalVal{
+		name: "atTree",
+		check: func(ws *GOAPWorldState) int {
+			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			_, _, d := ourPos.Distance(*treePos)
+			if d < 2 {
+				return 1
+			} else {
+				return 0
+			}
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			nearTree := treePos.Add(Vec2D{1, 0})
+			ws.SetModal(e, "Position", &nearTree)
+		},
+	}
+	goToTree := NewGOAPAction(map[string]interface{}{
+		"name": "goToTree",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"atTree,=": 1,
+		},
+	})
+
+	goal := NewGOAPGoal(map[string]int{
+		"atTree,=": 1,
+	})
+
+	Logger.Println(*e.GetVec2D("Position"))
+
+	ws := NewGOAPWorldState(nil)
+
+	planner := NewGOAPPlanner(e)
+	planner.eval.AddModalVals(atTreeModal)
+	planner.eval.AddActions(goToTree)
+
+	Logger.Println(planner.Plan(ws, goal, 50))
+
+}
+
+func TestGOAPPlanSimpleIota(t *testing.T) {
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+
+	e := w.Spawn(map[string]any{
+		"components": map[string]any{
+			"IntMap,State": NewIntMap(map[string]int{
+				"drunk": 0,
+			}),
+		},
+	})
+
+	atTreeModal := GOAPModalVal{
+		name: "atTree",
+		check: func(ws *GOAPWorldState) int {
+			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			_, _, d := ourPos.Distance(*treePos)
+			if d < 2 {
+				return 1
+			} else {
+				return 0
+			}
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			nearTree := treePos.Add(Vec2D{1, 0})
+			ws.SetModal(e, "Drunkness", &nearTree)
+		},
+	}
+	goToTree := NewGOAPAction(map[string]interface{}{
+		"name": "goToTree",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"atTree,=": 1,
+		},
+	})
+
+	goal := NewGOAPGoal(map[string]int{
+		"atTree,=": 1,
+	})
+
+	Logger.Println(*e.GetVec2D("Position"))
+
+	ws := NewGOAPWorldState(nil)
+
+	planner := NewGOAPPlanner(e)
+	planner.eval.AddModalVals(atTreeModal)
+	planner.eval.AddActions(goToTree)
+
+	Logger.Println(planner.Plan(ws, goal, 50))
+
+}
+
+/*
 func TestGOAPPlannerDeepen(t *testing.T) {
 
 	w := testingWorld()
@@ -602,16 +840,25 @@ func TestGOAPPlannerDeepen(t *testing.T) {
 		},
 	})
 
-	p.eval.addModalVals(hasBoozeModal)
-	p.eval.addActions(drink)
+	p.eval.AddModalVals(hasBoozeModal)
+	p.eval.AddActions(drink)
 
 	start := NewGOAPWorldState(nil)
+	p.eval.PopulateModalStartState(start)
 	goal := NewGOAPGoal(map[string]int{
 		"drunk,>=": 3,
 	})
-	path := []*GOAPAction{}
+	backtrackRoot := &GOAPPQueueItem{
+		path:          []*GOAPAction{},
+		presRemaining: make(map[string]*GOAPGoal),
+		remaining:     goal,
+		nUnfulfilled:  len(goal.goals),
+		endState:      start,
+		cost:          0,
+		index:         -1, // going to be set by Push()
+	}
 
-	newPaths := p.deepen(start, path, goal)
+	newPaths := p.deepen(start, backtrackRoot)
 	if len(newPaths) != 1 {
 		t.Fatal("Should have found 1 path")
 	}
@@ -620,13 +867,12 @@ func TestGOAPPlannerDeepen(t *testing.T) {
 	}
 
 	start = NewGOAPWorldState(nil)
-	path = []*GOAPAction{}
 	goal = NewGOAPGoal(map[string]int{
 		"drunk,=": 1,
 	})
-	newPaths = p.deepen(start, path, goal)
-	if len(newPaths[0].remaining.goals) == 0 {
-		t.Fatal("Should have found a path (drink)")
+	newPaths = p.deepen(start, backtrackRoot)
+	if len(newPaths) != 1 && len(newPaths[0].remaining.goals) == 0 {
+		t.Fatal("Should have found a path (drink) and had goal fulfilled")
 	}
 }
 
@@ -660,8 +906,8 @@ func TestGOAPPlannerBasic(t *testing.T) {
 		},
 	})
 
-	p.eval.addModalVals(hasBoozeModal)
-	p.eval.addActions(drink)
+	p.eval.AddModalVals(hasBoozeModal)
+	p.eval.AddActions(drink)
 
 	start := NewGOAPWorldState(nil)
 	goal := NewGOAPGoal(map[string]int{
@@ -713,8 +959,8 @@ func TestGOAPPlannerAlanWatts(t *testing.T) {
 		},
 	})
 
-	p.eval.addModalVals(hasBoozeModal)
-	p.eval.addActions(drink)
+	p.eval.AddModalVals(hasBoozeModal)
+	p.eval.AddActions(drink)
 
 	start := NewGOAPWorldState(nil)
 	goal := NewGOAPGoal(map[string]int{
@@ -807,10 +1053,11 @@ func TestGOAPPlannerPurifyOneself(t *testing.T) {
 		},
 	})
 
-	p.eval.addModalVals(hasBoozeModal)
-	p.eval.addActions(drink, dropAllBooze, purifyOneself, enterTemple)
-
+	p.eval.AddModalVals(hasBoozeModal)
+	p.eval.AddActions(drink, dropAllBooze, purifyOneself, enterTemple)
 	start := NewGOAPWorldState(nil)
+	p.eval.PopulateModalStartState(start)
+
 	goal := NewGOAPGoal(map[string]int{
 		"drunk,>=":        3,
 		"templeEntered,=": 1,
@@ -824,1117 +1071,224 @@ func TestGOAPPlannerPurifyOneself(t *testing.T) {
 	}
 }
 
-/*
-	valAsEff: 1,
-	effModalSet: func(ws *GOAPWorldState) {
-		nearTree := treePos.Add(Vec2D{1, 0})
-		ws.SetModal(e, "Position", nearTree)
-	},
-
-*/
-
-/*
-
-
-func TestGOAPWorldStateUnfulfilledByCtx(t *testing.T) {
-	ws := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"hasAxe":   true,
-			"hasGlove": true,
-			"atTree":   true,
-		},
-	)
-	hasAxeCtx := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			return true
-		},
-	}
-	getAxe := GOAPAction{
-		name: "getAxe",
-		pres: map[string]GOAPStateVal{
-			"atAxe": true,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasAxe": hasAxeCtx,
-		},
-	}
-	unfulfilled := ws.unfulfilledBy(getAxe)
-	expected := map[string]bool{
-		"hasGlove": true,
-		"atTree":   true,
-	}
-	if len(unfulfilled.eals) != 2 {
-		t.Fatal("unfulfilled should have length 2")
-	}
-	for name, val := range expected {
-		if _, ok := unfulfilled.vals[name]; !ok {
-			t.Fatal(fmt.Sprintf("%s not found in unfulfilled", name))
-		}
-		if unfulfilled.vals[name] != val {
-			t.Fatal(fmt.Sprintf("%s should have been %t in unfulfilled", name, val))
-		}
-	}
-}
-
-func TestGOAPWorldStatePartlyCoversDoesntConflict(t *testing.T) {
-	wsA := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"hasAxe":   true,
-			"hasGlove": true,
-			"atTree":   true,
-		},
-	)
-	wsB := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"hasAxe": true,
-		},
-	)
-	if !wsB.partlyCoversDoesntConflict(wsA) {
-		t.Fatal("wsB should partly cover wsA")
-	}
-	wsC := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"hasAxe": false,
-		},
-	)
-	if wsC.partlyCoversDoesntConflict(wsA) {
-		t.Fatal("wsC should not partly cover wsA")
-	}
-	wsD := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"hasAxe": true,
-			"atTree": false,
-		},
-	)
-	if wsD.partlyCoversDoesntConflict(wsA) {
-		t.Fatal("wsD should conflict with wsA")
-	}
-}
-
-func TestGOAPWorldStateFulfillsSimple(t *testing.T) {
-	wsA := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"hasAxe":   true,
-			"hasGlove": true,
-			"atTree":   false,
-		},
-	)
-	wsB := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"hasAxe": true,
-		},
-	)
-	if !wsA.fulfills(wsB) {
-		t.Fatal("wsA should fulfill wsB")
-	}
-	wsC := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"hasAxe":   true,
-			"hasGlove": true,
-			"atTree":   true,
-		},
-	)
-	if wsA.fulfills(wsC) {
-		t.Fatal("wsA should not fulfill wsC")
-	}
-}
-
-func TestGOAPWorldStateApplyActionSimple(t *testing.T) {
-	ws := NewGOAPWorldState(nil)
-	goToAxe := GOAPAction{
-		name: "goToAxe",
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atAxe": true,
-		},
-	}
-	ws = ws.applyAction(goToAxe)
-	goal := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"atAxe": true,
-		},
-	)
-	Logger.Println(ws)
-	if !ws.fulfills(goal) {
-		t.Fatal("ws should fulfill goal after applyAction")
-	}
-}
-
-func TestGOAPWorldStateFulfillsCtx(t *testing.T) {
-	axeDistance := 2
-	ctxAtAxe := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			return axeDistance < 5
-		},
-	}
-	ws := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-	)
-	goal := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"atAxe": true,
-		},
-	)
-	if !ws.fulfills(goal) {
-		t.Fatal("GOAPWorldState with value in map of type GOAPCtxStateVal should have worked")
-	}
-}
-
-func TestGOAPWorldStateApplyActionCtx(t *testing.T) {
-	ws := NewGOAPWorldState(nil)
-	ctxAtAxe := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			return true
-		},
-		set: func(ws *GOAPWorldState) {
-			ws.vals["atAxe"] = true
-		},
-	}
-	goToAxe := GOAPAction{
-		name: "goToAxe",
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-	}
-	ws = ws.applyAction(goToAxe)
-	goal := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-	)
-	if !ws.fulfills(goal) {
-		t.Fatal("ws should fulfill goal after applyAction with ctx val set()")
-	}
-}
-
-func TestGOAPWorldStateSetModal(t *testing.T) {
-	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	e := testingSpawnPhysics(w)
-
-	ws := NewGOAPWorldState(nil)
-	axePos := Vec2D{11, 11}
-
-	ctxAtAxe := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			Logger.Println("in get...")
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(axePos)
-			return d < 2
-		},
-		set: func(ws *GOAPWorldState) {
-			Logger.Println("in set...")
-			nearAxe := axePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearAxe)
-		},
-	}
-
-	goToAxe := GOAPAction{
-		name: "goToAxe",
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-	}
-
-	Logger.Println("applying action goToAxe...")
-	ws = ws.applyAction(goToAxe)
-	Logger.Println(ws.modal)
-
-	goal := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-	)
-	Logger.Println("testing if ws.fulfills(goal)")
-	if !ws.fulfills(goal) {
-		t.Fatal("ws should fulfill goal after applyAction with ctx val set()")
-	}
-}
-
-
-
-func TestGOAPActionPresFulfilledCtx(t *testing.T) {
-	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	e := testingSpawnPhysics(w)
-
-	ws := NewGOAPWorldState(nil)
-	axePos := Vec2D{11, 11}
-
-	ctxAtAxe := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			Logger.Println("in get...")
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(axePos)
-			return d < 2
-		},
-		set: func(ws *GOAPWorldState) {
-			Logger.Println("in set...")
-			nearAxe := axePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearAxe)
-		},
-	}
-
-	goToAxe := GOAPAction{
-		name: "goToAxe",
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-	}
-
-	Logger.Println("applying action goToAxe...")
-	ws = ws.applyAction(goToAxe)
-
-	getAxe := GOAPAction{
-		name: "getAxe",
-		pres: map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasAxe": true,
-		},
-	}
-
-	if !getAxe.presFulfilled(ws) {
-		t.Fatal("ws should have fulfilled the pres of getAxe after goToAxe")
-	}
-}
-
-func TestGOAPPlannerBasic(t *testing.T) {
+func TestGOAPPlannerResponsibleFridgeUsage(t *testing.T) {
 
 	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	e := testingSpawnPhysics(w)
+	w.RegisterComponents([]string{"Int,FoodAmount"})
 
-	ws := NewGOAPWorldState(nil)
-
-	axePos := Vec2D{11, 11}
-
-	ctxAtAxe := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(axePos)
-			return d < 2
-
-		},
-		set: func(ws *GOAPWorldState) {
-			nearAxe := axePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearAxe)
-		},
-	}
-	goToAxe := GOAPAction{
-		name: "goToAxe",
-		cost: 1,
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-	}
-	getAxe := GOAPAction{
-		name: "getAxe",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasAxe": true,
-		},
-	}
+	e, _ := testingSpawnSimple(w)
 
 	p := NewGOAPPlanner(e)
-	p.AddActions(goToAxe, getAxe)
 
-	want := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"hasAxe": true,
+	openFridge := NewGOAPAction(map[string]interface{}{
+		"name": "openFridge",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"fridgeOpen,=": 1,
 		},
-	)
+	})
+	getFood := NewGOAPAction(map[string]interface{}{
+		"name": "getFood",
+		"cost": 1,
+		"pres": map[string]int{
+			"fridgeOpen,=": 1,
+		},
+		"effs": map[string]int{
+			"hasFood,+": 1,
+		},
+	})
+	closeFridge := NewGOAPAction(map[string]interface{}{
+		"name": "closeFridge",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"fridgeOpen,=": 0,
+		},
+	})
 
-	plans := p.Plans(ws, want)
-	Logger.Printf("Found %d plans.", len(plans))
+	p.eval.AddActions(openFridge, getFood, closeFridge)
 
-	expected := "[goToAxe,getAxe]"
-	if GOAPPlanToString(plans[0]) != expected {
-		t.Fatal("Did not find correct plan.")
+	start := NewGOAPWorldState(map[string]int{
+		"hasFood":    0,
+		"fridgeOpen": 0,
+	})
+	goal := NewGOAPGoal(map[string]int{
+		"hasFood,>":    0,
+		"fridgeOpen,=": 0,
+	})
+	solution, ok := p.Plan(start, goal, 50)
+	Logger.Println("Responsible fridge use:")
+	Logger.Println(GOAPPathToString(solution))
+
+	if !ok {
+		t.Fatal("Should have found a solution")
 	}
 }
 
-func TestGOAPPlannerBasicMultiSuccess(t *testing.T) {
-
+func TestGOAPPlannerWoodsmanByTheSea(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e := testingSpawnPhysics(w)
+	e, _ := testingSpawnPhysics(w)
 
-	ws := NewGOAPWorldState(map[string]GOAPStateVal{
-		"bakeryHasBread":    true,
-		"smokehouseHasFish": true,
-	})
+	treePos := &Vec2D{11, 11}
+	axePos := &Vec2D{-20, 20}
+	glovePos := &Vec2D{-20, 5}
+	oceanPos := &Vec2D{0, -10}
 
-	bakeryPos := Vec2D{11, 11}
-	smokehousePos := Vec2D{-11, 11}
-
-	ctxAtBakery := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(bakeryPos)
-			return d < 2
-
-		},
-		set: func(ws *GOAPWorldState) {
-			nearBakery := bakeryPos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearBakery)
-		},
-	}
-	goToBakery := GOAPAction{
-		name: "goToBakery",
-		cost: 1,
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atBakery": ctxAtBakery,
-		},
-	}
-	getBreadFromBakery := GOAPAction{
-		name: "getBreadFromBakery",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"atBakery":       ctxAtBakery,
-			"bakeryHasBread": true,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasBread": true,
-			"hasFood":  true,
-		},
-	}
-
-	ctxAtSmokehouse := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(smokehousePos)
-			return d < 2
-
-		},
-		set: func(ws *GOAPWorldState) {
-			nearSmokehouse := smokehousePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearSmokehouse)
-		},
-	}
-	goToSmokehouse := GOAPAction{
-		name: "goToSmokehouse",
-		cost: 1,
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atSmokehouse": ctxAtSmokehouse,
-		},
-	}
-	getFishFromSmokehouse := GOAPAction{
-		name: "getFishFromSmokehouse",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"atSmokehouse":      ctxAtSmokehouse,
-			"smokehouseHasFish": true,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasFish": true,
-			"hasFood": true,
-		},
-	}
-
-	eat := GOAPAction{
-		name: "eat",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"hasFood": true,
-		},
-		effs: map[string]GOAPStateVal{
-			"sated": true,
-		},
-	}
-
-	p := NewGOAPPlanner(e)
-	p.AddActions(
-		goToBakery,
-		getBreadFromBakery,
-		goToSmokehouse,
-		getFishFromSmokehouse,
-		eat,
-	)
-
-	want := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"sated": true,
-		},
-	)
-
-	plans := p.Plans(ws, want)
-	Logger.Printf("Found %d plans.", len(plans))
-
-	Logger.Println("==========")
-	Logger.Println("VALID PLANS:")
-	for _, plan := range plans {
-		Logger.Println(GOAPPlanToString(plan))
-	}
-	Logger.Println("==========")
-
-	if len(plans) != 2 {
-		t.Fatal("Should have found 2 plans (bakery, smokehouse)")
-	}
-}
-
-func TestGOAPPlannerBasicMultiFailure(t *testing.T) {
-
-	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	e := testingSpawnPhysics(w)
-
-	ws := NewGOAPWorldState(nil)
-
-	bakeryPos := Vec2D{11, 11}
-	smokehousePos := Vec2D{-11, 11}
-
-	ctxAtBakery := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(bakeryPos)
-			return d < 2
-
-		},
-		set: func(ws *GOAPWorldState) {
-			nearBakery := bakeryPos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearBakery)
-		},
-	}
-	goToBakery := GOAPAction{
-		name: "goToBakery",
-		cost: 1,
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atBakery": ctxAtBakery,
-		},
-	}
-	getBreadFromBakery := GOAPAction{
-		name: "getBreadFromBakery",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"atBakery":       ctxAtBakery,
-			"bakeryHasBread": true,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasBread": true,
-			"hasFood":  true,
-		},
-	}
-
-	ctxAtSmokehouse := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(smokehousePos)
-			return d < 2
-
-		},
-		set: func(ws *GOAPWorldState) {
-			nearSmokehouse := smokehousePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearSmokehouse)
-		},
-	}
-	goToSmokehouse := GOAPAction{
-		name: "goToSmokehouse",
-		cost: 1,
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atSmokehouse": ctxAtSmokehouse,
-		},
-	}
-	getFishFromSmokehouse := GOAPAction{
-		name: "getFishFromSmokehouse",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"atSmokehouse":      ctxAtSmokehouse,
-			"smokehouseHasFish": true,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasFish": true,
-			"hasFood": true,
-		},
-	}
-
-	eat := GOAPAction{
-		name: "eat",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"hasFood": true,
-		},
-		effs: map[string]GOAPStateVal{
-			"sated": true,
-		},
-	}
-
-	p := NewGOAPPlanner(e)
-	p.AddActions(
-		goToBakery,
-		getBreadFromBakery,
-		goToSmokehouse,
-		getFishFromSmokehouse,
-		eat,
-	)
-
-	want := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"sated": true,
-		},
-	)
-
-	plans := p.Plans(ws, want)
-	Logger.Printf("Found %d plans.", len(plans))
-
-	Logger.Println("==========")
-	Logger.Println("VALID PLANS:")
-	for _, plan := range plans {
-		Logger.Println(GOAPPlanToString(plan))
-	}
-	Logger.Println("==========")
-
-	if len(plans) != 0 {
-		t.Fatal("Should have found 0 plans (no bread in bakery or fish in smokehouse)")
-	}
-}
-
-func TestGOAPPlannerHarder(t *testing.T) {
-
-	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	e := testingSpawnPhysics(w)
-
-	ws := NewGOAPWorldState(nil)
-
-	axePos := Vec2D{11, 11}
-	glovePos := Vec2D{2, 2}
-
-	ctxAtAxe := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(axePos)
-			return d < 2
-		},
-		set: func(ws *GOAPWorldState) {
-			nearAxe := axePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearAxe)
-		},
-	}
-	goToAxe := GOAPAction{
-		name: "goToAxe",
-		cost: 1,
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-	}
-	getAxe := GOAPAction{
-		name: "getAxe",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasAxe": true,
-		},
-	}
-
-	ctxAtGlove := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(glovePos)
-			return d < 2
-		},
-		set: func(ws *GOAPWorldState) {
-			nearGlove := glovePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearGlove)
-		},
-	}
-	goToGlove := GOAPAction{
-		name: "goToGlove",
-		cost: 1,
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atGlove": ctxAtGlove,
-		},
-	}
-	getGlove := GOAPAction{
-		name: "getGlove",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"atGlove": ctxAtGlove,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasGlove": true,
-		},
-	}
-
-	p := NewGOAPPlanner(e)
-	p.AddActions(goToAxe, getAxe, goToGlove, getGlove)
-
-	want := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"hasAxe":   true,
-			"hasGlove": true,
-		},
-	)
-
-	plans := p.Plans(ws, want)
-	Logger.Printf("Found %d plans.", len(plans))
-
-	Logger.Println("==========")
-	Logger.Println("VALID PLANS:")
-	for _, plan := range plans {
-		Logger.Println(GOAPPlanToString(plan))
-	}
-	Logger.Println("==========")
-
-	if len(plans) != 2 {
-		t.Fatal("Should have found 2 valid plans (glove,axe) or (axe,glove)")
-	}
-
-}
-
-func TestGOAPPlannerHardest(t *testing.T) {
-
-	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	e := testingSpawnPhysics(w)
-
-	ws := NewGOAPWorldState(nil)
-
-	axePos := Vec2D{11, 11}
-	glovePos := Vec2D{2, 2}
-	treePos := Vec2D{-7, -7}
-
-	ctxAtAxe := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(axePos)
-			return d < 2
-		},
-		set: func(ws *GOAPWorldState) {
-			nearAxe := axePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearAxe)
-		},
-	}
-	goToAxe := GOAPAction{
-		name: "goToAxe",
-		cost: 1,
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-	}
-	getAxe := GOAPAction{
-		name: "getAxe",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"atAxe": ctxAtAxe,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasAxe": true,
-		},
-	}
-
-	ctxAtGlove := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(glovePos)
-			return d < 2
-		},
-		set: func(ws *GOAPWorldState) {
-			nearGlove := glovePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearGlove)
-		},
-	}
-	goToGlove := GOAPAction{
-		name: "goToGlove",
-		cost: 1,
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atGlove": ctxAtGlove,
-		},
-	}
-	getGlove := GOAPAction{
-		name: "getGlove",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"atGlove": ctxAtGlove,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasGlove": true,
-		},
-	}
-
-	ctxAtTree := GOAPCtxStateVal{
-		val: true,
-		validate: func(ws GOAPWorldState) bool {
-			ourPos := ws.GetModal(e, "Position").(Vec2D)
-			_, _, d := ourPos.Distance(treePos)
-			return d < 2
-		},
-		set: func(ws *GOAPWorldState) {
-			nearTree := treePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", nearTree)
-		},
-	}
-	goToTree := GOAPAction{
-		name: "goToTree",
-		cost: 1,
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atTree": ctxAtTree,
-		},
-	}
-
-	chopWood := GOAPAction{
-		name: "chopWood",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"hasAxe":   true,
-			"hasGlove": true,
-			"atTree":   ctxAtTree,
-		},
-		effs: map[string]GOAPStateVal{
-			"woodChopped": true,
-		},
-	}
-
-	p := NewGOAPPlanner(e)
-	p.AddActions(goToAxe, getAxe, goToGlove, getGlove, goToTree, chopWood)
-
-	want := NewGOAPWorldState(
-		map[string]GOAPStateVal{
-			"woodChopped": true,
-		},
-	)
-
-	t0 := time.Now()
-	plans := p.Plans(ws, want)
-	dt := time.Since(t0).Nanoseconds()
-	Logger.Printf("Found %d plans from %d actions in %f ms", len(plans), len(p.actions.set), (float64(dt) / 1000000.0))
-
-	Logger.Println("==========")
-	Logger.Println("VALID PLANS:")
-	for _, plan := range plans {
-		Logger.Println(GOAPPlanToString(plan))
-	}
-	Logger.Println("==========")
-
-	if len(plans) != 2 {
-		t.Fatal("Should have found 2 valid plans (glove,axe,gototree) or (axe,glove,gototree)")
-	}
-
-}
-*/
-
-/*
-func TestGOAPActionPresFulfilled(t *testing.T) {
-	ws := NewGOAPWorldState(map[string]int{
-		"atTree":   1,
-		"hasAxe":   1,
-		"hasGlove": 1,
-	})
-
-	chopTree := GOAPAction{
-		name: "chopTree",
-		pres: map[string]GOAPStateVal{
-			"atTree":   1,
-			"hasAxe":   1,
-			"hasGlove": 1,
-		},
-		effs: map[string]GOAPStateVal{
-			"woodChopped": 1,
-		},
-	}
-
-	if !chopTree.presFulfilled(ws) {
-		t.Fatal("ws should have fulfilled the pres of chopTree")
-	}
-
-	ws = NewGOAPWorldState(map[string]int{
-		"atTree": 1,
-	})
-
-	if chopTree.presFulfilled(ws) {
-		t.Fatal("ws should not have fulfilled pres of chopTree")
-	}
-
-	ws = NewGOAPWorldState(map[string]int{
-		"atTree":   1,
-		"hasAxe":   1,
-		"hasGlove": 1,
-		"drunk":    1,
-	})
-
-	if !chopTree.presFulfilled(ws) {
-		t.Fatal("ws should have fulfilled the pres of chopTree")
-	}
-}
-
-func TestGOAPWorldStateUnfulfilledBySimple(t *testing.T) {
-	ws := NewGOAPWorldState(
-		map[string]int{
-			"hasAxe":   1,
-			"hasGlove": 1,
-			"atTree":   1,
-		},
-	)
-	getAxe := GOAPAction{
-		name: "getAxe",
-		pres: map[string]GOAPStateVal{
-			"atAxe": 1,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasAxe": 1,
-		},
-	}
-	unfulfilled := ws.unfulfilledBy(getAxe)
-	expected := map[string]int{
-		"hasGlove": 1,
-		"atTree":   1,
-	}
-	if len(unfulfilled.vals) != 2 {
-		t.Fatal("unfulfilled should have length 2")
-	}
-	for name, val := range expected {
-		if _, ok := unfulfilled.vals[name]; !ok {
-			t.Fatal(fmt.Sprintf("%s not found in unfulfilled", name))
-		}
-		if unfulfilled.vals[name] != val {
-			t.Fatal(fmt.Sprintf("%s should have been %d in unfulfilled", name, val))
-		}
-	}
-}
-
-func TestGOAPThoseThatHelpFulfill(t *testing.T) {
-	getAxe := GOAPAction{
-		name: "getAxe",
-		pres: map[string]GOAPStateVal{
-			"atAxe": 1,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasAxe": 1,
-		},
-	}
-	goToAxe := GOAPAction{
-		name: "goToAxe",
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atAxe": 1,
-		},
-	}
-	getGlove := GOAPAction{
-		name: "getGlove",
-		pres: map[string]GOAPStateVal{
-			"atAxe": 1,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasGlove": 1,
-		},
-	}
-	goToTree := GOAPAction{
-		name: "goToTree",
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"atTree": 1,
-		},
-	}
-	candidates := NewGOAPActionSet()
-	candidates.Add(getAxe, goToAxe, getGlove, goToTree)
-	want := NewGOAPWorldState(map[string]int{
-		"hasAxe":   1,
-		"hasGlove": 1,
-		"atTree":   1,
-	})
-	helpers := candidates.thoseThatHelpFulfill(want)
-
-	helpersMatchExpected := func(expected []string) bool {
-		valid := true
-		for _, name := range expected {
-			found := false
-			for _, helper := range helpers.set {
-				if helper.name == name {
-					found = true
-					break
-				}
+	atTreeModal := GOAPModalVal{
+		name: "atTree",
+		check: func(ws *GOAPWorldState) int {
+			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			_, _, d := ourPos.Distance(*treePos)
+			if d < 2 {
+				return 1
+			} else {
+				return 0
 			}
-			valid = valid && found
-		}
-		return valid
-	}
-
-	if !helpersMatchExpected([]string{"getAxe", "getGlove", "goToTree"}) {
-		t.Fatal("Couldn't find expected fulfilling action in result of thoseThatFulfill")
-	}
-
-	if helpersMatchExpected([]string{"goToAxe"}) {
-		t.Fatal("Should not have considered goToAxe as a helper to fulfill the goal")
-	}
-
-}
-*/
-
-/*
-func TestGOAPPlannerPickUpDropNumeric(t *testing.T) {
-	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	w.RegisterComponents([]string{"Generic,Inventory", "Generic,Disposition"})
-	e, _ := w.Spawn([]string{}, MakeComponentSet(map[string]interface{}{
-		"Generic,Inventory":   map[string]int{},
-		"Generic,Disposition": map[string]int{},
-	}))
-
-	ws := NewGOAPWorldState(nil)
-
-	getInventoryModal := func(ws GOAPWorldState) map[string]int {
-		return (*ws.GetModal(e, "Inventory").(*interface{})).(map[string]int)
-	}
-
-	getDispositionModal := func(ws GOAPWorldState) map[string]int {
-		return (*ws.GetModal(e, "Disposition").(*interface{})).(map[string]int)
-	}
-
-	ctxHasBooze := func(x int) GOAPCtxStateVal {
-		return GOAPCtxStateVal{
-			val: x,
-			validate: func(ws GOAPWorldState) bool {
-				inventory := getInventoryModal(ws)
-				if n, ok := inventory["booze"]; ok {
-					return n == x
-				}
-				return false
-			},
-			set: func(ws *GOAPWorldState) {
-				inventory := getInventoryModal(*ws)
-				inventory["booze"] += x
-				ws.SetModal(e, "Inventory", inventory)
-			},
-		}
-	}
-	ctxDrunk := func(amount int) GOAPCtxStateVal {
-		return GOAPCtxStateVal{
-			// TODO: this seems to be the pattern that can distinguish a
-			// setter from an incrementer
-			val: func(val int) int {
-				return val + 1
-			},
-			validate: func(ws GOAPWorldState) bool {
-				disposition := getDispositionModal(ws)
-				if _, ok := disposition["drunk"]; !ok {
-					return false
-				} else {
-					return disposition["drunk"] >= amount
-				}
-
-			},
-			set: func(ws *GOAPWorldState) {
-				disposition := getDispositionModal(*ws)
-				if _, ok := disposition["drunk"]; !ok {
-					disposition["drunk"] = 1
-				} else {
-					disposition["drunk"] += 1
-				}
-				ws.SetModal(e, "Disposition", disposition)
-			},
-		}
-	}
-
-	getBooze := GOAPAction{
-		name: "getBooze",
-		cost: 1,
-		pres: EmptyGOAPStateVal,
-		effs: map[string]GOAPStateVal{
-			"hasBooze": ctxHasBooze(1),
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			nearTree := treePos.Add(Vec2D{1, 0})
+			ws.SetModal(e, "Position", &nearTree)
 		},
 	}
-	drinkBooze := GOAPAction{
-		name: "drinkBooze",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"hasBooze": 1,
+	atOceanModal := GOAPModalVal{
+		name: "atOcean",
+		check: func(ws *GOAPWorldState) int {
+			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			_, _, d := ourPos.Distance(*oceanPos)
+			if d < 2 {
+				return 1
+			} else {
+				return 0
+			}
 		},
-		effs: map[string]GOAPStateVal{
-			"drunk":    ctxDrunk(1),
-			"hasBooze": ctxHasBooze(-1),
-		},
-	}
-	dropBooze := GOAPAction{
-		name: "dropBooze",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"hasBooze": 1,
-		},
-		effs: map[string]GOAPStateVal{
-			"hasBooze": ctxHasBooze(-1),
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			nearOcean := oceanPos.Add(Vec2D{1, 0})
+			ws.SetModal(e, "Position", &nearOcean)
 		},
 	}
-	purifyOneself := GOAPAction{
-		name: "purifyOneself",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"hasBooze": 0,
+	atAxeModal := GOAPModalVal{
+		name: "atAxe",
+		check: func(ws *GOAPWorldState) int {
+			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			_, _, d := ourPos.Distance(*axePos)
+			if d < 2 {
+				return 1
+			} else {
+				return 0
+			}
 		},
-		effs: map[string]GOAPStateVal{
-			"rituallyPure": 1,
-		},
-	}
-	enterTemple := GOAPAction{
-		name: "enterTemple",
-		cost: 1,
-		pres: map[string]GOAPStateVal{
-			"rituallyPure": 1,
-		},
-		effs: map[string]GOAPStateVal{
-			"admittedToTemple": 1,
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			nearAxe := treePos.Add(Vec2D{1, 0})
+			ws.SetModal(e, "Position", &nearAxe)
 		},
 	}
+	atGloveModal := GOAPModalVal{
+		name: "atGlove",
+		check: func(ws *GOAPWorldState) int {
+			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			_, _, d := ourPos.Distance(*glovePos)
+			if d < 2 {
+				return 1
+			} else {
+				return 0
+			}
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			nearGlove := treePos.Add(Vec2D{1, 0})
+			ws.SetModal(e, "Position", &nearGlove)
+		},
+	}
+	goToTree := NewGOAPAction(map[string]interface{}{
+		"name": "goToTree",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"atTree,=": 1,
+		},
+	})
+	goToGlove := NewGOAPAction(map[string]interface{}{
+		"name": "goToGlove",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"atGlove,=": 1,
+		},
+	})
+	goToAxe := NewGOAPAction(map[string]interface{}{
+		"name": "goToAxe",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"atAxe,=": 1,
+		},
+	})
+	getGlove := NewGOAPAction(map[string]interface{}{
+		"name": "getGlove",
+		"cost": 1,
+		"pres": map[string]int{
+			"atGlove,=": 1,
+		},
+		"effs": map[string]int{
+			"hasGlove,+": 1,
+		},
+	})
+	getAxe := NewGOAPAction(map[string]interface{}{
+		"name": "getAxe",
+		"cost": 1,
+		"pres": map[string]int{
+			"atAxe,=": 1,
+		},
+		"effs": map[string]int{
+			"hasAxe,+": 1,
+		},
+	})
+	chopTree := NewGOAPAction(map[string]interface{}{
+		"name": "chopTree",
+		"cost": 1,
+		"pres": map[string]int{
+			"atTree,=":   1,
+			"hasAxe,>":   0,
+			"hasGlove,>": 0,
+		},
+		"effs": map[string]int{
+			"woodChopped,+": 1,
+		},
+	})
+	goToOcean := NewGOAPAction(map[string]interface{}{
+		"name": "goToOcean",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"atOcean,=": 1,
+		},
+	})
 
 	p := NewGOAPPlanner(e)
-	p.AddActions(getBooze, drinkBooze, dropBooze, purifyOneself, enterTemple)
+	p.eval.AddModalVals(atTreeModal, atOceanModal, atAxeModal, atGloveModal)
+	p.eval.AddActions(goToTree, chopTree, goToOcean, goToGlove, goToAxe, getGlove, getAxe)
 
-	want := NewGOAPWorldState(
-		map[string]int{
-			"drunk":            1,
-			"admittedToTemple": 1,
-		},
-	)
+	*e.GetVec2D("Position") = *oceanPos
+	start := NewGOAPWorldState(nil)
 
-	Logger.Println("Planning...")
-	plans := p.Plans(ws, want)
-	Logger.Printf("Found %d plans.", len(plans))
+	p.eval.PopulateModalStartState(start)
 
-	expected := "[goToAxe,getAxe]"
-	if GOAPPlanToString(plans[0]) != expected {
-		t.Fatal("Did not find correct plan.")
+	start = NewGOAPWorldState(map[string]int{
+		"woodChopped": 3,
+	})
+	p.eval.PopulateModalStartState(start)
+	goal := NewGOAPGoal(map[string]int{
+		"woodChopped,=": 3,
+	})
+	solution, ok := p.Plan(start, goal, 50)
+	Logger.Println(GOAPPathToString(solution))
+
+	if !ok {
+		t.Fatal("Should have found a solution")
 	}
+
 }
+
 */
