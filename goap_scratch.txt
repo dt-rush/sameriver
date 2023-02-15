@@ -1,0 +1,178 @@
+
+
+responsible fridge usage:
+
+start state: [hasFood: 0, fridgeOpen: 0]
+
+    *   in below, when we "run path and compute remaining",
+        we also compute the remaining for each action's
+        pre as it is reached in the list; this is used when
+        we "iterate path action pres"
+
+
+start with
+    path: []
+    run path and compute remaining:
+        goals: [hasFood = 1]
+
+    consider fulfilling: main
+        prepend/append any action that fulfills main better than result of path ([])
+            (getFood)
+
+    new path: [getFood]
+
+next iter
+    path: [getFood]
+    run path and compute remaining:
+        goals: []
+
+    consider fulfilling: main
+        no unfulfilled main goals
+
+    iterate path action pres:
+        consider getFood pres:
+            (openFridge) fulfills pre
+
+    new path: [openFridge, getFood]
+
+next iter:
+    path: [openFridge, getFood]
+    run path and compute remaining:
+        goals: [fridgeClosed: 0]
+
+    consider fulfilling: main
+        prepend/append any action that fulfills main better than result of path
+            (closeFridge end state fulfills main better as append (does not as prepend))
+
+    iterate path action pres:
+        all actions pres are fulfilled in course of path (openFridge, getFood)
+
+    new paths:
+
+    [openFridge, getFood, closeFridge]
+
+next iter:
+    path: [openFridge, getFood, closeFridge]
+    run path and compute remaining:
+        goals: []
+
+    consider fulfilling: main
+        all fulfilled
+
+    iterate path action pres:
+        all actions pres are fulfilled in course of path (openFridge, getFood, closeFridge)
+
+    therefore, solution found!
+
+
+
+
+
+alan watts simulator:
+
+start state: [hasBooze: 3, drunk: 0, admittedToTemple: 0]
+
+start with
+    path: []
+    run path and compute remaining:
+        goals: [drunk: 3, admittedToTemple: 1]
+
+    consider fulfilling: main
+        prepend/append any action that fulfills main better than result of path ([])
+            (drink)
+            (enterTemple)
+
+    new paths:
+        [drink]
+        [enterTemple]
+
+next iter
+    path: [drink]
+    run path and compute remaining:
+        goals: [drunk: 3, admittedToTemple: 1]
+
+    consider fulfilling: main
+        prepend/append any action that fulfills main better than result of path ([drink])
+            (drink)
+            (enterTemple)
+
+    iterate path action pres:
+        consider drink pres:
+            (hasBooze) start state fulfills, nothing to do
+
+    new paths:
+        [drink, drink]
+        [drink, drink]
+        [drink, enterTemple]
+        [enterTemple, drink]
+
+next iter:
+    path: [enterTemple]
+    run path and compute remaining:
+        goals: [drunk: 3]
+
+    consider fulfilling: main
+        prepend/append any action that fulfills main better than result of path
+            (drink)
+
+    iterate path action pres:
+        consider enterTemple pres:
+            (purifyOneself) fulfills pre
+
+    new paths:
+
+    [drink, enterTemple]
+    [purifyOneself, enterTemple]
+
+next iter:
+    path: [purifyOneself, enterTemple]
+    run path and compute remaining:
+        goals: [drunk: 3]
+
+    consider fulfilling: main
+        prepend/append any action that fulfills main better than result of path
+            (drink)
+
+    iterate path action pres:
+        consider purifyOneself:
+            (dropAllBooze) fulfills pre
+
+    new paths:
+
+    [drink, purifyOneself, enterTemple]
+    [dropAllBooze, purifyOneself, enterTemple]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+eval.admissiblePrependingAction(start, action, goal)
+    - for each goal
+        - for each var
+            given spec:
+            - if = spec, does action set varname = target?
+            - if < or <= spec, does action subtract?
+            - if > or >= spec, does action add?
+                true:
+                - prepend, evaluate path, update goal frontier
+                false:
+                - not a useful action
