@@ -24,11 +24,6 @@ func (i *NumericInterval) diff(x float64) float64 {
 	}
 }
 
-type GOAPGoal struct {
-	goals     map[string]*NumericInterval
-	fulfilled map[string]bool
-}
-
 func MakeNumericInterval(op string, val int) *NumericInterval {
 	switch op {
 	case "<":
@@ -56,10 +51,13 @@ func MakeNumericInterval(op string, val int) *NumericInterval {
 	}
 }
 
+type GOAPGoal struct {
+	goals map[string]*NumericInterval
+}
+
 func NewGOAPGoal(def map[string]int) *GOAPGoal {
 	g := &GOAPGoal{
-		goals:     make(map[string]*NumericInterval),
-		fulfilled: make(map[string]bool),
+		goals: make(map[string]*NumericInterval),
 	}
 	for spec, val := range def {
 		split := strings.Split(spec, ",")
@@ -69,31 +67,40 @@ func NewGOAPGoal(def map[string]int) *GOAPGoal {
 	return g
 }
 
-func (g *GOAPGoal) remaining(ws *GOAPWorldState) (remaining *GOAPGoal, diffs map[string]float64) {
-	remaining = NewGOAPGoal(nil)
-	//    map[drunk:0xc0001080b0 templeEntered:0xc0001080c0]
-	diffs = make(map[string]float64)
+func (g *GOAPGoal) copyOf() *GOAPGoal {
+	result := &GOAPGoal{
+		goals: make(map[string]*NumericInterval),
+	}
+	for varName, interval := range g.goals {
+		result.goals[varName] = interval
+	}
+	return result
+}
+
+func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
+	result = &GOAPGoalRemaining{
+		goal:  NewGOAPGoal(nil),
+		diffs: make(map[string]float64),
+	}
 	debugGOAPPrintf("            checking remaining for goal: %v", g.goals)
 	debugGOAPPrintf("            ws: %v", ws.vals)
 	for varName, interval := range g.goals {
-
 		if stateVal, ok := ws.vals[varName]; ok {
 			diff := interval.diff(float64(stateVal))
-			diffs[varName] = diff
-			if diff == 0 {
-				remaining.fulfilled[varName] = true
-			} else {
-				remaining.goals[varName] = interval
+			result.diffs[varName] = diff
+			if diff != 0 {
+				result.goal.goals[varName] = interval
 			}
 		} else {
 			// varName not in worldstate - diff is infinite and goal is unchanged for this var
-			diffs[varName] = math.Inf(+1)
-			remaining.goals[varName] = g.goals[varName]
+			result.diffs[varName] = math.Inf(+1)
+			result.goal.goals[varName] = interval
 		}
 	}
-	return remaining, diffs
+	return result
 }
 
+/*
 func (g *GOAPGoal) stateCloserInSomeVar(after, before *GOAPWorldState) (closer bool, afterRemaining *GOAPGoal) {
 	debugGOAPPrintf("*** stateCloserInSomeVar()")
 	debugGOAPPrintf("*** goal: %v", g.goals)
@@ -129,3 +136,4 @@ func (g *GOAPGoal) stateAssuresInSomeVar(state *GOAPWorldState) (assures bool) {
 	debugGOAPPrintf("****************** doesn't assure")
 	return false
 }
+*/

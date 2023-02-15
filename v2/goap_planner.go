@@ -27,7 +27,7 @@ func GOAPPathToString(plan []*GOAPAction) string {
 }
 
 func debugGOAPPrintGoal(g *GOAPGoal) {
-	if g == nil || (len(g.goals) == 0 && len(g.fulfilled) == 0) {
+	if g == nil || len(g.goals) == 0 {
 		debugGOAPPrintf("    nil")
 		return
 	}
@@ -35,9 +35,6 @@ func debugGOAPPrintGoal(g *GOAPGoal) {
 		split := strings.Split(spec, ",")
 		varName := split[0]
 		debugGOAPPrintf("    %s: [%.0f, %.0f]", varName, interval.a, interval.b)
-	}
-	for varName, _ := range g.fulfilled {
-		debugGOAPPrintf("    fulfilled: %s", varName)
 	}
 }
 
@@ -68,6 +65,12 @@ func (p *GOAPPlanner) deepen(
 	here *GOAPPQueueItem) (frontier []*GOAPPQueueItem) {
 
 	debugGOAPPrintf("deepen-----------------")
+	debugGOAPPrintf("deeepen: here.remaining: ")
+	debugGOAPPrintGoal(here.remaining)
+	debugGOAPPrintf("deeepen: here.presRemaining: ")
+	for _, pre := range here.presRemaining {
+		debugGOAPPrintGoal(pre)
+	}
 	frontier = make([]*GOAPPQueueItem, 0)
 	for _, action := range p.eval.actions.set {
 		debugGOAPPrintf("    ------------------------------ considering prepending action %s", action.name)
@@ -125,7 +128,7 @@ func (p *GOAPPlanner) Plan(
 		cost:          0,
 		index:         -1, // going to be set by Push()
 	}
-	p.traverseFulfillers(pq, start, backtrackRoot)
+	pq.Push(backtrackRoot)
 
 	iter := 0
 	// TODO: should we just pop out the *very first result*?
@@ -139,6 +142,11 @@ func (p *GOAPPlanner) Plan(
 		debugGOAPPrintf("(%d unfulfilled)", here.nUnfulfilled)
 
 		if here.nUnfulfilled == 0 {
+			ok := p.eval.validateForward(here.path, start, goal)
+			if !ok {
+				debugGOAPPrintf(">>>>>>> potential solution rejected")
+			}
+
 			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
 			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
 			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
@@ -170,21 +178,4 @@ func (p *GOAPPlanner) Plan(
 	} else {
 		return nil, false
 	}
-}
-
-func (p *GOAPPlanner) validateForward(
-	start *GOAPWorldState,
-	path []*GOAPAction,
-	goal *GOAPGoal) bool {
-
-	world := start
-	for _, action := range path {
-		if !p.eval.presFulfilled(action, world) {
-			return false
-		}
-		world = p.eval.applyAction(action, world)
-	}
-
-	remaining, _ := goal.remaining(world)
-	return len(remaining.goals) == 0
 }
