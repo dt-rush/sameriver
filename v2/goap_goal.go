@@ -82,8 +82,8 @@ func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
 		goal:  NewGOAPGoal(nil),
 		diffs: make(map[string]float64),
 	}
-	debugGOAPPrintf("            checking remaining for goal: %v", g.goals)
-	debugGOAPPrintf("            ws: %v", ws.vals)
+	debugGOAPPrintf("      -+- checking remaining for goal: %v", g.goals)
+	debugGOAPPrintf("      -+-     ws: %v", ws.vals)
 	for varName, interval := range g.goals {
 		if stateVal, ok := ws.vals[varName]; ok {
 			diff := interval.diff(float64(stateVal))
@@ -101,29 +101,6 @@ func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
 }
 
 /*
-func (g *GOAPGoal) stateCloserInSomeVar(after, before *GOAPWorldState) (closer bool, afterRemaining *GOAPGoal) {
-	debugGOAPPrintf("*** stateCloserInSomeVar()")
-	debugGOAPPrintf("*** goal: %v", g.goals)
-	debugGOAPPrintf("***    before")
-	debugGOAPPrintWorldState(before)
-	debugGOAPPrintf("***    after")
-	debugGOAPPrintWorldState(after)
-	afterRemaining, afterDiffs := g.remaining(after)
-	debugGOAPPrintf("***    afterRemaining:")
-	debugGOAPPrintGoal(afterRemaining)
-	_, beforeDiffs := g.remaining(before)
-	debugGOAPPrintf("*** beforeDiffs: %v", beforeDiffs)
-	debugGOAPPrintf("*** afterDiffs: %v", afterDiffs)
-	for varName, _ := range afterDiffs {
-		if math.Abs(afterDiffs[varName]) < math.Abs(beforeDiffs[varName]) {
-			debugGOAPPrintf("****************** closer!")
-			return true, afterRemaining
-		}
-	}
-	debugGOAPPrintf("****************** not closer")
-	return false, afterRemaining
-}
-
 func (g *GOAPGoal) stateAssuresInSomeVar(state *GOAPWorldState) (assures bool) {
 	debugGOAPPrintf("*** stateAssuresInSomeVar()")
 	_, diffs := g.remaining(state)

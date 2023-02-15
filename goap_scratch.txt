@@ -1,5 +1,33 @@
 
 
+before: [drink, dropAllBooze, purifyOneself, enterTemple]
+    pres: [drinkpre, dropAllBoozePre, purifyOneselfPre, enterTemplePre]
+
+after: [drink, drink, dropAllBooze, purifyOneself, enterTemple]
+    pres: [drinkPre, drinkpre, dropAllBoozePre, purifyOneselfPre, enterTemplePre]
+
+if pathConstruction = GOAP_PATH_PREPEND,
+    for i = 1; i < len(after.pres); i++
+        compare after.pres[i] with before.pres[i-1]
+
+
+before: [openFridge, getFood]
+    pres: [openFridgePre, getFoodPre]
+
+after: [openFridge, getFood, closeFridge]
+    pres: [openFridgePre, getFoodPre, closeFridgePre]
+
+if pathConstruction = GOAP_PATH_APPEND
+
+    for i = 0; i < len(before.pres); i++
+        compare after.pres[i] with before.pres[i]
+
+
+
+
+
+
+
 responsible fridge usage:
 
 start state: [hasFood: 0, fridgeOpen: 0]

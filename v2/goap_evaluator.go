@@ -55,52 +55,51 @@ func (e *GOAPEvaluator) applyAction(action *GOAPAction, ws *GOAPWorldState) (new
 	for spec, eff := range action.effs {
 		split := strings.Split(spec, ",")
 		varName, op := split[0], split[1]
-		var x int
-		if val, ok := ws.vals[varName]; ok {
-			x = val
-		} else {
-			x = 0
-		}
-		debugGOAPPrintf("        applying %s::%s%d(%d) ; = %d", action.name, spec, eff.val, x, eff.f(x))
+		x := ws.vals[varName]
+		debugGOAPPrintf("            applying %s::%s%d(%d) ; = %d", action.name, spec, eff.val, x, eff.f(x))
 		newWS.vals[varName] = eff.f(x)
 		// do modal set
 		if setter, ok := action.effModalSetters[varName]; ok {
 			setter(newWS, op, eff.val)
 		}
 	}
+	debugGOAPPrintf("            ws after action: %v", newWS.vals)
+	// TODO: do we need this?
 	// re-check any modal vals
-	for varName, _ := range newWS.vals {
-		if modalVal, ok := e.modalVals[varName]; ok {
-			newWS.vals[varName] = modalVal.check(newWS)
+	/*
+		for varName, _ := range newWS.vals {
+			if modalVal, ok := e.modalVals[varName]; ok {
+				newWS.vals[varName] = modalVal.check(newWS)
+			}
 		}
-	}
+		debugGOAPPrintf("            ws after re-checking modal vals: %v", newWS.vals)
+	*/
 	return newWS
 }
 
-func (e *GOAPEvaluator) applyPath(path []*GOAPAction, ws *GOAPWorldState) (result *GOAPWorldState) {
+func (e *GOAPEvaluator) applyPath(path *GOAPPath, ws *GOAPWorldState) (result *GOAPWorldState) {
 	result = ws.copyOf()
-	for _, action := range path {
+	for _, action := range path.path {
 		result = e.applyAction(action, result)
 	}
 	return result
 }
 
-func (e *GOAPEvaluator) remainingsOfPath(path *GOAPPath, start *GOAPWorldState, main *GOAPGoal) (remainings *GOAPGoalRemainingSurface, nUnfulfilled int) {
-	nUnfulfilled = 0
+func (e *GOAPEvaluator) remainingsOfPath(path *GOAPPath, start *GOAPWorldState, main *GOAPGoal) (remainings *GOAPGoalRemainingSurface) {
 	ws := start.copyOf()
 	remainings = NewGOAPGoalRemainingSurface()
+	remainings.path = path
 	for _, action := range path.path {
 		preRemaining := action.pres.remaining(ws)
-		nUnfulfilled += len(preRemaining.goal.goals)
+		remainings.nUnfulfilled += len(preRemaining.goal.goals)
 		remainings.pres = append(remainings.pres, preRemaining)
 		ws = e.applyAction(action, ws)
 	}
-	debugGOAPPrintf("    ---- remainingsOfPath: end state")
-	debugGOAPPrintf("    ---- %v", ws.vals)
+	debugGOAPPrintf("  --- remainingsOfPath: end state: %v", ws.vals)
 	mainRemaining := main.remaining(ws)
-	nUnfulfilled += len(mainRemaining.goal.goals)
+	remainings.nUnfulfilled += len(mainRemaining.goal.goals)
 	remainings.main = mainRemaining
-	return remainings, nUnfulfilled
+	return remainings
 }
 
 func (e *GOAPEvaluator) presFulfilled(a *GOAPAction, ws *GOAPWorldState) bool {
