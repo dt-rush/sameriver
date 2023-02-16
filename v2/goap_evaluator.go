@@ -36,6 +36,7 @@ func (e *GOAPEvaluator) addActions(actions ...*GOAPAction) {
 			split := strings.Split(spec, ",")
 			varName := split[0]
 			if modal, ok := e.modalVals[varName]; ok {
+				debugGOAPPrintf("[][][] adding modal setter for %s", varName)
 				action.effModalSetters[varName] = modal.effModalSet
 			}
 		}
@@ -64,16 +65,13 @@ func (e *GOAPEvaluator) applyAction(action *GOAPAction, ws *GOAPWorldState) (new
 		}
 	}
 	debugGOAPPrintf("            ws after action: %v", newWS.vals)
-	// TODO: do we need this?
 	// re-check any modal vals
-	/*
-		for varName, _ := range newWS.vals {
-			if modalVal, ok := e.modalVals[varName]; ok {
-				newWS.vals[varName] = modalVal.check(newWS)
-			}
+	for varName, _ := range newWS.vals {
+		if modalVal, ok := e.modalVals[varName]; ok {
+			newWS.vals[varName] = modalVal.check(newWS)
 		}
-		debugGOAPPrintf("            ws after re-checking modal vals: %v", newWS.vals)
-	*/
+	}
+	debugGOAPPrintf("            ws after re-checking modal vals: %v", newWS.vals)
 	return newWS
 }
 
