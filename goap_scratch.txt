@@ -1,5 +1,14 @@
 
 
+TODO:
+when evaluating a path, populate start according to which modal vals *appear in the effs and checks*
+
+
+
+
+
+
+
 before: [drink, dropAllBooze, purifyOneself, enterTemple]
     pres: [drinkpre, dropAllBoozePre, purifyOneselfPre, enterTemplePre]
 
