@@ -21,8 +21,10 @@ func TestInventoryDebitCredit(t *testing.T) {
 		"iron sword",
 		"a good iron sword, decently sharp",
 		map[string]int{
-			"damage": 3,
-			"value":  20,
+			"damage":      3,
+			"value":       20,
+			"degradation": 0,
+			"durability":  5,
 		},
 		[]string{"weapon"},
 	)
@@ -81,5 +83,15 @@ func TestInventoryDebitCredit(t *testing.T) {
 
 	if len(inv.Items) != 0 {
 		t.Fatal("Should've taken every last bottle of booze!")
+	}
+
+	inv.CreditN(sword, 10)
+	s := inv.DebitName("sword_iron")
+	s.Properties["degradation"] = 5
+	inv.Credit(s)
+	Logger.Println(inv)
+
+	if len(inv.Items) != 2 {
+		t.Fatal("Should've put in a modified sword as a separate item from the stack")
 	}
 }
