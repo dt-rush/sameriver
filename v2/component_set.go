@@ -16,6 +16,8 @@ type ComponentSet struct {
 	stringMap            map[string]string
 	spriteMap            map[string]Sprite
 	tagListMap           map[string]TagList
+	intMapMap            map[string]IntMap
+	floatMapMap          map[string]FloatMap
 	genericMap           map[string]any
 	customComponentsMap  map[string]any
 	customComponentsImpl map[string]CustomContiguousComponent
@@ -57,6 +59,8 @@ func makeComponentSet(componentSpecs map[string]any) ComponentSet {
 		stringMap:            make(map[string]string),
 		spriteMap:            make(map[string]Sprite),
 		tagListMap:           make(map[string]TagList),
+		intMapMap:            make(map[string]IntMap),
+		floatMapMap:          make(map[string]FloatMap),
 		genericMap:           make(map[string]any),
 		customComponentsMap:  make(map[string]any),
 		customComponentsImpl: make(map[string]CustomContiguousComponent),
@@ -97,6 +101,14 @@ func makeComponentSet(componentSpecs map[string]any) ComponentSet {
 		case "TagList":
 			if t, ok := value.(TagList); ok {
 				cs.tagListMap[name] = t
+			}
+		case "IntMap":
+			if m, ok := value.(map[string]int); ok {
+				cs.intMapMap[name] = NewIntMap(m)
+			}
+		case "FloatMap":
+			if m, ok := value.(map[string]float64); ok {
+				cs.floatMapMap[name] = NewFloatMap(m)
 			}
 		case "Generic":
 			cs.genericMap[name] = value
