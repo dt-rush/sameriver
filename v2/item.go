@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-type ItemSpec struct {
+type Item struct {
 	Name        string
 	DisplayName string
 	FlavourText string
@@ -15,8 +15,8 @@ type ItemSpec struct {
 	Count       int
 }
 
-func NewItem(name, displayName, flavourText string, properties map[string]int, Tags []string) *ItemSpec {
-	return &ItemSpec{
+func NewItem(name, displayName, flavourText string, properties map[string]int, Tags []string) *Item {
+	return &Item{
 		Name:        name,
 		DisplayName: displayName,
 		FlavourText: flavourText,
@@ -26,7 +26,7 @@ func NewItem(name, displayName, flavourText string, properties map[string]int, T
 	}
 }
 
-func (i *ItemSpec) copyOf() *ItemSpec {
+func (i *Item) copyOf() *Item {
 	result := *i
 	result.Properties = make(map[string]int)
 	for key := range i.Properties {
@@ -35,8 +35,8 @@ func (i *ItemSpec) copyOf() *ItemSpec {
 	return &result
 }
 
-func ItemFromArchetype(arch *ItemSpec, nameSuffix, displayName, flavourText string) ItemSpec {
-	i := ItemSpec{
+func ItemFromArchetype(arch *Item, nameSuffix, displayName, flavourText string) Item {
+	i := Item{
 		Name:        fmt.Sprintf("%s-%s", arch.Name, nameSuffix),
 		DisplayName: displayName,
 		FlavourText: flavourText,
@@ -51,7 +51,7 @@ func ItemFromArchetype(arch *ItemSpec, nameSuffix, displayName, flavourText stri
 	return i
 }
 
-func (i *ItemSpec) PropertiesForDisplay() []string {
+func (i *Item) PropertiesForDisplay() []string {
 	result := make([]string, 0)
 	for k, v := range i.Properties {
 		var displayStr string
@@ -66,13 +66,13 @@ func (i *ItemSpec) PropertiesForDisplay() []string {
 	return result
 }
 
-func (i *ItemSpec) AddTags(Tags ...string) {
+func (i *Item) AddTags(Tags ...string) {
 	for _, t := range Tags {
 		i.Tags = append(i.Tags, t)
 	}
 }
 
-func (i *ItemSpec) HasTag(tag string) bool {
+func (i *Item) HasTag(tag string) bool {
 	for _, t := range i.Tags {
 		if t == tag {
 			return true
@@ -81,7 +81,7 @@ func (i *ItemSpec) HasTag(tag string) bool {
 	return false
 }
 
-func (i *ItemSpec) String() string {
+func (i *Item) String() string {
 	b, _ := json.MarshalIndent(i, "", "\t")
 	return string(b)
 }

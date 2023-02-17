@@ -3,18 +3,18 @@ package sameriver
 type InventorySystem struct {
 	w                 *World
 	inventoryEntities *UpdatedEntityList
-	archetypes        map[string]ItemSpec
+	archetypes        map[string]Item
 }
 
 func NewInventorySystem() *InventorySystem {
 	return &InventorySystem{}
 }
 
-func (i *InventorySystem) RegisterArchetype(arch ItemSpec) {
+func (i *InventorySystem) RegisterArchetype(arch Item) {
 	i.archetypes[arch.Name] = arch
 }
 
-func (i *InventorySystem) GetArchetype(name string) ItemSpec {
+func (i *InventorySystem) GetArchetype(name string) Item {
 	return i.archetypes[name]
 }
 
