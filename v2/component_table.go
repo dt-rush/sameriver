@@ -16,6 +16,8 @@ var COMPONENT_KINDS = []string{
 	"String",
 	"Sprite",
 	"TagList",
+	"IntMap",
+	"FloatMap",
 	"Generic",
 	"Custom",
 }
@@ -30,15 +32,17 @@ type ComponentTable struct {
 	kinds   map[string]string
 
 	// data storage
-	vec2DMap   map[string][]Vec2D
-	boolMap    map[string][]bool
-	intMap     map[string][]int
-	float64Map map[string][]float64
-	stringMap  map[string][]string
-	spriteMap  map[string][]Sprite
-	tagListMap map[string][]TagList
-	genericMap map[string][]interface{}
-	cccMap     map[string]CustomContiguousComponent
+	vec2DMap    map[string][]Vec2D
+	boolMap     map[string][]bool
+	intMap      map[string][]int
+	float64Map  map[string][]float64
+	stringMap   map[string][]string
+	spriteMap   map[string][]Sprite
+	tagListMap  map[string][]TagList
+	intMapMap   map[string][]IntMap
+	floatMapMap map[string][]FloatMap
+	genericMap  map[string][]interface{}
+	cccMap      map[string]CustomContiguousComponent
 }
 
 func NewComponentTable() *ComponentTable {
@@ -55,6 +59,8 @@ func NewComponentTable() *ComponentTable {
 	ct.stringMap = make(map[string][]string)
 	ct.spriteMap = make(map[string][]Sprite)
 	ct.tagListMap = make(map[string][]TagList)
+	ct.intMapMap = make(map[string][]IntMap)
+	ct.floatMapMap = make(map[string][]FloatMap)
 	ct.genericMap = make(map[string][]interface{})
 	ct.cccMap = make(map[string]CustomContiguousComponent)
 	return ct
@@ -119,6 +125,12 @@ func (ct *ComponentTable) AddComponent(spec string) {
 	case "TagList":
 		ct.tagListMap[name] = make([]TagList, MAX_ENTITIES, MAX_ENTITIES)
 		ct.kinds[name] = "TagList"
+	case "IntMap":
+		ct.intMapMap[name] = make([]IntMap, MAX_ENTITIES, MAX_ENTITIES)
+		ct.kinds[name] = "IntMap"
+	case "FloatMap":
+		ct.floatMapMap[name] = make([]FloatMap, MAX_ENTITIES, MAX_ENTITIES)
+		ct.kinds[name] = "FloatMap"
 	case "Generic":
 		ct.genericMap[name] = make([]interface{}, MAX_ENTITIES, MAX_ENTITIES)
 		ct.kinds[name] = "Generic"
@@ -174,6 +186,16 @@ func (ct *ComponentTable) AssertValidComponentSet(cs ComponentSet) {
 			panic("%s not found in tagListMap")
 		}
 	}
+	for name, _ := range cs.intMapMap {
+		if _, ok := ct.intMapMap[name]; !ok {
+			panic("%s not found in intMapMap")
+		}
+	}
+	for name, _ := range cs.floatMapMap {
+		if _, ok := ct.floatMapMap[name]; !ok {
+			panic("%s not found in floatMapMap")
+		}
+	}
 	for name, _ := range cs.genericMap {
 		if _, ok := ct.genericMap[name]; !ok {
 			panic("%s not found in genericMap")
@@ -208,6 +230,12 @@ func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs ComponentSet) {
 	}
 	for name, t := range cs.tagListMap {
 		ct.tagListMap[name][e.ID] = t
+	}
+	for name, m := range cs.intMapMap {
+		ct.intMapMap[name][e.ID] = m
+	}
+	for name, m := range cs.floatMapMap {
+		ct.floatMapMap[name][e.ID] = m
 	}
 	for name, x := range cs.genericMap {
 		ct.genericMap[name][e.ID] = x
@@ -274,8 +302,17 @@ func (e *Entity) GetSprite(name string) *Sprite {
 func (e *Entity) GetTagList(name string) *TagList {
 	return &e.World.em.components.tagListMap[name][e.ID]
 }
-func (e *Entity) GetGenericComponent(name string) *interface{} {
-	return &e.World.em.components.genericMap[name][e.ID]
+func (e *Entity) GetIntMap(name string) *IntMap {
+	return &e.World.em.components.intMapMap[name][e.ID]
+}
+func (e *Entity) GetFloatMap(name string) *FloatMap {
+	return &e.World.em.components.floatMapMap[name][e.ID]
+}
+func (e *Entity) GetGeneric(name string) interface{} {
+	return e.World.em.components.genericMap[name][e.ID]
+}
+func (e *Entity) SetGeneric(name string, val interface{}) {
+	e.World.em.components.genericMap[name][e.ID] = val
 }
 func (e *Entity) GetVal(name string) interface{} {
 	kind := e.World.em.components.kinds[name]
@@ -294,6 +331,10 @@ func (e *Entity) GetVal(name string) interface{} {
 		return &e.World.em.components.spriteMap[name][e.ID]
 	case "TagList":
 		return &e.World.em.components.tagListMap[name][e.ID]
+	case "IntMap":
+		return e.World.em.components.intMapMap[name][e.ID]
+	case "FloatMap":
+		return e.World.em.components.floatMapMap[name][e.ID]
 	case "Generic":
 		return &e.World.em.components.genericMap[name][e.ID]
 	case "Custom":
