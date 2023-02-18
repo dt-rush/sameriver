@@ -50,7 +50,7 @@ func NewWorld(width int, height int) *World {
 		systems:       make(map[string]System),
 		systemsIDs:    make(map[System]int),
 		worldLogics:   make(map[string]*LogicUnit),
-		funcs:         NewFuncSet(),
+		funcs:         NewFuncSet(nil),
 		blackboards:   make(map[string]*Blackboard),
 		runtimeSharer: NewRuntimeLimitSharer(),
 	}

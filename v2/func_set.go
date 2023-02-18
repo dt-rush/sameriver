@@ -1,16 +1,19 @@
 package sameriver
 
 type FuncSet struct {
-	funcs map[string](func(interface{}) interface{})
+	funcs map[string](func(params any) any)
 }
 
-func NewFuncSet() *FuncSet {
+func NewFuncSet(funcs map[string](func(params any) any)) *FuncSet {
 	fs := &FuncSet{}
-	fs.funcs = make(map[string](func(interface{}) interface{}))
+	if funcs == nil {
+		funcs = make(map[string](func(params any) any))
+	}
+	fs.funcs = funcs
 	return fs
 }
 
-func (fs *FuncSet) Add(name string, f func(interface{}) interface{}) {
+func (fs *FuncSet) Add(name string, f func(params any) any) {
 	fs.funcs[name] = f
 }
 

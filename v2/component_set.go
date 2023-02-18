@@ -9,25 +9,25 @@ type ComponentSet struct {
 	// names of all components given values in this set
 	names map[string]bool
 	// data storage
-	vec2DMap   map[string]Vec2D
-	boolMap    map[string]bool
-	intMap     map[string]int
-	float64Map map[string]float64
-	stringMap  map[string]string
-	spriteMap  map[string]Sprite
-	tagListMap map[string]TagList
-	genericMap map[string]interface{}
-	cccMap     map[string]interface{}
-	cccs       map[string]CustomContiguousComponent
+	vec2DMap             map[string]Vec2D
+	boolMap              map[string]bool
+	intMap               map[string]int
+	float64Map           map[string]float64
+	stringMap            map[string]string
+	spriteMap            map[string]Sprite
+	tagListMap           map[string]TagList
+	genericMap           map[string]any
+	customComponentsMap  map[string]any
+	customComponentsImpl map[string]CustomContiguousComponent
 }
 
-func MakeCustomComponentSet(
-	input map[string]interface{},
-	customs map[string]interface{},
-	cccs map[string]CustomContiguousComponent) ComponentSet {
+func makeCustomComponentSet(
+	componentSpecs map[string]any,
+	customComponentSpecs map[string]any,
+	customComponentsImpl map[string]CustomContiguousComponent) ComponentSet {
 
-	baseCS := MakeComponentSet(input)
-	for spec, value := range customs {
+	baseCS := makeComponentSet(componentSpecs)
+	for spec, value := range customComponentSpecs {
 		// decode spec string
 		split := strings.Split(spec, ",")
 		kind := split[0]
@@ -37,31 +37,31 @@ func MakeCustomComponentSet(
 		}
 		// take note in names map that this component name occurs
 		baseCS.names[name] = true
-		baseCS.cccMap[name] = value
+		baseCS.customComponentsMap[name] = value
 		// store the interface object itself so ComponentTable.ApplyComponentSet()
 		// can call its ApplyToEntity() function to set the value
-		baseCS.cccs[name] = cccs[name]
+		baseCS.customComponentsImpl[name] = customComponentsImpl[name]
 	}
 	return baseCS
 }
 
-// takes as input a map whose keys are components specified by {kind},{name}
-// and whose values are interface{} for the value
-func MakeComponentSet(input map[string]interface{}) ComponentSet {
+// takes as componentSpecs a map whose keys are components specified by {kind},{name}
+// and whose values are any for the value
+func makeComponentSet(componentSpecs map[string]any) ComponentSet {
 	cs := ComponentSet{
-		names:      make(map[string]bool),
-		vec2DMap:   make(map[string]Vec2D),
-		boolMap:    make(map[string]bool),
-		intMap:     make(map[string]int),
-		float64Map: make(map[string]float64),
-		stringMap:  make(map[string]string),
-		spriteMap:  make(map[string]Sprite),
-		tagListMap: make(map[string]TagList),
-		genericMap: make(map[string]interface{}),
-		cccMap:     make(map[string]interface{}),
-		cccs:       make(map[string]CustomContiguousComponent),
+		names:                make(map[string]bool),
+		vec2DMap:             make(map[string]Vec2D),
+		boolMap:              make(map[string]bool),
+		intMap:               make(map[string]int),
+		float64Map:           make(map[string]float64),
+		stringMap:            make(map[string]string),
+		spriteMap:            make(map[string]Sprite),
+		tagListMap:           make(map[string]TagList),
+		genericMap:           make(map[string]any),
+		customComponentsMap:  make(map[string]any),
+		customComponentsImpl: make(map[string]CustomContiguousComponent),
 	}
-	for spec, value := range input {
+	for spec, value := range componentSpecs {
 		// decode spec string
 		split := strings.Split(spec, ",")
 		kind := split[0]

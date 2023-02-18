@@ -179,7 +179,7 @@ func (ct *ComponentTable) AssertValidComponentSet(cs ComponentSet) {
 			panic("%s not found in genericMap")
 		}
 	}
-	for name, _ := range cs.cccMap {
+	for name, _ := range cs.customComponentsMap {
 		if _, ok := ct.cccMap[name]; !ok {
 			panic("%s not found in cccMap")
 		}
@@ -212,8 +212,8 @@ func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs ComponentSet) {
 	for name, x := range cs.genericMap {
 		ct.genericMap[name][e.ID] = x
 	}
-	for name, x := range cs.cccMap {
-		cs.cccs[name].Set(e, x)
+	for name, x := range cs.customComponentsMap {
+		cs.customComponentsImpl[name].Set(e, x)
 	}
 }
 

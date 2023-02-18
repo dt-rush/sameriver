@@ -20,7 +20,7 @@ func TestBlackboardWorldEntities(t *testing.T) {
 	}
 
 	spawnVillager := func(rolePreference string) {
-		e, _ := testingSpawnSimple(w)
+		e := testingSpawnSimple(w)
 
 		var villageEvents *EventChannel
 
@@ -63,7 +63,7 @@ func TestBlackboardWorldEntities(t *testing.T) {
 			selectRole(randomRole)
 		}
 
-		e.AddLogic("village-blackboard", func(dt_ms float64) {
+		e.AddLogic("village-blackboard", func(e *Entity, dt_ms float64) {
 			// subscribe to blackboard events
 			if villageEvents == nil {
 				villageEvents = bb.Events.Subscribe(SimpleEventFilter("village-events"))

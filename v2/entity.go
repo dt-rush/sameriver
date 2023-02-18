@@ -36,14 +36,17 @@ func (e *Entity) makeLogicUnit(name string, F func(dt_ms float64)) *LogicUnit {
 	}
 }
 
-func (e *Entity) AddLogic(name string, F func(dt_ms float64)) *LogicUnit {
-	l := e.makeLogicUnit(name, F)
+func (e *Entity) AddLogic(name string, F func(e *Entity, dt_ms float64)) *LogicUnit {
+	closureF := func(dt_ms float64) {
+		F(e, dt_ms)
+	}
+	l := e.makeLogicUnit(name, closureF)
 	e.Logics[name] = l
 	e.World.addEntityLogic(e, l)
 	return l
 }
 
-func (e *Entity) AddLogicWithSchedule(name string, F func(dt_ms float64), period float64) *LogicUnit {
+func (e *Entity) AddLogicWithSchedule(name string, F func(e *Entity, dt_ms float64), period float64) *LogicUnit {
 	l := e.AddLogic(name, F)
 	runSchedule := utils.NewTimeAccumulator(period)
 	l.runSchedule = &runSchedule
@@ -76,14 +79,18 @@ func (e *Entity) DeactivateLogics() {
 	}
 }
 
-func (e *Entity) AddFuncs(funcs map[string](func(interface{}) interface{})) {
+func (e *Entity) AddFuncs(funcs map[string](func(e *Entity, params any) any)) {
 	for name, f := range funcs {
-		e.funcs.Add(name, f)
+		e.AddFunc(name, f)
+
 	}
 }
 
-func (e *Entity) AddFunc(name string, f func(interface{}) interface{}) {
-	e.funcs.Add(name, f)
+func (e *Entity) AddFunc(name string, f func(e *Entity, params any) any) {
+	closureF := func(params any) any {
+		return f(e, params)
+	}
+	e.funcs.Add(name, closureF)
 }
 
 func (e *Entity) RemoveFunc(name string) {
@@ -92,10 +99,6 @@ func (e *Entity) RemoveFunc(name string) {
 
 func (e *Entity) HasFunc(name string) bool {
 	return e.funcs.Has(name)
-}
-
-func (e *Entity) GetFunc(name string) func(interface{}) interface{} {
-	return e.funcs.funcs[name]
 }
 
 func (e *Entity) GetMind(name string) interface{} {

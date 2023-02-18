@@ -10,7 +10,7 @@ func TestInvalidComponentType(t *testing.T) {
 			t.Errorf("Should panic if given component type Vec7D")
 		}
 	}()
-	MakeComponentSet(map[string]interface{}{
+	makeComponentSet(map[string]interface{}{
 		"Vec7D,Position": Vec2D{0, 0},
 	})
 }
@@ -18,7 +18,7 @@ func TestInvalidComponentType(t *testing.T) {
 func TestComponentSetToBitArray(t *testing.T) {
 	w := testingWorld()
 	l := NewTagList()
-	cs := MakeComponentSet(map[string]interface{}{
+	cs := makeComponentSet(map[string]interface{}{
 		"TagList,GenericTag": &l,
 	})
 	w.em.components.BitArrayFromComponentSet(cs)
@@ -26,9 +26,9 @@ func TestComponentSetToBitArray(t *testing.T) {
 
 func TestComponentSetApply(t *testing.T) {
 	w := testingWorld()
-	e, _ := testingSpawnSimple(w)
+	e := testingSpawnSimple(w)
 	l := NewTagList()
-	cs := MakeComponentSet(map[string]interface{}{
+	cs := makeComponentSet(map[string]interface{}{
 		"TagList,GenericTag": &l,
 	})
 	w.em.components.ApplyComponentSet(e, cs)

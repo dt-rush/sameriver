@@ -14,7 +14,7 @@ func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) 
 	)
 	// spawn the colliding entities
 	testingSpawnCollision(w)
-	e, _ := testingSpawnCollision(w)
+	e := testingSpawnCollision(w)
 	// subscribe to collision events
 	ec := w.Events.Subscribe(SimpleEventFilter("collision"))
 	return w, cs, ec, e
@@ -87,11 +87,12 @@ func TestCollisionRateLimit(t *testing.T) {
 
 func TestCollisionFilter(t *testing.T) {
 	w, _, _, e := testingSetupCollision()
-	coin, _ := w.Spawn([]string{"coin"},
-		MakeComponentSet(map[string]interface{}{
+	coin := w.Spawn(map[string]any{
+		"tags": []string{"coin"},
+		"components": map[string]any{
 			"Vec2D,Position": *e.GetVec2D("Position"),
 			"Vec2D,Box":      *e.GetVec2D("Box"),
-		}))
+		}})
 	predicate := func(ev Event) bool {
 		c := ev.Data.(CollisionData)
 		return c.This == e && c.Other == coin

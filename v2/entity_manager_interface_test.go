@@ -10,10 +10,7 @@ func EntityManagerInterfaceTestSpawn(
 	em EntityManagerInterface, t *testing.T) {
 
 	pos := Vec2D{11, 11}
-	e, err := testingSpawnPosition(em, pos)
-	if err != nil {
-		t.Fatal("error on simple spawn")
-	}
+	e := testingSpawnPosition(em, pos)
 	if *e.GetVec2D("Position") != pos {
 		t.Fatal("failed to apply component data")
 	}
@@ -34,14 +31,16 @@ func EntityManagerInterfaceTestSpawn(
 func EntityManagerInterfaceTestSpawnFail(
 	em EntityManagerInterface, t *testing.T) {
 
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("did not panic (aragorn voice: are you frightened? not nearly frightened enough)")
+		}
+	}()
+
 	for i := 0; i < MAX_ENTITIES; i++ {
 		testingSpawnSimple(em)
 	}
-	_, err := testingSpawnSimple(em)
-	if err == nil {
-		t.Fatal("should have thrown error on spawnrequest when entity table " +
-			"full")
-	}
+	testingSpawnSimple(em)
 }
 
 func EntityManagerInterfaceTestQueueSpawn(
@@ -83,7 +82,7 @@ func EntityManagerInterfaceTestQueueSpawnFull(
 func EntityManagerInterfaceTestDespawn(
 	em EntityManagerInterface, t *testing.T) {
 
-	e, _ := testingSpawnSimple(em)
+	e := testingSpawnSimple(em)
 	em.Despawn(e)
 	if e.Active {
 		t.Fatal("Despawn did not deactivate entity")
@@ -96,7 +95,7 @@ func EntityManagerInterfaceTestDespawn(
 func EntityManagerInterfaceTestQueueDespawn(
 	em EntityManagerInterface, t *testing.T) {
 
-	e, _ := testingSpawnSimple(em)
+	e := testingSpawnSimple(em)
 	em.QueueDespawn(e)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
@@ -113,7 +112,7 @@ func EntityManagerInterfaceTestDespawnAll(
 
 	entities := make([]*Entity, 0)
 	for i := 0; i < 64; i++ {
-		e, _ := testingSpawnSimple(em)
+		e := testingSpawnSimple(em)
 		entities = append(entities, e)
 	}
 	for i := 0; i < 64; i++ {
@@ -135,7 +134,7 @@ func EntityManagerInterfaceTestEntityHasComponent(
 	em EntityManagerInterface, t *testing.T) {
 
 	pos := Vec2D{11, 11}
-	e, _ := testingSpawnPosition(em, pos)
+	e := testingSpawnPosition(em, pos)
 	if !em.EntityHasComponent(e, "Position") {
 		t.Fatal("failed to set or get entity component bit array")
 	}
@@ -160,24 +159,26 @@ func EntityManagerInterfaceTestSpawnUnique(
 	if !(e == nil && err != nil) {
 		t.Fatal("should return err if unique entity not found")
 	}
-	e, err = em.SpawnUnique(uniqueTag, []string{}, ComponentSet{})
-	if err != nil {
-		t.Fatal("failed to Spawn unique entity")
-	}
+	e = testingSpawnUnique(em)
+
 	eRetrieved, err := em.UniqueTaggedEntity(uniqueTag)
 	if !(eRetrieved == e && err == nil) {
 		t.Fatal("did not return unique entity")
 	}
-	_, err = em.SpawnUnique(uniqueTag, []string{}, ComponentSet{})
-	if err == nil {
-		t.Fatal("should not have been allowed to Spawn second unique entity")
-	}
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("did not panic (aragorn voice: are you frightened? not nearly frightened enough)")
+		}
+	}()
+
+	testingSpawnUnique(em)
 }
 
 func EntityManagerInterfaceTestTagUntagEntity(
 	em EntityManagerInterface, t *testing.T) {
 
-	e, _ := testingSpawnSimple(em)
+	e := testingSpawnSimple(em)
 	tag := "tag1"
 	em.TagEntity(e, tag)
 	tagged := em.UpdatedEntitiesWithTag(tag)
@@ -204,7 +205,7 @@ func EntityManagerInterfaceTestTagEntities(
 	entities := make([]*Entity, 0)
 	tag := "tag1"
 	for i := 0; i < 32; i++ {
-		e, _ := testingSpawnSimple(em)
+		e := testingSpawnSimple(em)
 		entities = append(entities, e)
 	}
 	em.TagEntities(entities, tag)
@@ -221,7 +222,7 @@ func EntityManagerInterfaceTestUntagEntities(
 	entities := make([]*Entity, 0)
 	tag := "tag1"
 	for i := 0; i < 32; i++ {
-		e, _ := testingSpawnTagged(em, tag)
+		e := testingSpawnTagged(em, tag)
 		entities = append(entities, e)
 	}
 	em.UntagEntities(entities, tag)
@@ -235,7 +236,7 @@ func EntityManagerInterfaceTestUntagEntities(
 func EntityManagerInterfaceTestDeactivateActivateEntity(
 	em EntityManagerInterface, t *testing.T) {
 
-	e, _ := testingSpawnSimple(em)
+	e := testingSpawnSimple(em)
 	tag := "tag1"
 	em.TagEntity(e, tag)
 	tagged := em.UpdatedEntitiesWithTag(tag)
@@ -330,7 +331,7 @@ func EntityManagerInterfaceTestGetCurrentEntitiesSet(
 	if !(len(em.GetCurrentEntitiesSet()) == 0) {
 		t.Fatal("initially, len(GetCurrentEntitiesSet()) should be 0")
 	}
-	e, _ := testingSpawnSimple(em)
+	e := testingSpawnSimple(em)
 	if !(len(em.GetCurrentEntitiesSet()) == 1) {
 		t.Fatal("after spawn, len(GetCurrentEntitiesSet()) should be 1")
 	}
@@ -354,7 +355,7 @@ func EntityManagerInterfaceTestString(
 func EntityManagerInterfaceTestDumpEntities(
 	em EntityManagerInterface, t *testing.T) {
 
-	e, _ := testingSpawnSimple(em)
+	e := testingSpawnSimple(em)
 	tag := "tag1"
 	em.TagEntity(e, tag)
 	s := em.DumpEntities()

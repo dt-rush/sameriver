@@ -223,7 +223,7 @@ func TestGOAPWorldStateSetModal(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 
 	ws := NewGOAPWorldState(nil)
 	axePos := Vec2D{11, 11}
@@ -294,7 +294,7 @@ func TestGOAPActionPresFulfilledCtx(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 
 	ws := NewGOAPWorldState(nil)
 	axePos := Vec2D{11, 11}
@@ -412,7 +412,7 @@ func TestGOAPPlannerBasic(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 
 	ws := NewGOAPWorldState(nil)
 
@@ -473,7 +473,7 @@ func TestGOAPPlannerBasicMultiSuccess(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 
 	ws := NewGOAPWorldState(map[string]GOAPState{
 		"bakeryHasBread":    true,
@@ -597,7 +597,7 @@ func TestGOAPPlannerBasicMultiFailure(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 
 	ws := NewGOAPWorldState(nil)
 
@@ -718,7 +718,7 @@ func TestGOAPPlannerHarder(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 
 	ws := NewGOAPWorldState(nil)
 
@@ -818,7 +818,7 @@ func TestGOAPPlannerHardest(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 
 	ws := NewGOAPWorldState(nil)
 

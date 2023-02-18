@@ -10,7 +10,7 @@ func TestPhysicsSystemMotion(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 	*e.GetVec2D("Velocity") = Vec2D{1, 1}
 	pos := *e.GetVec2D("Position")
 	// Update twice since physics system won't run the first time(needs a dt)
@@ -39,7 +39,7 @@ func TestPhysicsSystemBounds(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 	directions := []Vec2D{
 		Vec2D{100, 0},
 		Vec2D{-100, 0},
