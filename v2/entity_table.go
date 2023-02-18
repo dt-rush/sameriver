@@ -52,13 +52,8 @@ func (t *EntityTable) allocateID() (*Entity, error) {
 		ID = len(t.currentEntities)
 	}
 	entity := &Entity{
-		ID:        ID,
-		WorldID:   t.IdGen.Next(),
-		Active:    false,
-		Despawned: false,
-		Logics:    make(map[string]*LogicUnit),
-		funcs:     NewFuncSet(),
-		mind:      make(map[string]interface{}),
+		ID:      ID,
+		WorldID: t.IdGen.Next(),
 	}
 	t.currentEntities[entity] = true
 	return entity, nil

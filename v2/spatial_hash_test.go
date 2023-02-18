@@ -24,7 +24,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 	}
 	entityCells := make(map[*Entity][][2]int)
 	for posbox, cells := range testData {
-		e, _ := testingSpawnSpatial(w, posbox[0], posbox[1])
+		e := testingSpawnSpatial(w, posbox[0], posbox[1])
 		entityCells[e] = cells
 	}
 	w.Update(FRAME_DURATION_INT / 2)
@@ -88,7 +88,7 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 		[2]int{2, 1},
 		[2]int{2, 2},
 	}
-	e, _ := testingSpawnSpatial(w, pos, box)
+	e := testingSpawnSpatial(w, pos, box)
 	w.Update(FRAME_DURATION_INT / 2)
 	for _, cell := range cells {
 		inCell := false
@@ -142,7 +142,7 @@ func TestSpatialHashEntitiesWithinDistance(t *testing.T) {
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 
-	e, _ := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
+	e := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
 
 	near := make([]*Entity, 0)
 	far := make([]*Entity, 0)
@@ -153,7 +153,7 @@ func TestSpatialHashEntitiesWithinDistance(t *testing.T) {
 				spawnRadius * math.Cos(theta),
 				spawnRadius * math.Sin(theta),
 			}
-			spawned, _ := testingSpawnSpatial(w,
+			spawned := testingSpawnSpatial(w,
 				e.GetVec2D("Position").Add(offset),
 				Vec2D{5, 5})
 			if spawnRadius == 30.0 {
@@ -188,7 +188,7 @@ func TestSpatialHashEntitiesWithinDistanceApprox(t *testing.T) {
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 
-	e, _ := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
+	e := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
 
 	near := make([]*Entity, 0)
 	far := make([]*Entity, 0)
@@ -199,7 +199,7 @@ func TestSpatialHashEntitiesWithinDistanceApprox(t *testing.T) {
 				spawnRadius * math.Cos(theta),
 				spawnRadius * math.Sin(theta),
 			}
-			spawned, _ := testingSpawnSpatial(w,
+			spawned := testingSpawnSpatial(w,
 				e.GetVec2D("Position").Add(offset),
 				Vec2D{5, 5})
 			if spawnRadius == 30.0 {

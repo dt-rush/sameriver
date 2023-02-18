@@ -136,8 +136,8 @@ func TestWorldRunWorldLogicsOnly(t *testing.T) {
 func TestWorldRunEntityLogicsOnly(t *testing.T) {
 	w := testingWorld()
 	x := 0
-	e, _ := testingSpawnSimple(w)
-	e.AddLogic("incrementer", func(dt_ms float64) { x += 1 })
+	e := testingSpawnSimple(w)
+	e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
 	w.ActivateAllEntityLogics()
 	w.Update(FRAME_DURATION_INT / 2)
 	if x != 1 {
@@ -176,8 +176,8 @@ func TestWorldRemoveWorldLogic(t *testing.T) {
 func TestWorldRemoveEntityLogic(t *testing.T) {
 	w := testingWorld()
 	x := 0
-	e, _ := testingSpawnSimple(w)
-	e.AddLogic("incrementer", func(dt_ms float64) { x += 1 })
+	e := testingSpawnSimple(w)
+	e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
 	e.RemoveLogic("incrementer")
 	for i := 0; i < 32; i++ {
 		w.Update(FRAME_DURATION_INT)
@@ -244,8 +244,8 @@ func TestWorldDeativateAllWorldLogics(t *testing.T) {
 func TestWorldEntityLogicActiveDefault(t *testing.T) {
 	w := testingWorld()
 	x := 0
-	e, _ := testingSpawnSimple(w)
-	e.AddLogic("incrementer", func(dt_ms float64) { x += 1 })
+	e := testingSpawnSimple(w)
+	e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
 	w.Update(FRAME_DURATION_INT / 2)
 	if x != 1 {
 		t.Fatal("logic should have been active and run - did not")
@@ -257,8 +257,8 @@ func TestWorldActivateAllEntityLogics(t *testing.T) {
 	x := 0
 	n := 16
 	for i := 0; i < n; i++ {
-		e, _ := testingSpawnSimple(w)
-		e.AddLogic("incrementer", func(dt_ms float64) { x += 1 })
+		e := testingSpawnSimple(w)
+		e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
 	}
 	w.ActivateAllEntityLogics()
 	w.Update(FRAME_DURATION_INT / 2)
@@ -270,8 +270,8 @@ func TestWorldActivateAllEntityLogics(t *testing.T) {
 func TestWorldDeactivateEntityLogic(t *testing.T) {
 	w := testingWorld()
 	x := 0
-	e, _ := testingSpawnSimple(w)
-	e.AddLogic("incrementer", func(dt_ms float64) { x += 1 })
+	e := testingSpawnSimple(w)
+	e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
 	w.DeactivateEntityLogics(e)
 	if x != 0 {
 		t.Fatal("deactivated logic ran")
@@ -283,8 +283,8 @@ func TestWorldDeativateAllEntityLogics(t *testing.T) {
 	x := 0
 	n := 16
 	for i := 0; i < n; i++ {
-		e, _ := testingSpawnSimple(w)
-		e.AddLogic("incrementer", func(dt_ms float64) { x += 1 })
+		e := testingSpawnSimple(w)
+		e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
 	}
 	w.Update(FRAME_DURATION_INT / 2)
 	w.DeactivateAllEntityLogics()
@@ -334,7 +334,7 @@ func TestWorldPredicateEntities(t *testing.T) {
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 
-	e, _ := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
+	e := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
 	w.TagEntity(e, "tree")
 
 	near := make([]*Entity, 0)
@@ -346,7 +346,7 @@ func TestWorldPredicateEntities(t *testing.T) {
 				spawnRadius * math.Cos(theta),
 				spawnRadius * math.Sin(theta),
 			}
-			spawned, _ := testingSpawnSpatial(w,
+			spawned := testingSpawnSpatial(w,
 				e.GetVec2D("Position").Add(offset),
 				Vec2D{5, 5})
 			if int(i)%20 == 0 {

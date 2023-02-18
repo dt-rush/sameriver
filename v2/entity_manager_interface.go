@@ -3,11 +3,8 @@ package sameriver
 type EntityManagerInterface interface {
 	Update(allowance_ms float64) float64
 
-	Spawn(tags []string, components ComponentSet) (*Entity, error)
-	QueueSpawn(tags []string, components ComponentSet)
-	SpawnUnique(
-		uniqueTag string, tags []string, components ComponentSet) (*Entity, error)
-	QueueSpawnUnique(uniqueTag string, tags []string, components ComponentSet)
+	Spawn(spec map[string]any) *Entity
+	QueueSpawn(spec map[string]any)
 	Despawn(e *Entity)
 	QueueDespawn(e *Entity)
 	DespawnAll()

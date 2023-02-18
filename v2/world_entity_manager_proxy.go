@@ -1,22 +1,11 @@
 package sameriver
 
-func (w *World) Spawn(tags []string, components ComponentSet) (*Entity, error) {
-	return w.em.Spawn(tags, components)
+func (w *World) Spawn(spec map[string]any) *Entity {
+	return w.em.Spawn(spec)
 }
 
-func (w *World) QueueSpawn(tags []string, components ComponentSet) {
-	w.em.QueueSpawn(tags, components)
-}
-
-func (w *World) SpawnUnique(
-	tag string, tags []string, components ComponentSet) (*Entity, error) {
-
-	return w.em.SpawnUnique(tag, tags, components)
-}
-
-func (w *World) QueueSpawnUnique(
-	uniqueTag string, tags []string, components ComponentSet) {
-	w.em.QueueSpawnUnique(uniqueTag, tags, components)
+func (w *World) QueueSpawn(spec map[string]any) {
+	w.em.QueueSpawn(spec)
 }
 
 func (w *World) QueueDespawn(e *Entity) {

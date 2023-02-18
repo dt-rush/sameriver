@@ -1,15 +1,10 @@
 package sameriver
 
 import (
-	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 )
-
-type SpawnRequestData struct {
-	Components ComponentSet
-	Tags       []string
-	UniqueTag  string
-}
 
 // get the current number of requests in the channel and only process
 // them. More may continue to pile up. They'll get processed next time.
@@ -18,57 +13,96 @@ func (m *EntityManager) processSpawnChannel() {
 	for i := 0; i < n; i++ {
 		// get the request from the channel
 		e := <-m.spawnSubscription.C
-		req := e.Data.(SpawnRequestData)
-		_, err := m.Spawn(req.Tags, req.Components)
-		if err != nil {
-			Logger.Println(err)
-		}
+		spec := e.Data.(map[string]any)
+		m.Spawn(spec)
 	}
 }
 
-func (m *EntityManager) Spawn(tags []string,
-	components ComponentSet) (*Entity, error) {
-	return m.doSpawn("", tags, components)
+func (m *EntityManager) Spawn(spec map[string]any) *Entity {
+
+	if spec == nil {
+		spec = make(map[string]any)
+	}
+
+	var active bool
+	var uniqueTag string
+	var tags []string
+	var componentSpecs map[string]any
+	var customComponentSpecs map[string]any
+	var customComponentsImpl map[string]CustomContiguousComponent
+	var logics map[string](func(e *Entity, dt_ms float64))
+	var funcs map[string](func(e *Entity, params any) any)
+	var mind map[string]any
+
+	// type assert spec vars
+
+	if _, ok := spec["active"]; ok {
+		active = spec["active"].(bool)
+	} else {
+		active = true
+	}
+
+	if _, ok := spec["uniqueTag"]; ok {
+		uniqueTag = spec["uniqueTag"].(string)
+	} else {
+		uniqueTag = ""
+	}
+
+	if _, ok := spec["tags"]; ok {
+		tags = spec["tags"].([]string)
+	} else {
+		tags = []string{}
+	}
+
+	if _, ok := spec["components"]; ok {
+		componentSpecs = spec["components"].(map[string]any)
+	} else {
+		componentSpecs = make(map[string]any)
+	}
+	if _, ok := spec["customComponents"]; ok {
+		customComponentsImpl = spec["customComponentsImpl"].(map[string]CustomContiguousComponent)
+		customComponentSpecs = spec["customComponents"].(map[string]any)
+	} else {
+		customComponentSpecs = make(map[string]any)
+	}
+
+	if _, ok := spec["logics"]; ok {
+		logics = spec["logics"].(map[string](func(e *Entity, dt_ms float64)))
+	} else {
+		logics = make(map[string](func(e *Entity, dt_ms float64)))
+	}
+
+	if _, ok := spec["funcs"]; ok {
+		funcs = spec["funcs"].(map[string](func(e *Entity, params any) any))
+	} else {
+		funcs = make(map[string](func(e *Entity, params any) any))
+	}
+
+	if _, ok := spec["mind"]; ok {
+		mind = spec["mind"].(map[string]any)
+	} else {
+		mind = make(map[string]any)
+	}
+
+	return m.doSpawn(
+		active,
+		uniqueTag,
+		tags,
+		makeCustomComponentSet(componentSpecs, customComponentSpecs, customComponentsImpl),
+		logics,
+		funcs,
+		mind,
+	)
 }
 
-func (m *EntityManager) queueSpawn(req SpawnRequestData) {
+func (m *EntityManager) QueueSpawn(spec map[string]any) {
 	if len(m.spawnSubscription.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
 		go func() {
-			m.spawnSubscription.C <- Event{"spawn-request", req}
+			m.spawnSubscription.C <- Event{"spawn-request", spec}
 		}()
 	} else {
-		m.spawnSubscription.C <- Event{"spawn-request", req}
+		m.spawnSubscription.C <- Event{"spawn-request", spec}
 	}
-}
-
-func (m *EntityManager) QueueSpawn(tags []string, components ComponentSet) {
-	m.queueSpawn(SpawnRequestData{
-		Tags:       tags,
-		Components: components,
-	})
-}
-
-func (m *EntityManager) QueueSpawnUnique(
-	uniqueTag string, tags []string, components ComponentSet) {
-	m.queueSpawn(SpawnRequestData{
-		UniqueTag:  uniqueTag,
-		Tags:       tags,
-		Components: components,
-	})
-}
-
-func (m *EntityManager) SpawnUnique(
-	tag string, tags []string, components ComponentSet) (*Entity, error) {
-
-	if _, ok := m.uniqueEntities[tag]; ok {
-		return nil, errors.New(fmt.Sprintf("requested to spawn unique "+
-			"entity for %s, but %s already exists", tag, tag))
-	}
-	e, err := m.doSpawn(tag, tags, components)
-	if err == nil {
-		m.uniqueEntities[tag] = e
-	}
-	return e, err
 }
 
 // given a list of components, spawn an entity with the default values
@@ -76,20 +110,21 @@ func (m *EntityManager) SpawnUnique(
 // token back)
 
 func (m *EntityManager) doSpawn(
-	uniqueTag string, tags []string, components ComponentSet) (
-	*Entity, error) {
-
-	// used if spawn is impossible for various reasons
-	var fail = func(msg string) (*Entity, error) {
-		return nil, errors.New(msg)
-	}
+	active bool,
+	uniqueTag string,
+	tags []string,
+	components ComponentSet,
+	logics map[string](func(e *Entity, dt_ms float64)),
+	funcs map[string](func(e *Entity, params any) any),
+	mind map[string]any,
+) *Entity {
 
 	// get an ID for the entity
 	e, err := m.entityTable.allocateID()
 	if err != nil {
-		errorMsg := fmt.Sprintf("⚠ Error in allocateID(): %s. Will not spawn "+
+		errorMsg := fmt.Sprintf("⚠ Error in allocateID() (probably reached MAX_ENTITIES): %s. Will not spawn "+
 			"entity with tags: %v\n", err, tags)
-		return fail(errorMsg)
+		panic(errorMsg)
 	}
 	e.World = m.w
 	// add the entity to the list of current entities
@@ -102,10 +137,44 @@ func (m *EntityManager) doSpawn(
 	m.TagEntity(e, tags...)
 	// apply the unique tag if provided
 	if uniqueTag != "" {
+		if _, ok := m.uniqueEntities[uniqueTag]; ok {
+			errorMsg := fmt.Sprintf("requested to spawn unique "+
+				"entity for %s, but %s already exists", uniqueTag, uniqueTag)
+			panic(errorMsg)
+		}
 		m.TagEntity(e, uniqueTag)
+		m.uniqueEntities[uniqueTag] = e
 	}
+	// add logics
+	e.Logics = make(map[string]*LogicUnit)
+	for name, f := range logics {
+		split := strings.Split(name, ",")
+		if len(split) == 1 {
+			e.AddLogic(name, f)
+		} else if len(split) == 2 {
+			fName := split[0]
+			period, err := strconv.Atoi(split[1])
+			if err != nil {
+				panic(err)
+			}
+			e.AddLogicWithSchedule(fName, f, float64(period))
+		} else {
+			panic("malformed logic name! wants <name> or <name>,<ms_schedule>")
+		}
+	}
+	// create funcset
+	closureFuncs := make(map[string](func(params any) any))
+	for name, f := range funcs {
+		closureF := func(params any) any {
+			return f(e, params)
+		}
+		closureFuncs[name] = closureF
+	}
+	e.funcs = NewFuncSet(closureFuncs)
+	// add mind
+	e.mind = mind
 	// set entity active and notify entity is active
-	m.setActiveState(e, true)
+	m.setActiveState(e, active)
 	// return Entity
-	return e, nil
+	return e
 }
