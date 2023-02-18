@@ -208,7 +208,7 @@ func (ct *ComponentTable) AssertValidComponentSet(cs ComponentSet) {
 	}
 }
 
-func (ct *ComponentTable) ApplyComponentSet(e *Entity, cs ComponentSet) {
+func (ct *ComponentTable) applyComponentSet(e *Entity, cs ComponentSet) {
 	ct.AssertValidComponentSet(cs)
 	for name, v := range cs.vec2DMap {
 		ct.vec2DMap[name][e.ID] = v

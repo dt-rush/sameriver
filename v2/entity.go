@@ -116,7 +116,7 @@ func EntitySliceToString(entities []*Entity) string {
 	var buf bytes.Buffer
 	buf.WriteString("[")
 	for i, e := range entities {
-		buf.WriteString(fmt.Sprintf("%d", e.ID))
+		buf.WriteString(fmt.Sprintf("(%d-%s)", e.ID, e.GetTagList("Generic").ToSlice()))
 		if i != len(entities)-1 {
 			buf.WriteString(", ")
 		}

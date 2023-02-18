@@ -132,7 +132,7 @@ func (m *EntityManager) doSpawn(
 	// set the bitarray for this entity
 	e.ComponentBitArray = m.components.BitArrayFromComponentSet(components)
 	// copy the data inNto the component storage for each component
-	m.components.ApplyComponentSet(e, components)
+	m.components.applyComponentSet(e, components)
 	// create (if doesn't exist) entitiesWithTag lists for each tag
 	m.TagEntity(e, tags...)
 	// apply the unique tag if provided
