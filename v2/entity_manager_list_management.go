@@ -1,5 +1,9 @@
 package sameriver
 
+import (
+	"strings"
+)
+
 // Get a list of entities which will be updated whenever an entity becomes
 // active / inactive
 func (m *EntityManager) GetUpdatedEntityList(q EntityFilter) *UpdatedEntityList {
@@ -22,6 +26,14 @@ func (m *EntityManager) GetUpdatedEntityListByName(
 	} else {
 		return nil
 	}
+}
+
+func (m *EntityManager) GetUpdatedEntityListByComponentNames(names []string) *UpdatedEntityList {
+	name := strings.Join(names, ",")
+	return m.GetSortedUpdatedEntityList(
+		EntityFilterFromComponentBitArray(
+			name,
+			m.components.BitArrayFromNames(names)))
 }
 
 func (m *EntityManager) getUpdatedEntityList(

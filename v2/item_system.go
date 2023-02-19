@@ -10,14 +10,36 @@ import (
 
 type ItemSystem struct {
 	w            *World
+	spriteSystem *SpriteSystem `sameriver-system-dependency:"optional"`
+
 	ItemEntities *UpdatedEntityList
 	Archetypes   map[string]*ItemArchetype
+
+	// whether we will spawn item entities
+	spawn bool
+	// whether the spawned item entities have a sprite
+	sprite bool
+	// default box for spawned item entities
+	defaultEntityBox Vec2D
 }
 
-func NewItemSystem() *ItemSystem {
-	return &ItemSystem{
+func NewItemSystem(config map[string]any) *ItemSystem {
+	i := &ItemSystem{
 		Archetypes: make(map[string]*ItemArchetype),
 	}
+
+	if _, ok := config["spawn"]; ok {
+		i.spawn = config["spawn"].(bool)
+		if _, ok := config["defaultEntityBox"]; ok {
+			i.defaultEntityBox = config["defaultEntityBox"].(Vec2D)
+		}
+	}
+
+	if _, ok := config["sprite"]; ok {
+		i.sprite = config["sprite"].(bool)
+	}
+
+	return i
 }
 
 func (i *ItemSystem) registerArchetype(arch *ItemArchetype) {
@@ -29,6 +51,7 @@ func (i *ItemSystem) CreateArchetype(spec map[string]any) {
 	var name, displayName, flavourText string
 	var properties map[string]int
 	var tags []string
+	var entity map[string]any
 
 	if _, ok := spec["name"]; ok {
 		name = spec["name"].(string)
@@ -51,15 +74,20 @@ func (i *ItemSystem) CreateArchetype(spec map[string]any) {
 	if _, ok := spec["tags"]; ok {
 		tags = spec["tags"].([]string)
 	}
+	if _, ok := spec["entity"]; ok {
+		entity = spec["entity"].(map[string]any)
+	}
 
 	tagList := NewTagList()
 	tagList.Add(tags...)
+
 	a := &ItemArchetype{
 		Name:        name,
 		DisplayName: displayName,
 		FlavourText: flavourText,
 		Properties:  properties,
 		Tags:        tagList,
+		Entity:      entity,
 	}
 	i.registerArchetype(a)
 }
@@ -69,6 +97,7 @@ func (i *ItemSystem) CreateSubArchetype(spec map[string]any) {
 	var name, displayName, flavourText string
 	var properties map[string]int
 	var tagDiff []string
+	var entity map[string]any
 
 	if _, ok := spec["parent"]; ok {
 		parent = spec["parent"].(string)
@@ -101,6 +130,9 @@ func (i *ItemSystem) CreateSubArchetype(spec map[string]any) {
 	if _, ok := spec["tagDiff"]; ok {
 		tagDiff = spec["tagDiff"].([]string)
 	}
+	if _, ok := spec["entity"]; ok {
+		entity = spec["entity"].(map[string]any)
+	}
 
 	a := &ItemArchetype{
 		Name:        name,
@@ -127,6 +159,14 @@ func (i *ItemSystem) CreateSubArchetype(spec map[string]any) {
 		}
 	}
 	a.Tags = tags
+	// copy parent entity and then shadow with spec entity
+	a.Entity = make(map[string]any)
+	for k, v := range i.Archetypes[parent].Entity {
+		a.Entity[k] = v
+	}
+	for k, v := range entity {
+		a.Entity[k] = v
+	}
 
 	i.registerArchetype(a)
 }
@@ -178,6 +218,37 @@ func (i *ItemSystem) CreateItem(spec map[string]any) *Item {
 	}
 }
 
+func (i *ItemSystem) CreateItemSimple(archetype string) *Item {
+	return i.CreateItem(map[string]any{
+		"archetype": archetype,
+	})
+}
+
+func (i *ItemSystem) SpawnItemEntity(pos Vec2D, item *Item) *Entity {
+	entityBox := i.defaultEntityBox
+	arch := item.GetArchetype()
+	if _, ok := arch.Entity["box"]; ok {
+		box := arch.Entity["box"].([2]float64)
+		entityBox = Vec2D{box[0], box[1]}
+	}
+	components := map[string]any{
+		"Vec2D,Position": pos,
+		"Vec2D,Box":      entityBox,
+		"Generic,Item":   item,
+	}
+	if i.sprite {
+		if i.spriteSystem == nil {
+			panic("Trying to create entity with sprite=true while spriteSystem was not registered")
+		}
+		components["Sprite,Sprite"] = i.spriteSystem.GetSprite(arch.Entity["sprite"].(string))
+	}
+
+	return i.w.Spawn(map[string]any{
+		"components": components,
+		"tags":       []string{"item"},
+	})
+}
+
 func (i *ItemSystem) LoadArchetypesFile(filename string) {
 	Logger.Printf("Loading item archetypes from %s...", filename)
 	jsonFile, err := os.Open(filename)
@@ -226,6 +297,22 @@ func (i *ItemSystem) LoadArchetypesJSON(jsonStr []byte) {
 			json.Unmarshal(*jsonSpec["tags"], &tags)
 			spec["tags"] = tags
 		}
+		if _, ok := jsonSpec["entity"]; ok {
+			entity := make(map[string]any)
+			var entityMap map[string]*json.RawMessage
+			json.Unmarshal(*jsonSpec["entity"], &entityMap)
+			if _, ok := entityMap["sprite"]; ok {
+				var sprite string
+				json.Unmarshal(*entityMap["sprite"], &sprite)
+				entity["sprite"] = sprite
+			}
+			if _, ok := entityMap["box"]; ok {
+				var box [2]float64
+				json.Unmarshal(*entityMap["box"], &box)
+				entity["box"] = box
+			}
+			spec["entity"] = entity
+		}
 		i.CreateArchetype(spec)
 	}
 }
@@ -233,7 +320,16 @@ func (i *ItemSystem) LoadArchetypesJSON(jsonStr []byte) {
 // System funcs
 
 func (i *ItemSystem) GetComponentDeps() []string {
-	return []string{"Bool, Item"}
+	deps := []string{}
+	if i.spawn {
+		deps = append(deps, "Generic,Item")
+		deps = append(deps, "Vec2D,Position")
+		deps = append(deps, "Vec2D,Box")
+	}
+	if i.sprite {
+		deps = append(deps, "Sprite,Sprite")
+	}
+	return deps
 }
 
 func (i *ItemSystem) LinkWorld(w *World) {

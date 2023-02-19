@@ -10,6 +10,7 @@ type ItemArchetype struct {
 	FlavourText string
 	Properties  map[string]int
 	Tags        TagList
+	Entity      map[string]any
 }
 
 func (i *ItemArchetype) copyOf() *ItemArchetype {

@@ -23,6 +23,7 @@ type Item struct {
 
 func (i *Item) copyOf() *Item {
 	c := &Item{
+		sys:        i.sys,
 		Archetype:  i.Archetype,
 		Properties: make(map[string]int),
 		Tags:       i.Tags.CopyOf(),

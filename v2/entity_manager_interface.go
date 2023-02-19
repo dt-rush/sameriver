@@ -28,6 +28,7 @@ type EntityManagerInterface interface {
 	GetUpdatedEntityList(q EntityFilter) *UpdatedEntityList
 	GetSortedUpdatedEntityList(q EntityFilter) *UpdatedEntityList
 	GetUpdatedEntityListByName(name string) *UpdatedEntityList
+	GetUpdatedEntityListByComponentNames(names []string) *UpdatedEntityList
 
 	String() string
 	DumpEntities() string

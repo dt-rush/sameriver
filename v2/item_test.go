@@ -1,10 +1,16 @@
 package sameriver
 
-import "testing"
+import (
+	"time"
+
+	"github.com/veandco/go-sdl2/sdl"
+
+	"testing"
+)
 
 func TestItemFromArchetype(t *testing.T) {
 	w := testingWorld()
-	i := NewItemSystem()
+	i := NewItemSystem(nil)
 	w.RegisterSystems(i)
 
 	i.CreateArchetype(map[string]any{
@@ -50,10 +56,64 @@ func TestItemFromArchetype(t *testing.T) {
 }
 
 func TestItemSystemLoadArchetypes(t *testing.T) {
-	i := NewItemSystem()
+	i := NewItemSystem(nil)
 	i.LoadArchetypesFile("test_data/basic_archetypes.json")
 	Logger.Println(i.Archetypes)
 	if len(i.Archetypes) != 3 {
 		t.Fatal("Did not load from JSON file!")
 	}
+	coin := i.Archetypes["coin_copper"]
+	if len(coin.Entity) != 2 {
+		t.Fatal("Did not load entity map of coin_copper")
+	}
+}
+
+func TestItemSystemSpawnItemEntity(t *testing.T) {
+	w := testingWorld()
+	i := NewItemSystem(map[string]any{
+		"spawn": true,
+	})
+	w.RegisterSystems(i)
+	i.LoadArchetypesFile("test_data/basic_archetypes.json")
+	coin := i.CreateItemSimple("coin_copper")
+	coinEntity := i.SpawnItemEntity(Vec2D{10, 10}, coin)
+	Logger.Println(coinEntity)
+}
+
+func TestItemSystemSpawnItemEntitySprite(t *testing.T) {
+	skipCI(t)
+	w := testingWorld()
+	i := NewItemSystem(map[string]any{
+		"spawn":  true,
+		"sprite": true,
+	})
+	windowSpec := WindowSpec{
+		Title:      "testing game",
+		Width:      100,
+		Height:     100,
+		Fullscreen: false}
+	// in a real game, the scene Init() gets a Game object and creates a new
+	// sprite system by passing game.Renderer
+	_, renderer := CreateWindowAndRenderer(windowSpec)
+	sprites := NewSpriteSystem(renderer)
+
+	w.RegisterSystems(i, sprites)
+	i.LoadArchetypesFile("test_data/basic_archetypes.json")
+	coin := i.CreateItemSimple("coin_copper")
+	coinEntity := i.SpawnItemEntity(Vec2D{10, 10}, coin)
+	Logger.Println(coinEntity)
+	// draw the entity
+	coinPos := coinEntity.GetVec2D("Position")
+	coinBox := coinEntity.GetVec2D("Box")
+	srcRect := sdl.Rect{0, 0, int32(coinBox.X), int32(coinBox.Y)}
+	destRect := sdl.Rect{
+		int32(coinPos.X),
+		int32(coinPos.Y),
+		int32(coinPos.X + coinBox.X),
+		int32(coinPos.Y + coinBox.Y),
+	}
+	coinSprite := coinEntity.GetSprite("Sprite")
+	renderer.Copy(coinSprite.Texture, &srcRect, &destRect)
+	renderer.Present()
+	time.Sleep(200 * time.Millisecond)
 }

@@ -22,7 +22,7 @@ func (s *SteeringSystem) GetComponentDeps() []string {
 
 func (s *SteeringSystem) LinkWorld(w *World) {
 	s.w = w
-	s.movementEntities = w.em.GetUpdatedEntityList(
+	s.movementEntities = w.GetUpdatedEntityList(
 		EntityFilterFromComponentBitArray(
 			"steering",
 			w.em.components.BitArrayFromNames(

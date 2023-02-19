@@ -1,13 +1,17 @@
 [	
     {
 	"name":        "sword_iron",
+	"displayName": "iron sword",
 	"properties": {
 		"damage":      3,
 		"value":       300,
 		"degradation": 0,
 		"durability":  5
 	},
-	"tags": ["weapon"]
+	"tags": ["weapon"],
+	"entity": {
+	    "sprite": "sword_iron"
+	}
     },
     {
 	"name":        "heart_sutra",
@@ -16,7 +20,10 @@
 	"properties": {
 		"value": 10
 	},
-	"tags": ["book"]
+	"tags": ["book"],
+	"entity": {
+	    "sprite": "book"
+	}
     },
     {
 	"name":        "coin_copper",
@@ -25,6 +32,10 @@
 	"properties": {
 		"value": 2
 	},
-	"tags": ["currency"]
+	"tags": ["currency"],
+	"entity": {
+	    "sprite": "coin_copper",
+	    "box": [2, 2]
+	}
     }
 ]

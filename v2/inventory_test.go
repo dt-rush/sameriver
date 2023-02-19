@@ -6,7 +6,7 @@ import (
 
 func TestInventoryDebitCredit(t *testing.T) {
 	w := testingWorld()
-	i := NewItemSystem()
+	i := NewItemSystem(nil)
 	w.RegisterSystems(i)
 	w.RegisterComponents([]string{"Generic,Inventory"})
 	e := w.Spawn(map[string]any{
@@ -108,7 +108,7 @@ func TestInventoryDebitCredit(t *testing.T) {
 
 func TestInventoryFromListing(t *testing.T) {
 	w := testingWorld()
-	items := NewItemSystem()
+	items := NewItemSystem(nil)
 	inventories := NewInventorySystem()
 	w.RegisterSystems(items, inventories)
 
