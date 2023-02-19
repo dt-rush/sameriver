@@ -117,3 +117,25 @@ func TestItemSystemSpawnItemEntitySprite(t *testing.T) {
 	renderer.Present()
 	time.Sleep(200 * time.Millisecond)
 }
+
+func TestItemSystemDespawnItemEntity(t *testing.T) {
+	skipCI(t)
+	w := testingWorld()
+	i := NewItemSystem(map[string]any{
+		"spawn":      true,
+		"despawn_ms": 500,
+	})
+
+	w.RegisterSystems(i)
+	i.LoadArchetypesFile("test_data/basic_archetypes.json")
+	coin := i.CreateItemSimple("coin_copper")
+	coinEntity := i.SpawnItemEntity(Vec2D{10, 10}, coin)
+	Logger.Println(coinEntity)
+	// draw the entity
+	w.Update(FRAME_DURATION_INT / 2)
+	time.Sleep(600 * time.Millisecond)
+	w.Update(FRAME_DURATION_INT / 2)
+	if !coinEntity.Despawned {
+		t.Fatal("Should have despawned after time!")
+	}
+}

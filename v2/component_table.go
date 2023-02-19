@@ -4,23 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/dt-rush/sameriver/v2/utils"
 
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
-
-var COMPONENT_KINDS = []string{
-	"Vec2D",
-	"Bool",
-	"Int",
-	"Float64",
-	"String",
-	"Sprite",
-	"TagList",
-	"IntMap",
-	"FloatMap",
-	"Generic",
-	"Custom",
-}
 
 type ComponentTable struct {
 	em *EntityManager
@@ -32,17 +21,19 @@ type ComponentTable struct {
 	kinds   map[string]string
 
 	// data storage
-	vec2DMap    map[string][]Vec2D
-	boolMap     map[string][]bool
-	intMap      map[string][]int
-	float64Map  map[string][]float64
-	stringMap   map[string][]string
-	spriteMap   map[string][]Sprite
-	tagListMap  map[string][]TagList
-	intMapMap   map[string][]IntMap
-	floatMapMap map[string][]FloatMap
-	genericMap  map[string][]interface{}
-	cccMap      map[string]CustomContiguousComponent
+	vec2DMap           map[string][]Vec2D
+	boolMap            map[string][]bool
+	intMap             map[string][]int
+	float64Map         map[string][]float64
+	timeMap            map[string][]time.Time
+	timeAccumulatorMap map[string][]utils.TimeAccumulator
+	stringMap          map[string][]string
+	spriteMap          map[string][]Sprite
+	tagListMap         map[string][]TagList
+	intMapMap          map[string][]IntMap
+	floatMapMap        map[string][]FloatMap
+	genericMap         map[string][]interface{}
+	cccMap             map[string]CustomContiguousComponent
 }
 
 func NewComponentTable() *ComponentTable {
@@ -56,6 +47,8 @@ func NewComponentTable() *ComponentTable {
 	ct.boolMap = make(map[string][]bool)
 	ct.intMap = make(map[string][]int)
 	ct.float64Map = make(map[string][]float64)
+	ct.timeMap = make(map[string][]time.Time)
+	ct.timeAccumulatorMap = make(map[string][]utils.TimeAccumulator)
 	ct.stringMap = make(map[string][]string)
 	ct.spriteMap = make(map[string][]Sprite)
 	ct.tagListMap = make(map[string][]TagList)
@@ -103,40 +96,38 @@ func (ct *ComponentTable) AddComponent(spec string) {
 	}
 
 	// create table in appropriate map
+	Logger.Printf("kind: %s", kind)
 	switch kind {
 	case "Vec2D":
 		ct.vec2DMap[name] = make([]Vec2D, MAX_ENTITIES, MAX_ENTITIES)
-		ct.kinds[name] = "Vec2D"
 	case "Bool":
 		ct.boolMap[name] = make([]bool, MAX_ENTITIES, MAX_ENTITIES)
-		ct.kinds[name] = "Bool"
 	case "Int":
 		ct.intMap[name] = make([]int, MAX_ENTITIES, MAX_ENTITIES)
-		ct.kinds[name] = "Int"
 	case "Float64":
 		ct.float64Map[name] = make([]float64, MAX_ENTITIES, MAX_ENTITIES)
-		ct.kinds[name] = "Float64"
+	case "Time":
+		ct.timeMap[name] = make([]time.Time, MAX_ENTITIES, MAX_ENTITIES)
+	case "TimeAccumulator":
+		ct.timeAccumulatorMap[name] = make([]utils.TimeAccumulator, MAX_ENTITIES, MAX_ENTITIES)
 	case "String":
 		ct.stringMap[name] = make([]string, MAX_ENTITIES, MAX_ENTITIES)
-		ct.kinds[name] = "String"
 	case "Sprite":
 		ct.spriteMap[name] = make([]Sprite, MAX_ENTITIES, MAX_ENTITIES)
-		ct.kinds[name] = "Sprite"
 	case "TagList":
 		ct.tagListMap[name] = make([]TagList, MAX_ENTITIES, MAX_ENTITIES)
-		ct.kinds[name] = "TagList"
 	case "IntMap":
 		ct.intMapMap[name] = make([]IntMap, MAX_ENTITIES, MAX_ENTITIES)
-		ct.kinds[name] = "IntMap"
 	case "FloatMap":
 		ct.floatMapMap[name] = make([]FloatMap, MAX_ENTITIES, MAX_ENTITIES)
-		ct.kinds[name] = "FloatMap"
 	case "Generic":
 		ct.genericMap[name] = make([]interface{}, MAX_ENTITIES, MAX_ENTITIES)
-		ct.kinds[name] = "Generic"
 	default:
 		panic(fmt.Sprintf("added component of kind %s has no case in component_table.go", kind))
 	}
+
+	// note name
+	ct.kinds[name] = kind
 }
 
 func (ct *ComponentTable) AddCCC(custom CustomContiguousComponent) {
@@ -169,6 +160,11 @@ func (ct *ComponentTable) AssertValidComponentSet(cs ComponentSet) {
 	for name, _ := range cs.float64Map {
 		if _, ok := ct.float64Map[name]; !ok {
 			panic(fmt.Sprintf("%s not found in float64Map", name))
+		}
+	}
+	for name, _ := range cs.timeMap {
+		if _, ok := ct.timeMap[name]; !ok {
+			panic(fmt.Sprintf("%s not found in timeMap", name))
 		}
 	}
 	for name, _ := range cs.stringMap {
@@ -225,6 +221,12 @@ func (ct *ComponentTable) applyComponentSet(e *Entity, cs ComponentSet) {
 	}
 	for name, f := range cs.float64Map {
 		ct.float64Map[name][e.ID] = f
+	}
+	for name, t := range cs.timeMap {
+		ct.timeMap[name][e.ID] = t
+	}
+	for name, t := range cs.timeAccumulatorMap {
+		ct.timeAccumulatorMap[name][e.ID] = t
 	}
 	for name, s := range cs.stringMap {
 		ct.stringMap[name][e.ID] = s
@@ -300,6 +302,12 @@ func (e *Entity) GetInt(name string) *int {
 }
 func (e *Entity) GetFloat64(name string) *float64 {
 	return &e.World.em.components.float64Map[name][e.ID]
+}
+func (e *Entity) GetTime(name string) *time.Time {
+	return &e.World.em.components.timeMap[name][e.ID]
+}
+func (e *Entity) GetTimeAccumulator(name string) *utils.TimeAccumulator {
+	return &e.World.em.components.timeAccumulatorMap[name][e.ID]
 }
 func (e *Entity) GetString(name string) *string {
 	return &e.World.em.components.stringMap[name][e.ID]

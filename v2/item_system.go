@@ -6,6 +6,8 @@ import (
 
 	"encoding/json"
 	"io/ioutil"
+
+	"github.com/dt-rush/sameriver/v2/utils"
 )
 
 type ItemSystem struct {
@@ -14,6 +16,10 @@ type ItemSystem struct {
 
 	ItemEntities *UpdatedEntityList
 	Archetypes   map[string]*ItemArchetype
+
+	// how long as a time.Time item entities should last on the ground without
+	// despawning (nil if not applicable)
+	despawn_ms *float64
 
 	// whether we will spawn item entities
 	spawn bool
@@ -37,6 +43,11 @@ func NewItemSystem(config map[string]any) *ItemSystem {
 
 	if _, ok := config["sprite"]; ok {
 		i.sprite = config["sprite"].(bool)
+	}
+
+	if _, ok := config["despawn_ms"]; ok {
+		despawn_ms := float64(config["despawn_ms"].(int))
+		i.despawn_ms = &despawn_ms
 	}
 
 	return i
@@ -242,6 +253,9 @@ func (i *ItemSystem) SpawnItemEntity(pos Vec2D, item *Item) *Entity {
 		}
 		components["Sprite,Sprite"] = i.spriteSystem.GetSprite(arch.Entity["sprite"].(string))
 	}
+	if i.despawn_ms != nil {
+		components["TimeAccumulator,DespawnTimer"] = utils.NewTimeAccumulator(*i.despawn_ms)
+	}
 
 	return i.w.Spawn(map[string]any{
 		"components": components,
@@ -329,6 +343,9 @@ func (i *ItemSystem) GetComponentDeps() []string {
 	if i.sprite {
 		deps = append(deps, "Sprite,Sprite")
 	}
+	if i.despawn_ms != nil {
+		deps = append(deps, "TimeAccumulator,DespawnTimer")
+	}
 	return deps
 }
 
@@ -340,5 +357,12 @@ func (i *ItemSystem) LinkWorld(w *World) {
 }
 
 func (i *ItemSystem) Update(dt_ms float64) {
-	// nil?
+	if i.despawn_ms != nil {
+		for _, e := range i.ItemEntities.entities {
+			accum := e.GetTimeAccumulator("DespawnTimer")
+			if accum.Tick(dt_ms) {
+				i.w.Despawn(e)
+			}
+		}
+	}
 }
