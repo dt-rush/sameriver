@@ -8,7 +8,7 @@ import (
 
 type Item struct {
 	Archetype  *ItemArchetype
-	properties map[string]int
+	Properties map[string]int
 	Tags       TagList
 	Count      int
 	// used for lazy computation
@@ -23,7 +23,7 @@ type Item struct {
 func (i *Item) copyOf() *Item {
 	c := &Item{
 		Archetype:  i.Archetype,
-		properties: make(map[string]int),
+		Properties: make(map[string]int),
 		Tags:       i.Tags.CopyOf(),
 		Count:      i.Count,
 
@@ -32,20 +32,26 @@ func (i *Item) copyOf() *Item {
 		propertiesForDisplayDirty: i.propertiesForDisplayDirty,
 		propertiesForDisplay:      i.propertiesForDisplay,
 	}
-	for k, v := range i.properties {
-		c.properties[k] = v
+	for k, v := range i.Properties {
+		c.Properties[k] = v
 	}
 	return c
 }
 
+func (i *Item) StackOf(n int) *Item {
+	result := i.copyOf()
+	result.Count = n
+	return result
+}
+
 func (i *Item) SetProperty(k string, v int) {
-	i.properties[k] = v
+	i.Properties[k] = v
 	i.totalPropertiesDirty = true
 	i.propertiesForDisplayDirty = true
 }
 
 func (i *Item) GetProperty(k string) int {
-	if v, ok := i.properties[k]; ok {
+	if v, ok := i.Properties[k]; ok {
 		return v
 	} else {
 		return i.Archetype.Properties[k]
@@ -60,7 +66,7 @@ func (i *Item) GetTotalProperties() map[string]int {
 		for k, v := range i.Archetype.Properties {
 			i.totalProperties[k] = v
 		}
-		for k, v := range i.properties {
+		for k, v := range i.Properties {
 			i.totalProperties[k] = v
 		}
 		i.totalPropertiesDirty = false

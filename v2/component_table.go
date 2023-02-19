@@ -153,57 +153,57 @@ func (ct *ComponentTable) AddCCC(custom CustomContiguousComponent) {
 func (ct *ComponentTable) AssertValidComponentSet(cs ComponentSet) {
 	for name, _ := range cs.vec2DMap {
 		if _, ok := ct.vec2DMap[name]; !ok {
-			panic("%s not found in vec2DMap")
+			panic(fmt.Sprintf("%s not found in vec2DMap", name))
 		}
 	}
 	for name, _ := range cs.boolMap {
 		if _, ok := ct.boolMap[name]; !ok {
-			panic("%s not found in boolMap")
+			panic(fmt.Sprintf("%s not found in boolMap", name))
 		}
 	}
 	for name, _ := range cs.intMap {
 		if _, ok := ct.intMap[name]; !ok {
-			panic("%s not found in intMap")
+			panic(fmt.Sprintf("%s not found in intMap", name))
 		}
 	}
 	for name, _ := range cs.float64Map {
 		if _, ok := ct.float64Map[name]; !ok {
-			panic("%s not found in float64Map")
+			panic(fmt.Sprintf("%s not found in float64Map", name))
 		}
 	}
 	for name, _ := range cs.stringMap {
 		if _, ok := ct.stringMap[name]; !ok {
-			panic("%s not found in stringMap")
+			panic(fmt.Sprintf("%s not found in stringMap", name))
 		}
 	}
 	for name, _ := range cs.spriteMap {
 		if _, ok := ct.spriteMap[name]; !ok {
-			panic("%s not found in spriteMap")
+			panic(fmt.Sprintf("%s not found in spriteMap", name))
 		}
 	}
 	for name, _ := range cs.tagListMap {
 		if _, ok := ct.tagListMap[name]; !ok {
-			panic("%s not found in tagListMap")
+			panic(fmt.Sprintf("%s not found in tagListMap", name))
 		}
 	}
 	for name, _ := range cs.intMapMap {
 		if _, ok := ct.intMapMap[name]; !ok {
-			panic("%s not found in intMapMap")
+			panic(fmt.Sprintf("%s not found in intMapMap", name))
 		}
 	}
 	for name, _ := range cs.floatMapMap {
 		if _, ok := ct.floatMapMap[name]; !ok {
-			panic("%s not found in floatMapMap")
+			panic(fmt.Sprintf("%s not found in floatMapMap", name))
 		}
 	}
 	for name, _ := range cs.genericMap {
 		if _, ok := ct.genericMap[name]; !ok {
-			panic("%s not found in genericMap")
+			panic(fmt.Sprintf("%s not found in genericMap", name))
 		}
 	}
 	for name, _ := range cs.customComponentsMap {
 		if _, ok := ct.cccMap[name]; !ok {
-			panic("%s not found in cccMap")
+			panic(fmt.Sprintf("%s not found in cccMap", name))
 		}
 	}
 }

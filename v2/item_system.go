@@ -5,10 +5,9 @@ import (
 )
 
 type ItemSystem struct {
-	w                 *World
-	ItemEntities      *UpdatedEntityList
-	InventoryEntities *UpdatedEntityList
-	Archetypes        map[string]*ItemArchetype
+	w            *World
+	ItemEntities *UpdatedEntityList
+	Archetypes   map[string]*ItemArchetype
 }
 
 func NewItemSystem() *ItemSystem {
@@ -135,6 +134,9 @@ func (i *ItemSystem) CreateItem(spec map[string]any) *Item {
 	var count int
 	if _, ok := spec["archetype"]; ok {
 		arch = spec["archetype"].(string)
+		if _, ok := i.Archetypes[arch]; !ok {
+			panic(fmt.Sprintf("Trying to create item for archetype that isn't created yet: %s", arch))
+		}
 	} else {
 		panic("Must specify \"archetype\" in CreateItem()")
 	}
@@ -158,25 +160,21 @@ func (i *ItemSystem) CreateItem(spec map[string]any) *Item {
 
 	return &Item{
 		Archetype:  i.Archetypes[arch],
-		properties: properties,
+		Properties: properties,
 		Tags:       tagList,
 		Count:      count,
 	}
-
 }
 
 // System funcs
 
 func (i *ItemSystem) GetComponentDeps() []string {
-	return []string{"Generic,Inventory"}
+	return []string{"Bool, Item"}
 }
 
 func (i *ItemSystem) LinkWorld(w *World) {
 	i.w = w
-	i.InventoryEntities = w.em.GetSortedUpdatedEntityList(
-		EntityFilterFromComponentBitArray(
-			"inventory",
-			w.em.components.BitArrayFromNames([]string{"Inventory"})))
+
 	i.ItemEntities = w.em.GetSortedUpdatedEntityList(
 		EntityFilterFromTag("item"))
 }

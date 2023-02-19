@@ -10,13 +10,13 @@ type Inventory struct {
 	Items []*Item
 }
 
-func NewInventory() Inventory {
-	return Inventory{
+func NewInventory() *Inventory {
+	return &Inventory{
 		Items: make([]*Item, 0),
 	}
 }
 
-func (i *Inventory) copyOf() Inventory {
+func (i *Inventory) copyOf() *Inventory {
 	i2 := NewInventory()
 	i2.Items = make([]*Item, len(i.Items))
 	for ix, item := range i.Items {
@@ -69,29 +69,8 @@ func (i *Inventory) DebitAll(item *Item) *Item {
 	return retrieved
 }
 
-func (i *Inventory) DebitName(name string) *Item {
-	retrieved := i.NameFilter(name)[0]
-	return i.Debit(retrieved)
-}
-
-func (i *Inventory) DebitNName(name string, n int) *Item {
-	retrieved := i.NameFilter(name)[0]
-	return i.DebitN(retrieved, n)
-}
-
-func (i *Inventory) DebitAllName(name string) *Item {
-	retrieved := i.NameFilter(name)[0]
-	return i.DebitAll(retrieved)
-}
-
 func (i *Inventory) Credit(item *Item) {
-	i.Items = append(i.Items, item.copyOf())
-}
-
-func (i *Inventory) CreditN(item *Item, n int) {
-	toAppend := item.copyOf()
-	toAppend.Count *= n
-	i.Items = append(i.Items, toAppend)
+	i.Items = append(i.Items, item)
 }
 
 func (i *Inventory) Filter(predicate func(*Item) bool) []*Item {
