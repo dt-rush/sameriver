@@ -1,0 +1,30 @@
+[	
+    {
+	"name":        "sword_iron",
+	"properties": {
+		"damage":      3,
+		"value":       300,
+		"degradation": 0,
+		"durability":  5
+	},
+	"tags": ["weapon"]
+    },
+    {
+	"name":        "heart_sutra",
+	"displayName": "heart sutra",
+	"flavourText": "small copy of the heart sutra",
+	"properties": {
+		"value": 10
+	},
+	"tags": ["book"]
+    },
+    {
+	"name":        "coin_copper",
+	"displayName": "copper coin",
+	"flavourText": "copper die-cast coin with an elephant on it",
+	"properties": {
+		"value": 2
+	},
+	"tags": ["currency"]
+    }
+]

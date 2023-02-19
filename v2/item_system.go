@@ -2,6 +2,10 @@ package sameriver
 
 import (
 	"fmt"
+	"os"
+
+	"encoding/json"
+	"io/ioutil"
 )
 
 type ItemSystem struct {
@@ -163,6 +167,58 @@ func (i *ItemSystem) CreateItem(spec map[string]any) *Item {
 		Properties: properties,
 		Tags:       tagList,
 		Count:      count,
+	}
+}
+
+func (i *ItemSystem) LoadArchetypesFile(filename string) {
+	Logger.Printf("Loading item archetypes from %s...", filename)
+	jsonFile, err := os.Open(filename)
+	if err != nil {
+		panic(fmt.Sprintf("Trying to open %s - doesn't exist", filename))
+	}
+	contents, err := ioutil.ReadAll(jsonFile)
+	if err != nil {
+		panic(err)
+	}
+	i.LoadArchetypesJSON(contents)
+}
+
+func (i *ItemSystem) LoadArchetypesJSON(jsonStr []byte) {
+	var archetypes [](map[string]*json.RawMessage)
+	err := json.Unmarshal(jsonStr, &archetypes)
+	if err != nil {
+		panic(err)
+	}
+	for ix, jsonSpec := range archetypes {
+		spec := make(map[string]any)
+		if _, ok := jsonSpec["name"]; ok {
+			var name string
+			json.Unmarshal(*jsonSpec["name"], &name)
+			spec["name"] = name
+		} else {
+			panic(fmt.Sprintf("object at index %d was missing \"name\" property", ix))
+		}
+		if _, ok := jsonSpec["displayName"]; ok {
+			var displayName string
+			json.Unmarshal(*jsonSpec["displayName"], &displayName)
+			spec["displayName"] = displayName
+		}
+		if _, ok := jsonSpec["flavourText"]; ok {
+			var flavourText string
+			json.Unmarshal(*jsonSpec["flavourText"], &flavourText)
+			spec["flavourText"] = flavourText
+		}
+		if _, ok := jsonSpec["properties"]; ok {
+			var properties map[string]int
+			json.Unmarshal(*jsonSpec["properties"], &properties)
+			spec["properties"] = properties
+		}
+		if _, ok := jsonSpec["tags"]; ok {
+			var tags []string
+			json.Unmarshal(*jsonSpec["tags"], &tags)
+			spec["tags"] = tags
+		}
+		i.CreateArchetype(spec)
 	}
 }
 

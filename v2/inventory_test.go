@@ -128,7 +128,7 @@ func TestInventoryFromListing(t *testing.T) {
 	items.CreateArchetype(map[string]any{
 		"name":        "copper_coin",
 		"displayName": "copper coin",
-		"flavourText": "copour die-cast coin with an elephant on it",
+		"flavourText": "copper die-cast coin with an elephant on it",
 		"properties": map[string]int{
 			"value": 2,
 		},
@@ -140,9 +140,9 @@ func TestInventoryFromListing(t *testing.T) {
 		"displayName": "heart sutra",
 		"flavourText": "small copy of the heart sutra",
 		"properties": map[string]int{
-			"value": 2,
+			"value": 10,
 		},
-		"tags": []string{"currency"},
+		"tags": []string{"book"},
 	})
 
 	e := w.Spawn(map[string]any{

@@ -48,3 +48,12 @@ func TestItemFromArchetype(t *testing.T) {
 		t.Fatal("Did not set property!")
 	}
 }
+
+func TestItemSystemLoadArchetypes(t *testing.T) {
+	i := NewItemSystem()
+	i.LoadArchetypesFile("test_data/basic_archetypes.json")
+	Logger.Println(i.Archetypes)
+	if len(i.Archetypes) != 3 {
+		t.Fatal("Did not load from JSON file!")
+	}
+}
