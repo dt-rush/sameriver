@@ -132,22 +132,20 @@ func (i *ItemSystem) CreateSubArchetype(spec map[string]any) {
 }
 
 func (i *ItemSystem) CreateItem(spec map[string]any) *Item {
-	var arch string
+	var archetype string
 	var properties map[string]int
 	var tags []string
 	var count int
 	if _, ok := spec["archetype"]; ok {
-		arch = spec["archetype"].(string)
-		if _, ok := i.Archetypes[arch]; !ok {
-			panic(fmt.Sprintf("Trying to create item for archetype that isn't created yet: %s", arch))
+		archetype = spec["archetype"].(string)
+		if _, ok := i.Archetypes[archetype]; !ok {
+			panic(fmt.Sprintf("Trying to create item of archetype that isn't created yet: %s", archetype))
 		}
 	} else {
 		panic("Must specify \"archetype\" in CreateItem()")
 	}
 	if _, ok := spec["properties"]; ok {
 		properties = spec["properties"].(map[string]int)
-	} else {
-		properties = make(map[string]int)
 	}
 	if _, ok := spec["tags"]; ok {
 		tags = spec["tags"].([]string)
@@ -158,13 +156,23 @@ func (i *ItemSystem) CreateItem(spec map[string]any) *Item {
 		count = 1
 	}
 
+	// shadow the archetypes properties with the params properties
+	mergedProperties := make(map[string]int)
+	for k, v := range i.Archetypes[archetype].Properties {
+		mergedProperties[k] = v
+	}
+	for k, v := range properties {
+		mergedProperties[k] = v
+	}
+
 	tagList := NewTagList()
 	tagList.Add(tags...)
-	tagList.MergeIn(i.Archetypes[arch].Tags)
+	tagList.MergeIn(i.Archetypes[archetype].Tags)
 
 	return &Item{
-		Archetype:  i.Archetypes[arch],
-		Properties: properties,
+		sys:        i,
+		Archetype:  archetype,
+		Properties: mergedProperties,
 		Tags:       tagList,
 		Count:      count,
 	}

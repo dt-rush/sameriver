@@ -7,7 +7,8 @@ import (
 )
 
 type Item struct {
-	Archetype  *ItemArchetype
+	sys        *ItemSystem
+	Archetype  string
 	Properties map[string]int
 	Tags       TagList
 	Count      int
@@ -38,6 +39,10 @@ func (i *Item) copyOf() *Item {
 	return c
 }
 
+func (i *Item) GetArchetype() *ItemArchetype {
+	return i.sys.Archetypes[i.Archetype]
+}
+
 func (i *Item) StackOf(n int) *Item {
 	result := i.copyOf()
 	result.Count = n
@@ -51,11 +56,7 @@ func (i *Item) SetProperty(k string, v int) {
 }
 
 func (i *Item) GetProperty(k string) int {
-	if v, ok := i.Properties[k]; ok {
-		return v
-	} else {
-		return i.Archetype.Properties[k]
-	}
+	return i.Properties[k]
 }
 
 func (i *Item) GetTotalProperties() map[string]int {
@@ -63,7 +64,7 @@ func (i *Item) GetTotalProperties() map[string]int {
 		return i.totalProperties
 	} else {
 		i.totalProperties = make(map[string]int)
-		for k, v := range i.Archetype.Properties {
+		for k, v := range i.GetArchetype().Properties {
 			i.totalProperties[k] = v
 		}
 		for k, v := range i.Properties {

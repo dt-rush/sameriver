@@ -59,7 +59,7 @@ func TestInventoryDebitCredit(t *testing.T) {
 	swordInInv := inv.NameFilter("sword_iron")[0]
 	retrieved := inv.Debit(swordInInv)
 
-	if retrieved.Archetype.Name != "sword_iron" {
+	if retrieved.GetArchetype().Name != "sword_iron" {
 		t.Fatal("Did not retrieve debited item!")
 	}
 
