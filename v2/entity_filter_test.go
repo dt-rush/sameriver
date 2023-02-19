@@ -25,7 +25,7 @@ func TestEntityFilterFromTag(t *testing.T) {
 
 	tag := "tag1"
 	e := testingSpawnTagged(w, tag)
-	q := w.entityFilterFromTag(tag)
+	q := EntityFilterFromTag(tag)
 	if !q.Test(e) {
 		t.Fatal("Filter did not return true")
 	}

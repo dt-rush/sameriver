@@ -40,8 +40,9 @@ func makeCustomComponentSet(
 		// take note in names map that this component name occurs
 		baseCS.names[name] = true
 		baseCS.customComponentsMap[name] = value
-		// store the interface object itself so ComponentTable.ApplyComponentSet()
-		// can call its ApplyToEntity() function to set the value
+		// store the ccc implementation interface object itself so
+		// ComponentTable.applyComponentSet() can call its Set() function to
+		// set the value
 		baseCS.customComponentsImpl[name] = customComponentsImpl[name]
 	}
 	return baseCS

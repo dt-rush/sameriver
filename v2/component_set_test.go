@@ -18,9 +18,9 @@ func TestInvalidComponentType(t *testing.T) {
 func TestComponentSetToBitArray(t *testing.T) {
 	w := testingWorld()
 	l := NewTagList()
-	cs := makeComponentSet(map[string]interface{}{
-		"TagList,GenericTag": &l,
-	})
+	cs := map[string]any{
+		"TagList,GenericTags": l,
+	}
 	w.em.components.BitArrayFromComponentSet(cs)
 }
 
@@ -28,9 +28,9 @@ func TestComponentSetApply(t *testing.T) {
 	w := testingWorld()
 	e := testingSpawnSimple(w)
 	l := NewTagList()
-	cs := makeComponentSet(map[string]interface{}{
-		"TagList,GenericTag": &l,
-	})
+	cs := map[string]any{
+		"TagList,GenericTags": l,
+	}
 	w.em.components.ApplyComponentSet(e, cs)
 	if !e.ComponentBitArray.Equals(w.em.components.BitArrayFromComponentSet(cs)) {
 		t.Fatal("failed to apply componentset according to bitarray")

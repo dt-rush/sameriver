@@ -18,7 +18,7 @@ func (q EntityFilter) Test(e *Entity) bool {
 	return q.Predicate(e)
 }
 
-func (w *World) entityFilterFromTag(tag string) EntityFilter {
+func EntityFilterFromTag(tag string) EntityFilter {
 	return EntityFilter{
 		Name: tag,
 		Predicate: func(e *Entity) bool {

@@ -208,6 +208,10 @@ func (ct *ComponentTable) AssertValidComponentSet(cs ComponentSet) {
 	}
 }
 
+func (ct *ComponentTable) ApplyComponentSet(e *Entity, spec map[string]any) {
+	ct.applyComponentSet(e, makeComponentSet(spec))
+}
+
 func (ct *ComponentTable) applyComponentSet(e *Entity, cs ComponentSet) {
 	ct.AssertValidComponentSet(cs)
 	for name, v := range cs.vec2DMap {
@@ -253,7 +257,11 @@ func (ct *ComponentTable) BitArrayFromNames(names []string) bitarray.BitArray {
 	return b
 }
 
-func (ct *ComponentTable) BitArrayFromComponentSet(cs ComponentSet) bitarray.BitArray {
+func (ct *ComponentTable) BitArrayFromComponentSet(spec map[string]any) bitarray.BitArray {
+	return ct.bitArrayFromComponentSet(makeComponentSet(spec))
+}
+
+func (ct *ComponentTable) bitArrayFromComponentSet(cs ComponentSet) bitarray.BitArray {
 	b := bitarray.NewBitArray(uint64(len(ct.ixs)))
 	for name, _ := range cs.names {
 		b.SetBit(uint64(ct.ixs[name]))

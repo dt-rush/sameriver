@@ -28,7 +28,7 @@ func (i *Inventory) copyOf() Inventory {
 func (i *Inventory) ItemsForDisplay() []string {
 	result := make([]string, 0)
 	for _, item := range i.Items {
-		displayStr := fmt.Sprintf("%s x %d", item.DisplayName, item.Count)
+		displayStr := fmt.Sprintf("%s x %d", item.Archetype.DisplayName, item.Count)
 		result = append(result, displayStr)
 	}
 	sort.Strings(result)
@@ -106,7 +106,7 @@ func (i *Inventory) Filter(predicate func(*Item) bool) []*Item {
 
 func (i *Inventory) NameFilter(name string) []*Item {
 	predicate := func(i *Item) bool {
-		return i.Name == name
+		return i.Archetype.Name == name
 	}
 	return i.Filter(predicate)
 }
