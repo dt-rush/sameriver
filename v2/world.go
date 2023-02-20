@@ -188,7 +188,8 @@ func (w *World) linkSystemDependencies(s System) {
 		// for each field of the struct
 		// f would be something like sh *SpatialHashSystem, possibly with a tag
 		f := sType.Field(i)
-		if f.Tag.Get("sameriver-system-dependency") != "" {
+		tagVal := f.Tag.Get("sameriver-system-dependency")
+		if tagVal != "" {
 			// check that tagged field implements System and is a valid System
 			// implemented
 			isSystem := f.Type.Implements(systemInterface)
@@ -212,9 +213,13 @@ func (w *World) linkSystemDependencies(s System) {
 				}
 			}
 			if foundSystem == nil {
-				panic(fmt.Sprintf("%s %v of %s dependency could not be "+
-					"resolved. No system found of type %v.",
-					f.Name, f.Type, sType.Elem().Name(), f.Type))
+				if tagVal == "optional" {
+					continue
+				} else {
+					panic(fmt.Sprintf("%s %v of %s dependency could not be "+
+						"resolved. No system found of type %v.",
+						f.Name, f.Type, sType.Name(), f.Type))
+				}
 			}
 			// now that we have found the system which corresponds to the
 			// dependency, we will assign it to the place it should be

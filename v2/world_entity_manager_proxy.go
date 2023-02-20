@@ -44,6 +44,10 @@ func (w *World) GetUpdatedEntityListByName(name string) *UpdatedEntityList {
 	return w.em.GetUpdatedEntityListByName(name)
 }
 
+func (w *World) GetUpdatedEntityListByComponentNames(names []string) *UpdatedEntityList {
+	return w.em.GetUpdatedEntityListByComponentNames(names)
+}
+
 func (w *World) UniqueTaggedEntity(tag string) (*Entity, error) {
 	return w.em.UniqueTaggedEntity(tag)
 }

@@ -78,12 +78,14 @@ func TestUpdatedEntityListAccess(t *testing.T) {
 }
 
 func TestUpdatedEntityListToString(t *testing.T) {
-	list := NewUpdatedEntityList()
-	s0 := list.String()
-	list.Signal(EntitySignal{
-		ENTITY_ADD,
-		&Entity{ID: 0, Active: true, Despawned: false}})
-	s1 := list.String()
+	w := testingWorld()
+	l := w.GetUpdatedEntityList(NewEntityFilter(
+		"alwaysTrueFilter",
+		func(e *Entity) bool { return true }))
+
+	s0 := l.String()
+	w.Spawn(nil)
+	s1 := l.String()
 	if !(len(s0) < len(s1)) {
 		t.Fatal("string doesn't seem to build when entitites added")
 	}

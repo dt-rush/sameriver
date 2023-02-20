@@ -1,5 +1,9 @@
 package sameriver
 
+import (
+	"strings"
+)
+
 // Get a list of entities which will be updated whenever an entity becomes
 // active / inactive
 func (m *EntityManager) GetUpdatedEntityList(q EntityFilter) *UpdatedEntityList {
@@ -22,6 +26,14 @@ func (m *EntityManager) GetUpdatedEntityListByName(
 	} else {
 		return nil
 	}
+}
+
+func (m *EntityManager) GetUpdatedEntityListByComponentNames(names []string) *UpdatedEntityList {
+	name := strings.Join(names, ",")
+	return m.GetSortedUpdatedEntityList(
+		EntityFilterFromComponentBitArray(
+			name,
+			m.components.BitArrayFromNames(names)))
 }
 
 func (m *EntityManager) getUpdatedEntityList(
@@ -56,10 +68,6 @@ func (m *EntityManager) processBacklog(q EntityFilter, list *UpdatedEntityList) 
 // send add / remove signal to all lists according to active state of
 // entity and whether its in the list
 func (m *EntityManager) notifyActiveState(e *Entity, active bool) {
-	// TODO: possible performance improvement if when active == false
-	// we send remove to the list no matter what, since remove is idempotent
-	// and will only match those lists for which the entity did match the query
-	// already, by virtue of its being present
 	for _, list := range m.lists {
 		if list.Filter.Test(e) {
 			if active {

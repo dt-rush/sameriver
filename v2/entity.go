@@ -112,11 +112,19 @@ func (e *Entity) SetMind(name string, val interface{}) {
 	e.mind[name] = val
 }
 
+func (e *Entity) String() string {
+	return fmt.Sprintf("{id:%d, tags:%s, components:%s}",
+		e.ID,
+		e.GetTagList("GenericTags").AsSlice(),
+		e.World.em.components.BitArrayToString(e.ComponentBitArray),
+	)
+}
+
 func EntitySliceToString(entities []*Entity) string {
 	var buf bytes.Buffer
 	buf.WriteString("[")
 	for i, e := range entities {
-		buf.WriteString(fmt.Sprintf("%d", e.ID))
+		buf.WriteString(e.String())
 		if i != len(entities)-1 {
 			buf.WriteString(", ")
 		}

@@ -1,0 +1,39 @@
+[	
+    {
+	"name":        "sword_iron",
+	"displayName": "iron sword",
+	"properties": {
+		"damage":      3.2,
+		"value":       300,
+		"durability":  5
+	},
+	"entity": {
+	    "sprite": "sword_iron"
+	}
+    },
+    {
+	"name":        "heart_sutra",
+	"displayName": "heart sutra",
+	"flavourText": "small copy of the heart sutra",
+	"properties": {
+		"value": 10
+	},
+	"tags": ["book"],
+	"entity": {
+	    "sprite": "book"
+	}
+    },
+    {
+	"name":        "coin_copper",
+	"displayName": "copper coin",
+	"flavourText": "copper die-cast coin with an elephant on it",
+	"properties": {
+		"value": 2
+	},
+	"tags": ["currency"],
+	"entity": {
+	    "sprite": "coin_copper",
+	    "box": [2, 2]
+	}
+    }
+]

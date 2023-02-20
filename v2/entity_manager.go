@@ -104,7 +104,7 @@ func (m *EntityManager) UpdatedEntitiesWithTag(tag string) *UpdatedEntityList {
 func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 	if _, exists := m.entitiesWithTag[tag]; !exists {
 		m.entitiesWithTag[tag] =
-			m.GetUpdatedEntityList(m.w.entityFilterFromTag(tag))
+			m.GetUpdatedEntityList(EntityFilterFromTag(tag))
 	}
 }
 

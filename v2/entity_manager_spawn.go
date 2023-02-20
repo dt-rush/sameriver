@@ -56,14 +56,10 @@ func (m *EntityManager) Spawn(spec map[string]any) *Entity {
 
 	if _, ok := spec["components"]; ok {
 		componentSpecs = spec["components"].(map[string]any)
-	} else {
-		componentSpecs = make(map[string]any)
 	}
 	if _, ok := spec["customComponents"]; ok {
 		customComponentsImpl = spec["customComponentsImpl"].(map[string]CustomContiguousComponent)
 		customComponentSpecs = spec["customComponents"].(map[string]any)
-	} else {
-		customComponentSpecs = make(map[string]any)
 	}
 
 	if _, ok := spec["logics"]; ok {
@@ -130,9 +126,9 @@ func (m *EntityManager) doSpawn(
 	// add the entity to the list of current entities
 	m.entities[e.ID] = e
 	// set the bitarray for this entity
-	e.ComponentBitArray = m.components.BitArrayFromComponentSet(components)
+	e.ComponentBitArray = m.components.bitArrayFromComponentSet(components)
 	// copy the data inNto the component storage for each component
-	m.components.ApplyComponentSet(e, components)
+	m.components.applyComponentSet(e, components)
 	// create (if doesn't exist) entitiesWithTag lists for each tag
 	m.TagEntity(e, tags...)
 	// apply the unique tag if provided
