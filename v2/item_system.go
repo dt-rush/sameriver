@@ -10,9 +10,25 @@ import (
 	"github.com/dt-rush/sameriver/v2/utils"
 )
 
+func assureFloatMap(m any) map[string]float64 {
+	var properties map[string]float64
+	_, ok := m.(map[string]float64)
+	if !ok {
+		intProperties := m.(map[string]int)
+		properties = make(map[string]float64)
+		for k, v := range intProperties {
+			properties[k] = float64(v)
+		}
+	} else {
+		properties = m.(map[string]float64)
+	}
+	return properties
+}
+
 type ItemSystem struct {
-	w            *World
-	spriteSystem *SpriteSystem `sameriver-system-dependency:"optional"`
+	w               *World
+	inventorySystem *InventorySystem `sameriver-system-dependency:"-"`
+	spriteSystem    *SpriteSystem    `sameriver-system-dependency:"optional"`
 
 	ItemEntities *UpdatedEntityList
 	Archetypes   map[string]*ItemArchetype
@@ -20,6 +36,10 @@ type ItemSystem struct {
 	// how long as a time.Time item entities should last on the ground without
 	// despawning (nil if not applicable)
 	despawn_ms *float64
+
+	// we update Degradations every second, so we need to use an accum of smaller dt_ms
+	// values in Update()
+	degradation_accum_ms float64
 
 	// whether we will spawn item entities
 	spawn bool
@@ -60,7 +80,7 @@ func (i *ItemSystem) registerArchetype(arch *ItemArchetype) {
 func (i *ItemSystem) CreateArchetype(spec map[string]any) {
 
 	var name, displayName, flavourText string
-	var properties map[string]int
+	var properties map[string]float64
 	var tags []string
 	var entity map[string]any
 
@@ -80,7 +100,7 @@ func (i *ItemSystem) CreateArchetype(spec map[string]any) {
 		flavourText = ""
 	}
 	if _, ok := spec["properties"]; ok {
-		properties = spec["properties"].(map[string]int)
+		properties = assureFloatMap(spec["properties"])
 	}
 	if _, ok := spec["tags"]; ok {
 		tags = spec["tags"].([]string)
@@ -106,7 +126,7 @@ func (i *ItemSystem) CreateArchetype(spec map[string]any) {
 func (i *ItemSystem) CreateSubArchetype(spec map[string]any) {
 	var parent string
 	var name, displayName, flavourText string
-	var properties map[string]int
+	var properties map[string]float64
 	var tagDiff []string
 	var entity map[string]any
 
@@ -134,9 +154,7 @@ func (i *ItemSystem) CreateSubArchetype(spec map[string]any) {
 		flavourText = i.Archetypes[parent].FlavourText
 	}
 	if _, ok := spec["properties"]; ok {
-		properties = spec["properties"].(map[string]int)
-	} else {
-		properties = make(map[string]int)
+		properties = assureFloatMap(spec["properties"])
 	}
 	if _, ok := spec["tagDiff"]; ok {
 		tagDiff = spec["tagDiff"].([]string)
@@ -151,7 +169,7 @@ func (i *ItemSystem) CreateSubArchetype(spec map[string]any) {
 		FlavourText: flavourText,
 	}
 	// copy in parent arch properties
-	a.Properties = make(map[string]int)
+	a.Properties = make(map[string]float64)
 	for k, v := range i.Archetypes[parent].Properties {
 		a.Properties[k] = v
 	}
@@ -183,10 +201,11 @@ func (i *ItemSystem) CreateSubArchetype(spec map[string]any) {
 }
 
 func (i *ItemSystem) CreateItem(spec map[string]any) *Item {
+	// destructure params anymap
 	var archetype string
-	var properties map[string]int
+	var properties map[string]float64
 	var tags []string
-	var count int
+	var degradationRate float64
 	if _, ok := spec["archetype"]; ok {
 		archetype = spec["archetype"].(string)
 		if _, ok := i.Archetypes[archetype]; !ok {
@@ -196,19 +215,17 @@ func (i *ItemSystem) CreateItem(spec map[string]any) *Item {
 		panic("Must specify \"archetype\" in CreateItem()")
 	}
 	if _, ok := spec["properties"]; ok {
-		properties = spec["properties"].(map[string]int)
+		properties = assureFloatMap(spec["properties"])
 	}
 	if _, ok := spec["tags"]; ok {
 		tags = spec["tags"].([]string)
 	}
-	if _, ok := spec["count"]; ok {
-		count = spec["count"].(int)
-	} else {
-		count = 1
+	if _, ok := spec["degradationRate"]; ok {
+		degradationRate = spec["degradationRate"].(float64)
 	}
 
 	// shadow the archetypes properties with the params properties
-	mergedProperties := make(map[string]int)
+	mergedProperties := make(map[string]float64)
 	for k, v := range i.Archetypes[archetype].Properties {
 		mergedProperties[k] = v
 	}
@@ -220,17 +237,47 @@ func (i *ItemSystem) CreateItem(spec map[string]any) *Item {
 	tagList.Add(tags...)
 	tagList.MergeIn(i.Archetypes[archetype].Tags)
 
-	return &Item{
+	item := &Item{
 		sys:        i,
 		Archetype:  archetype,
 		Properties: mergedProperties,
 		Tags:       tagList,
-		Count:      count,
+		Count:      1,
 	}
+
+	if item.Tags.Has("perishable") {
+		item.degradationRate = degradationRate
+		item.Degradations = []float64{0}
+	}
+
+	item.reevaluateDisplayStr()
+
+	return item
+}
+
+func (i *ItemSystem) CreateStack(n int, spec map[string]any) *Item {
+	item := i.CreateItem(spec)
+	// make the single item a stack
+	stack := item
+	stack.Count = n
+	stack.reevaluateDisplayStr()
+	if item.Tags.Has("perishable") {
+		stack.Degradations = make([]float64, n)
+		for i, _ := range stack.Degradations {
+			stack.Degradations[i] = 0
+		}
+	}
+	return stack
 }
 
 func (i *ItemSystem) CreateItemSimple(archetype string) *Item {
 	return i.CreateItem(map[string]any{
+		"archetype": archetype,
+	})
+}
+
+func (i *ItemSystem) CreateStackSimple(n int, archetype string) *Item {
+	return i.CreateStack(n, map[string]any{
 		"archetype": archetype,
 	})
 }
@@ -242,10 +289,14 @@ func (i *ItemSystem) SpawnItemEntity(pos Vec2D, item *Item) *Entity {
 		box := arch.Entity["box"].([2]float64)
 		entityBox = Vec2D{box[0], box[1]}
 	}
+	// the item entity will have an inventory containing the item
+	// (and any unstacked rotting items)
+	inventory := NewInventory()
+	inventory.Credit(item)
 	components := map[string]any{
-		"Vec2D,Position": pos,
-		"Vec2D,Box":      entityBox,
-		"Generic,Item":   item,
+		"Vec2D,Position":    pos,
+		"Vec2D,Box":         entityBox,
+		"Generic,Inventory": inventory,
 	}
 	if i.sprite {
 		if i.spriteSystem == nil {
@@ -302,7 +353,7 @@ func (i *ItemSystem) LoadArchetypesJSON(jsonStr []byte) {
 			spec["flavourText"] = flavourText
 		}
 		if _, ok := jsonSpec["properties"]; ok {
-			var properties map[string]int
+			var properties map[string]float64
 			json.Unmarshal(*jsonSpec["properties"], &properties)
 			spec["properties"] = properties
 		}
@@ -357,6 +408,7 @@ func (i *ItemSystem) LinkWorld(w *World) {
 }
 
 func (i *ItemSystem) Update(dt_ms float64) {
+	// despawn any expired entities
 	if i.despawn_ms != nil {
 		for _, e := range i.ItemEntities.entities {
 			accum := e.GetTimeAccumulator("DespawnTimer")
@@ -365,4 +417,50 @@ func (i *ItemSystem) Update(dt_ms float64) {
 			}
 		}
 	}
+
+	// if a second or more has elapsed, update Degradations
+	i.degradation_accum_ms += dt_ms
+	if i.degradation_accum_ms > 1000 {
+		for _, e := range i.inventorySystem.InventoryEntities.entities {
+			inv := e.GetGeneric("Inventory").(*Inventory)
+			newRotStacks := make([]*Item, 0)
+			for _, s := range inv.Stacks {
+				if s.Tags.Has("perishable") {
+					// we can do this nicely since s.Degradations is always sorted
+					// (debit splits evenly along the sorted slice and credit resorts
+					// after appending)
+					var rotten bool
+					var rottenIx int
+					for ix, d := range s.Degradations {
+						/*
+							0.5 degradation per second means
+							0.5 / 1000 = 0.0005 degradation per ms
+						*/
+						d_per_ms := s.degradationRate / 1000
+						s.Degradations[ix] = d + d_per_ms*i.degradation_accum_ms
+						if s.Degradations[ix] >= 100 {
+							rotten = true
+							rottenIx = ix
+							continue
+						}
+					}
+					if rotten && !s.Tags.Has("rotten") {
+						// we use the inv interface even for debit so maybe, if you wanted
+						// to put a logger there, you'd see these as debits and credits too
+						rottenStack := inv.DebitNWithPreference(s, s.Count-rottenIx, ITEM_MOST_DEGRADED)
+						rottenStack.Tags.Add("rotten")
+						newRotStacks = append(newRotStacks, rottenStack)
+
+					}
+				}
+			}
+			for _, s := range newRotStacks {
+				// we obviously must credit this stack as its now different, and has
+				// been removed in quantity from the existing stack in inv
+				inv.Credit(s)
+			}
+		}
+		i.degradation_accum_ms = 0
+	}
+
 }

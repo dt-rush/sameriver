@@ -12,10 +12,7 @@ func NewInventorySystem() *InventorySystem {
 func (i *InventorySystem) Create(listing map[string]int) *Inventory {
 	result := NewInventory()
 	for arch, count := range listing {
-		item := i.itemSystem.CreateItem(map[string]any{
-			"archetype": arch,
-			"count":     count,
-		})
+		item := i.itemSystem.CreateStackSimple(count, arch)
 		result.Credit(item)
 	}
 	return result

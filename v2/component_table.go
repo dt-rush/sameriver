@@ -96,7 +96,6 @@ func (ct *ComponentTable) AddComponent(spec string) {
 	}
 
 	// create table in appropriate map
-	Logger.Printf("kind: %s", kind)
 	switch kind {
 	case "Vec2D":
 		ct.vec2DMap[name] = make([]Vec2D, MAX_ENTITIES, MAX_ENTITIES)

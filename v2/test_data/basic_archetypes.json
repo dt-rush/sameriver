@@ -3,7 +3,7 @@
 	"name":        "sword_iron",
 	"displayName": "iron sword",
 	"properties": {
-		"damage":      3,
+		"damage":      3.2,
 		"value":       300,
 		"degradation": 0,
 		"durability":  5

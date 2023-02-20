@@ -19,6 +19,10 @@ func NewTagList() TagList {
 	return l
 }
 
+func (l *TagList) Length() int {
+	return len(l.tags)
+}
+
 func (l *TagList) Has(tags ...string) bool {
 	ok := true
 	for _, tag := range tags {

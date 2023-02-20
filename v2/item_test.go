@@ -18,10 +18,9 @@ func TestItemFromArchetype(t *testing.T) {
 		"displayName": "iron sword",
 		"flavourText": "a good irons word, decently sharp",
 		"properties": map[string]int{
-			"damage":      3,
-			"value":       20,
-			"degradation": 0,
-			"durability":  5,
+			"damage":     3,
+			"value":      20,
+			"durability": 5,
 		},
 		"tags": []string{"weapon"},
 	})
@@ -65,6 +64,43 @@ func TestItemSystemLoadArchetypes(t *testing.T) {
 	coin := i.Archetypes["coin_copper"]
 	if len(coin.Entity) != 2 {
 		t.Fatal("Did not load entity map of coin_copper")
+	}
+}
+
+func TestItemDisplayFloats(t *testing.T) {
+	i := NewItemSystem(nil)
+	i.LoadArchetypesFile("test_data/basic_archetypes.json")
+	coin := i.CreateItemSimple("coin_copper")
+
+	var forDisplay []string
+	verify := func(expect string) bool {
+		for _, s := range forDisplay {
+			if s == expect {
+				return true
+			}
+		}
+		return false
+	}
+
+	coin.SetProperty("vanishing", 0.0005)
+	forDisplay = coin.PropertiesForDisplay()
+	Logger.Println(forDisplay)
+	if !verify("vanishing 0.0+") {
+		t.Fatal("Should display vanishing quantities as 0.0+")
+	}
+
+	coin.SetProperty("vanishing", -0.0005)
+	forDisplay = coin.PropertiesForDisplay()
+	Logger.Println(forDisplay)
+	if !verify("vanishing 0.0-") {
+		t.Fatal("Should display negative vanishing quantities as 0.0-")
+	}
+
+	coin.SetProperty("value", 2.25)
+	forDisplay = coin.PropertiesForDisplay()
+	Logger.Println(forDisplay)
+	if !verify("value 2.2") {
+		t.Fatal("Should display floats to one decimal")
 	}
 }
 
@@ -125,8 +161,8 @@ func TestItemSystemDespawnItemEntity(t *testing.T) {
 		"spawn":      true,
 		"despawn_ms": 500,
 	})
-
 	w.RegisterSystems(i)
+
 	i.LoadArchetypesFile("test_data/basic_archetypes.json")
 	coin := i.CreateItemSimple("coin_copper")
 	coinEntity := i.SpawnItemEntity(Vec2D{10, 10}, coin)
@@ -138,4 +174,61 @@ func TestItemSystemDespawnItemEntity(t *testing.T) {
 	if !coinEntity.Despawned {
 		t.Fatal("Should have despawned after time!")
 	}
+}
+
+func TestItemSystemRotting(t *testing.T) {
+	w := testingWorld()
+	i := NewItemSystem(map[string]any{
+		"spawn": true,
+	})
+	inventories := NewInventorySystem()
+	w.RegisterSystems(i, inventories)
+
+	i.LoadArchetypesFile("test_data/basic_archetypes.json")
+	perishableSutraSpec := map[string]any{
+		"archetype":       "heart_sutra",
+		"tags":            []string{"perishable"},
+		"degradationRate": 0.01,
+	}
+	book := i.CreateItem(perishableSutraSpec)
+	Logger.Println(book)
+
+	e := w.Spawn(map[string]any{
+		"components": map[string]any{
+			"Generic,Inventory": NewInventory(),
+		},
+	})
+	inv := e.GetGeneric("Inventory").(*Inventory)
+	inv.Credit(book)
+
+	Logger.Println(inv)
+
+	i.Update(100001)
+	Logger.Println(inv)
+
+	timeToRot := (100 / 0.01) * 1000
+
+	i.Update(timeToRot / 2)
+	Logger.Println(inv)
+
+	newBook := i.CreateItem(perishableSutraSpec)
+	inv.Credit(newBook)
+	Logger.Println(inv)
+
+	i.Update(timeToRot / 2)
+	Logger.Println(inv)
+	i.Update(timeToRot / 2)
+	Logger.Println(inv)
+	i.Update(timeToRot / 2)
+	Logger.Println(inv)
+	Logger.Println(inv.Stacks[0].PropertiesForDisplay())
+	i.Update(timeToRot / 2)
+	Logger.Println(inv)
+	i.Update(timeToRot / 2)
+	Logger.Println(inv)
+
+	droppedBook := i.SpawnItemEntity(Vec2D{0, 0}, i.CreateItem(perishableSutraSpec))
+	droppedBookInv := droppedBook.GetGeneric("Inventory").(*Inventory)
+	i.Update(timeToRot / 2)
+	Logger.Println(droppedBookInv)
 }
