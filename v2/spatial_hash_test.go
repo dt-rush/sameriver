@@ -56,7 +56,7 @@ func TestSpatialHashMany(t *testing.T) {
 			Vec2D{5, 5})
 	}
 	w.Update(FRAME_DURATION_INT / 2)
-	n_entities := w.em.entityTable.active
+	n_entities := len(w.GetActiveEntitiesSet())
 	seen := make(map[*Entity]bool)
 	found := 0
 	table := sh.hasher.TableCopy()

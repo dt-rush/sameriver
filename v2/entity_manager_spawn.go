@@ -116,15 +116,13 @@ func (m *EntityManager) doSpawn(
 ) *Entity {
 
 	// get an ID for the entity
-	e, err := m.entityTable.allocateID()
+	e, err := m.entityIDAllocator.allocateID()
 	if err != nil {
-		errorMsg := fmt.Sprintf("⚠ Error in allocateID() (probably reached MAX_ENTITIES): %s. Will not spawn "+
-			"entity with tags: %v\n", err, tags)
-		panic(errorMsg)
+		m.ExpandEntityTables()
+		e, _ = m.entityIDAllocator.allocateID()
 	}
+
 	e.World = m.w
-	// add the entity to the list of current entities
-	m.entities[e.ID] = e
 	// set the bitarray for this entity
 	e.ComponentBitArray = m.components.bitArrayFromComponentSet(components)
 	// copy the data inNto the component storage for each component
@@ -151,6 +149,7 @@ func (m *EntityManager) doSpawn(
 			fName := split[0]
 			period, err := strconv.Atoi(split[1])
 			if err != nil {
+				Logger.Printf("[ERROR] failed to Atoi the specified ms period of a scheduled logic (%s)", name)
 				panic(err)
 			}
 			e.AddLogicWithSchedule(fName, f, float64(period))
@@ -173,4 +172,10 @@ func (m *EntityManager) doSpawn(
 	m.setActiveState(e, active)
 	// return Entity
 	return e
+}
+
+func (m *EntityManager) ExpandEntityTables() {
+	n := len(m.entityIDAllocator.currentEntities) / 2
+	m.entityIDAllocator.expand(n)
+	m.components.expand(n)
 }

@@ -38,6 +38,17 @@ func (m *EntityManager) GetUpdatedEntityListByComponentNames(names []string) *Up
 
 func (m *EntityManager) getUpdatedEntityList(
 	q EntityFilter, sorted bool) *UpdatedEntityList {
+
+	// helper func that goes through already-existing entities to add them
+	// to the list
+	processExisting := func(q EntityFilter, list *UpdatedEntityList) {
+		for e, _ := range m.entityIDAllocator.currentEntities {
+			if q.Test(e) {
+				list.Signal(EntitySignal{ENTITY_ADD, e})
+			}
+		}
+	}
+
 	// return the list if it already exists (this is why Filter names should
 	// be unique if they expect to be unique!)
 	// TODO: document this requirement
@@ -52,17 +63,9 @@ func (m *EntityManager) getUpdatedEntityList(
 		list = NewUpdatedEntityList()
 	}
 	list.Filter = &q
-	m.processBacklog(q, list)
+	processExisting(q, list)
 	m.lists[q.Name] = list
 	return list
-}
-
-func (m *EntityManager) processBacklog(q EntityFilter, list *UpdatedEntityList) {
-	for e, _ := range m.entityTable.currentEntities {
-		if q.Test(e) {
-			list.Signal(EntitySignal{ENTITY_ADD, e})
-		}
-	}
 }
 
 // send add / remove signal to all lists according to active state of
