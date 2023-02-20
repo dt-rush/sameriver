@@ -1,5 +1,9 @@
 package sameriver
 
+func (w *World) MaxEntities() int {
+	return w.em.MaxEntities()
+}
+
 func (w *World) Components() *ComponentTable {
 	return w.em.components
 }

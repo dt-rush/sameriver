@@ -46,6 +46,10 @@ func NewEntityManager(w *World) *EntityManager {
 	return em
 }
 
+func (m *EntityManager) MaxEntities() int {
+	return m.entityIDAllocator.capacity
+}
+
 func (m *EntityManager) Components() *ComponentTable {
 	return m.components
 }

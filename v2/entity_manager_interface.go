@@ -3,6 +3,7 @@ package sameriver
 type EntityManagerInterface interface {
 	Update(allowance_ms float64) float64
 
+	MaxEntities() int
 	Components() *ComponentTable
 
 	Spawn(spec map[string]any) *Entity

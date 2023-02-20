@@ -75,3 +75,7 @@ func (s *SteeringSystem) Apply(e *Entity) {
 	*st = st.Scale(1 / *mass)
 	*v = v.Add(*st).Truncate(*maxV)
 }
+
+func (s *SteeringSystem) Expand(n int) {
+	// nil?
+}

@@ -3,6 +3,8 @@ package sameriver
 import (
 	"testing"
 	"time"
+
+	"encoding/json"
 )
 
 func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) {
@@ -110,4 +112,53 @@ func TestCollisionFilter(t *testing.T) {
 	default:
 		t.Fatal("CollisionEventFilter didn't pick up collision")
 	}
+}
+
+func TestCollisionRateLimiterArrayExpand(t *testing.T) {
+	a := NewCollisionRateLimiterArray(4, 500*time.Millisecond)
+	a.arr[0][0].CompareAndSwap(0, 1)
+	a.arr[0][1].CompareAndSwap(0, 1)
+	a.arr[0][2].CompareAndSwap(0, 1)
+	a.arr[1][0].CompareAndSwap(0, 1)
+	a.arr[1][1].CompareAndSwap(0, 1)
+	a.arr[2][0].CompareAndSwap(0, 1)
+
+	Logger.Println("before:")
+	s, _ := json.MarshalIndent(a.arr, "", "\t")
+	Logger.Println(string(s))
+
+	a.Expand(2)
+
+	Logger.Println("after:")
+	s, _ = json.MarshalIndent(a.arr, "", "\t")
+	Logger.Println(string(s))
+
+	// i, j, val
+	expect := [][3]int{
+		[3]int{0, 0, 1},
+		[3]int{0, 1, 1},
+		[3]int{0, 2, 1},
+		[3]int{0, 3, 0},
+		[3]int{0, 4, 0},
+
+		[3]int{1, 0, 1},
+		[3]int{1, 1, 1},
+		[3]int{1, 2, 0},
+		[3]int{1, 3, 0},
+
+		[3]int{2, 0, 1},
+		[3]int{2, 1, 0},
+		[3]int{2, 2, 0},
+
+		[3]int{3, 0, 0},
+		[3]int{3, 1, 0},
+
+		[3]int{4, 0, 0},
+	}
+	for _, e := range expect {
+		if a.arr[e[0]][e[1]].Load() != uint32(e[2]) {
+			t.Fatal("didn't find value in the right place after expand")
+		}
+	}
+
 }

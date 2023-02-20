@@ -23,6 +23,9 @@ type SpatialHasher struct {
 	CellSizeY float64
 	// table of cells, GridX x GridY, that holds the entities
 	Table SpatialHashTable
+	// capacity keeps track of the world's max entities
+	// so we can keep the right capacity (max entities / 4) in each grid cell
+	capacity int
 }
 
 func NewSpatialHasher(gridX, gridY int, w *World) *SpatialHasher {
@@ -31,6 +34,7 @@ func NewSpatialHasher(gridX, gridY int, w *World) *SpatialHasher {
 		GridY:     gridY,
 		CellSizeX: w.Width / float64(gridX),
 		CellSizeY: w.Height / float64(gridY),
+		capacity:  w.MaxEntities(),
 	}
 	h.Table = make([][][]*Entity, gridX)
 	// for each column (x)
@@ -38,7 +42,7 @@ func NewSpatialHasher(gridX, gridY int, w *World) *SpatialHasher {
 		h.Table[x] = make([][]*Entity, gridY)
 		// for each cell in the row (y)
 		for y := 0; y < gridY; y++ {
-			h.Table[x][y] = make([]*Entity, 0, MAX_ENTITIES/4)
+			h.Table[x][y] = make([]*Entity, 0, h.capacity/4)
 		}
 	}
 	// get spatial entities from world
@@ -229,4 +233,14 @@ func (h *SpatialHasher) String() string {
 	}
 	buffer.WriteString(fmt.Sprintf("] (using %d bytes)", size))
 	return buffer.String()
+}
+
+func (h *SpatialHasher) Expand(n int) {
+	for x := 0; x < h.GridX; x++ {
+		for y := 0; y < h.GridY; y++ {
+			newCell := make([]*Entity, 0, (h.capacity+n)/4)
+			copy(newCell, h.Table[x][y])
+			h.Table[x][y] = newCell
+		}
+	}
 }

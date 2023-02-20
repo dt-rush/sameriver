@@ -59,3 +59,7 @@ func (s *PhysicsSystem) Update(dt_ms float64) {
 		}
 	}
 }
+
+func (p *PhysicsSystem) Expand(n int) {
+	// nil?
+}
