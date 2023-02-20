@@ -11,7 +11,8 @@ import (
 func TestItemFromArchetype(t *testing.T) {
 	w := testingWorld()
 	i := NewItemSystem(nil)
-	w.RegisterSystems(i)
+	inventories := NewInventorySystem()
+	w.RegisterSystems(i, inventories)
 
 	i.CreateArchetype(map[string]any{
 		"name":        "sword_iron",
@@ -109,7 +110,8 @@ func TestItemSystemSpawnItemEntity(t *testing.T) {
 	i := NewItemSystem(map[string]any{
 		"spawn": true,
 	})
-	w.RegisterSystems(i)
+	inventories := NewInventorySystem()
+	w.RegisterSystems(i, inventories)
 	i.LoadArchetypesFile("test_data/basic_archetypes.json")
 	coin := i.CreateItemSimple("coin_copper")
 	coinEntity := i.SpawnItemEntity(Vec2D{10, 10}, coin)
@@ -123,6 +125,7 @@ func TestItemSystemSpawnItemEntitySprite(t *testing.T) {
 		"spawn":  true,
 		"sprite": true,
 	})
+	inventories := NewInventorySystem()
 	windowSpec := WindowSpec{
 		Title:      "testing game",
 		Width:      100,
@@ -133,7 +136,7 @@ func TestItemSystemSpawnItemEntitySprite(t *testing.T) {
 	_, renderer := CreateWindowAndRenderer(windowSpec)
 	sprites := NewSpriteSystem(renderer)
 
-	w.RegisterSystems(i, sprites)
+	w.RegisterSystems(i, inventories, sprites)
 	i.LoadArchetypesFile("test_data/basic_archetypes.json")
 	coin := i.CreateItemSimple("coin_copper")
 	coinEntity := i.SpawnItemEntity(Vec2D{10, 10}, coin)
@@ -161,7 +164,8 @@ func TestItemSystemDespawnItemEntity(t *testing.T) {
 		"spawn":      true,
 		"despawn_ms": 500,
 	})
-	w.RegisterSystems(i)
+	inventories := NewInventorySystem()
+	w.RegisterSystems(i, inventories)
 
 	i.LoadArchetypesFile("test_data/basic_archetypes.json")
 	coin := i.CreateItemSimple("coin_copper")

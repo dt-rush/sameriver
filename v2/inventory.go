@@ -2,6 +2,7 @@ package sameriver
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 )
@@ -61,7 +62,7 @@ func (i *Inventory) Debit(stack *Item) (result *Item) {
 	return i.DebitWithPreference(stack, ITEM_MOST_DEGRADED)
 }
 
-func (i *Inventory) DebitNWithPreference(stack *Item, n int, leastOrMostDegraded int) *Item {
+func (i *Inventory) DebitNWithPreference(n int, stack *Item, leastOrMostDegraded int) *Item {
 	if n == stack.Count {
 		i.Delete(stack)
 		return stack
@@ -70,13 +71,38 @@ func (i *Inventory) DebitNWithPreference(stack *Item, n int, leastOrMostDegraded
 	}
 }
 
-func (i *Inventory) DebitN(stack *Item, n int) *Item {
-	return i.DebitNWithPreference(stack, n, ITEM_MOST_DEGRADED)
+func (i *Inventory) DebitN(n int, stack *Item) *Item {
+	return i.DebitNWithPreference(n, stack, ITEM_MOST_DEGRADED)
 }
 
 func (i *Inventory) DebitAll(stack *Item) *Item {
 	i.Delete(stack)
 	return stack
+}
+
+func (i *Inventory) DebitByFilter(predicate func(*Item) bool) []*Item {
+	items := i.Filter(predicate)
+	for _, it := range items {
+		i.DebitAll(it)
+	}
+	return items
+}
+
+func (i *Inventory) DebitNByFilter(n int, predicate func(*Item) bool) []*Item {
+	count := i.Count(predicate)
+	if count < n {
+		panic(fmt.Sprintf("Tried to Debit %d items from inv, but only has %d", n, count))
+	}
+	stacks := make([]*Item, 0)
+	remaining := n
+	for _, it := range i.Filter(predicate) {
+		if it.Count > remaining {
+			stacks = append(stacks, i.DebitN(n, it))
+		} else {
+			stacks = append(stacks, i.DebitAll(it))
+		}
+	}
+	return stacks
 }
 
 func (i *Inventory) Credit(stack *Item) {
@@ -94,7 +120,58 @@ func (i *Inventory) Credit(stack *Item) {
 	}
 	// else we just append
 	i.Stacks = append(i.Stacks, stack)
+	// set the inv to this inv
 	stack.inv = i
+}
+
+func (i *Inventory) GetNByName(inv *Inventory, n int, name string) {
+	debited := inv.DebitNByFilter(n,
+		func(s *Item) bool { return s.GetArchetype().Name == name })
+	for _, it := range debited {
+		i.Credit(it)
+	}
+}
+
+func (i *Inventory) GetNByFilter(inv *Inventory, n int, predicate func(*Item) bool) {
+	for _, it := range inv.DebitNByFilter(n, predicate) {
+		i.Credit(it)
+	}
+}
+
+func (i *Inventory) GetAllByName(inv *Inventory, name string) {
+	for _, it := range inv.NameFilter(name) {
+		i.Credit(inv.DebitAll(it))
+	}
+}
+
+func (i *Inventory) GetAllByFilter(inv *Inventory, predicate func(*Item) bool) {
+	for _, it := range inv.Filter(predicate) {
+		i.Credit(inv.DebitAll(it))
+	}
+}
+
+func (i *Inventory) GetAll(inv *Inventory) {
+	for _, it := range inv.Stacks {
+		i.Credit(inv.DebitAll(it))
+	}
+}
+
+func (i *Inventory) CountName(name string) int {
+	n := 0
+	for _, stack := range i.NameFilter(name) {
+		n += stack.Count
+	}
+	return n
+}
+
+func (i *Inventory) Count(predicate func(*Item) bool) int {
+	n := 0
+	for _, stack := range i.Stacks {
+		if predicate(stack) {
+			n += stack.Count
+		}
+	}
+	return n
 }
 
 func (i *Inventory) Filter(predicate func(*Item) bool) []*Item {
@@ -105,6 +182,21 @@ func (i *Inventory) Filter(predicate func(*Item) bool) []*Item {
 		}
 	}
 	return results
+}
+
+func (i *Inventory) ContainsName(name string) bool {
+	return i.Contains(func(it *Item) bool {
+		return it.GetArchetype().Name == name
+	})
+}
+
+func (i *Inventory) Contains(predicate func(*Item) bool) bool {
+	for _, item := range i.Stacks {
+		if predicate(item) {
+			return true
+		}
+	}
+	return false
 }
 
 func (i *Inventory) NameFilter(name string) []*Item {

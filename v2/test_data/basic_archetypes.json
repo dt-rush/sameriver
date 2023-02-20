@@ -7,7 +7,6 @@
 		"value":       300,
 		"durability":  5
 	},
-	"tags": ["weapon"],
 	"entity": {
 	    "sprite": "sword_iron"
 	}

@@ -249,7 +249,7 @@ func (i *ItemSystem) CreateItem(spec map[string]any) *Item {
 	if _, ok := item.Properties["damage"]; ok {
 		item.Tags.Add("weapon")
 	}
-	if item.Tags.Has("perishable") {
+	if _, ok := spec["degradationRate"]; ok {
 		item.degradationRate = degradationRate
 		item.Tags.Add("degrades")
 	}
@@ -392,6 +392,52 @@ func (i *ItemSystem) LoadArchetypesJSON(jsonStr []byte) {
 	}
 }
 
+func (i *ItemSystem) UpdateDegradations(dt_ms float64) {
+	for _, e := range i.inventorySystem.InventoryEntities.entities {
+		inv := e.GetGeneric("Inventory").(*Inventory)
+		newRotStacks := make([]*Item, 0)
+		for _, s := range inv.Stacks {
+			if s.Tags.Has("perishable") {
+				// we can do this nicely since s.Degradations is always sorted
+				// (debit splits evenly along the sorted slice and credit resorts
+				// after appending)
+				var rotten bool
+				var rottenIx int
+				for ix, d := range s.Degradations {
+					/*
+						0.5 degradation per second means
+						0.5 / 1000 = 0.0005 degradation per ms
+					*/
+					d_per_ms := s.degradationRate / 1000
+					s.Degradations[ix] = d + d_per_ms*dt_ms
+					if s.Degradations[ix] >= 100 {
+						rotten = true
+						rottenIx = ix
+						continue
+					}
+				}
+				// if this stack rotted, remove the rotten portion and set it aside to
+				// Credit after the loop is done
+				if rotten && !s.Tags.Has("rotten") {
+					// we use the inv interface even for debit so maybe, if you wanted
+					// to put a logger there, you'd see these as debits and credits too
+					rottenStack := inv.DebitNWithPreference(
+						s.Count-rottenIx,
+						s,
+						ITEM_MOST_DEGRADED)
+					rottenStack.Tags.Add("rotten")
+					newRotStacks = append(newRotStacks, rottenStack)
+				}
+			}
+		}
+		for _, s := range newRotStacks {
+			// we obviously must credit this stack as its now different, and has
+			// been removed in quantity from the existing stack in inv
+			inv.Credit(s)
+		}
+	}
+}
+
 // System funcs
 
 func (i *ItemSystem) GetComponentDeps() []string {
@@ -431,45 +477,7 @@ func (i *ItemSystem) Update(dt_ms float64) {
 	// if a second or more has elapsed, update Degradations
 	i.degradation_accum_ms += dt_ms
 	if i.degradation_accum_ms > 1000 {
-		for _, e := range i.inventorySystem.InventoryEntities.entities {
-			inv := e.GetGeneric("Inventory").(*Inventory)
-			newRotStacks := make([]*Item, 0)
-			for _, s := range inv.Stacks {
-				if s.Tags.Has("perishable") {
-					// we can do this nicely since s.Degradations is always sorted
-					// (debit splits evenly along the sorted slice and credit resorts
-					// after appending)
-					var rotten bool
-					var rottenIx int
-					for ix, d := range s.Degradations {
-						/*
-							0.5 degradation per second means
-							0.5 / 1000 = 0.0005 degradation per ms
-						*/
-						d_per_ms := s.degradationRate / 1000
-						s.Degradations[ix] = d + d_per_ms*i.degradation_accum_ms
-						if s.Degradations[ix] >= 100 {
-							rotten = true
-							rottenIx = ix
-							continue
-						}
-					}
-					if rotten && !s.Tags.Has("rotten") {
-						// we use the inv interface even for debit so maybe, if you wanted
-						// to put a logger there, you'd see these as debits and credits too
-						rottenStack := inv.DebitNWithPreference(s, s.Count-rottenIx, ITEM_MOST_DEGRADED)
-						rottenStack.Tags.Add("rotten")
-						newRotStacks = append(newRotStacks, rottenStack)
-
-					}
-				}
-			}
-			for _, s := range newRotStacks {
-				// we obviously must credit this stack as its now different, and has
-				// been removed in quantity from the existing stack in inv
-				inv.Credit(s)
-			}
-		}
+		i.UpdateDegradations(i.degradation_accum_ms)
 		i.degradation_accum_ms = 0
 	}
 

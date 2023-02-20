@@ -178,6 +178,11 @@ func (i *Item) propertiesAndTagsMatch(other *Item) bool {
 	return true
 }
 
+func (i *Item) HasProperty(k string) bool {
+	_, ok := i.Properties[k]
+	return ok
+}
+
 func (i *Item) DisplayName() string {
 	return i.sys.Archetypes[i.Archetype].DisplayName
 }

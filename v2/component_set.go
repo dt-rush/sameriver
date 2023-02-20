@@ -34,6 +34,8 @@ func makeCustomComponentSet(
 	customComponentsImpl map[string]CustomContiguousComponent) ComponentSet {
 
 	baseCS := makeComponentSet(componentSpecs)
+	baseCS.customComponentsMap = make(map[string]any)
+	baseCS.customComponentsImpl = make(map[string]CustomContiguousComponent)
 	for spec, value := range customComponentSpecs {
 		// decode spec string
 		split := strings.Split(spec, ",")
