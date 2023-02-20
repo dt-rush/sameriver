@@ -5,7 +5,6 @@
 	"properties": {
 		"damage":      3.2,
 		"value":       300,
-		"degradation": 0,
 		"durability":  5
 	},
 	"tags": ["weapon"],

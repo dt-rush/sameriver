@@ -142,7 +142,7 @@ func (i *Item) PropertiesForDisplay() []string {
 		// include degradation value in properties, even though it's not actually
 		// in the properties map (this is so that stacks can merge ignoring
 		// differences in degradations)
-		if i.Tags.Has("perishable") {
+		if i.Tags.Has("degrades") {
 			if i.Count == 1 {
 				str := fmt.Sprintf("degradation %d", int(i.Degradations[0]))
 				result = append(result, str)

@@ -245,8 +245,18 @@ func (i *ItemSystem) CreateItem(spec map[string]any) *Item {
 		Count:      1,
 	}
 
+	// do some special behaviours involving tags
+	if _, ok := item.Properties["damage"]; ok {
+		item.Tags.Add("weapon")
+	}
 	if item.Tags.Has("perishable") {
 		item.degradationRate = degradationRate
+		item.Tags.Add("degrades")
+	}
+	if _, ok := item.Properties["durability"]; ok {
+		item.Tags.Add("degrades")
+	}
+	if item.Tags.Has("degrades") {
 		item.Degradations = []float64{0}
 	}
 
@@ -261,7 +271,7 @@ func (i *ItemSystem) CreateStack(n int, spec map[string]any) *Item {
 	stack := item
 	stack.Count = n
 	stack.reevaluateDisplayStr()
-	if item.Tags.Has("perishable") {
+	if item.Tags.Has("degrades") {
 		stack.Degradations = make([]float64, n)
 		for i, _ := range stack.Degradations {
 			stack.Degradations[i] = 0

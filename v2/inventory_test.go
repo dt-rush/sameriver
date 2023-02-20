@@ -128,12 +128,11 @@ func TestInventoryFromListing(t *testing.T) {
 		"displayName": "iron sword",
 		"flavourText": "a good irons word, decently sharp",
 		"properties": map[string]int{
-			"damage":      3,
-			"value":       50,
-			"degradation": 0,
-			"durability":  5,
+			"damage":     3,
+			"value":      50,
+			"durability": 5,
 		},
-		"tags": []string{"weapon", "common"},
+		"tags": []string{"weapon", "common", "degrades"},
 	})
 
 	items.CreateArchetype(map[string]any{
