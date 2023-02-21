@@ -67,19 +67,34 @@ func (r *RuntimeLimitSharer) removeLogicImmediately(runnerName string, l *LogicU
 }
 
 func (r *RuntimeLimitSharer) AddLogic(runnerName string, l *LogicUnit) {
-	r.addRemoveChannel <- AddRemoveLogicEvent{
-		addRemove:  true,
-		runnerName: runnerName,
-		l:          l,
+	do := func() {
+		r.addRemoveChannel <- AddRemoveLogicEvent{
+			addRemove:  true,
+			runnerName: runnerName,
+			l:          l,
+		}
+	}
+	if len(r.addRemoveChannel) >= ADD_REMOVE_LOGIC_CHANNEL_CAPACITY {
+		Logger.Println("[WARNING] adding logic at such a rate the channel is at capacity. Spawning goroutines. If this continues to happen, the program might suffer.")
+		go do()
+	} else {
+		do()
 	}
 }
 
 func (r *RuntimeLimitSharer) RemoveLogic(runnerName string, l *LogicUnit) {
-
-	r.addRemoveChannel <- AddRemoveLogicEvent{
-		addRemove:  false,
-		runnerName: runnerName,
-		l:          l,
+	do := func() {
+		r.addRemoveChannel <- AddRemoveLogicEvent{
+			addRemove:  false,
+			runnerName: runnerName,
+			l:          l,
+		}
+	}
+	if len(r.addRemoveChannel) >= ADD_REMOVE_LOGIC_CHANNEL_CAPACITY {
+		Logger.Println("[WARNING] removing logic at such a rate the channel is at capacity. Spawning goroutines. If this continues to happen, the program might suffer.")
+		go do()
+	} else {
+		do()
 	}
 }
 

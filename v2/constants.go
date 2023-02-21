@@ -19,14 +19,8 @@ const FRAME_DURATION = (1000 / FPS) * time.Millisecond
 const FRAME_DURATION_INT = (1000 / FPS)
 const MAX_ENTITIES = 4096
 
-const COLLISION_RATELIMIT_TIMEOUT_MS = 300
-
-const EVENT_PUBLISH_CHANNEL_CAPACITY = MAX_ENTITIES / 4
-
 // a subscriber getting 4096 events in a single update tick is insane,
 // but memory is plentiful so, allow some capacity to build up
-const EVENT_SUBSCRIBER_CHANNEL_CAPACITY = 4096
+const EVENT_SUBSCRIBER_CHANNEL_CAPACITY = 128
 
 const ADD_REMOVE_LOGIC_CHANNEL_CAPACITY = MAX_ENTITIES / 4
-
-const QUERY_CHANNEL_CAPACITY = MAX_ENTITIES / 8

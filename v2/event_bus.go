@@ -6,6 +6,10 @@
 
 package sameriver
 
+import (
+	"go.uber.org/atomic"
+)
+
 type SubscriberList struct {
 	// subscriberLists is a list of lists of EventChannels
 	// where the outer list is indexed by the EventType (type aliased
@@ -24,6 +28,9 @@ type Event struct {
 type EventBus struct {
 	subscriberList SubscriberList
 	publishChannel chan Event
+	// number of goroutines spawned to publish events to subscriber channels
+	// that are full
+	nHanging atomic.Int32
 }
 
 func NewEventBus() *EventBus {
@@ -65,7 +72,11 @@ func (ev *EventBus) notifySubscribers(e Event) {
 	eventsLog("⚹: %s\n", e.Type)
 
 	var notifyFull = func(c *EventChannel) {
-		Logger.Printf("⚠ event subscriber channel for events of type %s is full\n", e.Type)
+		Logger.Printf("[WARNING] event subscriber channel for events of type %s is full\n", e.Type)
+	}
+
+	var notifyExtraFull = func() {
+		Logger.Printf("[WARNING] number of goroutines waiting for event channel (of event type %s) to go below max capacity is now greater than capacity (%d)", e.Type, EVENT_SUBSCRIBER_CHANNEL_CAPACITY)
 	}
 
 	for _, c := range ev.subscriberList.channels[e.Type] {
@@ -81,7 +92,12 @@ func (ev *EventBus) notifySubscribers(e Event) {
 				// will add up and cause problems)
 				// TODO: count how many of these are waiting and warn if too high
 				go func() {
+					ev.nHanging.Add(1)
+					if ev.nHanging.Load() > EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
+						notifyExtraFull()
+					}
 					c.C <- e
+					ev.nHanging.Add(-1)
 				}()
 			} else {
 				c.C <- e
