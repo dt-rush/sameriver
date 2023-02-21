@@ -779,7 +779,6 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			state := ws.GetModal(e, "State").(*IntMap).CopyOf()
 			if op == "+" {
-				Logger.Println("                modal setting")
 				state.m["drunk"] += x
 			}
 			ws.SetModal(e, "State", &state)
@@ -811,6 +810,65 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 	})
 	Logger.Println(planner.Plan(ws, goal, 50))
 
+}
+
+func TestGOAPPlanSimpleEnough(t *testing.T) {
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+
+	w.RegisterComponents([]string{"IntMap,State"})
+
+	e := w.Spawn(map[string]any{
+		"components": map[string]any{
+			"IntMap,State": map[string]int{
+				"drunk": 0,
+			},
+		},
+	})
+
+	drunkModal := GOAPModalVal{
+		name: "drunk",
+		check: func(ws *GOAPWorldState) int {
+			state := ws.GetModal(e, "State").(*IntMap)
+			return state.m["drunk"]
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			state := ws.GetModal(e, "State").(*IntMap).CopyOf()
+			if op == "+" {
+				state.m["drunk"] += x
+			}
+			ws.SetModal(e, "State", &state)
+		},
+	}
+	drink := NewGOAPAction(map[string]interface{}{
+		"name": "drink",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"drunk,+": 1,
+		},
+	})
+	purifyOneself := NewGOAPAction(map[string]any{
+		"name": "purifyOneself",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"rituallyPure,=": 1,
+		},
+	})
+
+	ws := NewGOAPWorldState(nil)
+
+	planner := NewGOAPPlanner(e)
+	planner.eval.AddModalVals(drunkModal)
+	planner.eval.AddActions(drink, purifyOneself)
+
+	goal := NewGOAPGoal(map[string]int{
+		"drunk,=":        10,
+		"rituallyPure,=": 1,
+	})
+	Logger.Println(planner.Plan(ws, goal, 50))
 }
 
 /*

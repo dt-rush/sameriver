@@ -21,36 +21,6 @@ func NewGOAPPlanner(e *Entity) *GOAPPlanner {
 	}
 }
 
-/*
-func (p *GOAPPlanner) deepen(
-	start *GOAPWorldState,
-	here *GOAPPQueueItem) (frontier []*GOAPPQueueItem) {
-
-	debugGOAPPrintf("deepen-----------------")
-	debugGOAPPrintf("deeepen: here.remaining: ")
-	debugGOAPPrintGoal(here.remaining)
-	debugGOAPPrintf("deeepen: here.presRemaining: ")
-	for _, pre := range here.presRemaining {
-		debugGOAPPrintGoal(pre)
-	}
-	frontier = make([]*GOAPPQueueItem, 0)
-	for _, action := range p.eval.actions.set {
-		debugGOAPPrintf("    ------------------------------ considering prepending action %s", action.name)
-		extended, useful := p.eval.prepend(start, action, here)
-		debugGOAPPrintf("    --- useful? %t", useful)
-		if !useful {
-			debugGOAPPrintf("    --- was not a useful prepending action")
-			continue
-		}
-		debugGOAPPrintf("    --- OK!")
-		debugGOAPPrintf("    ---=== frontier expanded to: %s", GOAPPathToString(extended.path))
-		frontier = append(frontier, extended)
-	}
-	debugGOAPPrintf("-----------------/deepen")
-	return frontier
-}
-*/
-
 func (p *GOAPPlanner) traverseFulfillers(
 	pq *GOAPPriorityQueue,
 	start *GOAPWorldState,
@@ -62,7 +32,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 	debugGOAPPrintf(GOAPPathToString(here.path))
 
 	for _, action := range p.eval.actions.set {
-		Logger.Printf("[ ] Considering action %s", action.name)
+		debugGOAPPrintf("[ ] Considering action %s", action.name)
 		frontier := make([]*GOAPPQueueItem, 0)
 		if p.eval.actionMightHelp(start, action, here.path, GOAP_PATH_PREPEND) {
 			helpfulItem := p.eval.tryPrepend(start, action, here.path, goal)
@@ -77,9 +47,9 @@ func (p *GOAPPlanner) traverseFulfillers(
 			}
 		}
 		if len(frontier) == 0 {
-			Logger.Printf("[_] %s not helpful", action.name)
+			debugGOAPPrintf("[_] %s not helpful", action.name)
 		} else {
-			Logger.Printf("[X] %s helpful!", action.name)
+			debugGOAPPrintf("[X] %s helpful!", action.name)
 			for _, item := range frontier {
 				pq.Push(item)
 			}
@@ -135,22 +105,23 @@ func (p *GOAPPlanner) Plan(
 			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
 			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
 			resultPq.Push(here)
+			debugGOAPPrintf("%d solutions found so far", resultPq.Len())
 		} else {
 			p.traverseFulfillers(pq, start, here, goal)
 			iter++
 		}
 	}
 
-	dt := time.Since(t0).Milliseconds()
+	dt := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	if iter >= maxIter {
-		debugGOAPPrintf("Took %d ms to reach max iter", dt)
+		debugGOAPPrintf("Took %f ms to reach max iter", dt)
 		debugGOAPPrintf("================================ REACHED MAX ITER !!!")
 	}
 	if pq.Len() == 0 && resultPq.Len() == 0 {
-		debugGOAPPrintf("Took %d ms to exhaust pq without solution", dt)
+		debugGOAPPrintf("Took %f ms to exhaust pq without solution", dt)
 	}
 	if resultPq.Len() > 0 {
-		debugGOAPPrintf("Took %d ms to find solution", dt)
+		Logger.Printf("Took %f ms to find solution", dt)
 		if pq.Len() == 0 {
 			debugGOAPPrintf("Even though >0 solutions were found, exhausted pq")
 		}
