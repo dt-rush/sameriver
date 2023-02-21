@@ -115,7 +115,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	w.RegisterSystems(ps)
 	w.RegisterComponents([]string{"Int,BoozeAmount"})
 
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 
 	p := NewGOAPPlanner(e)
 
@@ -205,7 +205,7 @@ func TestGOAPRemainingIsLess(t *testing.T) {
 	w.RegisterSystems(ps)
 	w.RegisterComponents([]string{"Int,BoozeAmount"})
 
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 
 	p := NewGOAPPlanner(e)
 
@@ -520,7 +520,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 
 	ws := NewGOAPWorldState(nil)
 	treePos := &Vec2D{11, 11}
@@ -710,7 +710,7 @@ func TestGOAPPlanSimple(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
+	e := testingSpawnPhysics(w)
 
 	treePos := &Vec2D{19, 19}
 
@@ -760,51 +760,55 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
 
+	w.RegisterComponents([]string{"IntMap,State"})
+
 	e := w.Spawn(map[string]any{
 		"components": map[string]any{
-			"IntMap,State": NewIntMap(map[string]int{
+			"IntMap,State": map[string]int{
 				"drunk": 0,
-			}),
+			},
 		},
 	})
 
-	atTreeModal := GOAPModalVal{
-		name: "atTree",
+	drunkModal := GOAPModalVal{
+		name: "drunk",
 		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
-			_, _, d := ourPos.Distance(*treePos)
-			if d < 2 {
-				return 1
-			} else {
-				return 0
-			}
+			state := ws.GetModal(e, "State").(*IntMap)
+			return state.m["drunk"]
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			nearTree := treePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Drunkness", &nearTree)
+			state := ws.GetModal(e, "State").(*IntMap).CopyOf()
+			if op == "+" {
+				Logger.Println("                modal setting")
+				state.m["drunk"] += x
+			}
+			ws.SetModal(e, "State", &state)
 		},
 	}
-	goToTree := NewGOAPAction(map[string]interface{}{
-		"name": "goToTree",
+	drink := NewGOAPAction(map[string]interface{}{
+		"name": "drink",
 		"cost": 1,
 		"pres": nil,
 		"effs": map[string]int{
-			"atTree,=": 1,
+			"drunk,+": 1,
 		},
 	})
 
 	goal := NewGOAPGoal(map[string]int{
-		"atTree,=": 1,
+		"drunk,=": 1,
 	})
-
-	Logger.Println(*e.GetVec2D("Position"))
 
 	ws := NewGOAPWorldState(nil)
 
 	planner := NewGOAPPlanner(e)
-	planner.eval.AddModalVals(atTreeModal)
-	planner.eval.AddActions(goToTree)
+	planner.eval.AddModalVals(drunkModal)
+	planner.eval.AddActions(drink)
 
+	Logger.Println(planner.Plan(ws, goal, 50))
+
+	goal = NewGOAPGoal(map[string]int{
+		"drunk,=": 3,
+	})
 	Logger.Println(planner.Plan(ws, goal, 50))
 
 }

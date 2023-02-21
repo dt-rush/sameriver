@@ -95,7 +95,7 @@ func (e *GOAPEvaluator) remainingsOfPath(path *GOAPPath, start *GOAPWorldState, 
 		remainings.pres = append(remainings.pres, preRemaining)
 		ws = e.applyAction(action, ws)
 	}
-	debugGOAPPrintf("  --- remainingsOfPath: end state: %v", ws.vals)
+	debugGOAPPrintf("  --- ws after path: %v", ws.vals)
 	mainRemaining := main.remaining(ws)
 	remainings.nUnfulfilled += len(mainRemaining.goal.goals)
 	remainings.main = mainRemaining
