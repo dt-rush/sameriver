@@ -27,3 +27,7 @@ func (h *SpatialHashSystem) Update(dt_ms float64) {
 	h.hasher.ClearTable()
 	h.hasher.ScanAndInsertEntities()
 }
+
+func (h *SpatialHashSystem) Expand(n int) {
+	h.hasher.Expand(n)
+}

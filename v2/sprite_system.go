@@ -93,16 +93,20 @@ func (s *SpriteSystem) LoadFiles(renderer *sdl.Renderer) {
 
 // System funcs
 
-func (i *SpriteSystem) GetComponentDeps() []string {
+func (s *SpriteSystem) GetComponentDeps() []string {
 	return []string{"Sprite,Sprite"}
 }
 
-func (i *SpriteSystem) LinkWorld(w *World) {
-	i.w = w
+func (s *SpriteSystem) LinkWorld(w *World) {
+	s.w = w
 
-	i.SpriteEntities = w.GetUpdatedEntityListByComponentNames([]string{"Sprite"})
+	s.SpriteEntities = w.GetUpdatedEntityListByComponentNames([]string{"Sprite"})
 }
 
-func (i *SpriteSystem) Update(dt_ms float64) {
+func (s *SpriteSystem) Update(dt_ms float64) {
+	// nil?
+}
+
+func (s *SpriteSystem) Expand(n int) {
 	// nil?
 }

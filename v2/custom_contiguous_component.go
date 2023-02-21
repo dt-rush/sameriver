@@ -21,6 +21,7 @@ package sameriver
 type CustomContiguousComponent interface {
 	Name() string
 	AllocateTable(n int)
+	ExpandTable(n int)
 	Get(e *Entity) interface{}
 	Set(e *Entity, x interface{})
 }

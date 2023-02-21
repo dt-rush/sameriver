@@ -14,6 +14,9 @@ import (
 type ComponentTable struct {
 	em *EntityManager
 
+	// the size of the tables
+	capacity int
+
 	next_ix int
 	ixs     map[string]int
 	ixs_rev map[int]string
@@ -36,27 +39,99 @@ type ComponentTable struct {
 	cccMap             map[string]CustomContiguousComponent
 }
 
-func NewComponentTable() *ComponentTable {
-	ct := &ComponentTable{}
-	ct.ixs = make(map[string]int)
-	ct.ixs_rev = make(map[int]string)
-	ct.names = make(map[string]bool)
-	ct.kinds = make(map[string]string)
+func NewComponentTable(capacity int) *ComponentTable {
+	return &ComponentTable{
+		capacity: capacity,
 
-	ct.vec2DMap = make(map[string][]Vec2D)
-	ct.boolMap = make(map[string][]bool)
-	ct.intMap = make(map[string][]int)
-	ct.float64Map = make(map[string][]float64)
-	ct.timeMap = make(map[string][]time.Time)
-	ct.timeAccumulatorMap = make(map[string][]utils.TimeAccumulator)
-	ct.stringMap = make(map[string][]string)
-	ct.spriteMap = make(map[string][]Sprite)
-	ct.tagListMap = make(map[string][]TagList)
-	ct.intMapMap = make(map[string][]IntMap)
-	ct.floatMapMap = make(map[string][]FloatMap)
-	ct.genericMap = make(map[string][]interface{})
-	ct.cccMap = make(map[string]CustomContiguousComponent)
-	return ct
+		ixs:     make(map[string]int),
+		ixs_rev: make(map[int]string),
+		names:   make(map[string]bool),
+		kinds:   make(map[string]string),
+
+		vec2DMap:           make(map[string][]Vec2D),
+		boolMap:            make(map[string][]bool),
+		intMap:             make(map[string][]int),
+		float64Map:         make(map[string][]float64),
+		timeMap:            make(map[string][]time.Time),
+		timeAccumulatorMap: make(map[string][]utils.TimeAccumulator),
+		stringMap:          make(map[string][]string),
+		spriteMap:          make(map[string][]Sprite),
+		tagListMap:         make(map[string][]TagList),
+		intMapMap:          make(map[string][]IntMap),
+		floatMapMap:        make(map[string][]FloatMap),
+		genericMap:         make(map[string][]interface{}),
+		cccMap:             make(map[string]CustomContiguousComponent),
+	}
+}
+
+// this is likely to be an expensive operation
+func (ct *ComponentTable) expand(n int) {
+	Logger.Printf("Expanding component tables from %d to %d", ct.capacity, ct.capacity+n)
+	for name, slice := range ct.vec2DMap {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]Vec2D, n)
+		ct.vec2DMap[name] = append(slice, extraSpace...)
+	}
+	for name, slice := range ct.boolMap {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]bool, n)
+		ct.boolMap[name] = append(slice, extraSpace...)
+	}
+	for name, slice := range ct.intMap {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]int, n)
+		ct.intMap[name] = append(slice, extraSpace...)
+	}
+	for name, slice := range ct.float64Map {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]float64, n)
+		ct.float64Map[name] = append(slice, extraSpace...)
+	}
+	for name, slice := range ct.timeMap {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]time.Time, n)
+		ct.timeMap[name] = append(slice, extraSpace...)
+	}
+	for name, slice := range ct.timeAccumulatorMap {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]utils.TimeAccumulator, n)
+		ct.timeAccumulatorMap[name] = append(slice, extraSpace...)
+	}
+	for name, slice := range ct.stringMap {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]string, n)
+		ct.stringMap[name] = append(slice, extraSpace...)
+	}
+	for name, slice := range ct.spriteMap {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]Sprite, n)
+		ct.spriteMap[name] = append(slice, extraSpace...)
+	}
+	for name, slice := range ct.tagListMap {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]TagList, n)
+		ct.tagListMap[name] = append(slice, extraSpace...)
+	}
+	for name, slice := range ct.intMapMap {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]IntMap, n)
+		ct.intMapMap[name] = append(slice, extraSpace...)
+	}
+	for name, slice := range ct.floatMapMap {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]FloatMap, n)
+		ct.floatMapMap[name] = append(slice, extraSpace...)
+	}
+	for name, slice := range ct.genericMap {
+		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
+		extraSpace := make([]interface{}, n)
+		ct.genericMap[name] = append(slice, extraSpace...)
+	}
+	for name, ccc := range ct.cccMap {
+		Logger.Printf("Requesting expanding of internal storage of CustomContiguousComponent,%s", name)
+		ccc.ExpandTable(n)
+	}
+	ct.capacity += n
 }
 
 func (ct *ComponentTable) nameAndIndex(name string) bool {
@@ -96,31 +171,36 @@ func (ct *ComponentTable) AddComponent(spec string) {
 	}
 
 	// create table in appropriate map
+	// (note we allocate with capacity 2* so that if we reach max entities the
+	// first time expanding the tables won't necessarily be expensive; but
+	// then again, if we do reach the NEW capacity, the slices will have to
+	// be reallocated to new memory locations as they'll have totally
+	// eaten up the capacity)
 	switch kind {
 	case "Vec2D":
-		ct.vec2DMap[name] = make([]Vec2D, MAX_ENTITIES, MAX_ENTITIES)
+		ct.vec2DMap[name] = make([]Vec2D, ct.capacity, 2*ct.capacity)
 	case "Bool":
-		ct.boolMap[name] = make([]bool, MAX_ENTITIES, MAX_ENTITIES)
+		ct.boolMap[name] = make([]bool, ct.capacity, 2*ct.capacity)
 	case "Int":
-		ct.intMap[name] = make([]int, MAX_ENTITIES, MAX_ENTITIES)
+		ct.intMap[name] = make([]int, ct.capacity, 2*ct.capacity)
 	case "Float64":
-		ct.float64Map[name] = make([]float64, MAX_ENTITIES, MAX_ENTITIES)
+		ct.float64Map[name] = make([]float64, ct.capacity, 2*ct.capacity)
 	case "Time":
-		ct.timeMap[name] = make([]time.Time, MAX_ENTITIES, MAX_ENTITIES)
+		ct.timeMap[name] = make([]time.Time, ct.capacity, 2*ct.capacity)
 	case "TimeAccumulator":
-		ct.timeAccumulatorMap[name] = make([]utils.TimeAccumulator, MAX_ENTITIES, MAX_ENTITIES)
+		ct.timeAccumulatorMap[name] = make([]utils.TimeAccumulator, ct.capacity, 2*ct.capacity)
 	case "String":
-		ct.stringMap[name] = make([]string, MAX_ENTITIES, MAX_ENTITIES)
+		ct.stringMap[name] = make([]string, ct.capacity, 2*ct.capacity)
 	case "Sprite":
-		ct.spriteMap[name] = make([]Sprite, MAX_ENTITIES, MAX_ENTITIES)
+		ct.spriteMap[name] = make([]Sprite, ct.capacity, 2*ct.capacity)
 	case "TagList":
-		ct.tagListMap[name] = make([]TagList, MAX_ENTITIES, MAX_ENTITIES)
+		ct.tagListMap[name] = make([]TagList, ct.capacity, 2*ct.capacity)
 	case "IntMap":
-		ct.intMapMap[name] = make([]IntMap, MAX_ENTITIES, MAX_ENTITIES)
+		ct.intMapMap[name] = make([]IntMap, ct.capacity, 2*ct.capacity)
 	case "FloatMap":
-		ct.floatMapMap[name] = make([]FloatMap, MAX_ENTITIES, MAX_ENTITIES)
+		ct.floatMapMap[name] = make([]FloatMap, ct.capacity, 2*ct.capacity)
 	case "Generic":
-		ct.genericMap[name] = make([]interface{}, MAX_ENTITIES, MAX_ENTITIES)
+		ct.genericMap[name] = make([]interface{}, ct.capacity, 2*ct.capacity)
 	default:
 		panic(fmt.Sprintf("added component of kind %s has no case in component_table.go", kind))
 	}

@@ -6,8 +6,8 @@ import (
 	"github.com/dt-rush/sameriver/v2/utils"
 )
 
-func TestEntityTableAllocateID(t *testing.T) {
-	et := NewEntityTable(utils.NewIDGenerator())
+func TestEntityIDAllocatorAllocateID(t *testing.T) {
+	et := NewEntityIDAllocator(MAX_ENTITIES, utils.NewIDGenerator())
 	_, err := et.allocateID()
 	if !(err == nil &&
 		len(et.currentEntities) == 1) {
@@ -15,8 +15,8 @@ func TestEntityTableAllocateID(t *testing.T) {
 	}
 }
 
-func TestEntityTableDeallocateID(t *testing.T) {
-	et := NewEntityTable(utils.NewIDGenerator())
+func TestEntityIDAllocatorDeallocateID(t *testing.T) {
+	et := NewEntityIDAllocator(MAX_ENTITIES, utils.NewIDGenerator())
 	e, _ := et.allocateID()
 	et.deallocate(e)
 	if len(et.currentEntities) != 0 {
@@ -27,8 +27,8 @@ func TestEntityTableDeallocateID(t *testing.T) {
 	}
 }
 
-func TestEntityTableAllocateMaxIDs(t *testing.T) {
-	et := NewEntityTable(utils.NewIDGenerator())
+func TestEntityIDAllocatorAllocateMaxIDs(t *testing.T) {
+	et := NewEntityIDAllocator(MAX_ENTITIES, utils.NewIDGenerator())
 	for i := 0; i < MAX_ENTITIES; i++ {
 		et.allocateID()
 	}
@@ -36,10 +36,15 @@ func TestEntityTableAllocateMaxIDs(t *testing.T) {
 	if err == nil {
 		t.Fatal("should have returned error on allocating > MAX_ENTITIES")
 	}
+	et.expand(1)
+	_, err = et.allocateID()
+	if err != nil {
+		t.Fatal("should have been able to allocate after expand")
+	}
 }
 
-func TestEntityTableReallocateDeallocatedID(t *testing.T) {
-	et := NewEntityTable(utils.NewIDGenerator())
+func TestEntityIDAllocatorReallocateDeallocatedID(t *testing.T) {
+	et := NewEntityIDAllocator(MAX_ENTITIES, utils.NewIDGenerator())
 	var e *Entity
 	for i := 0; i < MAX_ENTITIES; i++ {
 		allocated, _ := et.allocateID()

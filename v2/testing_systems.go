@@ -20,6 +20,7 @@ func (s *testSystem) Update(dt_ms float64) {
 func (s *testSystem) GetComponentDeps() []string {
 	return []string{}
 }
+func (s *testSystem) Expand(n int) {}
 
 // a system dependent on testSystem
 type testDependentSystem struct {
@@ -34,6 +35,7 @@ func (s *testDependentSystem) Update(dt_ms float64) {}
 func (s *testDependentSystem) GetComponentDeps() []string {
 	return []string{}
 }
+func (s *testDependentSystem) Expand(n int) {}
 
 // a system (misconfig) which is implemented on a non-pointer receiver
 type testNonPointerReceiverSystem struct {
@@ -47,6 +49,7 @@ func (s testNonPointerReceiverSystem) Update(dt_ms float64) {}
 func (s testNonPointerReceiverSystem) GetComponentDeps() []string {
 	return []string{}
 }
+func (s testNonPointerReceiverSystem) Expand(n int) {}
 
 // a system (misconfig) whose name does not end in System
 type testSystemThatIsMisnamed struct {
@@ -60,6 +63,7 @@ func (s *testSystemThatIsMisnamed) Update(dt_ms float64) {}
 func (s *testSystemThatIsMisnamed) GetComponentDeps() []string {
 	return []string{}
 }
+func (s *testSystemThatIsMisnamed) Expand(n int) {}
 
 // a system (misconfig) which is dependent on a non-pointer type
 type testDependentNonPointerSystem struct {
@@ -74,6 +78,7 @@ func (s *testDependentNonPointerSystem) Update(dt_ms float64) {}
 func (s *testDependentNonPointerSystem) GetComponentDeps() []string {
 	return []string{}
 }
+func (s *testDependentNonPointerSystem) Expand(n int) {}
 
 // a system (misconfig) which is dependent on a non-System
 type testDependentNonSystemSystem struct {
@@ -88,3 +93,4 @@ func (s *testDependentNonSystemSystem) Update(dt_ms float64) {}
 func (s *testDependentNonSystemSystem) GetComponentDeps() []string {
 	return []string{}
 }
+func (s *testDependentNonSystemSystem) Expand(n int) {}

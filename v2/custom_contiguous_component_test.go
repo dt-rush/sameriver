@@ -19,7 +19,11 @@ func (xyz *XYZComponent) Name() string {
 	return "XYZ"
 }
 func (xyz *XYZComponent) AllocateTable(n int) {
-	xyz.data = make([]XYZ, n, n)
+	xyz.data = make([]XYZ, n, 2*n)
+}
+func (xyz *XYZComponent) ExpandTable(n int) {
+	extraSpace := make([]XYZ, n)
+	xyz.data = append(xyz.data, extraSpace...)
 }
 func (xyz *XYZComponent) Get(e *Entity) interface{} {
 	return xyz.data[e.ID]

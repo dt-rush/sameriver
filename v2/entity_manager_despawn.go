@@ -29,10 +29,10 @@ func (m *EntityManager) DespawnAll() {
 
 // Despawn an entity
 func (m *EntityManager) Despawn(e *Entity) {
+	// guard against multiple logics per tick despawning an entity
 	if !e.Despawned {
 		e.Despawned = true
-		m.entityTable.deallocate(e)
-		m.entities[e.ID] = nil
+		m.entityIDAllocator.deallocate(e)
 		e.RemoveAllLogics()
 		m.setActiveState(e, false)
 	}

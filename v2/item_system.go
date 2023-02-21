@@ -482,3 +482,7 @@ func (i *ItemSystem) Update(dt_ms float64) {
 	}
 
 }
+
+func (i *ItemSystem) Expand(n int) {
+	// nil?
+}

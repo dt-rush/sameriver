@@ -3,6 +3,9 @@ package sameriver
 type EntityManagerInterface interface {
 	Update(allowance_ms float64) float64
 
+	MaxEntities() int
+	Components() *ComponentTable
+
 	Spawn(spec map[string]any) *Entity
 	QueueSpawn(spec map[string]any)
 	Despawn(e *Entity)
@@ -17,6 +20,7 @@ type EntityManagerInterface interface {
 	UntagEntities(entities []*Entity, tag string)
 
 	NumEntities() (total int, active int)
+	GetActiveEntitiesSet() map[*Entity]bool
 	GetCurrentEntitiesSet() map[*Entity]bool
 	GetCurrentEntitiesSetCopy() map[*Entity]bool
 

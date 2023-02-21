@@ -1,5 +1,13 @@
 package sameriver
 
+func (w *World) MaxEntities() int {
+	return w.em.MaxEntities()
+}
+
+func (w *World) Components() *ComponentTable {
+	return w.em.components
+}
+
 func (w *World) Spawn(spec map[string]any) *Entity {
 	return w.em.Spawn(spec)
 }
@@ -82,6 +90,10 @@ func (w *World) UntagEntities(entities []*Entity, tag string) {
 
 func (w *World) NumEntities() (total int, active int) {
 	return w.em.NumEntities()
+}
+
+func (w *World) GetActiveEntitiesSet() map[*Entity]bool {
+	return w.em.GetActiveEntitiesSet()
 }
 
 func (w *World) GetCurrentEntitiesSet() map[*Entity]bool {

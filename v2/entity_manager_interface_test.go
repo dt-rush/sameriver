@@ -32,8 +32,9 @@ func EntityManagerInterfaceTestSpawnFail(
 	em EntityManagerInterface, t *testing.T) {
 
 	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("did not panic (aragorn voice: are you frightened? not nearly frightened enough)")
+		r := recover()
+		if r != nil {
+			t.Errorf("should not have panic'd; should have resized tables")
 		}
 	}()
 
@@ -41,6 +42,9 @@ func EntityManagerInterfaceTestSpawnFail(
 		testingSpawnSimple(em)
 	}
 	testingSpawnSimple(em)
+	if len(em.Components().vec2DMap["Position"]) == MAX_ENTITIES {
+		t.Fatal("Did not resize component data tables")
+	}
 }
 
 func EntityManagerInterfaceTestQueueSpawn(

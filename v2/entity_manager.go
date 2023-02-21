@@ -11,19 +11,19 @@ import (
 type EntityManager struct {
 	// the world this EntityManager is inside
 	w *World
-	// list of entities currently spawned (whether active or not)
-	entities [MAX_ENTITIES]*Entity
 	// Component data for entities
 	components *ComponentTable
-	// EntityTable stores: a list of allocated Entitys and a
+	// EntityIDALlocator stores: a list of allocated Entitys and a
 	// list of available IDs from previous deallocations
-	entityTable *EntityTable
+	entityIDAllocator *EntityIDAllocator
 	// updated entity lists created by the user according to provided filters
 	lists map[string]*UpdatedEntityList
 	// updated entity lists of entities with given tags
 	entitiesWithTag map[string]*UpdatedEntityList
 	// entities which have been tagged uniquely
 	uniqueEntities map[string]*Entity
+	// entities that are active
+	activeEntities map[*Entity]bool
 	// Channel for spawn entity requests (processed as a batch each Update())
 	spawnSubscription *EventChannel
 	// Channel for despawn entity requests (processed as a batch each Update())
@@ -34,15 +34,24 @@ type EntityManager struct {
 func NewEntityManager(w *World) *EntityManager {
 	em := &EntityManager{
 		w:                   w,
-		components:          NewComponentTable(),
-		entityTable:         NewEntityTable(w.IdGen),
+		components:          NewComponentTable(MAX_ENTITIES),
+		entityIDAllocator:   NewEntityIDAllocator(MAX_ENTITIES, w.IdGen),
 		lists:               make(map[string]*UpdatedEntityList),
 		entitiesWithTag:     make(map[string]*UpdatedEntityList),
 		uniqueEntities:      make(map[string]*Entity),
+		activeEntities:      make(map[*Entity]bool),
 		spawnSubscription:   w.Events.Subscribe(SimpleEventFilter("spawn-request")),
 		despawnSubscription: w.Events.Subscribe(SimpleEventFilter("despawn-request")),
 	}
 	return em
+}
+
+func (m *EntityManager) MaxEntities() int {
+	return m.entityIDAllocator.capacity
+}
+
+func (m *EntityManager) Components() *ComponentTable {
+	return m.components
 }
 
 // called once per scene Update() for scenes holding an entity manager
@@ -69,9 +78,11 @@ func (m *EntityManager) setActiveState(e *Entity, state bool) {
 	// only act if the state is different to that which exists
 	if e.Active != state {
 		if state {
-			m.entityTable.active++
+			m.entityIDAllocator.active++
+			m.activeEntities[e] = true
 		} else {
-			m.entityTable.active--
+			m.entityIDAllocator.active--
+			delete(m.activeEntities, e)
 		}
 		// start / stop all logics of this entity accordingly
 		for _, l := range e.Logics {
@@ -157,20 +168,25 @@ func (m *EntityManager) UntagEntities(entities []*Entity, tag string) {
 
 // Get the number of allocated entities (not number of active, mind you)
 func (m *EntityManager) NumEntities() (total int, active int) {
-	return len(m.entityTable.currentEntities), m.entityTable.active
+	return len(m.entityIDAllocator.currentEntities), m.entityIDAllocator.active
+}
+
+// returns a map of all active entities
+func (m *EntityManager) GetActiveEntitiesSet() map[*Entity]bool {
+	return m.activeEntities
 }
 
 // return a map where the keys are the current entities (aka an idiomatic
 // go "set")
 func (m *EntityManager) GetCurrentEntitiesSet() map[*Entity]bool {
-	return m.entityTable.currentEntities
+	return m.entityIDAllocator.currentEntities
 }
 
 // return a copy of the current entities map (allowing you to spawn/despawn
 // while iterating over it)
 func (m *EntityManager) GetCurrentEntitiesSetCopy() map[*Entity]bool {
-	setCopy := make(map[*Entity]bool, len(m.entityTable.currentEntities))
-	for e, _ := range m.entityTable.currentEntities {
+	setCopy := make(map[*Entity]bool, len(m.entityIDAllocator.currentEntities))
+	for e, _ := range m.entityIDAllocator.currentEntities {
 		setCopy[e] = true
 	}
 	return setCopy
@@ -178,14 +194,14 @@ func (m *EntityManager) GetCurrentEntitiesSetCopy() map[*Entity]bool {
 
 func (m *EntityManager) String() string {
 	return fmt.Sprintf("EntityManager[ %d / %d active ]\n",
-		len(m.entityTable.currentEntities), m.entityTable.active)
+		len(m.entityIDAllocator.currentEntities), m.entityIDAllocator.active)
 }
 
 // dump entities with tags
 func (m *EntityManager) DumpEntities() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
-	for _, e := range m.entities {
+	for e, _ := range m.entityIDAllocator.currentEntities {
 		if e == nil {
 			continue
 		}

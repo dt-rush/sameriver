@@ -45,14 +45,67 @@ type CollisionSystem struct {
 	w                  *World
 	collidableEntities *UpdatedEntityList
 	rateLimiterArray   CollisionRateLimiterArray
+	delay              time.Duration
 	sh                 *SpatialHashSystem `sameriver-system-dependency:"-"`
 }
 
-func NewCollisionSystem(rateLimit time.Duration) *CollisionSystem {
+func NewCollisionSystem(delay time.Duration) *CollisionSystem {
 	return &CollisionSystem{
-		rateLimiterArray: NewCollisionRateLimiterArray(rateLimit),
+		delay: delay,
 	}
 }
+
+func (s *CollisionSystem) checkEntities(entities []*Entity) {
+	// NOTE: we guard for despawns since the entities in the spatial hash
+	// table might have been despawned since the last time a spatial hash
+	// was computed (not every system is guaranteed to run every update loop,
+	// so maybe spatial hash didn't run but an entity or world logic did, to
+	// despawn one of the tokens still stored in the last-computed spatial hash
+	// table).
+	for ix := 0; ix < len(entities); ix++ {
+		i := entities[ix]
+		if i.Despawned {
+			continue
+		}
+		for jx := ix + 1; jx < len(entities); jx++ {
+			j := entities[jx]
+			if j.Despawned {
+				continue
+			}
+			// required that i.ID < j.ID for the rate limiter array
+			if j.ID < i.ID {
+				j, i = i, j
+			}
+			r := s.rateLimiterArray.GetRateLimiter(i.ID, j.ID)
+			if r.Load() == 0 &&
+				s.TestCollision(i, j) {
+				s.DoCollide(i, j)
+			}
+		}
+	}
+}
+
+func (s *CollisionSystem) DoCollide(i *Entity, j *Entity) {
+	s.rateLimiterArray.Do(i.ID, j.ID,
+		func() {
+			s.w.Events.Publish("collision",
+				CollisionData{This: i, Other: j})
+			s.w.Events.Publish("collision",
+				CollisionData{This: j, Other: i})
+		})
+}
+
+// Test collision between two entities
+func (s *CollisionSystem) TestCollision(i *Entity, j *Entity) bool {
+	iPos := i.GetVec2D("Position")
+	iBox := i.GetVec2D("Box")
+	jPos := j.GetVec2D("Position")
+	jBox := j.GetVec2D("Box")
+	intersects := RectIntersectsRect(*iPos, *iBox, *jPos, *jBox)
+	return intersects
+}
+
+// system funcs
 
 func (s *CollisionSystem) GetComponentDeps() []string {
 	return []string{"Vec2D,Position", "Vec2D,Box"}
@@ -60,6 +113,10 @@ func (s *CollisionSystem) GetComponentDeps() []string {
 
 func (s *CollisionSystem) LinkWorld(w *World) {
 	s.w = w
+
+	// initialise the rate limiter array with capacity
+	s.rateLimiterArray = NewCollisionRateLimiterArray(w.MaxEntities(), s.delay)
+
 	// Filter a regularly updated list of the entities which are collidable
 	// (position and hitbox)
 	s.collidableEntities = w.em.GetSortedUpdatedEntityList(
@@ -103,51 +160,6 @@ func (s *CollisionSystem) Update(dt_ms float64) {
 	}
 }
 
-func (s *CollisionSystem) checkEntities(entities []*Entity) {
-	// NOTE: we guard for despawns since the entities in the spatial hash
-	// table might have been despawned since the last time a spatial hash
-	// was computed (not every system is guaranteed to run every update loop,
-	// so maybe spatial hash didn't run but an entity or world logic did, to
-	// despawn one of the tokens still stored in the last-computed spatial hash
-	// table).
-	for ix := 0; ix < len(entities); ix++ {
-		i := entities[ix]
-		if i.Despawned {
-			continue
-		}
-		for jx := ix + 1; jx < len(entities); jx++ {
-			j := entities[jx]
-			if j.Despawned {
-				continue
-			}
-			// required that i.ID < j.ID for the rate limiter array
-			if j.ID < i.ID {
-				j, i = i, j
-			}
-			if !s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Limited() &&
-				s.TestCollision(i, j) {
-				s.DoCollide(i, j)
-			}
-		}
-	}
-}
-
-func (s *CollisionSystem) DoCollide(i *Entity, j *Entity) {
-	s.rateLimiterArray.GetRateLimiter(i.ID, j.ID).Do(
-		func() {
-			s.w.Events.Publish("collision",
-				CollisionData{This: i, Other: j})
-			s.w.Events.Publish("collision",
-				CollisionData{This: j, Other: i})
-		})
-}
-
-// Test collision between two entities
-func (s *CollisionSystem) TestCollision(i *Entity, j *Entity) bool {
-	iPos := i.GetVec2D("Position")
-	iBox := i.GetVec2D("Box")
-	jPos := j.GetVec2D("Position")
-	jBox := j.GetVec2D("Box")
-	intersects := RectIntersectsRect(*iPos, *iBox, *jPos, *jBox)
-	return intersects
+func (s *CollisionSystem) Expand(n int) {
+	s.rateLimiterArray.Expand(n)
 }

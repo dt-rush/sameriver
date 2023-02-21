@@ -35,3 +35,7 @@ func (i *InventorySystem) LinkWorld(w *World) {
 func (i *InventorySystem) Update(dt_ms float64) {
 	// nil?
 }
+
+func (i *InventorySystem) Expand(n int) {
+	// nil?
+}
