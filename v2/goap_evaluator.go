@@ -2,6 +2,8 @@ package sameriver
 
 import (
 	"strings"
+
+	"github.com/dt-rush/sameriver/v2/utils"
 )
 
 type GOAPEvaluator struct {
@@ -16,19 +18,19 @@ func NewGOAPEvaluator() *GOAPEvaluator {
 	}
 }
 
-func (e *GOAPEvaluator) addModalVals(vals ...GOAPModalVal) {
+func (e *GOAPEvaluator) AddModalVals(vals ...GOAPModalVal) {
 	for _, val := range vals {
 		e.modalVals[val.name] = val
 	}
 }
 
-func (e *GOAPEvaluator) populateModalStartState(ws *GOAPWorldState) {
+func (e *GOAPEvaluator) PopulateModalStartState(ws *GOAPWorldState) {
 	for varName, val := range e.modalVals {
 		ws.vals[varName] = val.check(ws)
 	}
 }
 
-func (e *GOAPEvaluator) addActions(actions ...*GOAPAction) {
+func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 	for _, action := range actions {
 		e.actions.Add(action)
 		// link up modal setters for effs matching modal varnames
@@ -97,6 +99,9 @@ func (e *GOAPEvaluator) remainingsOfPath(path *GOAPPath, start *GOAPWorldState, 
 	mainRemaining := main.remaining(ws)
 	remainings.nUnfulfilled += len(mainRemaining.goal.goals)
 	remainings.main = mainRemaining
+	path.remainings = remainings
+	path.endState = ws
+
 	return remainings
 }
 
@@ -109,9 +114,9 @@ func (e *GOAPEvaluator) presFulfilled(a *GOAPAction, ws *GOAPWorldState) bool {
 	return len(remaining.goal.goals) == 0
 }
 
-func (e *GOAPEvaluator) validateForward(path []*GOAPAction, start *GOAPWorldState, main *GOAPGoal) bool {
+func (e *GOAPEvaluator) validateForward(path *GOAPPath, start *GOAPWorldState, main *GOAPGoal) bool {
 	ws := start.copyOf()
-	for _, action := range path {
+	for _, action := range path.path {
 		if !e.presFulfilled(action, ws) {
 			debugGOAPPrintf(">>>>>>> in validateForward, %s was not fulfilled", action.name)
 			return false
@@ -126,150 +131,96 @@ func (e *GOAPEvaluator) validateForward(path []*GOAPAction, start *GOAPWorldStat
 	return true
 }
 
-func (e *GOAPEvaluator) prepend(
+func (e *GOAPEvaluator) tryPrepend(
 	start *GOAPWorldState,
 	action *GOAPAction,
-	here *GOAPPQueueItem) (extended *GOAPPQueueItem, useful bool) {
-	/*
+	path *GOAPPath,
+	goal *GOAPGoal) *GOAPPQueueItem {
 
-		prependSlice := func(a *GOAPAction, path []*GOAPAction) []*GOAPAction {
-			prepended := make([]*GOAPAction, len(path))
-			copy(prepended, path)
-			prepended = append([]*GOAPAction{a}, path...)
-			return prepended
-		}
-		// TODO: presRemaining should not be a name map, it should be actually a list...
-		// each action has to have its pres fulfilled, and there may be multiple actions
-		// with the same name -- doesn't necessarily mean their pres are valid...
-		// say we have start with 0 booze and do:
-		//
-		// getBooze -> drinkBooze -> drinkBooze.
-		//
-		// the second one doesn't have its pres fulfilled yet
-		if !action.affectsAnUnfulfilledVar(here.remaining, here.presRemaining) {
-			debugGOAPPrintf("Action %s doesn't help with any goal -- skipping", action.name)
-			return nil, false
-		}
-		debugGOAPPrintf("    starting state:")
-		debugGOAPPrintWorldState(start)
-		debugGOAPPrintf("    here.remaining:")
-		debugGOAPPrintGoal(here.remaining)
-		debugGOAPPrintf("    here.presRemaining:")
-		for _, pre := range here.presRemaining {
-			debugGOAPPrintGoal(pre)
-		}
-		newPath := prependSlice(action, here.path)
-		debugGOAPPrintf("    --- evaluating path: %s", GOAPPathToString(newPath))
-		// note: we start from nothing because, say the end goal wants fridgeClosed = 0
-		// and we start with it closed, this will prematurely *fulfill* the fridgeClosed goal
-		// of {hasFood: 1, fridgeClosed: 1}
-		// instead, the start state is only used when checking pres for an otherwise fulfilled goal
-		nothing := NewGOAPWorldState(nil)
-		newResult := e.applyPath(newPath, nothing)
+	before := path.remainings
+	prepended := path.prepended(action)
+	if e.remainingsOfPath(prepended, start, goal).isCloser(before) {
+		return &GOAPPQueueItem{path: prepended}
+	} else {
+		return nil
+	}
+}
 
-		debugGOAPPrintf("    --- result of chain with %s prepended:", action.name)
-		debugGOAPPrintWorldState(newResult)
+func (e *GOAPEvaluator) tryAppend(
+	start *GOAPWorldState,
+	action *GOAPAction,
+	path *GOAPPath,
+	goal *GOAPGoal) *GOAPPQueueItem {
 
-		beforeResult := here.endState
-		debugGOAPPrintf("    --- result of chain without:")
-		debugGOAPPrintWorldState(beforeResult)
+	before := path.remainings
+	appended := path.appended(action)
+	if e.remainingsOfPath(appended, start, goal).isCloser(before) {
+		return &GOAPPQueueItem{path: appended}
+	} else {
+		return nil
+	}
+}
 
-		singleResult := e.applyAction(action, start)
-		debugGOAPPrintf("    --- single result of %s", action.name)
-		debugGOAPPrintWorldState(singleResult)
+func (e *GOAPEvaluator) actionMightHelp(
+	start *GOAPWorldState,
+	action *GOAPAction,
+	path *GOAPPath,
+	prependAppendFlag int) bool {
 
-		// does newResult fulfill goal better than beforeResult?
-		debugGOAPPrintf("    --- remaining of goal?")
-		closerToGoal, remaining := here.remaining.stateCloserInSomeVar(newResult, beforeResult)
-		// does newResult fulfill any goal?
-		remainingNothing, _ := here.remaining.remaining(nothing)
-		betterThanNothing := len(remainingNothing.fulfilled) > 0
-		// calculate pres remaining
-		// does singleResult fulfill any of presRemaining better than nil?
-		helpsWithAPre := false
-		afterPresRemaining := make(map[string]*GOAPGoal)
-		for preActionName, pre := range here.presRemaining {
-			if len(pre.goals) == 0 {
-				continue // pre already fulfilled
-			}
-			betterThanNothingForPre, preRemaining := pre.stateCloserInSomeVar(singleResult, nothing)
-			debugGOAPPrintf("    action %s better than nothing for pre of %s? %t", action.name, preActionName, betterThanNothingForPre)
-			helpsWithAPre = helpsWithAPre || betterThanNothingForPre
-			afterPresRemaining[preActionName] = preRemaining
-		}
-		afterPresRemaining[action.name] = action.pres
+	var appendedPrependedMsg string
+	if prependAppendFlag == GOAP_PATH_PREPEND {
+		appendedPrependedMsg = "prepended"
+	}
+	if prependAppendFlag == GOAP_PATH_APPEND {
+		appendedPrependedMsg = "appended"
+	}
+	Logger.Printf("checking if %s can be %s", action.name, appendedPrependedMsg)
 
-		debugGOAPPrintf("    === remaining:")
-		debugGOAPPrintGoal(remaining)
-		debugGOAPPrintf("    === afterPresRemaining:")
-		for _, pre := range afterPresRemaining {
-			debugGOAPPrintGoal(pre)
-		}
-
-		// if remaining.goals == 0, see if we can fulfill all remaining pres with start state
-		if len(remaining.goals) == 0 {
-			presAfterStart := make(map[string]*GOAPGoal)
-			nPresFulfilled := 0
-			for preActionName, pre := range afterPresRemaining {
-				preRemaining, _ := pre.remaining(start)
-				if len(pre.goals) == 0 || len(preRemaining.goals) == 0 {
-					debugGOAPPrintf("        pre:%s is fulfilled.", preActionName)
-					nPresFulfilled++
-					presAfterStart[preActionName] = preRemaining
+	actionChangesVarWell := func(spec string, interval *utils.NumericInterval, action *GOAPAction) bool {
+		Logger.Printf("    Considering effs of %s: %v", action.name, action.effs)
+		split := strings.Split(spec, ",")
+		varName := split[0]
+		for effSpec, eff := range action.effs {
+			split = strings.Split(effSpec, ",")
+			effVarName := split[0]
+			if varName == effVarName {
+				Logger.Printf("      [ ] eff affects var: %v", effSpec)
+				var needToBeat, actionDiff float64
+				switch prependAppendFlag {
+				case GOAP_PATH_PREPEND:
+					needToBeat = interval.Diff(float64(start.vals[varName]))
+					actionDiff = interval.Diff(float64(eff.f(start.vals[varName])))
+				case GOAP_PATH_APPEND:
+					needToBeat = interval.Diff(float64(path.endState.vals[varName]))
+					actionDiff = interval.Diff(float64(eff.f(path.endState.vals[varName])))
+				}
+				if actionDiff < needToBeat {
+					Logger.Printf("      [X] eff is good for var")
+					return true
+				} else {
+					Logger.Printf("      [_] eff doesn't help var")
 				}
 			}
-			if nPresFulfilled == len(afterPresRemaining) {
-				debugGOAPPrintf("!!!!!!! start state fulfills all remaining pres!")
-				afterPresRemaining = presAfterStart
+		}
+		return false
+	}
+
+	mightHelpGoal := func(goal *GOAPGoal) bool {
+		for spec, interval := range goal.goals {
+			if actionChangesVarWell(spec, interval, action) {
+				return true
 			}
 		}
+		return false
+	}
 
-		// if this action is good for something,
-		if closerToGoal || betterThanNothing || helpsWithAPre {
-			debugGOAPPrintf("    remaining for %s:", GOAPPathToString(newPath))
-			debugGOAPPrintGoal(remaining)
-			debugGOAPPrintf("    presRemaining for %s:", GOAPPathToString(newPath))
-			if len(afterPresRemaining) == 0 {
-				debugGOAPPrintf("    none")
-			}
-			for actionName, g := range afterPresRemaining {
-				debugGOAPPrintf("%s now wants:", actionName)
-				debugGOAPPrintGoal(g)
-			}
-			// add path cost
-			cost := 0
-			for _, action := range newPath {
-				switch action.cost.(type) {
-				case int:
-					cost += action.cost.(int)
-				case func() int:
-					cost += action.cost.(func() int)()
-				}
-			}
-			// calculate n goals unfulfilled of main goal and pres
-			nUnfulfilledMain := len(remaining.goals)
-			nUnfulfilledPres := 0
-			for _, pre := range afterPresRemaining {
-				nUnfulfilledPres += len(pre.goals)
-			}
-			debugGOAPPrintf("    nUnfulfilledMain: %d", nUnfulfilledMain)
-			debugGOAPPrintf("    nUnfulfilledPres: %d", nUnfulfilledPres)
-
-			// add heuristic
-			cost += nUnfulfilledMain + nUnfulfilledPres
-
-			extended = &GOAPPQueueItem{
-				path:          newPath,
-				presRemaining: afterPresRemaining,
-				remaining:     remaining,
-				endState:      newResult,
-				nUnfulfilled:  nUnfulfilledMain + nUnfulfilledPres,
-				cost:          cost,
-				index:         -1, // going to be set by Push()
-			}
-			return extended, true
+	if mightHelpGoal(path.remainings.main.goal) {
+		return true
+	}
+	for _, pre := range path.remainings.pres {
+		if mightHelpGoal(pre.goal) {
+			return true
 		}
-		return nil, false
-	*/
-	return nil, false
+	}
+	return false
 }

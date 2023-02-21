@@ -33,7 +33,7 @@ func debugGOAPPrintGoal(g *GOAPGoal) {
 	for spec, interval := range g.goals {
 		split := strings.Split(spec, ",")
 		varName := split[0]
-		debugGOAPPrintf("    %s: [%.0f, %.0f]", varName, interval.a, interval.b)
+		debugGOAPPrintf("    %s: [%.0f, %.0f]", varName, interval.A, interval.B)
 	}
 }
 

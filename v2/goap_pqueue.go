@@ -1,12 +1,7 @@
 package sameriver
 
 type GOAPPQueueItem struct {
-	path          []*GOAPAction
-	presRemaining map[string]*GOAPGoal
-	remaining     *GOAPGoal
-	nUnfulfilled  int
-	endState      *GOAPWorldState
-	cost          int
+	path *GOAPPath
 	// The index is needed by update and is maintained
 	// by the heap.Interface methods.
 	index int // The index of the item in the heap.
@@ -18,7 +13,7 @@ func (pq GOAPPriorityQueue) Len() int { return len(pq) }
 
 func (pq GOAPPriorityQueue) Less(i, j int) bool {
 	// We goal Pop to give us the lowest cost
-	return pq[i].cost < pq[j].cost
+	return pq[i].path.cost < pq[j].path.cost
 }
 
 func (pq GOAPPriorityQueue) Swap(i, j int) {
