@@ -259,3 +259,46 @@ func TestSpatialHashTableToString(t *testing.T) {
 		t.Fatal("spatial hash did not show entities in its String() representation")
 	}
 }
+
+func TestSpatialHashExpand(t *testing.T) {
+	w := NewWorld(100, 100)
+	sh := NewSpatialHashSystem(10, 10)
+	w.RegisterSystems(sh)
+	testData := map[[2]Vec2D][][2]int{
+		[2]Vec2D{Vec2D{5, 5}, Vec2D{10, 10}}: [][2]int{
+			[2]int{0, 0},
+			[2]int{0, 1},
+			[2]int{1, 0},
+			[2]int{1, 1},
+		},
+	}
+	for posbox, _ := range testData {
+		testingSpawnSpatial(w, posbox[0], posbox[1])
+	}
+	oldCapacity := cap(sh.hasher.Table[0][0])
+	Logger.Printf("oldCapacity: %d", oldCapacity)
+
+	w.Update(FRAME_DURATION_INT / 2)
+	Logger.Println(sh.hasher.Table)
+
+	sh.Expand(MAX_ENTITIES / 2)
+
+	if !(oldCapacity < cap(sh.hasher.Table[0][0])) {
+		t.Fatal("Did not expand capacity of cells")
+	}
+
+	expected := [][3]int{
+		[3]int{0, 0, 1},
+		[3]int{0, 1, 1},
+		[3]int{1, 0, 1},
+		[3]int{1, 1, 1},
+	}
+	for _, e := range expected {
+		x, y, n := e[0], e[1], e[2]
+		if len(sh.hasher.Table[x][y]) != n {
+			Logger.Printf("[%d][%d]", x, y)
+			Logger.Println(sh.hasher.Table[x][y])
+			t.Fatal("altered cell counts")
+		}
+	}
+}

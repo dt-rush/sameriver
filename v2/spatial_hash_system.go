@@ -29,5 +29,5 @@ func (h *SpatialHashSystem) Update(dt_ms float64) {
 }
 
 func (h *SpatialHashSystem) Expand(n int) {
-	// nil?
+	h.hasher.Expand(n)
 }

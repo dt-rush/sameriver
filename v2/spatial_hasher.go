@@ -238,9 +238,11 @@ func (h *SpatialHasher) String() string {
 func (h *SpatialHasher) Expand(n int) {
 	for x := 0; x < h.GridX; x++ {
 		for y := 0; y < h.GridY; y++ {
-			newCell := make([]*Entity, 0, (h.capacity+n)/4)
+			oldCount := len(h.Table[x][y])
+			newCell := make([]*Entity, (h.capacity+n)/4, (h.capacity+n)/4)
 			copy(newCell, h.Table[x][y])
-			h.Table[x][y] = newCell
+			h.Table[x][y] = newCell[:oldCount]
 		}
 	}
+	h.capacity += n
 }
