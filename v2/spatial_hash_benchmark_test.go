@@ -31,8 +31,8 @@ func BenchmarkSpatialHashEntitiesWithinDistance(b *testing.B) {
 			}
 		}
 	}
-	w.Update(FRAME_DURATION_INT / 2)
 	for i := 0; i < b.N; i++ {
+		w.Update(FRAME_DURATION_INT / 2)
 		sh.hasher.EntitiesWithinDistance(
 			*e.GetVec2D("Position"),
 			*e.GetVec2D("Box"),
