@@ -2,8 +2,11 @@ package sameriver
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"strings"
+
+	"github.com/TwiN/go-color"
 )
 
 func debugGOAPPrintf(s string, args ...any) {
@@ -27,13 +30,30 @@ func GOAPPathToString(path *GOAPPath) string {
 
 func debugGOAPPrintGoal(g *GOAPGoal) {
 	if g == nil || len(g.goals) == 0 {
-		debugGOAPPrintf("    nil")
+		msg := "    satisfied    "
+		debugGOAPPrintf(color.InBlackOverGreen(strings.Repeat(" ", len(msg))))
+		debugGOAPPrintf(color.InBlackOverGreen(msg))
+		debugGOAPPrintf(color.InBlackOverGreen(strings.Repeat(" ", len(msg))))
 		return
 	}
 	for spec, interval := range g.goals {
 		split := strings.Split(spec, ",")
 		varName := split[0]
-		debugGOAPPrintf("    %s: [%.0f, %.0f]", varName, interval.A, interval.B)
+		msg := fmt.Sprintf("    %s: [%.0f, %.0f]    ", varName, interval.A, interval.B)
+
+		debugGOAPPrintf(color.InBlackOverBlack(strings.Repeat(" ", len(msg))))
+		debugGOAPPrintf(color.InBold(color.InRedOverBlack(msg)))
+		debugGOAPPrintf(color.InBlackOverBlack(strings.Repeat(" ", len(msg))))
+
+	}
+}
+
+func debugGOAPPrintGoalRemainingSurface(g *GOAPGoalRemainingSurface) {
+	debugGOAPPrintf(color.InBold(color.InRedOverGray("main:")))
+	debugGOAPPrintGoal(g.main.goal)
+	debugGOAPPrintf(color.InBold(color.InRedOverGray("pres:")))
+	for _, pre := range g.pres {
+		debugGOAPPrintGoal(pre.goal)
 	}
 }
 

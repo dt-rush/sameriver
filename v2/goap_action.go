@@ -5,9 +5,8 @@ import (
 )
 
 type GOAPAction struct {
-	name string
-	cost IntOrFunc // (interface{})
-	// TODO: change to 'pre'
+	name            string
+	cost            IntOrFunc
 	pres            *GOAPGoal
 	preModalChecks  map[string]func(ws *GOAPWorldState) int
 	effs            map[string]*GOAPEff

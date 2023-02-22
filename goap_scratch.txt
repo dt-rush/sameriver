@@ -1,5 +1,73 @@
 
 
+goal: drunk > 2
+
+
+[]
+
+consider prepending [drink]
+
+helps drunk!
+
+new path [drink]
+{drunk: 0} -> {drunk: 1}
+
+remaining:
+main: drunk > 2
+pres: [hasBooze>0]
+
+
+*don't evaluate modals during deepening, during evaluating remainings of paths*
+*don't evaluate modals til validateForward when a possible solution is found*
+(if we were to evaluate the modal for drink, we'd try to remove a hasbooze that isn't available)
+
+
+
+
+              [drink, drink, drink]
+
+main: nil
+pres: [hasBooze>0, hasBooze>0, hasBooze>0] (because, these pres were not satisfied during runthrough)
+
+consider prepending [getBooze]
+
+satisfies pre[0]
+
+new remaining:
+
+main: nil
+pres: [nil, hasBooze>0, hasBooze>0]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 TODO:
 when evaluating a path, populate start according to which modal vals *appear in the effs and checks*
 

@@ -1,10 +1,12 @@
 package sameriver
 
 import (
+	"fmt"
 	"strings"
-	"time"
 
 	"github.com/dt-rush/sameriver/v2/utils"
+
+	"github.com/TwiN/go-color"
 )
 
 type GOAPEvaluator struct {
@@ -33,13 +35,14 @@ func (e *GOAPEvaluator) PopulateModalStartState(ws *GOAPWorldState) {
 
 func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 	for _, action := range actions {
+		debugGOAPPrintf("[][][] adding action %s", action.name)
 		e.actions.Add(action)
 		// link up modal setters for effs matching modal varnames
 		for spec, _ := range action.effs {
 			split := strings.Split(spec, ",")
 			varName := split[0]
 			if modal, ok := e.modalVals[varName]; ok {
-				debugGOAPPrintf("[][][] adding modal setter for %s", varName)
+				debugGOAPPrintf("[][][]     adding modal setter for %s", varName)
 				action.effModalSetters[varName] = modal.effModalSet
 			}
 		}
@@ -54,13 +57,24 @@ func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 	}
 }
 
-func (e *GOAPEvaluator) applyAction(action *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState) {
-	t0 := time.Now()
+func (e *GOAPEvaluator) applyActionBasic(action *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState) {
 	newWS = ws.copyOf()
-	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
-	debugGOAPPrintf("============================================================================== took %f ms to copy ws", dt_ms)
 
-	t0 = time.Now()
+	for spec, eff := range action.effs {
+		split := strings.Split(spec, ",")
+		varName, _ := split[0], split[1]
+		x := ws.vals[varName]
+		debugGOAPPrintf("            applying %s::%s%d(%d) ; = %d", action.name, spec, eff.val, x, eff.f(x))
+		newWS.vals[varName] = eff.f(x)
+	}
+	debugGOAPPrintf("            ws after action: %v", newWS.vals)
+
+	return newWS
+}
+
+func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState) {
+	newWS = ws.copyOf()
+
 	for spec, eff := range action.effs {
 		split := strings.Split(spec, ",")
 		varName, op := split[0], split[1]
@@ -73,42 +87,29 @@ func (e *GOAPEvaluator) applyAction(action *GOAPAction, ws *GOAPWorldState) (new
 		}
 	}
 	debugGOAPPrintf("            ws after action: %v", newWS.vals)
-	dt_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
-	debugGOAPPrintf("================================================================================ took %f ms to apply effs", dt_ms)
 
 	// re-check any modal vals
-	t0 = time.Now()
 	for varName, _ := range newWS.vals {
 		if modalVal, ok := e.modalVals[varName]; ok {
 			debugGOAPPrintf("              re-checking modal val %s", varName)
 			newWS.vals[varName] = modalVal.check(newWS)
 		}
 	}
-	dt_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
-	debugGOAPPrintf("================================================================================== took %f ms to re-check modal vals", dt_ms)
 
 	debugGOAPPrintf("            ws after re-checking modal vals: %v", newWS.vals)
 	return newWS
 }
 
 func (e *GOAPEvaluator) remainingsOfPath(path *GOAPPath, start *GOAPWorldState, main *GOAPGoal) (remainings *GOAPGoalRemainingSurface) {
-	t0 := time.Now()
 	ws := start.copyOf()
 	remainings = NewGOAPGoalRemainingSurface()
 	remainings.path = path
 	for _, action := range path.path {
-		t1 := time.Now()
 		preRemaining := action.pres.remaining(ws)
 		remainings.nUnfulfilled += len(preRemaining.goal.goals)
 		remainings.pres = append(remainings.pres, preRemaining)
-		dt_ms := float64(time.Since(t1).Nanoseconds()) / 1.0e6
-		debugGOAPPrintf(" ============================================================================================= took %f ms to check presRemaining for action", dt_ms)
 
-		t2 := time.Now()
-		ws = e.applyAction(action, ws)
-		dt_ms_2 := float64(time.Since(t2).Nanoseconds()) / 1.0e6
-		debugGOAPPrintf(" ==================================================================================================== took %f ms to apply action", dt_ms_2)
-
+		ws = e.applyActionBasic(action, ws)
 	}
 	debugGOAPPrintf("  --- ws after path: %v", ws.vals)
 	mainRemaining := main.remaining(ws)
@@ -116,9 +117,6 @@ func (e *GOAPEvaluator) remainingsOfPath(path *GOAPPath, start *GOAPWorldState, 
 	remainings.main = mainRemaining
 	path.remainings = remainings
 	path.endState = ws
-
-	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
-	debugGOAPPrintf("================================================================================================== Took %f ms to check remainings of path by applying it", dt_ms)
 
 	return remainings
 }
@@ -141,7 +139,7 @@ func (e *GOAPEvaluator) validateForward(path *GOAPPath, start *GOAPWorldState, m
 			debugGOAPPrintf(">>>>>>> in validateForward, %s was not fulfilled", action.name)
 			return false
 		}
-		ws = e.applyAction(action, ws)
+		ws = e.applyActionModal(action, ws)
 	}
 	endRemaining := main.remaining(ws)
 	if len(endRemaining.goal.goals) != 0 {
@@ -187,24 +185,44 @@ func (e *GOAPEvaluator) actionMightHelp(
 	path *GOAPPath,
 	prependAppendFlag int) bool {
 
-	var appendedPrependedMsg string
 	if prependAppendFlag == GOAP_PATH_PREPEND {
-		appendedPrependedMsg = "prepended"
+		debugGOAPPrintf(color.InBlueOverGray(fmt.Sprintf("checking if %s can be prepended", action.name)))
 	}
 	if prependAppendFlag == GOAP_PATH_APPEND {
-		appendedPrependedMsg = "appended"
+		debugGOAPPrintf(color.InGreenOverGray(fmt.Sprintf("checking if %s can be appended", action.name)))
 	}
-	debugGOAPPrintf("checking if %s can be %s", action.name, appendedPrependedMsg)
 
 	actionChangesVarWell := func(spec string, interval *utils.NumericInterval, action *GOAPAction) bool {
-		debugGOAPPrintf("    Considering effs of %s: %v", action.name, action.effs)
 		split := strings.Split(spec, ",")
 		varName := split[0]
+		debugGOAPPrintf("    Considering effs of %s for var %s. effs: %v", action.name, varName, action.effs)
 		for effSpec, eff := range action.effs {
 			split = strings.Split(effSpec, ",")
-			effVarName := split[0]
+			effVarName, op := split[0], split[1]
 			if varName == effVarName {
-				debugGOAPPrintf("      [ ] eff affects var: %v", effSpec)
+				debugGOAPPrintf("      [ ] eff affects var: %v; is it satisfactory/closer?", effVarName)
+				// special handler for =
+				if op == "=" {
+					switch prependAppendFlag {
+					case GOAP_PATH_PREPEND:
+						if interval.Diff(float64(eff.f(start.vals[varName]))) == 0 {
+							debugGOAPPrintf("      [x] eff satisfactory")
+							return true
+						} else {
+							debugGOAPPrintf("      [_] eff not satisfactory")
+							return false
+						}
+					case GOAP_PATH_APPEND:
+						if interval.Diff(float64(eff.f(path.endState.vals[varName]))) == 0 {
+							debugGOAPPrintf("      [x] eff satisfactory")
+							return true
+						} else {
+							debugGOAPPrintf("      [_] eff not satisfactory")
+							return false
+						}
+					}
+				}
+				// all other cases
 				var needToBeat, actionDiff float64
 				switch prependAppendFlag {
 				case GOAP_PATH_PREPEND:
@@ -215,10 +233,10 @@ func (e *GOAPEvaluator) actionMightHelp(
 					actionDiff = interval.Diff(float64(eff.f(path.endState.vals[varName])))
 				}
 				if actionDiff < needToBeat {
-					debugGOAPPrintf("      [X] eff is good for var")
+					debugGOAPPrintf("      [X] eff closer")
 					return true
 				} else {
-					debugGOAPPrintf("      [_] eff doesn't help var")
+					debugGOAPPrintf("      [_] eff not closer")
 				}
 			}
 		}

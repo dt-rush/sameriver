@@ -111,6 +111,72 @@ func (i *Item) CreditStack(stack *Item) {
 	sort.Float64s(i.Degradations)
 }
 
+/*
+in the case of growth, we stretch the degradations slice
+and fill in the gaps with their nearest left value
+
+000000444        len 9
+________________ len 16
+
+16/9 = 1.777777
+
+skip ahead by 1.777777, int()'d
+
+0_0_00_0_0_44_4_
+
+and fill in
+
+0000000000044444
+
+in the case of shrinking, we sample the list down into the new one
+
+000444999 len 9
+_____     len 5
+
+9/5 = 1.8
+
+skip ahead by 1.8, int()'d
+
+v v vv v
+000444999
+
+00449
+*/
+func (i *Item) SetCount(n int) {
+	if n == i.Count {
+		return
+	}
+	if n == 0 {
+		i.Degradations = []float64{}
+		i.Count = 0
+		return
+	}
+	sampleIx := func(ix int, factor float64) int {
+		return int(float64(ix) * factor)
+	}
+	newDegradations := make([]float64, n)
+	if n > i.Count {
+		factor := float64(n) / float64(i.Count)
+		for ix := 0; ix < i.Count; ix++ {
+			// find our sample point and the next one (defines the gap between)
+			samplePoint := sampleIx(ix, factor)
+			nextPoint := sampleIx(ix+1, factor)
+			newDegradations[samplePoint] = i.Degradations[ix]
+			// fill in the space til the next
+			for jx := samplePoint + 1; jx < nextPoint && jx < n; jx++ {
+				newDegradations[jx] = i.Degradations[ix]
+			}
+		}
+	} else if n < i.Count {
+		factor := float64(i.Count) / float64(n)
+		for ix := 0; ix < n; ix++ {
+			samplePoint := sampleIx(ix, factor)
+			newDegradations[ix] = i.Degradations[samplePoint]
+		}
+	}
+	i.Count = n
+}
+
 func (i *Item) PropertiesForDisplay() []string {
 
 	formatFloatForDisplay := func(value float64) string {

@@ -1,12 +1,10 @@
 package sameriver
 
 import (
-	/*
-	   "bytes"
-	   "os"
-	   "strings"
-	*/
+	"fmt"
 	"time"
+
+	"github.com/TwiN/go-color"
 )
 
 type GOAPPlanner struct {
@@ -28,9 +26,10 @@ func (p *GOAPPlanner) traverseFulfillers(
 	goal *GOAPGoal) {
 
 	debugGOAPPrintf("traverse--------------------------")
-	debugGOAPPrintf("backtrack path so far: ")
-	debugGOAPPrintf(GOAPPathToString(here.path))
+	debugGOAPPrintf(color.InRedOverGray("remaining:"))
+	debugGOAPPrintGoalRemainingSurface(here.path.remainings)
 
+	debugGOAPPrintf("%d possible actions", len(p.eval.actions.set))
 	for _, action := range p.eval.actions.set {
 		debugGOAPPrintf("[ ] Considering action %s", action.name)
 		frontier := make([]*GOAPPQueueItem, 0)
@@ -51,6 +50,10 @@ func (p *GOAPPlanner) traverseFulfillers(
 		} else {
 			debugGOAPPrintf("[X] %s helpful!", action.name)
 			for _, item := range frontier {
+				debugGOAPPrintf(
+					color.Ize(color.Cyan,
+						fmt.Sprintf("}-}-}-}-}-}-}-} new path: %s",
+							GOAPPathToString(item.path))))
 				pq.Push(item)
 			}
 		}
@@ -61,7 +64,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 func (p *GOAPPlanner) Plan(
 	start *GOAPWorldState,
 	goal *GOAPGoal,
-	maxIter int) (solution []*GOAPAction, ok bool) {
+	maxIter int) (solution *GOAPPath, ok bool) {
 
 	// populate start state with any modal vals at start
 	p.eval.PopulateModalStartState(start)
@@ -87,9 +90,9 @@ func (p *GOAPPlanner) Plan(
 	for iter < maxIter && pq.Len() > 0 && resultPq.Len() < 2 {
 		debugGOAPPrintf("=== iter ===")
 		here := pq.Pop().(*GOAPPQueueItem)
-		debugGOAPPrintf("here:")
-		debugGOAPPrintf(GOAPPathToString(here.path))
-		debugGOAPPrintf("(%d unfulfilled)", here.path.remainings.nUnfulfilled)
+		debugGOAPPrintf(color.InRedOverGray("here:"))
+		debugGOAPPrintf(color.InWhiteOverBlack(color.InBold(GOAPPathToString(here.path))))
+		debugGOAPPrintf(color.InRedOverGray(fmt.Sprintf("(%d unfulfilled)", here.path.remainings.nUnfulfilled)))
 
 		if here.path.remainings.nUnfulfilled == 0 {
 			ok := p.eval.validateForward(here.path, start, goal)
@@ -97,15 +100,16 @@ func (p *GOAPPlanner) Plan(
 				debugGOAPPrintf(">>>>>>> potential solution rejected")
 			}
 
-			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
-			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
-			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
-			debugGOAPPrintf("    SOLUTION: %s", GOAPPathToString(here.path))
-			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
-			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
-			debugGOAPPrintf(">>>>>>>>>>>>>>>>>>>>>>")
+			debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+			debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+			debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+			debugGOAPPrintf(color.InGreenOverWhite(color.InBold(fmt.Sprintf("    SOLUTION: %s", GOAPPathToString(here.path)))))
+			debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+			debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+			debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+			debugGOAPPrintf(color.InGreenOverWhite(color.InBold(GOAPPathToString(here.path))))
 			resultPq.Push(here)
-			debugGOAPPrintf("%d solutions found so far", resultPq.Len())
+			debugGOAPPrintf(color.InGreenOverWhite(color.InBold(fmt.Sprintf("%d solutions found so far", resultPq.Len()))))
 		} else {
 			p.traverseFulfillers(pq, start, here, goal)
 			iter++
@@ -121,11 +125,11 @@ func (p *GOAPPlanner) Plan(
 		debugGOAPPrintf("Took %f ms to exhaust pq without solution", dt)
 	}
 	if resultPq.Len() > 0 {
-		Logger.Printf("Took %f ms to find solution", dt)
+		debugGOAPPrintf("Took %f ms to find solution", dt)
 		if pq.Len() == 0 {
 			debugGOAPPrintf("Even though >0 solutions were found, exhausted pq")
 		}
-		return resultPq.Pop().(*GOAPPQueueItem).path.path, true
+		return resultPq.Pop().(*GOAPPQueueItem).path, true
 	} else {
 		return nil, false
 	}
