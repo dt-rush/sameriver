@@ -28,14 +28,14 @@ func (after *GOAPGoalRemainingSurface) isCloser(before *GOAPGoalRemainingSurface
 	case GOAP_PATH_PREPEND:
 		for i := 1; i < len(after.pres); i++ {
 			if after.pres[i].isCloser(before.pres[i-1]) {
-				debugGOAPPrintf("      ** pre for %s was closer", after.path.path[i].name)
+				debugGOAPPrintf("      ** pre for %s was closer", after.path.path[i].DisplayName())
 				return true
 			}
 		}
 	case GOAP_PATH_APPEND:
 		for i := 0; i < len(before.pres); i++ {
 			if after.pres[i].isCloser(before.pres[i]) {
-				debugGOAPPrintf("      ** pre for %s was closer", after.path.path[i].name)
+				debugGOAPPrintf("      ** pre for %s was closer", after.path.path[i].DisplayName())
 				return true
 			}
 		}

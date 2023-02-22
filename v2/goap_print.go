@@ -20,15 +20,27 @@ func debugGOAPPrintf(s string, args ...any) {
 
 func GOAPPathToString(path *GOAPPath) string {
 	var buf bytes.Buffer
-	buf.WriteString("[")
+	buf.WriteString("    [")
 	for i, action := range path.path {
-		buf.WriteString(action.name)
+		buf.WriteString(action.DisplayName())
 		if i != len(path.path)-1 {
 			buf.WriteString(",")
 		}
 	}
-	buf.WriteString("]")
+	buf.WriteString("]    ")
 	return buf.String()
+}
+
+func debugGOAPGoalToString(g *GOAPGoal) string {
+	if g == nil || len(g.vars) == 0 {
+		return color.InBlackOverGreen("    satisfied    ")
+	}
+	msg := ""
+	for varName, interval := range g.vars {
+		varInterval := fmt.Sprintf("%s: [%.0f, %.0f]", varName, interval.A, interval.B)
+		msg = color.InRedOverBlack(fmt.Sprintf("%s  %s", msg, varInterval))
+	}
+	return msg
 }
 
 func debugGOAPPrintGoal(g *GOAPGoal) {

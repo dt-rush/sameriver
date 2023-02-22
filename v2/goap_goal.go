@@ -8,15 +8,31 @@ import (
 )
 
 type GOAPGoal struct {
+	spec map[string]int
 	vars map[string]*utils.NumericInterval
 }
 
-func NewGOAPGoal(def map[string]int) *GOAPGoal {
+func NewGOAPGoal(spec map[string]int) *GOAPGoal {
 	g := &GOAPGoal{
+		spec: spec,
 		vars: make(map[string]*utils.NumericInterval),
 	}
-	for spec, val := range def {
-		split := strings.Split(spec, ",")
+	g.Parametrize(1)
+
+	return g
+}
+
+func (g *GOAPGoal) Parametrize(n int) *GOAPGoal {
+	for spec, val := range g.spec {
+		var split []string
+		macroSplit := strings.Split(spec, ":")
+		// if there is a macro ("EACH")
+		if macroSplit[0] == "EACH" {
+			val *= n
+			split = strings.Split(macroSplit[1], ",")
+		} else {
+			split = strings.Split(spec, ",")
+		}
 		varName, op := split[0], split[1]
 		interval := utils.MakeNumericInterval(op, val)
 		g.vars[varName] = interval
@@ -39,11 +55,12 @@ func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
 		goal:  NewGOAPGoal(nil),
 		diffs: make(map[string]float64),
 	}
-	debugGOAPPrintf("      -+- checking remaining for goal: %v", g.vars)
+	debugGOAPPrintf("      -+- checking remaining for goal: %s", debugGOAPGoalToString(g))
 	debugGOAPPrintf("      -+-     ws: %v", ws.vals)
 	for varName, interval := range g.vars {
 		if stateVal, ok := ws.vals[varName]; ok {
 			diff := interval.Diff(float64(stateVal))
+			debugGOAPPrintf("                diff for %s: %.0f", varName, diff)
 			result.diffs[varName] = diff
 			if diff != 0 {
 				result.goal.vars[varName] = interval
@@ -56,18 +73,3 @@ func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
 	}
 	return result
 }
-
-/*
-func (g *GOAPGoal) stateAssuresInSomeVar(state *GOAPWorldState) (assures bool) {
-	debugGOAPPrintf("*** stateAssuresInSomeVar()")
-	_, diffs := g.remaining(state)
-	for varName, _ := range diffs {
-		if diffs[varName] == 0 {
-			debugGOAPPrintf("****************** assures!")
-			return true
-		}
-	}
-	debugGOAPPrintf("****************** doesn't assure")
-	return false
-}
-*/

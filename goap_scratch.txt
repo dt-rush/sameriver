@@ -1,5 +1,52 @@
 
 
+
+
+parametrized actions (numeric)
+
+if we want to solve drunk>2, we determine if drink itself helps.
+if does; so we divide the diff by action.eff.val and that's how many times to run the action.
+we prepend drink(3), and its pres are also parametrically scaled:
+
+    hasBooze,>= 3
+
+similarly, for woodChopped = 3, we determine if chopWood helps
+it does; so we divide the diff by action.eff.val and that's how many times to run the action.
+we prepend chopWood(3), and its pres are parametrically scaled:
+
+    (notice: none are scaled!)
+
+    hasAxe,=: 1
+    hasGlove,=: 1
+    atTree,=: 1
+
+
+how to distinguish what should scale and what shouldn't?
+
+drink
+    pres:
+        EACH:hasBooze,>=: 1
+
+chopWood
+    pres:
+        hasAxe,=: 1
+        hasGlove,=: 1
+        atTree,=: 1
+
+[x] action has .Count field
+[x] action name becomes Name() which uses fmt.Sprintf
+[ ] in prepending, if helpful, we calculate the count necessary and prepend the parametrized action
+[x] when an action is parametrized with a count, it creates the scaled pre goal
+[_] in appending pres, we proceed as normal since the pre is already scaled
+
+
+
+
+
+
+
+
+
 goal: drunk > 2
 
 

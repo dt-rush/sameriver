@@ -873,7 +873,7 @@ func TestGOAPPlanSimpleEnough(t *testing.T) {
 	Logger.Println(planner.Plan(ws, goal, 50))
 }
 
-func TestGOAPPlanClassic(t *testing.T) {
+func TestGOAPPlanAlanWatts(t *testing.T) {
 	w := testingWorld()
 
 	ps := NewPhysicsSystem()
@@ -950,7 +950,7 @@ func TestGOAPPlanClassic(t *testing.T) {
 				ws.SetModal(e, "Inventory", inv)
 			}
 			if op == "=" {
-				inv.SetCountTags(0, "booze")
+				inv.SetCountTags(x, "booze")
 				ws.SetModal(e, "Inventory", inv)
 			}
 			if op == "+" {
@@ -1058,6 +1058,170 @@ func TestGOAPPlanClassic(t *testing.T) {
 	}
 	Logger.Println(color.InGreenOverWhite(GOAPPathToString(plan)))
 	dt_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	Logger.Printf("Took %f ms to find solution", dt_ms)
+}
+
+func TestGOAPPlanClassic(t *testing.T) {
+	w := testingWorld()
+
+	ps := NewPhysicsSystem()
+	items := NewItemSystem(nil)
+	inventories := NewInventorySystem()
+	w.RegisterSystems(ps, items, inventories)
+
+	w.RegisterComponents("IntMap,State", "Generic,Inventory")
+
+	items.CreateArchetype(map[string]any{
+		"name":        "axe",
+		"displayName": "axe",
+		"flavourText": "a nice axe for chopping trees",
+		"properties": map[string]int{
+			"value":     10,
+			"sharpness": 2,
+		},
+		"tags": []string{"tool"},
+	})
+	items.CreateArchetype(map[string]any{
+		"name":        "glove",
+		"displayName": "glove",
+		"flavourText": "good hand protection",
+		"properties": map[string]int{
+			"value": 2,
+		},
+		"tags": []string{"wearable"},
+	})
+
+	e := w.Spawn(map[string]any{
+		"components": map[string]any{
+			"Vec2D,Position":    Vec2D{0, 0},
+			"Generic,Inventory": inventories.Create(nil),
+		},
+	})
+
+	hasModal := func(name string, archetype string, tags ...string) GOAPModalVal {
+		return GOAPModalVal{
+			name: fmt.Sprintf("has%s", name),
+			check: func(ws *GOAPWorldState) int {
+				inv := ws.GetModal(e, "Inventory").(*Inventory)
+				return inv.CountName(archetype)
+			},
+			effModalSet: func(ws *GOAPWorldState, op string, x int) {
+				inv := ws.GetModal(e, "Inventory").(*Inventory).CopyOf()
+				if op == "-" {
+					inv.DebitNTags(x, archetype)
+				}
+				if op == "=" {
+					count := inv.CountTags(tags...)
+					if count == 0 {
+						inv.Credit(items.CreateStackSimple(x, archetype))
+					} else {
+						inv.SetCountName(x, archetype)
+					}
+				}
+				if op == "+" {
+					count := inv.CountName(archetype)
+					if count == 0 {
+						inv.Credit(items.CreateStackSimple(x, archetype))
+					} else {
+						inv.SetCountName(count+x, archetype)
+					}
+				}
+				ws.SetModal(e, "Inventory", inv)
+			},
+		}
+	}
+
+	hasAxeModal := hasModal("Axe", "axe")
+	hasGloveModal := hasModal("Glove", "glove")
+
+	get := func(name string) *GOAPAction {
+		return NewGOAPAction(map[string]any{
+			"name": fmt.Sprintf("get%s", name),
+			"cost": 1,
+			"pres": map[string]int{
+				fmt.Sprintf("at%s,=", name): 1,
+			},
+			"effs": map[string]int{
+				fmt.Sprintf("has%s,+", name): 1,
+			},
+		})
+	}
+
+	getAxe := get("Axe")
+	getGlove := get("Glove")
+
+	axePos := Vec2D{7, 7}
+	glovePos := Vec2D{-7, 7}
+	treePos := Vec2D{0, 19}
+
+	atModal := func(name string, pos Vec2D) GOAPModalVal {
+		return GOAPModalVal{
+			name: fmt.Sprintf("at%s", name),
+			check: func(ws *GOAPWorldState) int {
+				ourPos := ws.GetModal(e, "Position").(*Vec2D)
+				_, _, d := ourPos.Distance(pos)
+				if d < 2 {
+					return 1
+				} else {
+					return 0
+				}
+			},
+			effModalSet: func(ws *GOAPWorldState, op string, x int) {
+				near := pos.Add(Vec2D{1, 0})
+				ws.SetModal(e, "Position", &near)
+			},
+		}
+	}
+
+	atAxeModal := atModal("Axe", axePos)
+	atGloveModal := atModal("Glove", glovePos)
+	atTreeModal := atModal("Tree", treePos)
+
+	goTo := func(name string) *GOAPAction {
+		return NewGOAPAction(map[string]any{
+			"name": fmt.Sprintf("goTo%s", name),
+			"cost": 1,
+			"pres": nil,
+			"effs": map[string]int{
+				fmt.Sprintf("at%s,=", name): 1,
+			},
+		})
+	}
+
+	goToAxe := goTo("Axe")
+	goToGlove := goTo("Glove")
+	goToTree := goTo("Tree")
+
+	chopTree := NewGOAPAction(map[string]any{
+		"name": "chopTree",
+		"cost": 1,
+		"pres": map[string]int{
+			"hasGlove,=": 1,
+			"hasAxe,=":   1,
+			"atTree,=":   1,
+		},
+		"effs": map[string]int{
+			"woodChopped,+": 1,
+		},
+	})
+
+	p := NewGOAPPlanner(e)
+
+	p.eval.AddModalVals(hasGloveModal, hasAxeModal, atAxeModal, atGloveModal, atTreeModal)
+	p.eval.AddActions(getAxe, getGlove, goToAxe, goToGlove, goToTree, chopTree)
+
+	ws := NewGOAPWorldState(nil)
+
+	goal := NewGOAPGoal(map[string]int{
+		"woodChopped,=": 3,
+	})
+	t0 := time.Now()
+	plan, ok := p.Plan(ws, goal, 500)
+	if !ok {
+		t.Fatal("Should've found a solution")
+	}
+	Logger.Println(color.InGreenOverWhite(GOAPPathToString(plan)))
+	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 }
 

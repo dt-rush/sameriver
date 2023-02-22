@@ -1,11 +1,17 @@
 package sameriver
 
 import (
+	"fmt"
+
 	"strings"
 )
 
 type GOAPAction struct {
-	name            string
+	// the object used to construct this (used in Parametrized() to reconstruct)
+	spec map[string]any
+
+	Name            string
+	Count           int
 	cost            IntOrFunc
 	pres            *GOAPGoal
 	preModalChecks  map[string]func(ws *GOAPWorldState) int
@@ -29,25 +35,27 @@ func GOAPEffFunc(op string, val int) func(int) int {
 	case "=":
 		return func(x int) int { return val }
 	default:
-		panic("Got an undefined op in GOAPEffFunc() [valid: +,-,=]")
+		panic("Got an unspecined op in GOAPEffFunc() [valid: +,-,=]")
 	}
 }
 
-func NewGOAPAction(def map[string]interface{}) *GOAPAction {
-	name := def["name"].(string)
-	cost := def["cost"].(int)
+func NewGOAPAction(spec map[string]interface{}) *GOAPAction {
+	name := spec["name"].(string)
+	cost := spec["cost"].(int)
 	var pres map[string]int
-	if def["pres"] == nil {
+	if spec["pres"] == nil {
 		pres = nil
 	} else {
-		pres = def["pres"].(map[string]int)
+		pres = spec["pres"].(map[string]int)
 	}
-	effs := def["effs"].(map[string]int)
+	effs := spec["effs"].(map[string]int)
 
 	a := &GOAPAction{
-		name:            name,
+		spec:            spec,
+		Name:            name,
+		Count:           1,
 		cost:            cost,
-		pres:            NewGOAPGoal(pres),
+		pres:            NewGOAPGoal(pres).Parametrize(1),
 		preModalChecks:  make(map[string]func(ws *GOAPWorldState) int),
 		effModalSetters: make(map[string]func(ws *GOAPWorldState, op string, x int)),
 		effs:            make(map[string]*GOAPEff),
@@ -65,6 +73,25 @@ func NewGOAPAction(def map[string]interface{}) *GOAPAction {
 		a.ops[varName] = op
 	}
 	return a
+}
+
+func (a *GOAPAction) DisplayName() string {
+	if a.Count == 1 {
+		return a.Name
+	} else {
+		return fmt.Sprintf("%s(%d)", a.Name, a.Count)
+	}
+}
+
+func (a *GOAPAction) CopyOf() *GOAPAction {
+	return NewGOAPAction(a.spec)
+}
+
+func (a *GOAPAction) Parametrized(n int) *GOAPAction {
+	result := a.CopyOf()
+	result.Count = n
+	result.pres = result.pres.Parametrize(n)
+	return result
 }
 
 func (a *GOAPAction) affectsAnUnfulfilledVar(goal *GOAPGoal, preGoals map[string]*GOAPGoal) bool {

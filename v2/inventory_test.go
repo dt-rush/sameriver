@@ -58,7 +58,7 @@ func TestInventoryDebitCredit(t *testing.T) {
 		t.Fatal("Credit should have added items!")
 	}
 
-	swordInInv := inv.NameFilter("sword_iron")[0]
+	swordInInv := inv.FilterName("sword_iron")[0]
 	Logger.Println(swordInInv.Degradations)
 	Logger.Printf("swordInInv.Count = %d", swordInInv.Count)
 	retrieved := inv.Debit(swordInInv)
@@ -71,7 +71,7 @@ func TestInventoryDebitCredit(t *testing.T) {
 		t.Fatal("Should have one item left")
 	}
 
-	boozeInInv := inv.NameFilter("bottle_booze")[0]
+	boozeInInv := inv.FilterName("bottle_booze")[0]
 	retrieved = inv.DebitN(2, boozeInInv)
 	Logger.Println(retrieved)
 
@@ -167,7 +167,7 @@ func TestInventoryFromListing(t *testing.T) {
 
 	inv := e.GetGeneric("Inventory").(*Inventory)
 
-	coin := inv.NameFilter("coin_copper")[0]
+	coin := inv.FilterName("coin_copper")[0]
 	Logger.Println(coin)
 	inv.DebitN(coin.Count/2, coin)
 }

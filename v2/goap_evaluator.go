@@ -2,6 +2,7 @@ package sameriver
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/dt-rush/sameriver/v2/utils"
 
@@ -34,7 +35,7 @@ func (e *GOAPEvaluator) PopulateModalStartState(ws *GOAPWorldState) {
 
 func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 	for _, action := range actions {
-		debugGOAPPrintf("[][][] adding action %s", action.name)
+		debugGOAPPrintf("[][][] adding action %s", action.DisplayName())
 		e.actions.Add(action)
 		// link up modal setters for effs matching modal varnames
 		for varName, _ := range action.effs {
@@ -58,8 +59,11 @@ func (e *GOAPEvaluator) applyActionBasic(action *GOAPAction, ws *GOAPWorldState)
 	for varName, eff := range action.effs {
 		op := action.ops[varName]
 		x := ws.vals[varName]
-		debugGOAPPrintf("            applying %s::%s%s%d(%d) ; = %d", action.name, varName, op, eff.val, x, eff.f(x))
-		newWS.vals[varName] = eff.f(x)
+		debugGOAPPrintf("     %s       applying %s::%d x %s%s%d(%d) ; = %d",
+			color.InWhiteOverYellow(">>>"),
+			action.DisplayName(), action.Count, varName, op, eff.val, x,
+			action.Count*eff.f(x))
+		newWS.vals[varName] = action.Count * eff.f(x)
 	}
 	debugGOAPPrintf("            ws after action: %v", newWS.vals)
 
@@ -67,16 +71,18 @@ func (e *GOAPEvaluator) applyActionBasic(action *GOAPAction, ws *GOAPWorldState)
 }
 
 func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState) {
-	newWS = ws.copyOf()
 
+	newWS = e.applyActionBasic(action, ws)
 	for varName, eff := range action.effs {
 		op := action.ops[varName]
 		x := ws.vals[varName]
-		debugGOAPPrintf("            applying %s::%s%s%d(%d) ; = %d", action.name, varName, op, eff.val, x, eff.f(x))
-		newWS.vals[varName] = eff.f(x)
+		debugGOAPPrintf("    %s        applying %s::%d x %s%s%d(%d) ; = %d",
+			color.InPurpleOverWhite(" >>>modal "),
+			action.DisplayName(), action.Count, varName, op, eff.val, x,
+			action.Count*eff.f(x))
 		// do modal set
 		if setter, ok := action.effModalSetters[varName]; ok {
-			setter(newWS, op, eff.val)
+			setter(newWS, op, action.Count*eff.val)
 		}
 	}
 	debugGOAPPrintf("            ws after action: %v", newWS.vals)
@@ -129,7 +135,7 @@ func (e *GOAPEvaluator) validateForward(path *GOAPPath, start *GOAPWorldState, m
 	ws := start.copyOf()
 	for _, action := range path.path {
 		if len(action.pres.vars) > 0 && !e.presFulfilled(action, ws) {
-			debugGOAPPrintf(">>>>>>> in validateForward, %s was not fulfilled", action.name)
+			debugGOAPPrintf(">>>>>>> in validateForward, %s was not fulfilled", action.DisplayName())
 			return false
 		}
 		ws = e.applyActionModal(action, ws)
@@ -172,23 +178,27 @@ func (e *GOAPEvaluator) tryAppend(
 	}
 }
 
-func (e *GOAPEvaluator) actionMightHelp(
+func (e *GOAPEvaluator) actionHelps(
 	start *GOAPWorldState,
 	action *GOAPAction,
 	path *GOAPPath,
-	prependAppendFlag int) bool {
+	prependAppendFlag int) (scale int, helpful bool) {
 
 	if DEBUG_GOAP {
 		if prependAppendFlag == GOAP_PATH_PREPEND {
-			debugGOAPPrintf(color.InBlueOverGray(fmt.Sprintf("checking if %s can be prepended", action.name)))
+			debugGOAPPrintf(color.InBlueOverGray(fmt.Sprintf("checking if %s can be prepended", action.DisplayName())))
 		}
 		if prependAppendFlag == GOAP_PATH_APPEND {
-			debugGOAPPrintf(color.InGreenOverGray(fmt.Sprintf("checking if %s can be appended", action.name)))
+			debugGOAPPrintf(color.InGreenOverGray(fmt.Sprintf("checking if %s can be appended", action.DisplayName())))
 		}
 	}
 
-	actionChangesVarWell := func(varName string, interval *utils.NumericInterval, action *GOAPAction) bool {
-		debugGOAPPrintf("    Considering effs of %s for var %s. effs: %v", action.name, varName, action.effs)
+	actionChangesVarWell := func(
+		varName string,
+		interval *utils.NumericInterval,
+		action *GOAPAction) (scale int, helpful bool) {
+
+		debugGOAPPrintf("    Considering effs of %s for var %s. effs: %v", action.DisplayName(), varName, action.effs)
 		for effVarName, eff := range action.effs {
 			if varName == effVarName {
 				debugGOAPPrintf("      [ ] eff affects var: %v; is it satisfactory/closer?", effVarName)
@@ -198,18 +208,18 @@ func (e *GOAPEvaluator) actionMightHelp(
 					case GOAP_PATH_PREPEND:
 						if interval.Diff(float64(eff.f(start.vals[varName]))) == 0 {
 							debugGOAPPrintf("      [x] eff satisfactory")
-							return true
+							return 1, true
 						} else {
 							debugGOAPPrintf("      [_] eff not satisfactory")
-							return false
+							return -1, false
 						}
 					case GOAP_PATH_APPEND:
 						if interval.Diff(float64(eff.f(path.endState.vals[varName]))) == 0 {
 							debugGOAPPrintf("      [x] eff satisfactory")
-							return true
+							return 1, true
 						} else {
 							debugGOAPPrintf("      [_] eff not satisfactory")
-							return false
+							return -1, false
 						}
 					}
 				}
@@ -225,31 +235,51 @@ func (e *GOAPEvaluator) actionMightHelp(
 				}
 				if actionDiff < needToBeat {
 					debugGOAPPrintf("      [X] eff closer")
-					return true
+					// compute how many of this action we need
+					// if we had diff 0, we just need one
+					if actionDiff == 0 {
+						return 1, true
+					}
+					// but if diff is nonzero, we need some scale
+					// (note that diff is missing 1 val since we computed
+					// the diff after applying 1 of the action, so we do
+					// some tricky stuff to reconstruct the original diff)
+					if actionDiff != 0 {
+						var diffMagnitude float64
+						if eff.op == "-" {
+							diffMagnitude = -needToBeat
+						} else if eff.op == "+" {
+							diffMagnitude = needToBeat
+						}
+						scale := int(math.Ceil(diffMagnitude / float64(eff.val)))
+						return scale, true
+					}
 				} else {
 					debugGOAPPrintf("      [_] eff not closer")
+					return -1, false
 				}
 			}
 		}
-		return false
+		return -1, false
 	}
 
-	mightHelpGoal := func(goal *GOAPGoal) bool {
+	helpsGoal := func(goal *GOAPGoal) (scale int, helpful bool) {
 		for varName, interval := range goal.vars {
-			if actionChangesVarWell(varName, interval, action) {
-				return true
+			scale, helpful := actionChangesVarWell(varName, interval, action)
+			if helpful {
+				return scale, true
 			}
 		}
-		return false
+		return -1, false
 	}
 
-	if mightHelpGoal(path.remainings.main.goal) {
-		return true
+	if scale, helpful := helpsGoal(path.remainings.main.goal); helpful {
+		return scale, true
 	}
 	for _, pre := range path.remainings.pres {
-		if mightHelpGoal(pre.goal) {
-			return true
+		if scale, helpful := helpsGoal(pre.goal); helpful {
+			return scale, true
 		}
 	}
-	return false
+	return -1, false
 }

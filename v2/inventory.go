@@ -161,7 +161,7 @@ func (i *Inventory) GetNByFilter(inv *Inventory, n int, predicate func(*Item) bo
 }
 
 func (i *Inventory) GetAllByName(inv *Inventory, name string) {
-	for _, it := range inv.NameFilter(name) {
+	for _, it := range inv.FilterName(name) {
 		i.Credit(inv.DebitAll(it))
 	}
 }
@@ -178,15 +178,15 @@ func (i *Inventory) GetAll(inv *Inventory) {
 	}
 }
 
-func (i *Inventory) SetCountTags(n int, tags ...string) {
-	count := i.CountTags(tags...)
+func (i *Inventory) setCount(n int, filtered []*Item) {
+	count := 0
+	for _, s := range filtered {
+		count += s.Count
+	}
 	if count == n {
 		return
 	}
-	filtered := i.FilterTags(tags...)
-	if len(filtered) == 0 {
-		panic(fmt.Sprintf("Can't SetCountTags(%d, %s) since no items matched tags!", n, tags))
-	}
+
 	diff := n - count
 	for ix := 0; diff != 0; ix++ {
 		it := filtered[ix]
@@ -205,9 +205,25 @@ func (i *Inventory) SetCountTags(n int, tags ...string) {
 	}
 }
 
+func (i *Inventory) SetCountName(n int, archetype string) {
+	filtered := i.FilterName(archetype)
+	if len(filtered) == 0 {
+		panic(fmt.Sprintf("Can't SetCountName(%d, %s) since no items matched that archetype!", n, archetype))
+	}
+	i.setCount(n, filtered)
+}
+
+func (i *Inventory) SetCountTags(n int, tags ...string) {
+	filtered := i.FilterTags(tags...)
+	if len(filtered) == 0 {
+		panic(fmt.Sprintf("Can't SetCountTags(%d, %s) since no items matched tags!", n, tags))
+	}
+	i.setCount(n, filtered)
+}
+
 func (i *Inventory) CountName(name string) int {
 	n := 0
-	for _, stack := range i.NameFilter(name) {
+	for _, stack := range i.FilterName(name) {
 		n += stack.Count
 	}
 	return n
@@ -274,7 +290,7 @@ func (i *Inventory) Contains(predicate func(*Item) bool) bool {
 	return false
 }
 
-func (i *Inventory) NameFilter(name string) []*Item {
+func (i *Inventory) FilterName(name string) []*Item {
 	predicate := func(i *Item) bool {
 		return i.GetArchetype().Name == name
 	}

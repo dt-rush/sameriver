@@ -12,6 +12,6 @@ func NewGOAPActionSet() *GOAPActionSet {
 
 func (as *GOAPActionSet) Add(actions ...*GOAPAction) {
 	for _, action := range actions {
-		as.set[action.name] = action
+		as.set[action.DisplayName()] = action
 	}
 }

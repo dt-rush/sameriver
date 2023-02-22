@@ -2,6 +2,7 @@ package sameriver
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/TwiN/go-color"
@@ -32,29 +33,50 @@ func (p *GOAPPlanner) traverseFulfillers(
 	debugGOAPPrintf("%d possible actions", len(p.eval.actions.set))
 
 	for _, action := range p.eval.actions.set {
-		debugGOAPPrintf("[ ] Considering action %s", action.name)
+		debugGOAPPrintf("[ ] Considering action %s", action.DisplayName())
 		frontier := make([]*GOAPPQueueItem, 0)
-		if p.eval.actionMightHelp(start, action, here.path, GOAP_PATH_PREPEND) {
-			helpfulItem := p.eval.tryPrepend(start, action, here.path, goal)
+		// try prepend
+		scale, helpful := p.eval.actionHelps(
+			start, action, here.path, GOAP_PATH_PREPEND)
+		if helpful {
+			var toPrepend *GOAPAction
+			if scale > 1 {
+				toPrepend = action.Parametrized(scale)
+			} else {
+				toPrepend = action
+			}
+			helpfulItem := p.eval.tryPrepend(start, toPrepend, here.path, goal)
 			if helpfulItem != nil {
 				frontier = append(frontier, helpfulItem)
 			}
 		}
-		if p.eval.actionMightHelp(start, action, here.path, GOAP_PATH_APPEND) {
-			helpfulItem := p.eval.tryAppend(start, action, here.path, goal)
+		// try append
+		scale, helpful = p.eval.actionHelps(
+			start, action, here.path, GOAP_PATH_APPEND)
+		if helpful {
+			var toAppend *GOAPAction
+			if scale > 1 {
+				toAppend = action.Parametrized(scale)
+			} else {
+				toAppend = action
+			}
+			helpfulItem := p.eval.tryAppend(start, toAppend, here.path, goal)
 			if helpfulItem != nil {
 				frontier = append(frontier, helpfulItem)
 			}
 		}
 		if len(frontier) == 0 {
-			debugGOAPPrintf("[_] %s not helpful", action.name)
+			debugGOAPPrintf("[_] %s not helpful", action.DisplayName())
 		} else {
-			debugGOAPPrintf("[X] %s helpful!", action.name)
+			debugGOAPPrintf("[X] %s helpful!", action.DisplayName())
 			for _, item := range frontier {
-				debugGOAPPrintf(
-					color.Ize(color.Cyan,
-						fmt.Sprintf("}-}-}-}-}-}-}-} new path: %s",
-							GOAPPathToString(item.path))))
+				if DEBUG_GOAP {
+					msg := fmt.Sprintf("{} - {} - {}    new path: %s     ",
+						GOAPPathToString(item.path))
+					debugGOAPPrintf(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+					debugGOAPPrintf(color.InWhiteOverCyan(msg))
+					debugGOAPPrintf(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+				}
 				pq.Push(item)
 			}
 		}
@@ -92,13 +114,14 @@ func (p *GOAPPlanner) Plan(
 		debugGOAPPrintf("=== iter ===")
 		here := pq.Pop().(*GOAPPQueueItem)
 		debugGOAPPrintf(color.InRedOverGray("here:"))
-		debugGOAPPrintf(color.InWhiteOverBlack(color.InBold(GOAPPathToString(here.path))))
+		debugGOAPPrintf(color.InWhiteOverBlue(color.InBold(GOAPPathToString(here.path))))
 		debugGOAPPrintf(color.InRedOverGray(fmt.Sprintf("(%d unfulfilled)", here.path.remainings.nUnfulfilled)))
 
 		if here.path.remainings.nUnfulfilled == 0 {
 			ok := p.eval.validateForward(here.path, start, goal)
 			if !ok {
 				debugGOAPPrintf(">>>>>>> potential solution rejected")
+				continue
 			}
 
 			debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
