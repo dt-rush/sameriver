@@ -9,16 +9,20 @@ import (
 
 type GOAPGoal struct {
 	goals map[string]*utils.NumericInterval
+	vars  map[string]*utils.NumericInterval
 }
 
 func NewGOAPGoal(def map[string]int) *GOAPGoal {
 	g := &GOAPGoal{
 		goals: make(map[string]*utils.NumericInterval),
+		vars:  make(map[string]*utils.NumericInterval),
 	}
 	for spec, val := range def {
 		split := strings.Split(spec, ",")
 		varName, op := split[0], split[1]
-		g.goals[varName] = utils.MakeNumericInterval(op, val)
+		interval := utils.MakeNumericInterval(op, val)
+		g.goals[varName] = interval
+		g.vars[varName] = interval
 	}
 	return g
 }

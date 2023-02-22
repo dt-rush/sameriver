@@ -2,7 +2,6 @@ package sameriver
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dt-rush/sameriver/v2/utils"
 
@@ -38,18 +37,14 @@ func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 		debugGOAPPrintf("[][][] adding action %s", action.name)
 		e.actions.Add(action)
 		// link up modal setters for effs matching modal varnames
-		for spec, _ := range action.effs {
-			split := strings.Split(spec, ",")
-			varName := split[0]
+		for varName, _ := range action.effs {
 			if modal, ok := e.modalVals[varName]; ok {
 				debugGOAPPrintf("[][][]     adding modal setter for %s", varName)
 				action.effModalSetters[varName] = modal.effModalSet
 			}
 		}
 		// link up modal checks for pres matching modal varnames
-		for spec, _ := range action.pres.goals {
-			split := strings.Split(spec, ",")
-			varName := split[0]
+		for varName, _ := range action.pres.goals {
 			if modal, ok := e.modalVals[varName]; ok {
 				action.preModalChecks[varName] = modal.check
 			}
@@ -60,11 +55,10 @@ func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 func (e *GOAPEvaluator) applyActionBasic(action *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState) {
 	newWS = ws.copyOf()
 
-	for spec, eff := range action.effs {
-		split := strings.Split(spec, ",")
-		varName, _ := split[0], split[1]
+	for varName, eff := range action.effs {
+		op := action.ops[varName]
 		x := ws.vals[varName]
-		debugGOAPPrintf("            applying %s::%s%d(%d) ; = %d", action.name, spec, eff.val, x, eff.f(x))
+		debugGOAPPrintf("            applying %s::%s%s%d(%d) ; = %d", action.name, varName, op, eff.val, x, eff.f(x))
 		newWS.vals[varName] = eff.f(x)
 	}
 	debugGOAPPrintf("            ws after action: %v", newWS.vals)
@@ -75,11 +69,10 @@ func (e *GOAPEvaluator) applyActionBasic(action *GOAPAction, ws *GOAPWorldState)
 func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState) {
 	newWS = ws.copyOf()
 
-	for spec, eff := range action.effs {
-		split := strings.Split(spec, ",")
-		varName, op := split[0], split[1]
+	for varName, eff := range action.effs {
+		op := action.ops[varName]
 		x := ws.vals[varName]
-		debugGOAPPrintf("            applying %s::%s%d(%d) ; = %d", action.name, spec, eff.val, x, eff.f(x))
+		debugGOAPPrintf("            applying %s::%s%s%d(%d) ; = %d", action.name, varName, op, eff.val, x, eff.f(x))
 		newWS.vals[varName] = eff.f(x)
 		// do modal set
 		if setter, ok := action.effModalSetters[varName]; ok {
@@ -185,24 +178,22 @@ func (e *GOAPEvaluator) actionMightHelp(
 	path *GOAPPath,
 	prependAppendFlag int) bool {
 
-	if prependAppendFlag == GOAP_PATH_PREPEND {
-		debugGOAPPrintf(color.InBlueOverGray(fmt.Sprintf("checking if %s can be prepended", action.name)))
-	}
-	if prependAppendFlag == GOAP_PATH_APPEND {
-		debugGOAPPrintf(color.InGreenOverGray(fmt.Sprintf("checking if %s can be appended", action.name)))
+	if DEBUG_GOAP {
+		if prependAppendFlag == GOAP_PATH_PREPEND {
+			debugGOAPPrintf(color.InBlueOverGray(fmt.Sprintf("checking if %s can be prepended", action.name)))
+		}
+		if prependAppendFlag == GOAP_PATH_APPEND {
+			debugGOAPPrintf(color.InGreenOverGray(fmt.Sprintf("checking if %s can be appended", action.name)))
+		}
 	}
 
-	actionChangesVarWell := func(spec string, interval *utils.NumericInterval, action *GOAPAction) bool {
-		split := strings.Split(spec, ",")
-		varName := split[0]
+	actionChangesVarWell := func(varName string, interval *utils.NumericInterval, action *GOAPAction) bool {
 		debugGOAPPrintf("    Considering effs of %s for var %s. effs: %v", action.name, varName, action.effs)
-		for effSpec, eff := range action.effs {
-			split = strings.Split(effSpec, ",")
-			effVarName, op := split[0], split[1]
+		for effVarName, eff := range action.effs {
 			if varName == effVarName {
 				debugGOAPPrintf("      [ ] eff affects var: %v; is it satisfactory/closer?", effVarName)
 				// special handler for =
-				if op == "=" {
+				if eff.op == "=" {
 					switch prependAppendFlag {
 					case GOAP_PATH_PREPEND:
 						if interval.Diff(float64(eff.f(start.vals[varName]))) == 0 {
@@ -244,8 +235,8 @@ func (e *GOAPEvaluator) actionMightHelp(
 	}
 
 	mightHelpGoal := func(goal *GOAPGoal) bool {
-		for spec, interval := range goal.goals {
-			if actionChangesVarWell(spec, interval, action) {
+		for varName, interval := range goal.vars {
+			if actionChangesVarWell(varName, interval, action) {
 				return true
 			}
 		}

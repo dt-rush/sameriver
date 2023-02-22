@@ -9,8 +9,11 @@ import (
 	"github.com/TwiN/go-color"
 )
 
+var DEBUG_GOAP_VAL, DEBUG_GOAP_OK = os.LookupEnv("DEBUG_GOAP")
+var DEBUG_GOAP = DEBUG_GOAP_OK && DEBUG_GOAP_VAL == "true"
+
 func debugGOAPPrintf(s string, args ...any) {
-	if val, ok := os.LookupEnv("DEBUG_GOAP"); ok && val == "true" {
+	if DEBUG_GOAP {
 		Logger.Printf(s, args...)
 	}
 }

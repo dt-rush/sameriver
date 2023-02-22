@@ -30,6 +30,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 	debugGOAPPrintGoalRemainingSurface(here.path.remainings)
 
 	debugGOAPPrintf("%d possible actions", len(p.eval.actions.set))
+
 	for _, action := range p.eval.actions.set {
 		debugGOAPPrintf("[ ] Considering action %s", action.name)
 		frontier := make([]*GOAPPQueueItem, 0)
@@ -118,17 +119,14 @@ func (p *GOAPPlanner) Plan(
 
 	dt := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	if iter >= maxIter {
-		debugGOAPPrintf("Took %f ms to reach max iter", dt)
+		debugGOAPPrintf("Took %f ms to reach max iter (%d)", dt, iter)
 		debugGOAPPrintf("================================ REACHED MAX ITER !!!")
 	}
 	if pq.Len() == 0 && resultPq.Len() == 0 {
-		debugGOAPPrintf("Took %f ms to exhaust pq without solution", dt)
+		debugGOAPPrintf("Took %f ms to exhaust pq without solution (%d iterations)", dt, iter)
 	}
 	if resultPq.Len() > 0 {
-		debugGOAPPrintf("Took %f ms to find solution", dt)
-		if pq.Len() == 0 {
-			debugGOAPPrintf("Even though >0 solutions were found, exhausted pq")
-		}
+		debugGOAPPrintf("Took %f ms to find solution (%d iterations)", dt, iter)
 		return resultPq.Pop().(*GOAPPQueueItem).path, true
 	} else {
 		return nil, false
