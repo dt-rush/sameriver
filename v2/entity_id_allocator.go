@@ -49,10 +49,7 @@ func (a *EntityIDAllocator) allocateID() *Entity {
 		// every slot in the table before the highest ID is filled
 		ID = len(a.currentEntities)
 	}
-	entity := &Entity{
-		ID:      ID,
-		WorldID: a.IdGen.Next(),
-	}
+	entity := &Entity{ID: ID}
 	a.currentEntities[entity] = true
 	return entity
 }
@@ -61,7 +58,6 @@ func (a *EntityIDAllocator) deallocate(e *Entity) {
 	// guards against false deallocation (edge case, but hey)
 	if _, ok := a.currentEntities[e]; ok {
 		a.availableIDs = append(a.availableIDs, e.ID)
-		a.IdGen.Free(e.WorldID)
 		delete(a.currentEntities, e)
 	}
 }

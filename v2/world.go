@@ -265,6 +265,7 @@ func (w *World) RemoveWorldLogic(Name string) {
 	if logic, ok := w.worldLogics[Name]; ok {
 		w.runtimeSharer.RemoveLogic("world", logic)
 		delete(w.worldLogics, Name)
+		w.IdGen.Free(logic.worldID)
 	}
 }
 
@@ -295,11 +296,13 @@ func (w *World) addEntityLogic(e *Entity, l *LogicUnit) *LogicUnit {
 
 func (w *World) removeEntityLogic(e *Entity, l *LogicUnit) {
 	w.runtimeSharer.RemoveLogic("entities", l)
+	w.IdGen.Free(l.worldID)
 }
 
 func (w *World) RemoveAllEntityLogics(e *Entity) {
 	for _, l := range e.Logics {
 		w.runtimeSharer.RemoveLogic("entities", l)
+		w.IdGen.Free(l.worldID)
 	}
 }
 

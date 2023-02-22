@@ -60,12 +60,42 @@ func (w *World) EntitiesWithinDistance(pos, box Vec2D, d float64) []*Entity {
 	return sh.Hasher.EntitiesWithinDistance(pos, box, d)
 }
 
+func (w *World) EntitiesWithinDistanceFilter(pos, box Vec2D, d float64, filter func(*Entity) bool) []*Entity {
+	sh, ok := w.systems["SpatialHashSystem"].(*SpatialHashSystem)
+	if !ok {
+		panic("Tried to call EntitiesWithinDistanceFilter without SpatialHashSystem registered")
+	}
+	all := sh.Hasher.EntitiesWithinDistance(pos, box, d)
+	result := make([]*Entity, 0)
+	for _, e := range all {
+		if filter(e) {
+			result = append(result, e)
+		}
+	}
+	return result
+}
+
 func (w *World) EntitiesWIthinDistanceApprox(pos, box Vec2D, d float64) []*Entity {
 	sh, ok := w.systems["SpatialHashSystem"].(*SpatialHashSystem)
 	if !ok {
 		panic("Tried to call EntitiesWithinDistanceApprox without SpatialHashSystem registered")
 	}
 	return sh.Hasher.EntitiesWithinDistanceApprox(pos, box, d)
+}
+
+func (w *World) EntitiesWithinDistanceApproxFilter(pos, box Vec2D, d float64, filter func(*Entity) bool) []*Entity {
+	sh, ok := w.systems["SpatialHashSystem"].(*SpatialHashSystem)
+	if !ok {
+		panic("Tried to call EntitiesWithinDistanceApproxFilter without SpatialHashSystem registered")
+	}
+	all := sh.Hasher.EntitiesWithinDistanceApprox(pos, box, d)
+	result := make([]*Entity, 0)
+	for _, e := range all {
+		if filter(e) {
+			result = append(result, e)
+		}
+	}
+	return result
 }
 
 func (w *World) CellsWithinDistance(pos, box Vec2D, d float64) [][2]int {
