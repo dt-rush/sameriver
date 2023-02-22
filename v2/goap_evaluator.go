@@ -44,7 +44,7 @@ func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 			}
 		}
 		// link up modal checks for pres matching modal varnames
-		for varName, _ := range action.pres.goals {
+		for varName, _ := range action.pres.vars {
 			if modal, ok := e.modalVals[varName]; ok {
 				action.preModalChecks[varName] = modal.check
 			}
@@ -99,14 +99,14 @@ func (e *GOAPEvaluator) remainingsOfPath(path *GOAPPath, start *GOAPWorldState, 
 	remainings.path = path
 	for _, action := range path.path {
 		preRemaining := action.pres.remaining(ws)
-		remainings.nUnfulfilled += len(preRemaining.goal.goals)
+		remainings.nUnfulfilled += len(preRemaining.goal.vars)
 		remainings.pres = append(remainings.pres, preRemaining)
 
 		ws = e.applyActionBasic(action, ws)
 	}
 	debugGOAPPrintf("  --- ws after path: %v", ws.vals)
 	mainRemaining := main.remaining(ws)
-	remainings.nUnfulfilled += len(mainRemaining.goal.goals)
+	remainings.nUnfulfilled += len(mainRemaining.goal.vars)
 	remainings.main = mainRemaining
 	path.remainings = remainings
 	path.endState = ws
@@ -121,21 +121,21 @@ func (e *GOAPEvaluator) presFulfilled(a *GOAPAction, ws *GOAPWorldState) bool {
 		modifiedWS.vals[varName] = checkF(ws)
 	}
 	remaining := a.pres.remaining(modifiedWS)
-	return len(remaining.goal.goals) == 0
+	return len(remaining.goal.vars) == 0
 }
 
 func (e *GOAPEvaluator) validateForward(path *GOAPPath, start *GOAPWorldState, main *GOAPGoal) bool {
 
 	ws := start.copyOf()
 	for _, action := range path.path {
-		if len(action.pres.goals) > 0 && !e.presFulfilled(action, ws) {
+		if len(action.pres.vars) > 0 && !e.presFulfilled(action, ws) {
 			debugGOAPPrintf(">>>>>>> in validateForward, %s was not fulfilled", action.name)
 			return false
 		}
 		ws = e.applyActionModal(action, ws)
 	}
 	endRemaining := main.remaining(ws)
-	if len(endRemaining.goal.goals) != 0 {
+	if len(endRemaining.goal.vars) != 0 {
 		debugGOAPPrintf(">>>>>>> in validateForward, main goal was not fulfilled at end of path")
 		return false
 	}

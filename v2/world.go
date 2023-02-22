@@ -92,7 +92,7 @@ func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	return overunder_ms
 }
 
-func (w *World) RegisterComponents(specs []string) {
+func (w *World) RegisterComponents(specs ...string) {
 	// register given specs
 	for _, spec := range specs {
 		if !w.em.components.ComponentExists(spec) {
@@ -111,7 +111,7 @@ func (w *World) RegisterCCCs(customs []CustomContiguousComponent) {
 func (w *World) RegisterSystems(systems ...System) {
 	// add all systems
 	for _, s := range systems {
-		w.RegisterComponents(s.GetComponentDeps())
+		w.RegisterComponents(s.GetComponentDeps()...)
 		w.addSystem(s)
 	}
 	// link up all systems' dependencies

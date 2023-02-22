@@ -152,9 +152,9 @@ func (s *CollisionSystem) Update(dt_ms float64) {
 	// so the rateLimiterArray access condition that i < j is respected
 	// check each possible collison between entities in the list by doing a
 	// handshake pattern
-	for x := 0; x < s.sh.hasher.GridX; x++ {
-		for y := 0; y < s.sh.hasher.GridY; y++ {
-			entities := s.sh.hasher.Entities(x, y)
+	for x := 0; x < s.sh.Hasher.GridX; x++ {
+		for y := 0; y < s.sh.Hasher.GridY; y++ {
+			entities := s.sh.Hasher.Entities(x, y)
 			s.checkEntities(entities)
 		}
 	}

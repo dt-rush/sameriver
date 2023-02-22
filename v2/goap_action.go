@@ -68,13 +68,13 @@ func NewGOAPAction(def map[string]interface{}) *GOAPAction {
 }
 
 func (a *GOAPAction) affectsAnUnfulfilledVar(goal *GOAPGoal, preGoals map[string]*GOAPGoal) bool {
-	for varName, _ := range goal.goals {
+	for varName, _ := range goal.vars {
 		if _, ok := a.effs[varName]; ok {
 			return true
 		}
 	}
 	for _, pre := range preGoals {
-		for varName, _ := range pre.goals {
+		for varName, _ := range pre.vars {
 			if _, ok := a.effs[varName]; ok {
 				return true
 			}

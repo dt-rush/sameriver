@@ -2,9 +2,7 @@ package sameriver
 
 func testingWorld() *World {
 	w := NewWorld(1024, 1024)
-	w.RegisterComponents([]string{
-		"Vec2D,Position",
-	})
+	w.RegisterComponents("Vec2D,Position")
 	return w
 }
 

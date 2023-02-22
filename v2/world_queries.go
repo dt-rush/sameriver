@@ -51,3 +51,35 @@ func (w *World) ActiveEntitiesWithTags(tags ...string) []*Entity {
 	}
 	return entities
 }
+
+func (w *World) EntitiesWithinDistance(pos, box Vec2D, d float64) []*Entity {
+	sh, ok := w.systems["SpatialHashSystem"].(*SpatialHashSystem)
+	if !ok {
+		panic("Tried to call EntitiesWithinDistance without SpatialHashSystem registered")
+	}
+	return sh.Hasher.EntitiesWithinDistance(pos, box, d)
+}
+
+func (w *World) EntitiesWIthinDistanceApprox(pos, box Vec2D, d float64) []*Entity {
+	sh, ok := w.systems["SpatialHashSystem"].(*SpatialHashSystem)
+	if !ok {
+		panic("Tried to call EntitiesWithinDistanceApprox without SpatialHashSystem registered")
+	}
+	return sh.Hasher.EntitiesWithinDistanceApprox(pos, box, d)
+}
+
+func (w *World) CellsWithinDistance(pos, box Vec2D, d float64) [][2]int {
+	sh, ok := w.systems["SpatialHashSystem"].(*SpatialHashSystem)
+	if !ok {
+		panic("Tried to call CellsWithinDistance without SpatialHashSystem registered")
+	}
+	return sh.Hasher.CellsWithinDistance(pos, box, d)
+}
+
+func (w *World) CellsWithinDistanceApprox(pos, box Vec2D, d float64) [][2]int {
+	sh, ok := w.systems["SpatialHashSystem"].(*SpatialHashSystem)
+	if !ok {
+		panic("Tried to call CellsWithinDistanceApprox without SpatialHashSystem registered")
+	}
+	return sh.Hasher.CellsWithinDistanceApprox(pos, box, d)
+}

@@ -20,11 +20,11 @@ func printWorldState(ws *GOAPWorldState) {
 }
 
 func printGoal(g *GOAPGoal) {
-	if g == nil || len(g.goals) == 0 {
+	if g == nil || len(g.vars) == 0 {
 		Logger.Println("    nil")
 		return
 	}
-	for varName, interval := range g.goals {
+	for varName, interval := range g.vars {
 		Logger.Printf("    want %s: [%.0f, %.0f]", varName, interval.A, interval.B)
 	}
 }
@@ -59,8 +59,8 @@ func TestGOAPGoalRemaining(t *testing.T) {
 		printDiffs(remaining.diffs)
 		Logger.Println("-------------------")
 
-		if len(remaining.goal.goals) != nRemaining {
-			t.Fatal(fmt.Sprintf("Should have had %d goals remaining, had %d", nRemaining, len(remaining.goal.goals)))
+		if len(remaining.goal.vars) != nRemaining {
+			t.Fatal(fmt.Sprintf("Should have had %d goals remaining, had %d", nRemaining, len(remaining.goal.vars)))
 		}
 		for _, name := range expectedRemaining {
 			if diffVal, ok := remaining.diffs[name]; !ok || diffVal == 0 {
@@ -115,7 +115,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	w.RegisterComponents([]string{"Int,BoozeAmount"})
+	w.RegisterComponents("Int,BoozeAmount")
 
 	e := testingSpawnPhysics(w)
 
@@ -166,7 +166,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	for _, pre := range remaining.pres {
 		printGoal(pre.goal)
 	}
-	if remaining.nUnfulfilled != 3 || len(remaining.main.goal.goals) != 1 {
+	if remaining.nUnfulfilled != 3 || len(remaining.main.goal.vars) != 1 {
 		t.Fatal("Remaining was not calculated properly")
 	}
 
@@ -179,7 +179,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	for _, pre := range remaining.pres {
 		printGoal(pre.goal)
 	}
-	if remaining.nUnfulfilled != 3 || len(remaining.main.goal.goals) != 0 {
+	if remaining.nUnfulfilled != 3 || len(remaining.main.goal.vars) != 0 {
 		t.Fatal("Remaining was not calculated properly")
 	}
 
@@ -195,7 +195,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 		printGoal(pre.goal)
 	}
 
-	if remaining.nUnfulfilled != 0 || len(remaining.main.goal.goals) != 0 {
+	if remaining.nUnfulfilled != 0 || len(remaining.main.goal.vars) != 0 {
 		t.Fatal("Remaining was not calculated properly")
 	}
 }
@@ -205,7 +205,7 @@ func TestGOAPRemainingIsLess(t *testing.T) {
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
-	w.RegisterComponents([]string{"Int,BoozeAmount"})
+	w.RegisterComponents("Int,BoozeAmount")
 
 	e := testingSpawnPhysics(w)
 
@@ -653,7 +653,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	}
 	Logger.Println("goal remaining:")
 	printGoal(remaining.goal)
-	if len(remaining.goal.goals) != 0 {
+	if len(remaining.goal.vars) != 0 {
 		t.Fatal("Goal should have been satisfied")
 	}
 	Logger.Println("diffs:")
@@ -664,7 +664,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 		"drunk,>=": 10,
 	})
 	remaining = g2.remaining(appliedState)
-	if len(remaining.goal.goals) != 1 {
+	if len(remaining.goal.vars) != 1 {
 		t.Fatal("drunk goal should be unfulfilled by atTree state")
 	}
 
@@ -762,7 +762,7 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
 
-	w.RegisterComponents([]string{"IntMap,State"})
+	w.RegisterComponents("IntMap,State")
 
 	e := w.Spawn(map[string]any{
 		"components": map[string]any{
@@ -819,7 +819,7 @@ func TestGOAPPlanSimpleEnough(t *testing.T) {
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
 
-	w.RegisterComponents([]string{"IntMap,State"})
+	w.RegisterComponents("IntMap,State")
 
 	e := w.Spawn(map[string]any{
 		"components": map[string]any{
@@ -881,7 +881,7 @@ func TestGOAPPlanClassic(t *testing.T) {
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
 
-	w.RegisterComponents([]string{"IntMap,State", "Generic,Inventory"})
+	w.RegisterComponents("IntMap,State", "Generic,Inventory")
 
 	items.CreateArchetype(map[string]any{
 		"name":        "bottle_booze",
@@ -1104,7 +1104,7 @@ func TestGOAPPlannerDeepen(t *testing.T) {
 		path:          []*GOAPAction{},
 		presRemaining: make(map[string]*GOAPGoal),
 		remaining:     goal,
-		nUnfulfilled:  len(goal.goals),
+		nUnfulfilled:  len(goal.vars),
 		endState:      start,
 		cost:          0,
 		index:         -1, // going to be set by Push()
@@ -1114,7 +1114,7 @@ func TestGOAPPlannerDeepen(t *testing.T) {
 	if len(newPaths) != 1 {
 		t.Fatal("Should have found 1 path")
 	}
-	if len(newPaths[0].remaining.goals) == 0 {
+	if len(newPaths[0].remaining.vars) == 0 {
 		t.Fatal("Should not have fulfilled the goal")
 	}
 
@@ -1123,7 +1123,7 @@ func TestGOAPPlannerDeepen(t *testing.T) {
 		"drunk,=": 1,
 	})
 	newPaths = p.deepen(start, backtrackRoot)
-	if len(newPaths) != 1 && len(newPaths[0].remaining.goals) == 0 {
+	if len(newPaths) != 1 && len(newPaths[0].remaining.vars) == 0 {
 		t.Fatal("Should have found a path (drink) and had goal fulfilled")
 	}
 }

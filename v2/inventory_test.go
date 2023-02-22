@@ -9,7 +9,7 @@ func TestInventoryDebitCredit(t *testing.T) {
 	inventories := NewInventorySystem()
 	items := NewItemSystem(nil)
 	w.RegisterSystems(items, inventories)
-	w.RegisterComponents([]string{"Generic,Inventory"})
+	w.RegisterComponents("Generic,Inventory")
 	e := w.Spawn(map[string]any{
 		"components": map[string]any{"Generic,Inventory": NewInventory()},
 	})

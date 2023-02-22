@@ -8,20 +8,17 @@ import (
 )
 
 type GOAPGoal struct {
-	goals map[string]*utils.NumericInterval
-	vars  map[string]*utils.NumericInterval
+	vars map[string]*utils.NumericInterval
 }
 
 func NewGOAPGoal(def map[string]int) *GOAPGoal {
 	g := &GOAPGoal{
-		goals: make(map[string]*utils.NumericInterval),
-		vars:  make(map[string]*utils.NumericInterval),
+		vars: make(map[string]*utils.NumericInterval),
 	}
 	for spec, val := range def {
 		split := strings.Split(spec, ",")
 		varName, op := split[0], split[1]
 		interval := utils.MakeNumericInterval(op, val)
-		g.goals[varName] = interval
 		g.vars[varName] = interval
 	}
 	return g
@@ -29,10 +26,10 @@ func NewGOAPGoal(def map[string]int) *GOAPGoal {
 
 func (g *GOAPGoal) copyOf() *GOAPGoal {
 	result := &GOAPGoal{
-		goals: make(map[string]*utils.NumericInterval),
+		vars: make(map[string]*utils.NumericInterval),
 	}
-	for varName, interval := range g.goals {
-		result.goals[varName] = interval
+	for varName, interval := range g.vars {
+		result.vars[varName] = interval
 	}
 	return result
 }
@@ -42,19 +39,19 @@ func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
 		goal:  NewGOAPGoal(nil),
 		diffs: make(map[string]float64),
 	}
-	debugGOAPPrintf("      -+- checking remaining for goal: %v", g.goals)
+	debugGOAPPrintf("      -+- checking remaining for goal: %v", g.vars)
 	debugGOAPPrintf("      -+-     ws: %v", ws.vals)
-	for varName, interval := range g.goals {
+	for varName, interval := range g.vars {
 		if stateVal, ok := ws.vals[varName]; ok {
 			diff := interval.Diff(float64(stateVal))
 			result.diffs[varName] = diff
 			if diff != 0 {
-				result.goal.goals[varName] = interval
+				result.goal.vars[varName] = interval
 			}
 		} else {
 			// varName not in worldstate - diff is infinite and goal is unchanged for this var
 			result.diffs[varName] = math.Inf(+1)
-			result.goal.goals[varName] = interval
+			result.goal.vars[varName] = interval
 		}
 	}
 	return result

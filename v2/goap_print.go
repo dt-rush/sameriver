@@ -32,16 +32,14 @@ func GOAPPathToString(path *GOAPPath) string {
 }
 
 func debugGOAPPrintGoal(g *GOAPGoal) {
-	if g == nil || len(g.goals) == 0 {
+	if g == nil || len(g.vars) == 0 {
 		msg := "    satisfied    "
 		debugGOAPPrintf(color.InBlackOverGreen(strings.Repeat(" ", len(msg))))
 		debugGOAPPrintf(color.InBlackOverGreen(msg))
 		debugGOAPPrintf(color.InBlackOverGreen(strings.Repeat(" ", len(msg))))
 		return
 	}
-	for spec, interval := range g.goals {
-		split := strings.Split(spec, ",")
-		varName := split[0]
+	for varName, interval := range g.vars {
 		msg := fmt.Sprintf("    %s: [%.0f, %.0f]    ", varName, interval.A, interval.B)
 
 		debugGOAPPrintf(color.InBlackOverBlack(strings.Repeat(" ", len(msg))))

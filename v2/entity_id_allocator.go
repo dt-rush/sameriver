@@ -1,9 +1,6 @@
 package sameriver
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/dt-rush/sameriver/v2/utils"
 )
 
@@ -37,14 +34,8 @@ func (a *EntityIDAllocator) expand(n int) {
 // the entityTable, so it's safe that this method operates on that data.
 // Returns int32 so that we can return -1 in case we have run out of space
 // to spawn entities
-func (a *EntityIDAllocator) allocateID() (*Entity, error) {
-	// if maximum entity count reached, fail with message
-	if len(a.currentEntities) == a.capacity {
-		msg := fmt.Sprintf("[WARNING] Reached entity capacity: %d. "+
-			"Will not allocate ID (entity manager should expand and retry).", a.capacity)
-		Logger.Println(msg)
-		return nil, errors.New(msg)
-	}
+func (a *EntityIDAllocator) allocateID() *Entity {
+
 	// if there is a deallocated entity somewhere in the table before the
 	// highest ID, return that ID to the caller
 	var ID int
@@ -63,7 +54,7 @@ func (a *EntityIDAllocator) allocateID() (*Entity, error) {
 		WorldID: a.IdGen.Next(),
 	}
 	a.currentEntities[entity] = true
-	return entity, nil
+	return entity
 }
 
 func (a *EntityIDAllocator) deallocate(e *Entity) {

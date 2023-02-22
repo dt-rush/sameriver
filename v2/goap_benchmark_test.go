@@ -12,7 +12,7 @@ func BenchmarkGOAPClassic(b *testing.B) {
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
 
-	w.RegisterComponents([]string{"IntMap,State", "Generic,Inventory"})
+	w.RegisterComponents("IntMap,State", "Generic,Inventory")
 
 	items.CreateArchetype(map[string]any{
 		"name":        "bottle_booze",

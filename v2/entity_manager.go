@@ -46,10 +46,6 @@ func NewEntityManager(w *World) *EntityManager {
 	return em
 }
 
-func (m *EntityManager) MaxEntities() int {
-	return m.entityIDAllocator.capacity
-}
-
 func (m *EntityManager) Components() *ComponentTable {
 	return m.components
 }
@@ -164,6 +160,12 @@ func (m *EntityManager) UntagEntities(entities []*Entity, tag string) {
 	for _, e := range entities {
 		m.UntagEntity(e, tag)
 	}
+}
+
+// get the maximum number of entities without a resizing and reallocating of
+// components and system data (if Expand() is not a nil function for that system)
+func (m *EntityManager) MaxEntities() int {
+	return m.entityIDAllocator.capacity
 }
 
 // Get the number of allocated entities (not number of active, mind you)

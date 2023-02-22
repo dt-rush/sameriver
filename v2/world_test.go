@@ -359,7 +359,7 @@ func TestWorldPredicateEntities(t *testing.T) {
 		}
 	}
 	w.Update(FRAME_DURATION_INT / 2)
-	nearGot := sh.hasher.EntitiesWithinDistance(
+	nearGot := sh.Hasher.EntitiesWithinDistance(
 		*e.GetVec2D("Position"),
 		*e.GetVec2D("Box"),
 		30.0)
