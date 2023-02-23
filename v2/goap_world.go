@@ -11,7 +11,7 @@ type GOAPWorldState struct {
 	modal map[string]interface{}
 }
 
-func (ws *GOAPWorldState) copyOf() *GOAPWorldState {
+func (ws *GOAPWorldState) CopyOf() *GOAPWorldState {
 	copyvals := make(map[string]int)
 	for k, v := range ws.vals {
 		copyvals[k] = v

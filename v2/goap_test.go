@@ -2,6 +2,7 @@ package sameriver
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"testing"
@@ -26,6 +27,40 @@ func printGoal(g *GOAPGoal) {
 	}
 	for varName, interval := range g.vars {
 		Logger.Printf("    want %s: [%.0f, %.0f]", varName, interval.A, interval.B)
+	}
+}
+
+func printGoalRemaining(g *GOAPGoalRemaining) {
+	if g.nUnfulfilled == 0 {
+		msg := "    satisfied    "
+		Logger.Printf(color.InBlackOverGreen(strings.Repeat(" ", len(msg))))
+		Logger.Printf(color.InBlackOverGreen(msg))
+		Logger.Printf(color.InBlackOverGreen(strings.Repeat(" ", len(msg))))
+		return
+	}
+	for varName, interval := range g.goalLeft {
+		msg := fmt.Sprintf("    %s: [%.0f, %.0f]    ", varName, interval.A, interval.B)
+
+		Logger.Printf(color.InBlackOverBlack(strings.Repeat(" ", len(msg))))
+		Logger.Printf(color.InBold(color.InRedOverBlack(msg)))
+		Logger.Printf(color.InBlackOverBlack(strings.Repeat(" ", len(msg))))
+
+	}
+}
+
+func printGoalRemainingSurface(s *GOAPGoalRemainingSurface) {
+	if s.NUnfulfilled() == 0 {
+		Logger.Println("    nil")
+	} else {
+		for i, goal := range s.surface {
+			if i == len(s.surface)-1 {
+				Logger.Printf(color.InBold(color.InRedOverGray("main:")))
+				printGoalRemaining(s.surface[len(s.surface)-1])
+			} else {
+				debugGOAPPrintGoalRemaining(goal)
+			}
+		}
+
 	}
 }
 
@@ -157,29 +192,25 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 		"drunk,>=": 3,
 	})
 
-	path := NewGOAPPath([]*GOAPAction{drink, drink}, GOAP_PATH_PREPEND)
+	path := NewGOAPPath([]*GOAPAction{drink, drink})
 
-	remaining := p.eval.remainingsOfPath(path, start, goal)
+	p.eval.computeRemainingsOfPath(path, start, goal)
 
-	Logger.Printf("%d unfulfilled", remaining.nUnfulfilled)
-	printGoal(remaining.main.goal)
-	for _, pre := range remaining.pres {
-		printGoal(pre.goal)
-	}
-	if remaining.nUnfulfilled != 3 || len(remaining.main.goal.vars) != 1 {
+	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
+	printGoalRemainingSurface(path.remainings)
+	mainGoalRemaining := path.remainings.surface[len(path.remainings.surface)-1]
+	if path.remainings.NUnfulfilled() != 3 || len(mainGoalRemaining.goalLeft) != 1 {
 		t.Fatal("Remaining was not calculated properly")
 	}
 
-	path = NewGOAPPath([]*GOAPAction{drink, drink, drink}, GOAP_PATH_PREPEND)
+	path = NewGOAPPath([]*GOAPAction{drink, drink, drink})
 
-	remaining = p.eval.remainingsOfPath(path, start, goal)
+	p.eval.computeRemainingsOfPath(path, start, goal)
 
-	Logger.Printf("%d unfulfilled", remaining.nUnfulfilled)
-	printGoal(remaining.main.goal)
-	for _, pre := range remaining.pres {
-		printGoal(pre.goal)
-	}
-	if remaining.nUnfulfilled != 3 || len(remaining.main.goal.vars) != 0 {
+	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
+	printGoalRemainingSurface(path.remainings)
+	mainGoalRemaining = path.remainings.surface[len(path.remainings.surface)-1]
+	if path.remainings.NUnfulfilled() != 3 || len(mainGoalRemaining.goalLeft) != 0 {
 		t.Fatal("Remaining was not calculated properly")
 	}
 
@@ -187,251 +218,13 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	*booze = 3
 	p.eval.PopulateModalStartState(start)
 
-	remaining = p.eval.remainingsOfPath(path, start, goal)
+	p.eval.computeRemainingsOfPath(path, start, goal)
 
-	Logger.Printf("%d unfulfilled", remaining.nUnfulfilled)
-	printGoal(remaining.main.goal)
-	for _, pre := range remaining.pres {
-		printGoal(pre.goal)
-	}
-
-	if remaining.nUnfulfilled != 0 || len(remaining.main.goal.vars) != 0 {
+	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
+	printGoalRemainingSurface(path.remainings)
+	if path.remainings.NUnfulfilled() != 0 || len(mainGoalRemaining.goalLeft) != 0 {
 		t.Fatal("Remaining was not calculated properly")
 	}
-}
-
-func TestGOAPRemainingIsLess(t *testing.T) {
-
-	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	w.RegisterComponents("Int,BoozeAmount")
-
-	e := testingSpawnPhysics(w)
-
-	p := NewGOAPPlanner(e)
-
-	hasBoozeModal := GOAPModalVal{
-		name: "hasBooze",
-		check: func(ws *GOAPWorldState) int {
-			amount := ws.GetModal(e, "BoozeAmount").(*int)
-			debugGOAPPrintf("                checked hasBooze: %d", *amount)
-			return *amount
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			amount := ws.GetModal(e, "BoozeAmount").(*int)
-			if op == "-" {
-				newVal := *amount - x
-				ws.SetModal(e, "BoozeAmount", &newVal)
-			}
-			if op == "+" {
-				debugGOAPPrintf("                adding to hasBooze: +%d", x)
-				newVal := *amount + x
-				ws.SetModal(e, "BoozeAmount", &newVal)
-			}
-		},
-	}
-	getBooze := NewGOAPAction(map[string]any{
-		"name": "getBooze",
-		"cost": 1,
-		"pres": nil,
-		"effs": map[string]int{
-			"hasBooze,+": 1,
-		},
-	})
-	drink := NewGOAPAction(map[string]any{
-		"name": "drink",
-		"cost": 1,
-		"pres": map[string]int{
-			"hasBooze,>": 0,
-		},
-		"effs": map[string]int{
-			"drunk,+":    1,
-			"hasBooze,-": 1,
-		},
-	})
-	purifyOneself := NewGOAPAction(map[string]any{
-		"name": "purifyOneself",
-		"cost": 1,
-		"pres": map[string]int{
-			"hasBooze,=": 0,
-		},
-		"effs": map[string]int{
-			"rituallyPure,=": 1,
-		},
-	})
-	chopTree := NewGOAPAction(map[string]any{
-		"name": "chopTree",
-		"cost": 1,
-		"pres": map[string]int{
-			"hasGlove,>": 0,
-			"hasAxe,>":   0,
-			"atTree,=":   1,
-		},
-		"effs": map[string]int{
-			"treeFelled,=": 1,
-		},
-	})
-	openFridge := NewGOAPAction(map[string]any{
-		"name": "openFridge",
-		"cost": 1,
-		"pres": map[string]int{
-			"fridgeOpen,=": 0,
-		},
-		"effs": map[string]int{
-			"fridgeOpen,=": 1,
-		},
-	})
-	closeFridge := NewGOAPAction(map[string]any{
-		"name": "closeFridge",
-		"cost": 1,
-		"pres": map[string]int{
-			"fridgeOpen,=": 1,
-		},
-		"effs": map[string]int{
-			"fridgeOpen,=": 0,
-		},
-	})
-	getFoodFromFridge := NewGOAPAction(map[string]any{
-		"name": "getFoodFromFridge",
-		"cost": 1,
-		"pres": map[string]int{
-			"fridgeOpen,=": 1,
-		},
-		"effs": map[string]int{
-			"hasFood,+": 1,
-		},
-	})
-
-	p.eval.AddModalVals(hasBoozeModal)
-	p.eval.AddActions(getBooze, drink, purifyOneself, chopTree, openFridge, getFoodFromFridge, closeFridge)
-
-	doTest := func(g *GOAPGoal, start *GOAPWorldState, before, after *GOAPPath, expect bool) {
-		Logger.Println("=================================================================")
-		Logger.Printf("Before: %s", GOAPPathToString(before))
-		Logger.Printf("After: %s", GOAPPathToString(after))
-		beforeRemaining := p.eval.remainingsOfPath(before, start, g)
-		afterRemaining := p.eval.remainingsOfPath(after, start, g)
-		Logger.Println("computing isCloser()...")
-		less := afterRemaining.isCloser(beforeRemaining)
-		if less != expect {
-			Logger.Println("!!!")
-			Logger.Println("!!!")
-			Logger.Println("!!!")
-			Logger.Println("Didn't get expected result for path after remainingIsLess than path before")
-			Logger.Println("!!!")
-			Logger.Println("!!!")
-			Logger.Println("!!!")
-			t.Fatal("Didn't get expected result for remainingIsLess()")
-		}
-	}
-
-	start := NewGOAPWorldState(map[string]int{
-		"drunk": 1,
-	})
-	p.eval.PopulateModalStartState(start)
-
-	before := NewGOAPPath([]*GOAPAction{drink}, GOAP_PATH_PREPEND)
-	after := before.prepended(drink)
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"drunk,>=":       3,
-			"rituallyPure,=": 1,
-		}),
-		start,
-		before,
-		after,
-		true,
-	)
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"drunk,>=":       3,
-			"rituallyPure,=": 1,
-		}),
-		start,
-		before,
-		before,
-		false,
-	)
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"drunk,>=":       3,
-			"rituallyPure,=": 1,
-		}),
-		start,
-		before,
-		before.appended(purifyOneself),
-		true,
-	)
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"drunk,>=":       3,
-			"rituallyPure,=": 1,
-		}),
-		start,
-		before,
-		before.prepended(purifyOneself),
-		true,
-	)
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"drunk,>=": 3,
-		}),
-		start,
-		before,
-		before.prepended(chopTree),
-		false,
-	)
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"drunk,>=": 3,
-		}),
-		start,
-		before,
-		before.prepended(getBooze),
-		true,
-	)
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"drunk,>=": 3,
-		}),
-		start,
-		NewGOAPPath([]*GOAPAction{drink, drink, drink}, GOAP_PATH_PREPEND),
-		NewGOAPPath([]*GOAPAction{drink, drink, drink, drink}, GOAP_PATH_PREPEND),
-		false,
-	)
-
-	start.vals["fridgeOpen"] = 0
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"hasFood,>=":   1,
-			"fridgeOpen,=": 0,
-		}),
-		start,
-		NewGOAPPath([]*GOAPAction{openFridge, getFoodFromFridge}, GOAP_PATH_PREPEND),
-		NewGOAPPath([]*GOAPAction{openFridge, getFoodFromFridge, closeFridge}, GOAP_PATH_APPEND),
-		true,
-	)
-
-	doTest(
-		NewGOAPGoal(map[string]int{
-			"hasFood,>=":   1,
-			"fridgeOpen,=": 0,
-		}),
-		start,
-		NewGOAPPath([]*GOAPAction{openFridge, getFoodFromFridge}, GOAP_PATH_PREPEND),
-		NewGOAPPath([]*GOAPAction{closeFridge, openFridge, getFoodFromFridge}, GOAP_PATH_PREPEND),
-		false,
-	)
-
 }
 
 func TestGOAPActionPresFulfilled(t *testing.T) {
@@ -985,7 +778,7 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 		"name": "drink",
 		"cost": 1,
 		"pres": map[string]int{
-			"hasBooze,>": 0,
+			"EACH:hasBooze,=": 1,
 		},
 		"effs": map[string]int{
 			"drunk,+":    2,
@@ -995,9 +788,6 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 	dropAllBooze := NewGOAPAction(map[string]any{
 		"name": "dropAllBooze",
 		"cost": 1,
-		"pres": map[string]int{
-			"hasBooze,>": 0,
-		},
 		"effs": map[string]int{
 			"hasBooze,=": 0,
 		},
@@ -1269,7 +1059,6 @@ func TestGOAPPlannerDeepen(t *testing.T) {
 		presRemaining: make(map[string]*GOAPGoal),
 		remaining:     goal,
 		nUnfulfilled:  len(goal.vars),
-		endState:      start,
 		cost:          0,
 		index:         -1, // going to be set by Push()
 	}

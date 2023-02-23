@@ -52,8 +52,10 @@ func (g *GOAPGoal) copyOf() *GOAPGoal {
 
 func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
 	result = &GOAPGoalRemaining{
-		goal:  NewGOAPGoal(nil),
-		diffs: make(map[string]float64),
+		goal:         g,
+		goalLeft:     make(map[string]*utils.NumericInterval),
+		diffs:        make(map[string]float64),
+		nUnfulfilled: 0,
 	}
 	debugGOAPPrintf("      -+- checking remaining for goal: %s", debugGOAPGoalToString(g))
 	debugGOAPPrintf("      -+-     ws: %v", ws.vals)
@@ -63,12 +65,14 @@ func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
 			debugGOAPPrintf("                diff for %s: %.0f", varName, diff)
 			result.diffs[varName] = diff
 			if diff != 0 {
-				result.goal.vars[varName] = interval
+				result.nUnfulfilled++
+				result.goalLeft[varName] = interval
 			}
 		} else {
 			// varName not in worldstate - diff is infinite and goal is unchanged for this var
+			result.nUnfulfilled++
 			result.diffs[varName] = math.Inf(+1)
-			result.goal.vars[varName] = interval
+			result.goalLeft[varName] = interval
 		}
 	}
 	return result

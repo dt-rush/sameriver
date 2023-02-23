@@ -43,15 +43,15 @@ func debugGOAPGoalToString(g *GOAPGoal) string {
 	return msg
 }
 
-func debugGOAPPrintGoal(g *GOAPGoal) {
-	if g == nil || len(g.vars) == 0 {
+func debugGOAPPrintGoalRemaining(g *GOAPGoalRemaining) {
+	if g.nUnfulfilled == 0 {
 		msg := "    satisfied    "
 		debugGOAPPrintf(color.InBlackOverGreen(strings.Repeat(" ", len(msg))))
 		debugGOAPPrintf(color.InBlackOverGreen(msg))
 		debugGOAPPrintf(color.InBlackOverGreen(strings.Repeat(" ", len(msg))))
 		return
 	}
-	for varName, interval := range g.vars {
+	for varName, interval := range g.goalLeft {
 		msg := fmt.Sprintf("    %s: [%.0f, %.0f]    ", varName, interval.A, interval.B)
 
 		debugGOAPPrintf(color.InBlackOverBlack(strings.Repeat(" ", len(msg))))
@@ -61,12 +61,18 @@ func debugGOAPPrintGoal(g *GOAPGoal) {
 	}
 }
 
-func debugGOAPPrintGoalRemainingSurface(g *GOAPGoalRemainingSurface) {
-	debugGOAPPrintf(color.InBold(color.InRedOverGray("main:")))
-	debugGOAPPrintGoal(g.main.goal)
+func debugGOAPPrintGoalRemainingSurface(s *GOAPGoalRemainingSurface) {
+	if s.NUnfulfilled() == 0 {
+		debugGOAPPrintf(color.InYellowOverGreen("    none remaining    "))
+	}
 	debugGOAPPrintf(color.InBold(color.InRedOverGray("pres:")))
-	for _, pre := range g.pres {
-		debugGOAPPrintGoal(pre.goal)
+	for i, goal := range s.surface {
+		if i == len(s.surface)-1 {
+			debugGOAPPrintf(color.InBold(color.InRedOverGray("main:")))
+			debugGOAPPrintGoalRemaining(s.surface[len(s.surface)-1])
+		} else {
+			debugGOAPPrintGoalRemaining(goal)
+		}
 	}
 }
 

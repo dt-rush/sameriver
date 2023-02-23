@@ -1,44 +1,30 @@
 package sameriver
 
-type GOAPGoalRemainingSurface struct {
-	main         *GOAPGoalRemaining
-	pres         []*GOAPGoalRemaining
+import (
+	"github.com/dt-rush/sameriver/v2/utils"
+)
+
+type GOAPGoalRemaining struct {
+	goal         *GOAPGoal
+	goalLeft     map[string]*utils.NumericInterval
+	diffs        map[string]float64
 	nUnfulfilled int
-	path         *GOAPPath
+}
+
+type GOAPGoalRemainingSurface struct {
+	surface []*GOAPGoalRemaining
 }
 
 func NewGOAPGoalRemainingSurface() *GOAPGoalRemainingSurface {
 	return &GOAPGoalRemainingSurface{
-		main: nil,
-		pres: []*GOAPGoalRemaining{},
+		surface: []*GOAPGoalRemaining{},
 	}
 }
 
-func (after *GOAPGoalRemainingSurface) isCloser(before *GOAPGoalRemainingSurface) (closer bool) {
-	debugGOAPPrintf("      ** is surface closer?")
-	if after.nUnfulfilled < before.nUnfulfilled {
-		debugGOAPPrintf("      ** nUnfulfilled was less (after: %d, before: %d)", after.nUnfulfilled, before.nUnfulfilled)
-		return true
+func (s *GOAPGoalRemainingSurface) NUnfulfilled() int {
+	n := 0
+	for _, g := range s.surface {
+		n += g.nUnfulfilled
 	}
-	if after.main.isCloser(before.main) {
-		debugGOAPPrintf("      ** main goal was closer")
-		return true
-	}
-	switch after.path.construction {
-	case GOAP_PATH_PREPEND:
-		for i := 1; i < len(after.pres); i++ {
-			if after.pres[i].isCloser(before.pres[i-1]) {
-				debugGOAPPrintf("      ** pre for %s was closer", after.path.path[i].DisplayName())
-				return true
-			}
-		}
-	case GOAP_PATH_APPEND:
-		for i := 0; i < len(before.pres); i++ {
-			if after.pres[i].isCloser(before.pres[i]) {
-				debugGOAPPrintf("      ** pre for %s was closer", after.path.path[i].DisplayName())
-				return true
-			}
-		}
-	}
-	return false
+	return n
 }

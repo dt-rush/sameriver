@@ -1,22 +1,22 @@
 package sameriver
 
-const (
-	GOAP_PATH_PREPEND = iota
-	GOAP_PATH_APPEND  = iota
+import (
+	"bytes"
 )
 
 type GOAPPath struct {
-	path         []*GOAPAction
-	cost         int
-	construction int
-	remainings   *GOAPGoalRemainingSurface
-	endState     *GOAPWorldState
+	path        []*GOAPAction
+	cost        int                       // set by GOAPPath.inserted()
+	statesAlong []*GOAPWorldState         // set in GOAPEvaluator.computeRemainingsOfPath()
+	remainings  *GOAPGoalRemainingSurface // set in GOAPEvaluator.computeRemainingsOfPath
 }
 
-func NewGOAPPath(path []*GOAPAction, construction int) *GOAPPath {
+func NewGOAPPath(path []*GOAPAction) *GOAPPath {
+	if path == nil {
+		path = make([]*GOAPAction, 0)
+	}
 	return &GOAPPath{
-		path:         path,
-		construction: construction,
+		path: path,
 	}
 }
 
@@ -32,28 +32,43 @@ func (p *GOAPPath) costOfAdd(a *GOAPAction) int {
 	return cost
 }
 
-func (p *GOAPPath) prepended(a *GOAPAction) *GOAPPath {
+/*
+// path [A B]
+insertionIx: 0
+newSlice: [_ _ _]
+copy(newSlice[:0], path[:0]) // [_ _ _]
+newslice[0] = a              // [X _ _]
+copy(newslice[1:], path[0:]) // [X A B]
+
+// path: []
+insertionIx: 0
+newSlice: [_]
+copy(newSlice[:0], path[:0]) // [_]
+newslice[0] = a              // [X]
+copy(newslice[1:], path[0:]) // [X]
+*/
+func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int) *GOAPPath {
 	// copy actions into new slice
 	newSlice := make([]*GOAPAction, len(p.path)+1)
-	copy(newSlice[1:], p.path)
-	newSlice[0] = a
+	copy(newSlice[:insertionIx], p.path[:insertionIx])
+	newSlice[insertionIx] = a
+	copy(newSlice[insertionIx+1:], p.path[insertionIx:])
 	result := &GOAPPath{
-		path:         newSlice,
-		construction: GOAP_PATH_PREPEND,
-		cost:         p.costOfAdd(a),
+		path: newSlice,
+		cost: p.costOfAdd(a),
 	}
-
 	return result
 }
 
-func (p *GOAPPath) appended(a *GOAPAction) *GOAPPath {
-	newPath := make([]*GOAPAction, len(p.path)+1)
-	copy(newPath, p.path)
-	newPath[len(newPath)-1] = a
-	result := &GOAPPath{
-		path:         newPath,
-		construction: GOAP_PATH_APPEND,
-		cost:         p.costOfAdd(a),
+func (p *GOAPPath) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("    [")
+	for i, action := range p.path {
+		buf.WriteString(action.DisplayName())
+		if i != len(p.path)-1 {
+			buf.WriteString(",")
+		}
 	}
-	return result
+	buf.WriteString("]    ")
+	return buf.String()
 }

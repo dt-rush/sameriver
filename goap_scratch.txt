@@ -1,11 +1,33 @@
+parametrization of actions is incomplete; we need to use the EACH macro
+
+
+
+
+
+
+
+
+
+
+
 insertBefore becomes the only path construction
 
-in trying to satisfy a (pre)goal, we insert the helpful action *at the point directly before*;
+A: in trying to satisfy a (pre)goal, we insert the helpful action *at the point directly before*;
 at the end of the path for main goals, just before the action for pre goals
 
-in deepening, we keep track of which (pre)goals have been fulfilled
+B: in deepening, we keep track of which (pre)goals have been fulfilled
 if, in iterating a newly-made path, we find that a *previously fulfilled pre* is now invalidated,
 we need to insertBefore some satisfying action.
+
+    - actually, thank god, this will happen automatically thanks to A. We insert an action
+        somewhere in the chain, then re-evaluate the remainings. This will present a new goalremainingsurface
+        to the next iter, which will insert at the appropriate points.
+
+    [ ] GOAPGoalRemainingSurface is a simple list
+    [ ] comparing after.isCloser(before) (both surfaces) is weird due to index of insertion
+    [ ] goalremaining.goal has its keys deleted - this shouldn't be happening - we want
+            access to the original goal at all times - diffs map or nUnfulfilled (doesn't have yet)
+            should track the information of fulfillment
 
 
 
