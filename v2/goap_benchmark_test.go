@@ -6,6 +6,18 @@ import (
 	"testing"
 )
 
+/*
+goos: linux
+goarch: amd64
+pkg: github.com/dt-rush/sameriver/v2
+cpu: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz
+BenchmarkGOAPClassic
+BenchmarkGOAPClassic-8   	    2612	    388596 ns/op	  208938 B/op	    3736 allocs/op
+PASS
+ok  	github.com/dt-rush/sameriver/v2	1.255s
+
+(2081 / s)
+*/
 func BenchmarkGOAPClassic(b *testing.B) {
 	w := testingWorld()
 
@@ -162,12 +174,25 @@ func BenchmarkGOAPClassic(b *testing.B) {
 	goal := NewGOAPGoal(map[string]int{
 		"woodChopped,=": 3,
 	})
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		p.Plan(ws, goal, 500)
 	}
 
 }
 
+/*
+goos: linux
+goarch: amd64
+pkg: github.com/dt-rush/sameriver/v2
+cpu: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz
+BenchmarkGOAPAlanWatts
+BenchmarkGOAPAlanWatts-8   	    6112	    176718 ns/op	   90335 B/op	    1612 allocs/op
+PASS
+ok  	github.com/dt-rush/sameriver/v2	1.224s
+
+(4993 / s)
+*/
 func BenchmarkGOAPAlanWatts(b *testing.B) {
 	w := testingWorld()
 
@@ -352,6 +377,82 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 		"inTemple,=": 1,
 	})
 
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		p.Plan(ws, goal, 500)
+	}
+}
+
+/*
+goos: linux
+goarch: amd64
+pkg: github.com/dt-rush/sameriver/v2
+cpu: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz
+BenchmarkGOAPSimple
+BenchmarkGOAPSimple-8   	   56072	     18475 ns/op	   15112 B/op	     273 allocs/op
+PASS
+ok  	github.com/dt-rush/sameriver/v2	2.487s
+
+(22546 / s  == 360 / frame (16ms))
+*/
+func BenchmarkGOAPSimple(b *testing.B) {
+	w := testingWorld()
+
+	ps := NewPhysicsSystem()
+	items := NewItemSystem(nil)
+	inventories := NewInventorySystem()
+	w.RegisterSystems(ps, items, inventories)
+
+	w.RegisterComponents("IntMap,State", "Generic,Inventory")
+
+	e := w.Spawn(map[string]any{
+		"components": map[string]any{
+			"Vec2D,Position":    Vec2D{0, 0},
+			"Generic,Inventory": inventories.Create(nil),
+		},
+	})
+
+	equipBow := NewGOAPAction(map[string]any{
+		"name": "equipBow",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"bowEquipped,=": 1,
+		},
+	})
+
+	moveToTarget := NewGOAPAction(map[string]any{
+		"name": "moveToTarget",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"inRangeOfTarget,=": 1,
+		},
+	})
+
+	rangedCombat := NewGOAPAction(map[string]any{
+		"name": "rangedCombat",
+		"cost": 1,
+		"pres": map[string]int{
+			"bowEquipped,=":     1,
+			"inRangeOfTarget,=": 1,
+		},
+		"effs": map[string]int{
+			"combat,=": 1,
+		},
+	})
+
+	p := NewGOAPPlanner(e)
+
+	p.eval.AddActions(equipBow, moveToTarget, rangedCombat)
+
+	ws := NewGOAPWorldState(nil)
+
+	goal := NewGOAPGoal(map[string]int{
+		"combat,=": 1,
+	})
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		p.Plan(ws, goal, 500)
 	}

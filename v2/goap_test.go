@@ -1034,3 +1034,58 @@ func TestGOAPPlanClassic(t *testing.T) {
 	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 }
+
+func TestGOAPPlanResponsibleFridgeUsage(t *testing.T) {
+	w := testingWorld()
+
+	e := w.Spawn(nil)
+
+	openFridge := NewGOAPAction(map[string]any{
+		"name": "openFridge",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"fridgeOpen,=": 1,
+		},
+	})
+	closeFridge := NewGOAPAction(map[string]any{
+		"name": "closeFridge",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"fridgeOpen,=": 0,
+		},
+	})
+	getFoodFromFridge := NewGOAPAction(map[string]any{
+		"name": "getFoodFromFridge",
+		"cost": 1,
+		"pres": map[string]int{
+			"fridgeOpen,=": 1,
+		},
+		"effs": map[string]int{
+			"food,+": 1,
+		},
+	})
+
+	p := NewGOAPPlanner(e)
+
+	p.eval.AddActions(openFridge, getFoodFromFridge, closeFridge)
+
+	ws := NewGOAPWorldState(map[string]int{
+		"fridgeOpen": 0,
+	})
+
+	goal := NewGOAPGoal(map[string]int{
+		"fridgeOpen,=": 0,
+		"food,=":       1,
+	})
+	t0 := time.Now()
+	plan, ok := p.Plan(ws, goal, 500)
+	if !ok {
+		t.Fatal("Should've found a solution")
+	}
+	Logger.Println(color.InGreenOverWhite(GOAPPathToString(plan)))
+	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	Logger.Printf("Took %f ms to find solution", dt_ms)
+
+}
