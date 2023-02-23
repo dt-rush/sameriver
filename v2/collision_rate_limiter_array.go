@@ -28,6 +28,15 @@ import (
 // The rows are actually slices of a contiguous backing array, to make sure
 // the rate limiters are all loaded in the same cache line
 //
+//             (the motiviation
+//             entirely behind maintaining this weird triangle despite having
+//                 a tricky algoirthm
+//             to expand if we increase max entities at runtime; it would be far simpler
+//             to just use a 2d array, use only the handshake cells, and it is trivial to
+//             expand. Just expand empty rows and columns to the right and down.
+//             The cache lines. It's all about the cache lines morty. I'd killa  man for
+//             cache lines do you understand morty im a killer.
+//
 // The indexes to the [][] slice corresponding to the [] slice can be
 // visualized like this:
 /*

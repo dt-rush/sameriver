@@ -1,29 +1,25 @@
 package sameriver
 
+import (
+	"fmt"
+)
+
 type GOAPActionSet struct {
-	set map[string]GOAPAction
+	set map[string]*GOAPAction
 }
 
 func NewGOAPActionSet() *GOAPActionSet {
 	return &GOAPActionSet{
-		set: make(map[string]GOAPAction),
+		set: make(map[string]*GOAPAction),
 	}
 }
 
-func (as *GOAPActionSet) Add(actions ...GOAPAction) {
+func (as *GOAPActionSet) Add(actions ...*GOAPAction) {
 	for _, action := range actions {
-		as.set[action.name] = action
-	}
-}
-
-func (as *GOAPActionSet) thoseThatHelpFulfill(ws GOAPWorldState) *GOAPActionSet {
-	helpers := NewGOAPActionSet()
-	for _, action := range as.set {
-		effState := NewGOAPWorldState(nil)
-		effState = effState.applyAction(action)
-		if effState.partlyCoversDoesntConflict(ws) {
-			helpers.Add(action)
+		name := action.DisplayName()
+		if _, ok := as.set[name]; ok {
+			panic(fmt.Sprintf("Action %s already added to actionset!", name))
 		}
+		as.set[name] = action
 	}
-	return helpers
 }

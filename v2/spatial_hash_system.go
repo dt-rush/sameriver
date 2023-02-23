@@ -4,7 +4,7 @@ package sameriver
 type SpatialHashSystem struct {
 	gridX  int
 	gridY  int
-	hasher *SpatialHasher
+	Hasher *SpatialHasher
 }
 
 func NewSpatialHashSystem(gridX, gridY int) *SpatialHashSystem {
@@ -19,15 +19,15 @@ func (s *SpatialHashSystem) GetComponentDeps() []string {
 }
 
 func (s *SpatialHashSystem) LinkWorld(w *World) {
-	s.hasher = NewSpatialHasher(s.gridX, s.gridY, w)
+	s.Hasher = NewSpatialHasher(s.gridX, s.gridY, w)
 }
 
 func (h *SpatialHashSystem) Update(dt_ms float64) {
 	// clear any old data and run the computation
-	h.hasher.ClearTable()
-	h.hasher.ScanAndInsertEntities()
+	h.Hasher.ClearTable()
+	h.Hasher.ScanAndInsertEntities()
 }
 
 func (h *SpatialHashSystem) Expand(n int) {
-	h.hasher.Expand(n)
+	h.Hasher.Expand(n)
 }

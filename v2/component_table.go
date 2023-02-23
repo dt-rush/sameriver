@@ -427,11 +427,11 @@ func (e *Entity) GetVal(name string) interface{} {
 	case "TagList":
 		return &e.World.em.components.tagListMap[name][e.ID]
 	case "IntMap":
-		return e.World.em.components.intMapMap[name][e.ID]
+		return &e.World.em.components.intMapMap[name][e.ID]
 	case "FloatMap":
-		return e.World.em.components.floatMapMap[name][e.ID]
+		return &e.World.em.components.floatMapMap[name][e.ID]
 	case "Generic":
-		return &e.World.em.components.genericMap[name][e.ID]
+		return e.World.em.components.genericMap[name][e.ID]
 	case "Custom":
 		return e.World.em.components.cccMap[name].Get(e)
 	default:

@@ -31,7 +31,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 	for e, cells := range entityCells {
 		for _, cell := range cells {
 			inCell := false
-			for _, entity := range sh.hasher.Entities(cell[0], cell[1]) {
+			for _, entity := range sh.Hasher.Entities(cell[0], cell[1]) {
 				if entity == e {
 					inCell = true
 				}
@@ -59,7 +59,7 @@ func TestSpatialHashMany(t *testing.T) {
 	n_entities := len(w.GetActiveEntitiesSet())
 	seen := make(map[*Entity]bool)
 	found := 0
-	table := sh.hasher.TableCopy()
+	table := sh.Hasher.TableCopy()
 	for x := 0; x < 10; x++ {
 		for y := 0; y < 10; y++ {
 			cell := table[x][y]
@@ -92,7 +92,7 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 	w.Update(FRAME_DURATION_INT / 2)
 	for _, cell := range cells {
 		inCell := false
-		for _, entity := range sh.hasher.Entities(cell[0], cell[1]) {
+		for _, entity := range sh.Hasher.Entities(cell[0], cell[1]) {
 			if entity == e {
 				inCell = true
 			}
@@ -114,24 +114,24 @@ func TestSpatialHashCellsWithinDistance(t *testing.T) {
 	box := Vec2D{0, 0}
 
 	// we're checking the radius at 0, 0, the corner of the world
-	cells := sh.hasher.CellsWithinDistance(Vec2D{0, 0}, box, 25.0)
+	cells := sh.Hasher.CellsWithinDistance(Vec2D{0, 0}, box, 25.0)
 	if len(cells) != 8 {
 		t.Fatal(fmt.Sprintf("circle centered at 0, 0 of radius 25 should touch 8 cells; got %d: %v", len(cells), cells))
 	}
-	cells = sh.hasher.CellsWithinDistance(Vec2D{0, 0}, box, 29.0)
+	cells = sh.Hasher.CellsWithinDistance(Vec2D{0, 0}, box, 29.0)
 	if len(cells) != 9 {
 		t.Fatal(fmt.Sprintf("circle centered at 0, 0 of radius 29 should touch 9 cells; got %d: %v", len(cells), cells))
 	}
 	// now check from a position not quite at the corner
-	cells = sh.hasher.CellsWithinDistance(Vec2D{20, 20}, box, 29.0)
+	cells = sh.Hasher.CellsWithinDistance(Vec2D{20, 20}, box, 29.0)
 	if len(cells) != 25 {
 		t.Fatal(fmt.Sprintf("circle centered at 20, 20 of radius 29 should touch 25 cells; got %d: %v", len(cells), cells))
 	}
-	cells = sh.hasher.CellsWithinDistance(Vec2D{20, 20}, box, 7.0)
+	cells = sh.Hasher.CellsWithinDistance(Vec2D{20, 20}, box, 7.0)
 	if len(cells) != 4 {
 		t.Fatal(fmt.Sprintf("circle centered at 20, 20 of radius 7 should touch 4 cells; got %d: %v", len(cells), cells))
 	}
-	cells = sh.hasher.CellsWithinDistance(Vec2D{25, 25}, box, 1.0)
+	cells = sh.Hasher.CellsWithinDistance(Vec2D{25, 25}, box, 1.0)
 	if len(cells) != 1 {
 		t.Fatal(fmt.Sprintf("circle centered at 25, 25 of radius 1 should touch 1 cell; got %d: %v", len(cells), cells))
 	}
@@ -164,7 +164,7 @@ func TestSpatialHashEntitiesWithinDistance(t *testing.T) {
 		}
 	}
 	w.Update(FRAME_DURATION_INT / 2)
-	nearGot := sh.hasher.EntitiesWithinDistance(
+	nearGot := w.EntitiesWithinDistance(
 		*e.GetVec2D("Position"),
 		*e.GetVec2D("Box"),
 		30.0)
@@ -210,7 +210,7 @@ func TestSpatialHashEntitiesWithinDistanceApprox(t *testing.T) {
 		}
 	}
 	w.Update(FRAME_DURATION_INT / 2)
-	nearGot := sh.hasher.EntitiesWithinDistanceApprox(
+	nearGot := sh.Hasher.EntitiesWithinDistanceApprox(
 		*e.GetVec2D("Position"),
 		*e.GetVec2D("Box"),
 		30.0)
@@ -231,8 +231,8 @@ func TestSpatialHashTableCopy(t *testing.T) {
 	testingSpawnSpatial(w, Vec2D{1, 1}, Vec2D{1, 1})
 	w.Update(FRAME_DURATION_INT / 2)
 	w.Update(FRAME_DURATION_INT / 2)
-	table := sh.hasher.Table
-	tableCopy := sh.hasher.TableCopy()
+	table := sh.Hasher.Table
+	tableCopy := sh.Hasher.TableCopy()
 	if table[0][0][0] != tableCopy[0][0][0] {
 		t.Fatal("CurrentTableCopy() doesn't return a copy")
 	}
@@ -247,14 +247,14 @@ func TestSpatialHashTableToString(t *testing.T) {
 	w := testingWorld()
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
-	s0 := sh.hasher.String()
+	s0 := sh.Hasher.String()
 	for i := 0; i < 500; i++ {
 		testingSpawnSpatial(w,
 			Vec2D{rand.Float64() * 1024, rand.Float64() * 1024},
 			Vec2D{5, 5})
 	}
 	w.Update(FRAME_DURATION_INT)
-	s1 := sh.hasher.String()
+	s1 := sh.Hasher.String()
 	if len(s1) < len(s0) {
 		t.Fatal("spatial hash did not show entities in its String() representation")
 	}
@@ -275,15 +275,15 @@ func TestSpatialHashExpand(t *testing.T) {
 	for posbox, _ := range testData {
 		testingSpawnSpatial(w, posbox[0], posbox[1])
 	}
-	oldCapacity := cap(sh.hasher.Table[0][0])
+	oldCapacity := cap(sh.Hasher.Table[0][0])
 	Logger.Printf("oldCapacity: %d", oldCapacity)
 
 	w.Update(FRAME_DURATION_INT / 2)
-	Logger.Println(sh.hasher.Table)
+	Logger.Println(sh.Hasher.Table)
 
 	sh.Expand(MAX_ENTITIES / 2)
 
-	if !(oldCapacity < cap(sh.hasher.Table[0][0])) {
+	if !(oldCapacity < cap(sh.Hasher.Table[0][0])) {
 		t.Fatal("Did not expand capacity of cells")
 	}
 
@@ -295,9 +295,9 @@ func TestSpatialHashExpand(t *testing.T) {
 	}
 	for _, e := range expected {
 		x, y, n := e[0], e[1], e[2]
-		if len(sh.hasher.Table[x][y]) != n {
+		if len(sh.Hasher.Table[x][y]) != n {
 			Logger.Printf("[%d][%d]", x, y)
-			Logger.Println(sh.hasher.Table[x][y])
+			Logger.Println(sh.Hasher.Table[x][y])
 			t.Fatal("altered cell counts")
 		}
 	}

@@ -8,7 +8,7 @@ func NewFloatMap(m map[string]float64) FloatMap {
 	return FloatMap{m}
 }
 
-func (m *FloatMap) copyOf() FloatMap {
+func (m *FloatMap) CopyOf() FloatMap {
 	m2 := make(map[string]float64)
 	for key := range m.m {
 		m2[key] = m.m[key]

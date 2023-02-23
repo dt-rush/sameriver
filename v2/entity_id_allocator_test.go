@@ -8,16 +8,12 @@ import (
 
 func TestEntityIDAllocatorAllocateID(t *testing.T) {
 	et := NewEntityIDAllocator(MAX_ENTITIES, utils.NewIDGenerator())
-	_, err := et.allocateID()
-	if !(err == nil &&
-		len(et.currentEntities) == 1) {
-		t.Fatal("didn't allocate ID properly")
-	}
+	et.allocateID()
 }
 
 func TestEntityIDAllocatorDeallocateID(t *testing.T) {
 	et := NewEntityIDAllocator(MAX_ENTITIES, utils.NewIDGenerator())
-	e, _ := et.allocateID()
+	e := et.allocateID()
 	et.deallocate(e)
 	if len(et.currentEntities) != 0 {
 		t.Fatal("didn't update allocated count")
@@ -32,31 +28,22 @@ func TestEntityIDAllocatorAllocateMaxIDs(t *testing.T) {
 	for i := 0; i < MAX_ENTITIES; i++ {
 		et.allocateID()
 	}
-	_, err := et.allocateID()
-	if err == nil {
-		t.Fatal("should have returned error on allocating > MAX_ENTITIES")
-	}
+	et.allocateID()
 	et.expand(1)
-	_, err = et.allocateID()
-	if err != nil {
-		t.Fatal("should have been able to allocate after expand")
-	}
+	et.allocateID()
 }
 
 func TestEntityIDAllocatorReallocateDeallocatedID(t *testing.T) {
 	et := NewEntityIDAllocator(MAX_ENTITIES, utils.NewIDGenerator())
 	var e *Entity
 	for i := 0; i < MAX_ENTITIES; i++ {
-		allocated, _ := et.allocateID()
+		allocated := et.allocateID()
 		if i == MAX_ENTITIES/2 {
 			e = allocated
 		}
 	}
 	et.deallocate(e)
-	e, err := et.allocateID()
-	if err != nil {
-		t.Fatal("should have had space after deallocate to allocate")
-	}
+	e = et.allocateID()
 	if e.ID != MAX_ENTITIES/2 {
 		t.Fatal("should have used deallocated ID to serve new allocate request")
 	}

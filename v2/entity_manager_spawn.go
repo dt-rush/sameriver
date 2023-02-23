@@ -116,11 +116,14 @@ func (m *EntityManager) doSpawn(
 ) *Entity {
 
 	// get an ID for the entity
-	e, err := m.entityIDAllocator.allocateID()
-	if err != nil {
+	// if maximum entity count reached, resize arrays then allocate id
+	if total, _ := m.NumEntities(); total == m.MaxEntities() {
+		msg := fmt.Sprintf("[WARNING] Reached entity capacity: %d. "+
+			"(entity manager should expand and tables and retry).", m.MaxEntities())
+		Logger.Println(msg)
 		m.ExpandEntityTables()
-		e, _ = m.entityIDAllocator.allocateID()
 	}
+	e := m.entityIDAllocator.allocateID()
 
 	e.World = m.w
 	// set the bitarray for this entity

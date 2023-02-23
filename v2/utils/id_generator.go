@@ -28,17 +28,16 @@ func (g *IDGenerator) Next() (ID int) {
 			break
 		}
 	} else {
-		unique := false
-		for !unique {
-			u32ID := g.x.Inc()
-			if u32ID > math.MaxUint32/64 {
-				panic("tried to generate more than (2^32 - 1) / 64 simultaneous " +
-					"ID's without free. This is surely a logic error.")
-			}
-			ID = int(u32ID)
-			_, already := g.universe[ID]
-			unique = !already
+		// if there are no free id's, we're chock-full up to the latest
+		// value of x.Inc()
+		u32ID := g.x.Inc()
+		if u32ID > math.MaxUint32/64 {
+			panic("tried to generate more than (2^32 - 1) / 64 simultaneous " +
+				"ID's without free. This is surely a logic error. If you're" +
+				"from the future and you can run 4,294,967,295 entities..." +
+				"well, that's wild")
 		}
+		ID = int(u32ID)
 	}
 	g.universe[ID] = true
 	return ID

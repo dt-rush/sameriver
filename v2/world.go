@@ -92,7 +92,7 @@ func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	return overunder_ms
 }
 
-func (w *World) RegisterComponents(specs []string) {
+func (w *World) RegisterComponents(specs ...string) {
 	// register given specs
 	for _, spec := range specs {
 		if !w.em.components.ComponentExists(spec) {
@@ -111,7 +111,7 @@ func (w *World) RegisterCCCs(customs []CustomContiguousComponent) {
 func (w *World) RegisterSystems(systems ...System) {
 	// add all systems
 	for _, s := range systems {
-		w.RegisterComponents(s.GetComponentDeps())
+		w.RegisterComponents(s.GetComponentDeps()...)
 		w.addSystem(s)
 	}
 	// link up all systems' dependencies
@@ -265,6 +265,7 @@ func (w *World) RemoveWorldLogic(Name string) {
 	if logic, ok := w.worldLogics[Name]; ok {
 		w.runtimeSharer.RemoveLogic("world", logic)
 		delete(w.worldLogics, Name)
+		w.IdGen.Free(logic.worldID)
 	}
 }
 
@@ -295,11 +296,13 @@ func (w *World) addEntityLogic(e *Entity, l *LogicUnit) *LogicUnit {
 
 func (w *World) removeEntityLogic(e *Entity, l *LogicUnit) {
 	w.runtimeSharer.RemoveLogic("entities", l)
+	w.IdGen.Free(l.worldID)
 }
 
 func (w *World) RemoveAllEntityLogics(e *Entity) {
 	for _, l := range e.Logics {
 		w.runtimeSharer.RemoveLogic("entities", l)
+		w.IdGen.Free(l.worldID)
 	}
 }
 

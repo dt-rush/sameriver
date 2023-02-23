@@ -2,45 +2,48 @@ package sameriver
 
 import (
 	"fmt"
+	//	"math"
 )
 
 type GOAPWorldState struct {
-	Vals  map[string]GOAPState
+	// TODO: export vals
+	vals map[string]int
+	// TODO: change this to a map[int](map[string]any) [ID][component]
 	modal map[string]interface{}
 }
 
-func (ws GOAPWorldState) copyOf() GOAPWorldState {
-	copyVals := make(map[string]GOAPState)
-	for k, v := range ws.Vals {
-		copyVals[k] = v
+func (ws *GOAPWorldState) CopyOf() *GOAPWorldState {
+	copyvals := make(map[string]int)
+	for k, v := range ws.vals {
+		copyvals[k] = v
 	}
 	copyModal := make(map[string]interface{})
 	for k, v := range ws.modal {
 		copyModal[k] = v
 	}
-	copyWS := GOAPWorldState{
-		copyVals,
+	copyWS := &GOAPWorldState{
+		copyvals,
 		copyModal,
 	}
 	return copyWS
 }
 
-func NewGOAPWorldState(vals map[string]GOAPState) GOAPWorldState {
-	ws := GOAPWorldState{
-		Vals:  vals,
+func NewGOAPWorldState(vals map[string]int) *GOAPWorldState {
+	ws := &GOAPWorldState{
+		vals:  vals,
 		modal: make(map[string]interface{}),
 	}
 	if vals == nil {
-		ws.Vals = make(map[string]GOAPState)
+		ws.vals = make(map[string]int)
 	}
 	return ws
 }
 
-func (ws GOAPWorldState) ecKey(e *Entity, name string) string {
+func (ws *GOAPWorldState) ecKey(e *Entity, name string) string {
 	return fmt.Sprintf("%d-%s", e.ID, name)
 }
 
-func (ws GOAPWorldState) GetModal(e *Entity, name string) interface{} {
+func (ws *GOAPWorldState) GetModal(e *Entity, name string) interface{} {
 	if val, ok := ws.modal[ws.ecKey(e, name)]; ok {
 		return val
 	} else {
@@ -48,77 +51,6 @@ func (ws GOAPWorldState) GetModal(e *Entity, name string) interface{} {
 	}
 }
 
-func (ws GOAPWorldState) SetModal(e *Entity, name string, val interface{}) {
+func (ws *GOAPWorldState) SetModal(e *Entity, name string, val interface{}) {
 	ws.modal[ws.ecKey(e, name)] = val
-}
-
-func (ws GOAPWorldState) get(name string) interface{} {
-	if ctxStateVal, ok := ws.Vals[name].(GOAPCtxStateVal); ok {
-		return ctxStateVal.val
-	} else {
-		return ws.Vals[name]
-	}
-}
-
-func (ws GOAPWorldState) applyAction(action GOAPAction) GOAPWorldState {
-	ws = ws.copyOf()
-	for name, val := range action.effs {
-		if ctxStateVal, ok := val.(GOAPCtxStateVal); ok {
-			ctxStateVal.set(&ws)
-			ws.Vals[name] = ctxStateVal.val
-		} else {
-			ws.Vals[name] = val
-		}
-	}
-	return ws
-}
-
-func (ws GOAPWorldState) fulfills(other GOAPWorldState) bool {
-	for name, _ := range other.Vals {
-		if ws.get(name) != other.get(name) {
-			return false
-		}
-	}
-	return true
-}
-
-func (ws GOAPWorldState) partlyCoversDoesntConflict(other GOAPWorldState) bool {
-	hits := 0
-	misses := 0
-	for name, _ := range ws.Vals {
-		if _, ok := other.Vals[name]; ok {
-			if ws.get(name) == other.get(name) {
-				hits++
-			} else {
-				misses++
-			}
-		}
-	}
-	return hits > 0 && misses == 0
-}
-
-func (ws GOAPWorldState) unfulfilledBy(action GOAPAction) GOAPWorldState {
-	ws = ws.copyOf()
-	for name, val := range action.effs {
-		if ctxStateVal, ok := val.(GOAPCtxStateVal); ok {
-			val = ctxStateVal.val
-		}
-		if _, ok := ws.Vals[name]; ok {
-			if ws.Vals[name] == val {
-				delete(ws.Vals, name)
-			}
-		}
-	}
-	return ws
-}
-
-func (ws GOAPWorldState) mergeActionPres(action GOAPAction) GOAPWorldState {
-	ws = ws.copyOf()
-	for name, val := range action.pres {
-		if ctxStateVal, ok := val.(GOAPCtxStateVal); ok {
-			val = ctxStateVal.val
-		}
-		ws.Vals[name] = val
-	}
-	return ws
 }

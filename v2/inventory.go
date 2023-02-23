@@ -3,6 +3,7 @@ package sameriver
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 )
@@ -105,8 +106,45 @@ func (i *Inventory) DebitNByFilter(n int, predicate func(*Item) bool) []*Item {
 	return stacks
 }
 
+func (i *Inventory) DebitAllFilter(predicate func(*Item) bool) []*Item {
+	results := make([]*Item, 0)
+	for _, s := range i.Filter(predicate) {
+		results = append(results, i.DebitAll(s))
+	}
+	return results
+}
+
+func (i *Inventory) DebitTags(tags ...string) *Item {
+	return i.DebitNTags(1, tags...)[0]
+}
+
+func (i *Inventory) DebitNTags(n int, tags ...string) []*Item {
+	if i.CountTags(tags...) < n {
+		panic(fmt.Sprintf("Cannot debit when inv has less than %d items of tags %s", n, tags))
+	}
+	stacks := make([]*Item, 0)
+	remaining := n
+	for _, it := range i.FilterTags(tags...) {
+		if it.Count > remaining {
+			stacks = append(stacks, i.DebitN(n, it))
+		} else {
+			stacks = append(stacks, i.DebitAll(it))
+		}
+	}
+	return stacks
+}
+
+func (i *Inventory) DebitAllTags(tags ...string) []*Item {
+	stacks := make([]*Item, 0)
+	for _, it := range i.FilterTags(tags...) {
+		stacks = append(stacks, i.DebitAll(it))
+	}
+	return stacks
+}
+
 func (i *Inventory) Credit(stack *Item) {
 	if stack.Count == 0 {
+		Logger.Println(stack)
 		Logger.Printf("[WARNING] trying to Credit a stack (archetype %s) with count 0! Doing nothing.", stack.Archetype)
 		return
 	}
@@ -139,7 +177,7 @@ func (i *Inventory) GetNByFilter(inv *Inventory, n int, predicate func(*Item) bo
 }
 
 func (i *Inventory) GetAllByName(inv *Inventory, name string) {
-	for _, it := range inv.NameFilter(name) {
+	for _, it := range inv.FilterName(name) {
 		i.Credit(inv.DebitAll(it))
 	}
 }
@@ -156,9 +194,58 @@ func (i *Inventory) GetAll(inv *Inventory) {
 	}
 }
 
+func (i *Inventory) setCount(n int, filtered []*Item) {
+	if n == 0 {
+		for _, it := range filtered {
+			i.DebitAll(it)
+		}
+	}
+
+	count := 0
+	for _, s := range filtered {
+		count += s.Count
+	}
+	if count == n {
+		return
+	}
+
+	diff := n - count
+	for ix := 0; diff != 0; ix++ {
+		it := filtered[ix]
+		if diff < 0 {
+			// decrease this stack as much as we can to fulfill diff
+			newCount := int(math.Max(0, float64(it.Count+diff)))
+			change := it.Count - newCount
+			it.SetCount(newCount)
+			diff += change
+		} else if diff > 0 {
+			// simply set this first stack to the count needed to fulfill diff
+			newCount := it.Count + diff
+			it.SetCount(newCount)
+			diff = 0
+		}
+	}
+}
+
+func (i *Inventory) SetCountName(n int, archetype string) {
+	filtered := i.FilterName(archetype)
+	if len(filtered) == 0 {
+		panic(fmt.Sprintf("Can't SetCountName(%d, %s) since no items matched that archetype!", n, archetype))
+	}
+	i.setCount(n, filtered)
+}
+
+func (i *Inventory) SetCountTags(n int, tags ...string) {
+	filtered := i.FilterTags(tags...)
+	if len(filtered) == 0 {
+		panic(fmt.Sprintf("Can't SetCountTags(%d, %s) since no items matched tags!", n, tags))
+	}
+	i.setCount(n, filtered)
+}
+
 func (i *Inventory) CountName(name string) int {
 	n := 0
-	for _, stack := range i.NameFilter(name) {
+	for _, stack := range i.FilterName(name) {
 		n += stack.Count
 	}
 	return n
@@ -174,10 +261,36 @@ func (i *Inventory) Count(predicate func(*Item) bool) int {
 	return n
 }
 
+func (i *Inventory) CountTags(tags ...string) int {
+	n := 0
+	for _, stack := range i.FilterTags(tags...) {
+		n += stack.Count
+	}
+	return n
+}
+
 func (i *Inventory) Filter(predicate func(*Item) bool) []*Item {
 	results := make([]*Item, 0)
 	for _, item := range i.Stacks {
 		if predicate(item) {
+			results = append(results, item)
+		}
+	}
+	return results
+}
+
+func (i *Inventory) FilterTags(tags ...string) []*Item {
+	check := func(s *Item) bool {
+		for _, t := range tags {
+			if !s.Tags.Has(t) {
+				return false
+			}
+		}
+		return true
+	}
+	results := make([]*Item, 0)
+	for _, item := range i.Stacks {
+		if check(item) {
 			results = append(results, item)
 		}
 	}
@@ -199,7 +312,7 @@ func (i *Inventory) Contains(predicate func(*Item) bool) bool {
 	return false
 }
 
-func (i *Inventory) NameFilter(name string) []*Item {
+func (i *Inventory) FilterName(name string) []*Item {
 	predicate := func(i *Item) bool {
 		return i.GetArchetype().Name == name
 	}

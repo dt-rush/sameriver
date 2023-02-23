@@ -14,6 +14,30 @@
 
 package sameriver
 
+func intMax(a, b int) int {
+	if a > b {
+		return a
+	} else {
+		return b
+	}
+}
+
+func intMin(a, b int) int {
+	if a < b {
+		return a
+	} else {
+		return b
+	}
+}
+
+func intAbs(x int) int {
+	if x >= 0 {
+		return x
+	} else {
+		return -x
+	}
+}
+
 // thanks to https://stackoverflow.com/a/37359662 for this nice
 // little splice idiom when we don't care about slice order (saves
 // a copy operation if we wanted to shift the slice to fill the gap)

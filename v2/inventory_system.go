@@ -12,8 +12,10 @@ func NewInventorySystem() *InventorySystem {
 func (i *InventorySystem) Create(listing map[string]int) *Inventory {
 	result := NewInventory()
 	for arch, count := range listing {
-		item := i.itemSystem.CreateStackSimple(count, arch)
-		result.Credit(item)
+		if count != 0 {
+			item := i.itemSystem.CreateStackSimple(count, arch)
+			result.Credit(item)
+		}
 	}
 	return result
 }
