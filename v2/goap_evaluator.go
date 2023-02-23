@@ -12,12 +12,15 @@ import (
 type GOAPEvaluator struct {
 	modalVals map[string]GOAPModalVal
 	actions   *GOAPActionSet
+	// map of [varName](Set (in the sense of a map->bool) of actions that affect that var)
+	varActions map[string](map[*GOAPAction]bool)
 }
 
 func NewGOAPEvaluator() *GOAPEvaluator {
 	return &GOAPEvaluator{
-		modalVals: make(map[string]GOAPModalVal),
-		actions:   NewGOAPActionSet(),
+		modalVals:  make(map[string]GOAPModalVal),
+		actions:    NewGOAPActionSet(),
+		varActions: make(map[string](map[*GOAPAction]bool)),
 	}
 }
 
@@ -33,12 +36,20 @@ func (e *GOAPEvaluator) PopulateModalStartState(ws *GOAPWorldState) {
 	}
 }
 
+func (e *GOAPEvaluator) actionAffectsVar(action *GOAPAction, varName string) {
+	if _, mapExists := e.varActions[varName]; !mapExists {
+		e.varActions[varName] = make(map[*GOAPAction]bool)
+	}
+	e.varActions[varName][action] = true
+}
+
 func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 	for _, action := range actions {
 		debugGOAPPrintf("[][][] adding action %s", action.DisplayName())
 		e.actions.Add(action)
 		// link up modal setters for effs matching modal varnames
 		for varName, _ := range action.effs {
+			e.actionAffectsVar(action, varName)
 			if modal, ok := e.modalVals[varName]; ok {
 				debugGOAPPrintf("[][][]     adding modal setter for %s", varName)
 				action.effModalSetters[varName] = modal.effModalSet
@@ -263,9 +274,12 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 	helpsGoal := func(goalLeft map[string]*utils.NumericInterval) (scale int, helpful bool) {
 		for varName, interval := range goalLeft {
 			debugGOAPPrintf("    - considering effect on %s", varName)
-			scale, helpful := actionChangesVarWell(varName, interval, action)
-			if helpful {
-				return scale, true
+			affectors := e.varActions[varName]
+			if _, affects := affectors[action]; affects {
+				scale, helpful := actionChangesVarWell(varName, interval, action)
+				if helpful {
+					return scale, true
+				}
 			}
 		}
 		return -1, false

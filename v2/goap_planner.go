@@ -34,59 +34,61 @@ func (p *GOAPPlanner) traverseFulfillers(
 		debugGOAPPrintf("%d possible actions", len(p.eval.actions.set))
 	}
 
-	for _, action := range p.eval.actions.set {
-		if DEBUG_GOAP {
-			debugGOAPPrintf("[ ] Considering action %s", action.DisplayName())
+	// determine if action is good to insert anywhere
+	// consider, surface: [Apre, Bpre, Main]
+	// consider inserting at 0 means fulfilling Apre
+	for i, g := range here.path.remainings.surface {
+		if g.nUnfulfilled == 0 {
+			continue
 		}
-		// determine if action is good to insert anywhere
-		// consider, surface: [Apre, Bpre, Main]
-		// consider inserting at 0 means fulfilling Apre
-		for i, g := range here.path.remainings.surface {
-			if g.nUnfulfilled == 0 {
-				continue
-			}
-			if DEBUG_GOAP {
-				var toSatisfyMsg string
-				if i == len(here.path.remainings.surface)-1 {
-					toSatisfyMsg = "main goal"
-				} else {
-					toSatisfyMsg = fmt.Sprintf("pre of %s", here.path.path[i].Name)
-				}
-				debugGOAPPrintf(color.InGreenOverGray(
-					fmt.Sprintf("checking if %s can be inserted at %d to satisfy %s",
-						action.DisplayName(), i, toSatisfyMsg)))
-			}
-			scale, helpful := p.eval.actionHelpsToInsert(start, here.path, i, action)
-			if helpful {
+		for varName, _ := range g.goalLeft {
+			for action, _ := range p.eval.varActions[varName] {
 				if DEBUG_GOAP {
-					debugGOAPPrintf("[X] %s helpful!", action.DisplayName())
+					debugGOAPPrintf("[ ] Considering action %s", action.DisplayName())
 				}
-				var toInsert *GOAPAction
-				if scale > 1 {
-					toInsert = action.Parametrized(scale)
-				} else {
-					toInsert = action
-				}
-				newPath := here.path.inserted(toInsert, i)
-				pathStr := newPath.String()
-				if _, ok := pathsSeen[pathStr]; ok {
-					debugGOAPPrintf(color.InRedOverGray("xxxxxxxxxxxxxxxxxxx path already seen xxxxxxxxxxxxxxxxxxxxx"))
-					continue
-				} else {
-					pathsSeen[pathStr] = true
-				}
-				p.eval.computeRemainingsOfPath(newPath, start, goal)
 				if DEBUG_GOAP {
-					msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
-						GOAPPathToString(newPath), newPath.cost)
-					debugGOAPPrintf(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
-					debugGOAPPrintf(color.InWhiteOverCyan(msg))
-					debugGOAPPrintf(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+					var toSatisfyMsg string
+					if i == len(here.path.remainings.surface)-1 {
+						toSatisfyMsg = "main goal"
+					} else {
+						toSatisfyMsg = fmt.Sprintf("pre of %s", here.path.path[i].Name)
+					}
+					debugGOAPPrintf(color.InGreenOverGray(
+						fmt.Sprintf("checking if %s can be inserted at %d to satisfy %s",
+							action.DisplayName(), i, toSatisfyMsg)))
 				}
-				pq.Push(&GOAPPQueueItem{path: newPath})
-			} else {
-				if DEBUG_GOAP {
-					debugGOAPPrintf("[_] %s not helpful", action.DisplayName())
+				scale, helpful := p.eval.actionHelpsToInsert(start, here.path, i, action)
+				if helpful {
+					if DEBUG_GOAP {
+						debugGOAPPrintf("[X] %s helpful!", action.DisplayName())
+					}
+					var toInsert *GOAPAction
+					if scale > 1 {
+						toInsert = action.Parametrized(scale)
+					} else {
+						toInsert = action
+					}
+					newPath := here.path.inserted(toInsert, i)
+					pathStr := newPath.String()
+					if _, ok := pathsSeen[pathStr]; ok {
+						debugGOAPPrintf(color.InRedOverGray("xxxxxxxxxxxxxxxxxxx path already seen xxxxxxxxxxxxxxxxxxxxx"))
+						continue
+					} else {
+						pathsSeen[pathStr] = true
+					}
+					p.eval.computeRemainingsOfPath(newPath, start, goal)
+					if DEBUG_GOAP {
+						msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
+							GOAPPathToString(newPath), newPath.cost)
+						debugGOAPPrintf(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+						debugGOAPPrintf(color.InWhiteOverCyan(msg))
+						debugGOAPPrintf(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+					}
+					pq.Push(&GOAPPQueueItem{path: newPath})
+				} else {
+					if DEBUG_GOAP {
+						debugGOAPPrintf("[_] %s not helpful", action.DisplayName())
+					}
 				}
 			}
 		}
