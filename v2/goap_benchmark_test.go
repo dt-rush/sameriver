@@ -16,7 +16,7 @@ BenchmarkGOAPClassic-8   	    2612	    388596 ns/op	  208938 B/op	    3736 alloc
 PASS
 ok  	github.com/dt-rush/sameriver/v2	1.255s
 
-(2081 / s)
+(2081 / s), given planning might take up about 10% of logics per frame share, that's about 200 per second
 */
 func BenchmarkGOAPClassic(b *testing.B) {
 	w := testingWorld()
@@ -191,7 +191,7 @@ BenchmarkGOAPAlanWatts-8   	    6112	    176718 ns/op	   90335 B/op	    1612 all
 PASS
 ok  	github.com/dt-rush/sameriver/v2	1.224s
 
-(4993 / s)
+(4993 / s) given planning might take up about 10% of logics per frame share, that's about 500 per second
 */
 func BenchmarkGOAPAlanWatts(b *testing.B) {
 	w := testingWorld()
@@ -393,7 +393,7 @@ BenchmarkGOAPSimple-8   	   56072	     18475 ns/op	   15112 B/op	     273 allocs
 PASS
 ok  	github.com/dt-rush/sameriver/v2	2.487s
 
-(22546 / s  == 360 / frame (16ms))
+(22546 / s  == 360 / frame (16ms)) given planning might take up about 10% of logics per frame share, that's about 2000 per second
 */
 func BenchmarkGOAPSimple(b *testing.B) {
 	w := testingWorld()
