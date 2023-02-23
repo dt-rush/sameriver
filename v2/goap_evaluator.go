@@ -1,6 +1,7 @@
 package sameriver
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/dt-rush/sameriver/v2/utils"
@@ -52,39 +53,49 @@ func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 	}
 }
 
-func (e *GOAPEvaluator) applyActionBasic(action *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState) {
-	newWS = ws.CopyOf()
+func (e *GOAPEvaluator) applyActionBasic(
+	action *GOAPAction, ws *GOAPWorldState, makeCopy bool) *GOAPWorldState {
+
+	if makeCopy {
+		ws = ws.CopyOf()
+	}
 
 	for varName, eff := range action.effs {
 		op := action.ops[varName]
 		x := ws.vals[varName]
-		debugGOAPPrintf("     %s       applying %s::%d x %s%s%d(%d) ; = %d",
-			color.InWhiteOverYellow(">>>"),
-			action.DisplayName(), action.Count, varName, op, eff.val, x,
-			action.Count*eff.f(x))
-		newWS.vals[varName] = action.Count * eff.f(x)
+		if DEBUG_GOAP {
+			debugGOAPPrintf("     %s       applying %s::%d x %s%s%d(%d) ; = %d",
+				color.InWhiteOverYellow(">>>"),
+				action.DisplayName(), action.Count, varName, op, eff.val, x,
+				eff.f(x))
+		}
+		ws.vals[varName] = eff.f(x)
 	}
-	debugGOAPPrintf("            ws after action: %v", newWS.vals)
+	if DEBUG_GOAP {
+		debugGOAPPrintf(color.InBlueOverWhite(fmt.Sprintf("            ws after action: %v", ws.vals)))
+	}
 
-	return newWS
+	return ws
 }
 
 func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState) {
 
-	newWS = e.applyActionBasic(action, ws)
+	newWS = e.applyActionBasic(action, ws, false)
 	for varName, eff := range action.effs {
 		op := action.ops[varName]
 		x := ws.vals[varName]
 		debugGOAPPrintf("    %s        applying %s::%d x %s%s%d(%d) ; = %d",
 			color.InPurpleOverWhite(" >>>modal "),
 			action.DisplayName(), action.Count, varName, op, eff.val, x,
-			action.Count*eff.f(x))
+			eff.f(x))
 		// do modal set
 		if setter, ok := action.effModalSetters[varName]; ok {
 			setter(newWS, op, action.Count*eff.val)
 		}
 	}
-	debugGOAPPrintf("            ws after action: %v", newWS.vals)
+	if DEBUG_GOAP {
+		debugGOAPPrintf(color.InBlueOverWhite(fmt.Sprintf("            ws after action: %v", newWS.vals)))
+	}
 
 	// re-check any modal vals
 	for varName, _ := range newWS.vals {
@@ -94,7 +105,9 @@ func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState)
 		}
 	}
 
-	debugGOAPPrintf("            ws after re-checking modal vals: %v", newWS.vals)
+	if DEBUG_GOAP {
+		debugGOAPPrintf(color.InPurpleOverWhite(fmt.Sprintf("            ws after re-checking modal vals: %v", newWS.vals)))
+	}
 	return newWS
 }
 
@@ -109,7 +122,7 @@ func (e *GOAPEvaluator) computeRemainingsOfPath(path *GOAPPath, start *GOAPWorld
 	path.statesAlong[0] = ws
 	for i, action := range path.path {
 		path.remainings.surface[i] = action.pres.remaining(ws)
-		ws = e.applyActionBasic(action, ws)
+		ws = e.applyActionBasic(action, ws, true)
 		path.statesAlong[i+1] = ws
 	}
 	path.remainings.surface[len(path.path)] = main.remaining(ws)
@@ -144,7 +157,7 @@ func (e *GOAPEvaluator) isBetter(
 	relevantGoal := beforeRemaining.goal                       // Cpre
 	ws := start.CopyOf()
 	for _, action := range upToInsertion {
-		ws = e.applyActionBasic(action, ws)
+		ws = e.applyActionBasic(action, start, false)
 	}
 	insertionRemaining := relevantGoal.remaining(ws)
 	return insertionRemaining.nUnfulfilled < beforeRemaining.nUnfulfilled
@@ -171,7 +184,7 @@ func (e *GOAPEvaluator) validateForward(path *GOAPPath, start *GOAPWorldState, m
 		ws = e.applyActionModal(action, ws)
 	}
 	endRemaining := main.remaining(ws)
-	if len(endRemaining.goal.vars) != 0 {
+	if len(endRemaining.goalLeft) != 0 {
 		debugGOAPPrintf(">>>>>>> in validateForward, main goal was not fulfilled at end of path")
 		return false
 	}
@@ -189,7 +202,9 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 		interval *utils.NumericInterval,
 		action *GOAPAction) (scale int, helpful bool) {
 
-		debugGOAPPrintf("    Considering effs of %s for var %s. effs: %v", action.DisplayName(), varName, action.effs)
+		if DEBUG_GOAP {
+			debugGOAPPrintf("    Considering effs of %s for var %s. effs: %v", action.DisplayName(), varName, action.effs)
+		}
 		for effVarName, eff := range action.effs {
 			if varName != effVarName {
 				debugGOAPPrintf("      [_] eff for %s doesn't affect var %s", effVarName, varName)
@@ -206,10 +221,16 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 					}
 				}
 				// all other cases
-				Logger.Println(path)
-				needToBeat := interval.Diff(float64(path.statesAlong[insertionIx].vals[varName]))
-				actionDiff := interval.Diff(float64(eff.f(start.vals[varName])))
-				if actionDiff < needToBeat {
+				stateAtPoint := path.statesAlong[insertionIx].vals[varName]
+				needToBeat := interval.Diff(float64(stateAtPoint))
+				actionDiff := interval.Diff(float64(eff.f(stateAtPoint)))
+				if DEBUG_GOAP {
+					debugGOAPPrintf(path.String())
+					debugGOAPPrintf("            ws[%s] before insertion: %d", varName, stateAtPoint)
+					debugGOAPPrintf("              needToBeat diff: %d", int(needToBeat))
+					debugGOAPPrintf("              actionDiff: %d", int(actionDiff))
+				}
+				if math.Abs(actionDiff) < math.Abs(needToBeat) {
 					debugGOAPPrintf("      [X] eff closer")
 					// compute how many of this action we need
 					// if we had diff 0, we just need one
@@ -241,7 +262,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 
 	helpsGoal := func(goalLeft map[string]*utils.NumericInterval) (scale int, helpful bool) {
 		for varName, interval := range goalLeft {
-			Logger.Printf("    - considering effect on %s", varName)
+			debugGOAPPrintf("    - considering effect on %s", varName)
 			scale, helpful := actionChangesVarWell(varName, interval, action)
 			if helpful {
 				return scale, true

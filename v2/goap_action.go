@@ -26,12 +26,12 @@ type GOAPEff struct {
 	f   func(int) int
 }
 
-func GOAPEffFunc(op string, val int) func(int) int {
+func GOAPEffFunc(a *GOAPAction, op string, val int) func(int) int {
 	switch op {
 	case "+":
-		return func(x int) int { return val + x }
+		return func(x int) int { return a.Count*val + x }
 	case "-":
-		return func(x int) int { return x - val }
+		return func(x int) int { return x - a.Count*val }
 	case "=":
 		return func(x int) int { return val }
 	default:
@@ -56,8 +56,8 @@ func NewGOAPAction(spec map[string]interface{}) *GOAPAction {
 		Count:           1,
 		cost:            cost,
 		pres:            NewGOAPGoal(pres).Parametrize(1),
-		preModalChecks:  make(map[string]func(ws *GOAPWorldState) int),
-		effModalSetters: make(map[string]func(ws *GOAPWorldState, op string, x int)),
+		preModalChecks:  make(map[string]func(ws *GOAPWorldState) int),               // set by GOAPEvaluator
+		effModalSetters: make(map[string]func(ws *GOAPWorldState, op string, x int)), // set by GOAPEvaluator
 		effs:            make(map[string]*GOAPEff),
 		ops:             make(map[string]string),
 	}
@@ -67,7 +67,7 @@ func NewGOAPAction(spec map[string]interface{}) *GOAPAction {
 		eff := &GOAPEff{
 			val: val,
 			op:  op,
-			f:   GOAPEffFunc(op, val),
+			f:   GOAPEffFunc(a, op, val),
 		}
 		a.effs[varName] = eff
 		a.ops[varName] = op
@@ -84,7 +84,11 @@ func (a *GOAPAction) DisplayName() string {
 }
 
 func (a *GOAPAction) CopyOf() *GOAPAction {
-	return NewGOAPAction(a.spec)
+	result := NewGOAPAction(a.spec)
+	result.Count = a.Count
+	result.preModalChecks = a.preModalChecks
+	result.effModalSetters = a.effModalSetters
+	return result
 }
 
 func (a *GOAPAction) Parametrized(n int) *GOAPAction {

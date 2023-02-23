@@ -94,8 +94,8 @@ func TestGOAPGoalRemaining(t *testing.T) {
 		printDiffs(remaining.diffs)
 		Logger.Println("-------------------")
 
-		if len(remaining.goal.vars) != nRemaining {
-			t.Fatal(fmt.Sprintf("Should have had %d goals remaining, had %d", nRemaining, len(remaining.goal.vars)))
+		if len(remaining.goalLeft) != nRemaining {
+			t.Fatal(fmt.Sprintf("Should have had %d goals remaining, had %d", nRemaining, len(remaining.goalLeft)))
 		}
 		for _, name := range expectedRemaining {
 			if diffVal, ok := remaining.diffs[name]; !ok || diffVal == 0 {
@@ -435,7 +435,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	g := NewGOAPGoal(map[string]int{
 		"atTree,=": 1,
 	})
-	appliedState := eval.applyActionBasic(goToTree, NewGOAPWorldState(nil))
+	appliedState := eval.applyActionBasic(goToTree, NewGOAPWorldState(nil), true)
 	remaining := g.remaining(appliedState)
 	Logger.Println("goal:")
 	printGoal(g)
@@ -446,7 +446,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	}
 	Logger.Println("goal remaining:")
 	printGoal(remaining.goal)
-	if len(remaining.goal.vars) != 0 {
+	if len(remaining.goalLeft) != 0 {
 		t.Fatal("Goal should have been satisfied")
 	}
 	Logger.Println("diffs:")
@@ -457,7 +457,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 		"drunk,>=": 10,
 	})
 	remaining = g2.remaining(appliedState)
-	if len(remaining.goal.vars) != 1 {
+	if len(remaining.goalLeft) != 1 {
 		t.Fatal("drunk goal should be unfulfilled by atTree state")
 	}
 
@@ -692,14 +692,29 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 			"IntMap,State": map[string]int{
 				"drunk": 0,
 			},
-			"Generic,Inventory": inventories.Create(map[string]int{
-				"bottle_booze": 0,
-			}),
+			"Generic,Inventory": inventories.Create(nil),
 		},
 	})
 
 	boozePos := &Vec2D{19, 19}
+	templePos := &Vec2D{-19, 19}
 
+	inTempleModal := GOAPModalVal{
+		name: "inTemple",
+		check: func(ws *GOAPWorldState) int {
+			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			_, _, d := ourPos.Distance(*templePos)
+			if d < 2 {
+				return 1
+			} else {
+				return 0
+			}
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			nearTemple := templePos.Add(Vec2D{1, 0})
+			ws.SetModal(e, "Position", &nearTemple)
+		},
+	}
 	atBoozeModal := GOAPModalVal{
 		name: "atBooze",
 		check: func(ws *GOAPWorldState) int {
@@ -734,17 +749,23 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 		name: "hasBooze",
 		check: func(ws *GOAPWorldState) int {
 			inv := ws.GetModal(e, "Inventory").(*Inventory)
-			return inv.CountTags("booze")
+			count := inv.CountTags("booze")
+			return count
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			inv := ws.GetModal(e, "Inventory").(*Inventory).CopyOf()
 			if op == "-" {
 				inv.DebitNTags(x, "booze")
-				ws.SetModal(e, "Inventory", inv)
 			}
 			if op == "=" {
+				if x == 0 {
+					inv.DebitAllTags("booze")
+				}
+				count := inv.CountTags("booze")
+				if count == 0 {
+					inv.Credit(items.CreateStackSimple(1, "bottle_booze"))
+				}
 				inv.SetCountTags(x, "booze")
-				ws.SetModal(e, "Inventory", inv)
 			}
 			if op == "+" {
 				count := inv.CountTags("booze")
@@ -754,6 +775,7 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 					inv.SetCountTags(count+x, "booze")
 				}
 			}
+			ws.SetModal(e, "Inventory", inv)
 		},
 	}
 	goToBooze := NewGOAPAction(map[string]any{
@@ -778,7 +800,7 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 		"name": "drink",
 		"cost": 1,
 		"pres": map[string]int{
-			"EACH:hasBooze,=": 1,
+			"EACH:hasBooze,>=": 1,
 		},
 		"effs": map[string]int{
 			"drunk,+":    2,
@@ -788,6 +810,7 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 	dropAllBooze := NewGOAPAction(map[string]any{
 		"name": "dropAllBooze",
 		"cost": 1,
+		"pres": nil,
 		"effs": map[string]int{
 			"hasBooze,=": 0,
 		},
@@ -796,7 +819,7 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 		"name": "purifyOneself",
 		"cost": 1,
 		"pres": map[string]int{
-			"hasBooze,=": 0,
+			"hasBooze,<": 1,
 		},
 		"effs": map[string]int{
 			"rituallyPure,=": 1,
@@ -809,13 +832,13 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 			"rituallyPure,=": 1,
 		},
 		"effs": map[string]int{
-			"templeEntered,=": 1,
+			"inTemple,=": 1,
 		},
 	})
 
 	p := NewGOAPPlanner(e)
 
-	p.eval.AddModalVals(drunkModal, hasBoozeModal, atBoozeModal)
+	p.eval.AddModalVals(drunkModal, hasBoozeModal, atBoozeModal, inTempleModal)
 	p.eval.AddActions(drink, dropAllBooze, purifyOneself, enterTemple, goToBooze, getBooze)
 
 	ws := NewGOAPWorldState(map[string]int{
@@ -823,12 +846,9 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 	})
 
 	goal := NewGOAPGoal(map[string]int{
-		"drunk,>=":        3,
-		"templeEntered,=": 1,
+		"drunk,>=":   3,
+		"inTemple,=": 1,
 	})
-	e.SetGeneric("Inventory", inventories.Create(map[string]int{
-		"bottle_booze": 0,
-	}))
 	t0 := time.Now()
 	plan, ok := p.Plan(ws, goal, 500)
 	if !ok {
@@ -1014,486 +1034,3 @@ func TestGOAPPlanClassic(t *testing.T) {
 	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 }
-
-/*
-func TestGOAPPlannerDeepen(t *testing.T) {
-
-	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
-
-	p := NewGOAPPlanner(e)
-
-	hasBoozeModal := GOAPModalVal{
-		name: "hasBooze",
-		check: func(ws *GOAPWorldState) int {
-			// simulate infinite booze supply
-			return 1
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-		},
-	}
-	drink := NewGOAPAction(map[string]any{
-		"name": "drink",
-		"cost": 1,
-		"pres": map[string]int{
-			"hasBooze,>": 0,
-		},
-		"effs": map[string]int{
-			"drunk,+":    1,
-			"hasBooze,-": 1,
-		},
-	})
-
-	p.eval.AddModalVals(hasBoozeModal)
-	p.eval.AddActions(drink)
-
-	start := NewGOAPWorldState(nil)
-	p.eval.PopulateModalStartState(start)
-	goal := NewGOAPGoal(map[string]int{
-		"drunk,>=": 3,
-	})
-	backtrackRoot := &GOAPPQueueItem{
-		path:          []*GOAPAction{},
-		presRemaining: make(map[string]*GOAPGoal),
-		remaining:     goal,
-		nUnfulfilled:  len(goal.vars),
-		cost:          0,
-		index:         -1, // going to be set by Push()
-	}
-
-	newPaths := p.deepen(start, backtrackRoot)
-	if len(newPaths) != 1 {
-		t.Fatal("Should have found 1 path")
-	}
-	if len(newPaths[0].remaining.vars) == 0 {
-		t.Fatal("Should not have fulfilled the goal")
-	}
-
-	start = NewGOAPWorldState(nil)
-	goal = NewGOAPGoal(map[string]int{
-		"drunk,=": 1,
-	})
-	newPaths = p.deepen(start, backtrackRoot)
-	if len(newPaths) != 1 && len(newPaths[0].remaining.vars) == 0 {
-		t.Fatal("Should have found a path (drink) and had goal fulfilled")
-	}
-}
-
-func TestGOAPPlannerBasic(t *testing.T) {
-
-	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
-
-	p := NewGOAPPlanner(e)
-
-	hasBoozeModal := GOAPModalVal{
-		name: "hasBooze",
-		check: func(ws *GOAPWorldState) int {
-			// simulate infinite booze supply
-			return 1
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-		},
-	}
-	drink := NewGOAPAction(map[string]any{
-		"name": "drink",
-		"cost": 1,
-		"pres": map[string]int{
-			"hasBooze,>": 0,
-		},
-		"effs": map[string]int{
-			"drunk,+":    2,
-			"hasBooze,-": 1,
-		},
-	})
-
-	p.eval.AddModalVals(hasBoozeModal)
-	p.eval.AddActions(drink)
-
-	start := NewGOAPWorldState(nil)
-	goal := NewGOAPGoal(map[string]int{
-		"drunk,>=": 5,
-	})
-	solution, ok := p.Plan(start, goal, 50)
-
-	if ok {
-		Logger.Println(GOAPPathToString(solution))
-	} else {
-		Logger.Println("Didn't find a solution.")
-	}
-}
-
-func TestGOAPPlannerAlanWatts(t *testing.T) {
-
-	w := testingWorld()
-	w.RegisterComponents([]string{"Int,BoozeAmount"})
-
-	e, _ := w.Spawn([]string{}, MakeComponentSet(map[string]any{
-		"Int,BoozeAmount": 10,
-	}))
-
-	p := NewGOAPPlanner(e)
-
-	hasBoozeModal := GOAPModalVal{
-		name: "hasBooze",
-		check: func(ws *GOAPWorldState) int {
-			amount := ws.GetModal(e, "BoozeAmount").(*int)
-			return *amount
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			amount := ws.GetModal(e, "BoozeAmount").(*int)
-			if op == "-" {
-				newVal := *amount - x
-				ws.SetModal(e, "BoozeAmount", &newVal)
-			}
-		},
-	}
-	drink := NewGOAPAction(map[string]any{
-		"name": "drink",
-		"cost": 1,
-		"pres": map[string]int{
-			"hasBooze,>": 0,
-		},
-		"effs": map[string]int{
-			"drunk,+":    2,
-			"hasBooze,-": 1,
-		},
-	})
-
-	p.eval.AddModalVals(hasBoozeModal)
-	p.eval.AddActions(drink)
-
-	start := NewGOAPWorldState(nil)
-	goal := NewGOAPGoal(map[string]int{
-		"drunk,>=": 20,
-	})
-	solution, ok := p.Plan(start, goal, 50)
-	Logger.Println("Alan Watt's plan:")
-	Logger.Println(GOAPPathToString(solution))
-
-	if !ok {
-		t.Fatal("Should have found a solution with ten booze")
-	}
-
-	*e.GetInt("BoozeAmount") = 5
-	solution, ok = p.Plan(start, goal, 50)
-
-	if ok {
-		t.Fatal("Should not have found a plan with five booze")
-	}
-}
-
-func TestGOAPPlannerPurifyOneself(t *testing.T) {
-
-	w := testingWorld()
-	w.RegisterComponents([]string{"Int,BoozeAmount"})
-
-	e, _ := w.Spawn([]string{}, MakeComponentSet(map[string]any{
-		"Int,BoozeAmount": 10,
-	}))
-
-	p := NewGOAPPlanner(e)
-
-	hasBoozeModal := GOAPModalVal{
-		name: "hasBooze",
-		check: func(ws *GOAPWorldState) int {
-			amount := ws.GetModal(e, "BoozeAmount").(*int)
-			return *amount
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			amount := ws.GetModal(e, "BoozeAmount").(*int)
-			if op == "-" {
-				newVal := *amount - x
-				ws.SetModal(e, "BoozeAmount", &newVal)
-			}
-			if op == "=" {
-				newVal := x
-				ws.SetModal(e, "BoozeAmount", &newVal)
-			}
-		},
-	}
-	drink := NewGOAPAction(map[string]any{
-		"name": "drink",
-		"cost": 1,
-		"pres": map[string]int{
-			"hasBooze,>": 0,
-		},
-		"effs": map[string]int{
-			"drunk,+":    2,
-			"hasBooze,-": 1,
-		},
-	})
-	dropAllBooze := NewGOAPAction(map[string]any{
-		"name": "dropAllBooze",
-		"cost": 1,
-		"pres": map[string]int{
-			"hasBooze,>": 0,
-		},
-		"effs": map[string]int{
-			"hasBooze,=": 0,
-		},
-	})
-	purifyOneself := NewGOAPAction(map[string]any{
-		"name": "purifyOneself",
-		"cost": 1,
-		"pres": map[string]int{
-			"hasBooze,=": 0,
-		},
-		"effs": map[string]int{
-			"rituallyPure,=": 1,
-		},
-	})
-	enterTemple := NewGOAPAction(map[string]any{
-		"name": "enterTemple",
-		"cost": 1,
-		"pres": map[string]int{
-			"rituallyPure,=": 1,
-		},
-		"effs": map[string]int{
-			"templeEntered,=": 1,
-		},
-	})
-
-	p.eval.AddModalVals(hasBoozeModal)
-	p.eval.AddActions(drink, dropAllBooze, purifyOneself, enterTemple)
-	start := NewGOAPWorldState(nil)
-	p.eval.PopulateModalStartState(start)
-
-	goal := NewGOAPGoal(map[string]int{
-		"drunk,>=":        3,
-		"templeEntered,=": 1,
-	})
-	solution, ok := p.Plan(start, goal, 50)
-	Logger.Println("Alan Watt's plan:")
-	Logger.Println(GOAPPathToString(solution))
-
-	if !ok {
-		t.Fatal("Should have found a solution")
-	}
-}
-
-func TestGOAPPlannerResponsibleFridgeUsage(t *testing.T) {
-
-	w := testingWorld()
-	w.RegisterComponents([]string{"Int,FoodAmount"})
-
-	e, _ := testingSpawnSimple(w)
-
-	p := NewGOAPPlanner(e)
-
-	openFridge := NewGOAPAction(map[string]any{
-		"name": "openFridge",
-		"cost": 1,
-		"pres": nil,
-		"effs": map[string]int{
-			"fridgeOpen,=": 1,
-		},
-	})
-	getFood := NewGOAPAction(map[string]any{
-		"name": "getFood",
-		"cost": 1,
-		"pres": map[string]int{
-			"fridgeOpen,=": 1,
-		},
-		"effs": map[string]int{
-			"hasFood,+": 1,
-		},
-	})
-	closeFridge := NewGOAPAction(map[string]any{
-		"name": "closeFridge",
-		"cost": 1,
-		"pres": nil,
-		"effs": map[string]int{
-			"fridgeOpen,=": 0,
-		},
-	})
-
-	p.eval.AddActions(openFridge, getFood, closeFridge)
-
-	start := NewGOAPWorldState(map[string]int{
-		"hasFood":    0,
-		"fridgeOpen": 0,
-	})
-	goal := NewGOAPGoal(map[string]int{
-		"hasFood,>":    0,
-		"fridgeOpen,=": 0,
-	})
-	solution, ok := p.Plan(start, goal, 50)
-	Logger.Println("Responsible fridge use:")
-	Logger.Println(GOAPPathToString(solution))
-
-	if !ok {
-		t.Fatal("Should have found a solution")
-	}
-}
-
-func TestGOAPPlannerWoodsmanByTheSea(t *testing.T) {
-	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	e, _ := testingSpawnPhysics(w)
-
-	treePos := &Vec2D{11, 11}
-	axePos := &Vec2D{-20, 20}
-	glovePos := &Vec2D{-20, 5}
-	oceanPos := &Vec2D{0, -10}
-
-	atTreeModal := GOAPModalVal{
-		name: "atTree",
-		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
-			_, _, d := ourPos.Distance(*treePos)
-			if d < 2 {
-				return 1
-			} else {
-				return 0
-			}
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			nearTree := treePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", &nearTree)
-		},
-	}
-	atOceanModal := GOAPModalVal{
-		name: "atOcean",
-		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
-			_, _, d := ourPos.Distance(*oceanPos)
-			if d < 2 {
-				return 1
-			} else {
-				return 0
-			}
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			nearOcean := oceanPos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", &nearOcean)
-		},
-	}
-	atAxeModal := GOAPModalVal{
-		name: "atAxe",
-		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
-			_, _, d := ourPos.Distance(*axePos)
-			if d < 2 {
-				return 1
-			} else {
-				return 0
-			}
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			nearAxe := treePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", &nearAxe)
-		},
-	}
-	atGloveModal := GOAPModalVal{
-		name: "atGlove",
-		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
-			_, _, d := ourPos.Distance(*glovePos)
-			if d < 2 {
-				return 1
-			} else {
-				return 0
-			}
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			nearGlove := treePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", &nearGlove)
-		},
-	}
-	goToTree := NewGOAPAction(map[string]any{
-		"name": "goToTree",
-		"cost": 1,
-		"pres": nil,
-		"effs": map[string]int{
-			"atTree,=": 1,
-		},
-	})
-	goToGlove := NewGOAPAction(map[string]any{
-		"name": "goToGlove",
-		"cost": 1,
-		"pres": nil,
-		"effs": map[string]int{
-			"atGlove,=": 1,
-		},
-	})
-	goToAxe := NewGOAPAction(map[string]any{
-		"name": "goToAxe",
-		"cost": 1,
-		"pres": nil,
-		"effs": map[string]int{
-			"atAxe,=": 1,
-		},
-	})
-	getGlove := NewGOAPAction(map[string]any{
-		"name": "getGlove",
-		"cost": 1,
-		"pres": map[string]int{
-			"atGlove,=": 1,
-		},
-		"effs": map[string]int{
-			"hasGlove,+": 1,
-		},
-	})
-	getAxe := NewGOAPAction(map[string]any{
-		"name": "getAxe",
-		"cost": 1,
-		"pres": map[string]int{
-			"atAxe,=": 1,
-		},
-		"effs": map[string]int{
-			"hasAxe,+": 1,
-		},
-	})
-	chopTree := NewGOAPAction(map[string]any{
-		"name": "chopTree",
-		"cost": 1,
-		"pres": map[string]int{
-			"atTree,=":   1,
-			"hasAxe,>":   0,
-			"hasGlove,>": 0,
-		},
-		"effs": map[string]int{
-			"woodChopped,+": 1,
-		},
-	})
-	goToOcean := NewGOAPAction(map[string]any{
-		"name": "goToOcean",
-		"cost": 1,
-		"pres": nil,
-		"effs": map[string]int{
-			"atOcean,=": 1,
-		},
-	})
-
-	p := NewGOAPPlanner(e)
-	p.eval.AddModalVals(atTreeModal, atOceanModal, atAxeModal, atGloveModal)
-	p.eval.AddActions(goToTree, chopTree, goToOcean, goToGlove, goToAxe, getGlove, getAxe)
-
-	*e.GetVec2D("Position") = *oceanPos
-	start := NewGOAPWorldState(nil)
-
-	p.eval.PopulateModalStartState(start)
-
-	start = NewGOAPWorldState(map[string]int{
-		"woodChopped": 3,
-	})
-	p.eval.PopulateModalStartState(start)
-	goal := NewGOAPGoal(map[string]int{
-		"woodChopped,=": 3,
-	})
-	solution, ok := p.Plan(start, goal, 50)
-	Logger.Println(GOAPPathToString(solution))
-
-	if !ok {
-		t.Fatal("Should have found a solution")
-	}
-
-}
-
-*/

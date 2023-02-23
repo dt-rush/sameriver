@@ -38,7 +38,7 @@ func debugGOAPGoalToString(g *GOAPGoal) string {
 	msg := ""
 	for varName, interval := range g.vars {
 		varInterval := fmt.Sprintf("%s: [%.0f, %.0f]", varName, interval.A, interval.B)
-		msg = color.InRedOverBlack(fmt.Sprintf("%s  %s", msg, varInterval))
+		msg = fmt.Sprintf("%s  %s", msg, color.InRedOverWhite(color.InBold(varInterval)))
 	}
 	return msg
 }

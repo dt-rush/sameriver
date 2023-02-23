@@ -151,27 +151,29 @@ func (i *Item) SetCount(n int) {
 		i.Count = 0
 		return
 	}
-	sampleIx := func(ix int, factor float64) int {
-		return int(float64(ix) * factor)
-	}
-	newDegradations := make([]float64, n)
-	if n > i.Count {
-		factor := float64(n) / float64(i.Count)
-		for ix := 0; ix < i.Count; ix++ {
-			// find our sample point and the next one (defines the gap between)
-			samplePoint := sampleIx(ix, factor)
-			nextPoint := sampleIx(ix+1, factor)
-			newDegradations[samplePoint] = i.Degradations[ix]
-			// fill in the space til the next
-			for jx := samplePoint + 1; jx < nextPoint && jx < n; jx++ {
-				newDegradations[jx] = i.Degradations[ix]
-			}
+	if i.Tags.Has("degrades") {
+		sampleIx := func(ix int, factor float64) int {
+			return int(float64(ix) * factor)
 		}
-	} else if n < i.Count {
-		factor := float64(i.Count) / float64(n)
-		for ix := 0; ix < n; ix++ {
-			samplePoint := sampleIx(ix, factor)
-			newDegradations[ix] = i.Degradations[samplePoint]
+		newDegradations := make([]float64, n)
+		if n > i.Count {
+			factor := float64(n) / float64(i.Count)
+			for ix := 0; ix < i.Count; ix++ {
+				// find our sample point and the next one (defines the gap between)
+				samplePoint := sampleIx(ix, factor)
+				nextPoint := sampleIx(ix+1, factor)
+				newDegradations[samplePoint] = i.Degradations[ix]
+				// fill in the space til the next
+				for jx := samplePoint + 1; jx < nextPoint && jx < n; jx++ {
+					newDegradations[jx] = i.Degradations[ix]
+				}
+			}
+		} else if n < i.Count {
+			factor := float64(i.Count) / float64(n)
+			for ix := 0; ix < n; ix++ {
+				samplePoint := sampleIx(ix, factor)
+				newDegradations[ix] = i.Degradations[samplePoint]
+			}
 		}
 	}
 	i.Count = n

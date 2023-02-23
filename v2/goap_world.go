@@ -6,8 +6,9 @@ import (
 )
 
 type GOAPWorldState struct {
-	// TODO: uncapitalise vals
-	vals  map[string]int
+	// TODO: export vals
+	vals map[string]int
+	// TODO: change this to a map[int](map[string]any) [ID][component]
 	modal map[string]interface{}
 }
 

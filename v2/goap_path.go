@@ -25,9 +25,9 @@ func (p *GOAPPath) costOfAdd(a *GOAPAction) int {
 	cost := p.cost
 	switch a.cost.(type) {
 	case int:
-		cost += a.cost.(int)
+		cost += a.Count * a.cost.(int)
 	case func() int:
-		cost += a.cost.(func() int)()
+		cost += a.Count * a.cost.(func() int)()
 	}
 	return cost
 }

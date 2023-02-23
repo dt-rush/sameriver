@@ -106,6 +106,14 @@ func (i *Inventory) DebitNByFilter(n int, predicate func(*Item) bool) []*Item {
 	return stacks
 }
 
+func (i *Inventory) DebitAllFilter(predicate func(*Item) bool) []*Item {
+	results := make([]*Item, 0)
+	for _, s := range i.Filter(predicate) {
+		results = append(results, i.DebitAll(s))
+	}
+	return results
+}
+
 func (i *Inventory) DebitTags(tags ...string) *Item {
 	return i.DebitNTags(1, tags...)[0]
 }
@@ -122,6 +130,14 @@ func (i *Inventory) DebitNTags(n int, tags ...string) []*Item {
 		} else {
 			stacks = append(stacks, i.DebitAll(it))
 		}
+	}
+	return stacks
+}
+
+func (i *Inventory) DebitAllTags(tags ...string) []*Item {
+	stacks := make([]*Item, 0)
+	for _, it := range i.FilterTags(tags...) {
+		stacks = append(stacks, i.DebitAll(it))
 	}
 	return stacks
 }
@@ -179,6 +195,12 @@ func (i *Inventory) GetAll(inv *Inventory) {
 }
 
 func (i *Inventory) setCount(n int, filtered []*Item) {
+	if n == 0 {
+		for _, it := range filtered {
+			i.DebitAll(it)
+		}
+	}
+
 	count := 0
 	for _, s := range filtered {
 		count += s.Count
