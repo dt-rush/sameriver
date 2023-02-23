@@ -1,3 +1,18 @@
+insertBefore becomes the only path construction
+
+in trying to satisfy a (pre)goal, we insert the helpful action *at the point directly before*;
+at the end of the path for main goals, just before the action for pre goals
+
+in deepening, we keep track of which (pre)goals have been fulfilled
+if, in iterating a newly-made path, we find that a *previously fulfilled pre* is now invalidated,
+we need to insertBefore some satisfying action.
+
+
+
+
+
+
+
 
 
 
