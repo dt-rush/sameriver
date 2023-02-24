@@ -9,7 +9,10 @@ import (
 )
 
 func TestSpatialHashInsertion(t *testing.T) {
-	w := NewWorld(100, 100)
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 	testData := map[[2]Vec2D][][2]int{
@@ -47,7 +50,10 @@ func TestSpatialHashInsertion(t *testing.T) {
 }
 
 func TestSpatialHashMany(t *testing.T) {
-	w := NewWorld(100, 100)
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 	for i := 0; i < 300; i++ {
@@ -77,7 +83,10 @@ func TestSpatialHashMany(t *testing.T) {
 }
 
 func TestSpatialHashLargeEntity(t *testing.T) {
-	w := NewWorld(100, 100)
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 	pos := Vec2D{20, 20}
@@ -107,7 +116,10 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 }
 
 func TestSpatialHashCellsWithinDistance(t *testing.T) {
-	w := NewWorld(100, 100)
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 
@@ -138,7 +150,10 @@ func TestSpatialHashCellsWithinDistance(t *testing.T) {
 }
 
 func TestSpatialHashEntitiesWithinDistance(t *testing.T) {
-	w := NewWorld(100, 100)
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 
@@ -184,7 +199,11 @@ func TestSpatialHashEntitiesWithinDistance(t *testing.T) {
 }
 
 func TestSpatialHashEntitiesWithinDistanceApprox(t *testing.T) {
-	w := NewWorld(100, 100)
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
+
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 
@@ -225,7 +244,10 @@ func TestSpatialHashEntitiesWithinDistanceApprox(t *testing.T) {
 }
 
 func TestSpatialHashTableCopy(t *testing.T) {
-	w := NewWorld(100, 100)
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 	testingSpawnSpatial(w, Vec2D{1, 1}, Vec2D{1, 1})
@@ -261,7 +283,10 @@ func TestSpatialHashTableToString(t *testing.T) {
 }
 
 func TestSpatialHashExpand(t *testing.T) {
-	w := NewWorld(100, 100)
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 	testData := map[[2]Vec2D][][2]int{

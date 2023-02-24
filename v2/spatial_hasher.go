@@ -172,8 +172,15 @@ func (h *SpatialHasher) CellsWithinDistanceApprox(pos, box Vec2D, d float64) [][
 	return candidateCells
 }
 
+func (h *SpatialHasher) EntitiesWithinDistanceApprox(
+	pos, box Vec2D, d float64) []*Entity {
+	return h.EntitiesWithinDistanceApproxFilter(pos, box, d,
+		func(e *Entity) bool { return true })
+}
+
 // uses the approx distance since it's faster. Overestimates slightly diagonally.
-func (h *SpatialHasher) EntitiesWithinDistanceApprox(pos, box Vec2D, d float64) []*Entity {
+func (h *SpatialHasher) EntitiesWithinDistanceApproxFilter(
+	pos, box Vec2D, d float64, predicate func(*Entity) bool) []*Entity {
 	results := make([]*Entity, 0)
 	found := make(map[int]*Entity)
 	cells := h.CellsWithinDistanceApprox(pos, box, d)
@@ -188,18 +195,26 @@ func (h *SpatialHasher) EntitiesWithinDistanceApprox(pos, box Vec2D, d float64) 
 		}
 	}
 	for _, e := range found {
-		results = append(results, e)
+		if predicate(e) {
+			results = append(results, e)
+		}
 	}
 	return results
 }
 
 func (h *SpatialHasher) EntitiesWithinDistance(pos, box Vec2D, d float64) []*Entity {
+	return h.EntitiesWithinDistanceFilter(pos, box, d,
+		func(e *Entity) bool { return true })
+}
+
+func (h *SpatialHasher) EntitiesWithinDistanceFilter(
+	pos, box Vec2D, d float64, predicate func(*Entity) bool) []*Entity {
 	candidates := h.EntitiesWithinDistanceApprox(pos, box, d)
 	results := make([]*Entity, 0)
 	for _, e := range candidates {
 		ePos := *e.GetVec2D("Position")
 		eBox := *e.GetVec2D("Box")
-		if RectWithinDistanceOfRect(
+		if predicate(e) && RectWithinDistanceOfRect(
 			pos.ShiftedCenterToBottomLeft(box), box,
 			ePos.ShiftedCenterToBottomLeft(eBox), eBox,
 			d) {

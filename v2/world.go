@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -19,6 +20,7 @@ type World struct {
 	Events *EventBus
 	em     *EntityManager
 
+	// systems registered
 	systems map[string]System
 	// this is needed to associate ID's with Systems, since System is an
 	// interface, not a struct type like LogicUnit that can have a name field
@@ -38,13 +40,57 @@ type World struct {
 	// and contains the RuntimeLimiters to which we Add() LogicUnits
 	runtimeSharer *RuntimeLimitSharer
 
+	// for statistics tracking - the avg ms used to run World.Update()
 	totalRuntimeAvg_ms *float64
+
+	// used for entity distance queries
+	SpatialHasher *SpatialHasher
 }
 
-func NewWorld(width int, height int) *World {
+type WorldSpec struct {
+	Width               int
+	Height              int
+	DistanceHasherGridX int
+	DistanceHasherGridY int
+}
+
+func destructureWorldSpec(spec map[string]any) WorldSpec {
+	var width, height int
+	var distanceHasherGridX, distanceHasherGridY int
+	if _, ok := spec["width"].(int); ok {
+		width = spec["width"].(int)
+	} else {
+		width = 100
+	}
+	if _, ok := spec["height"].(int); ok {
+		height = spec["height"].(int)
+	} else {
+		height = 100
+	}
+	if _, ok := spec["distanceHasherGridX"].(int); ok {
+		distanceHasherGridX = spec["distanceHasherGridX"].(int)
+	} else {
+		distanceHasherGridX = 10
+	}
+	if _, ok := spec["distanceHasherGridY"].(int); ok {
+		distanceHasherGridY = spec["distanceHasherGridY"].(int)
+	} else {
+		distanceHasherGridY = 10
+	}
+
+	return WorldSpec{
+		Width:               width,
+		Height:              height,
+		DistanceHasherGridX: distanceHasherGridX,
+		DistanceHasherGridY: distanceHasherGridY,
+	}
+}
+
+func NewWorld(spec map[string]any) *World {
+	destructured := destructureWorldSpec(spec)
 	w := &World{
-		Width:         float64(width),
-		Height:        float64(height),
+		Width:         float64(destructured.Width),
+		Height:        float64(destructured.Height),
 		Events:        NewEventBus(),
 		IdGen:         utils.NewIDGenerator(),
 		systems:       make(map[string]System),
@@ -54,10 +100,13 @@ func NewWorld(width int, height int) *World {
 		blackboards:   make(map[string]*Blackboard),
 		runtimeSharer: NewRuntimeLimitSharer(),
 	}
+
+	// set up runtimesharer
 	w.runtimeSharer.RegisterRunner("entity-manager")
 	w.runtimeSharer.RegisterRunner("systems")
 	w.runtimeSharer.RegisterRunner("world")
 	w.runtimeSharer.RegisterRunner("entities")
+	w.runtimeSharer.RegisterRunner("distance-query-spatial-hasher")
 	// init entitymanager
 	w.em = NewEntityManager(w)
 	w.runtimeSharer.AddLogic("entity-manager",
@@ -70,8 +119,29 @@ func NewWorld(width int, height int) *World {
 			active:      true,
 			runSchedule: nil,
 		})
-	// register generic taglist
-	w.em.components.AddComponent("TagList,GenericTags")
+	// set up distance spatial hasher
+	w.SpatialHasher = NewSpatialHasher(
+		destructured.DistanceHasherGridX,
+		destructured.DistanceHasherGridY,
+		w,
+	)
+	w.runtimeSharer.AddLogic("distance-query-spatial-hasher",
+		&LogicUnit{
+			name:    "distance-query-spatial-hasher",
+			worldID: w.IdGen.Next(),
+			f: func(dt_ms float64) {
+				w.SpatialHasher.ClearTable()
+				w.SpatialHasher.ScanAndInsertEntities()
+			},
+			active:      true,
+			runSchedule: nil,
+		})
+	// register basic components
+	w.RegisterComponents(
+		"TagList,GenericTags",
+		"Vec2D,Position",
+		"Vec2D,Box",
+	)
 	return w
 }
 
@@ -95,8 +165,16 @@ func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 func (w *World) RegisterComponents(specs ...string) {
 	// register given specs
 	for _, spec := range specs {
-		if !w.em.components.ComponentExists(spec) {
-			w.em.components.AddComponent(spec)
+		// guard against double insertion (many say it's a great time, but not here)
+		split := strings.Split(spec, ",")
+		kind := split[0]
+		name := split[1]
+		if w.em.components.ComponentExists(spec) {
+			Logger.Println(fmt.Sprintf("[%s,%s already exists. Skipping...]", kind, name))
+			continue
+		} else {
+			Logger.Printf("[registering component %s,%s]", kind, name)
+			w.em.components.addComponent(kind, name)
 		}
 	}
 }
@@ -111,7 +189,11 @@ func (w *World) RegisterCCCs(customs []CustomContiguousComponent) {
 func (w *World) RegisterSystems(systems ...System) {
 	// add all systems
 	for _, s := range systems {
-		w.RegisterComponents(s.GetComponentDeps()...)
+		for _, spec := range s.GetComponentDeps() {
+			if !w.em.components.ComponentExists(spec) {
+				w.RegisterComponents(spec)
+			}
+		}
 		w.addSystem(s)
 	}
 	// link up all systems' dependencies

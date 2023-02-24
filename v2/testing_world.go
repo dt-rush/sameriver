@@ -1,8 +1,10 @@
 package sameriver
 
 func testingWorld() *World {
-	w := NewWorld(1024, 1024)
-	w.RegisterComponents("Vec2D,Position")
+	w := NewWorld(map[string]any{
+		"width":  1024,
+		"height": 1024,
+	})
 	return w
 }
 
