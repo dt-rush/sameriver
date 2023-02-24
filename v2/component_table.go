@@ -202,7 +202,7 @@ func (ct *ComponentTable) addComponent(kind, name string) {
 func (ct *ComponentTable) AddCCC(custom CustomContiguousComponent) {
 	// guard against double insertion (many say it's a great time, but not here)
 	if already := ct.nameAndIndex(custom.Name()); already {
-		Logger.Println(fmt.Sprintf("Warning: trying to add component but component with name %s already exists. Skipping.", custom.Name()))
+		logWarning("trying to add component but component with name %s already exists. Skipping.", custom.Name())
 		return
 	}
 	ct.cccMap[custom.Name()] = custom

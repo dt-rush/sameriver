@@ -69,14 +69,14 @@ func (ev *EventBus) Unsubscribe(c *EventChannel) {
 func (ev *EventBus) notifySubscribers(e Event) {
 	// TODO: create a special system which listens on *all* events,
 	// printing them if it's turned on
-	eventsLog("⚹: %s\n", e.Type)
+	logEvent("⚹: %s\n", e.Type)
 
 	var notifyFull = func(c *EventChannel) {
-		Logger.Printf("[WARNING] event subscriber channel for events of type %s is full\n", e.Type)
+		logWarning("event subscriber channel for events of type %s is full; possibly sending too many events; consider throttling or increase capacity\n", e.Type)
 	}
 
 	var notifyExtraFull = func() {
-		Logger.Printf("[WARNING] number of goroutines waiting for event channel (of event type %s) to go below max capacity is now greater than capacity (%d)", e.Type, EVENT_SUBSCRIBER_CHANNEL_CAPACITY)
+		logWarning("/!\\ /!\\ /!\\ number of goroutines waiting for event channel (of event type %s) to go below max capacity is now greater than capacity (%d); you're sending too many events", e.Type, EVENT_SUBSCRIBER_CHANNEL_CAPACITY)
 	}
 
 	for _, c := range ev.subscriberList.channels[e.Type] {
