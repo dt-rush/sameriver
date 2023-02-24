@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/dt-rush/sameriver/v2/utils"
+	"github.com/dt-rush/sameriver/v3/utils"
 
 	"github.com/TwiN/go-color"
 )

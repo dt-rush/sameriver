@@ -1,4 +1,4 @@
-module github.com/dt-rush/sameriver/v2
+module github.com/dt-rush/sameriver/v3
 
 go 1.19
 

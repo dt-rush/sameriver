@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"github.com/dt-rush/sameriver/v2/utils"
+	"github.com/dt-rush/sameriver/v3/utils"
 )
 
 func assureFloatMap(m any) map[string]float64 {

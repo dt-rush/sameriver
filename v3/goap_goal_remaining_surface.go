@@ -1,7 +1,7 @@
 package sameriver
 
 import (
-	"github.com/dt-rush/sameriver/v2/utils"
+	"github.com/dt-rush/sameriver/v3/utils"
 )
 
 type GOAPGoalRemaining struct {

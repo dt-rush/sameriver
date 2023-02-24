@@ -12,7 +12,7 @@ import (
 
 	"github.com/TwiN/go-color"
 
-	"github.com/dt-rush/sameriver/v2/utils"
+	"github.com/dt-rush/sameriver/v3/utils"
 )
 
 type World struct {
