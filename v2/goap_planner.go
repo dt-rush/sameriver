@@ -28,10 +28,10 @@ func (p *GOAPPlanner) traverseFulfillers(
 	pathsSeen map[string]bool) {
 
 	if DEBUG_GOAP {
-		debugGOAPPrintf("traverse--------------------------")
-		debugGOAPPrintf(color.InRedOverGray("remaining:"))
+		logGOAPDebug("traverse--------------------------")
+		logGOAPDebug(color.InRedOverGray("remaining:"))
 		debugGOAPPrintGoalRemainingSurface(here.path.remainings)
-		debugGOAPPrintf("%d possible actions", len(p.eval.actions.set))
+		logGOAPDebug("%d possible actions", len(p.eval.actions.set))
 	}
 
 	// determine if action is good to insert anywhere
@@ -44,7 +44,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 		for varName, _ := range g.goalLeft {
 			for action, _ := range p.eval.varActions[varName] {
 				if DEBUG_GOAP {
-					debugGOAPPrintf("[ ] Considering action %s", action.DisplayName())
+					logGOAPDebug("[ ] Considering action %s", action.DisplayName())
 				}
 				if DEBUG_GOAP {
 					var toSatisfyMsg string
@@ -53,14 +53,14 @@ func (p *GOAPPlanner) traverseFulfillers(
 					} else {
 						toSatisfyMsg = fmt.Sprintf("pre of %s", here.path.path[i].Name)
 					}
-					debugGOAPPrintf(color.InGreenOverGray(
+					logGOAPDebug(color.InGreenOverGray(
 						fmt.Sprintf("checking if %s can be inserted at %d to satisfy %s",
 							action.DisplayName(), i, toSatisfyMsg)))
 				}
 				scale, helpful := p.eval.actionHelpsToInsert(start, here.path, i, action)
 				if helpful {
 					if DEBUG_GOAP {
-						debugGOAPPrintf("[X] %s helpful!", action.DisplayName())
+						logGOAPDebug("[X] %s helpful!", action.DisplayName())
 					}
 					var toInsert *GOAPAction
 					if scale > 1 {
@@ -71,7 +71,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 					newPath := here.path.inserted(toInsert, i)
 					pathStr := newPath.String()
 					if _, ok := pathsSeen[pathStr]; ok {
-						debugGOAPPrintf(color.InRedOverGray("xxxxxxxxxxxxxxxxxxx path already seen xxxxxxxxxxxxxxxxxxxxx"))
+						logGOAPDebug(color.InRedOverGray("xxxxxxxxxxxxxxxxxxx path already seen xxxxxxxxxxxxxxxxxxxxx"))
 						continue
 					} else {
 						pathsSeen[pathStr] = true
@@ -80,20 +80,20 @@ func (p *GOAPPlanner) traverseFulfillers(
 					if DEBUG_GOAP {
 						msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
 							GOAPPathToString(newPath), newPath.cost)
-						debugGOAPPrintf(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
-						debugGOAPPrintf(color.InWhiteOverCyan(msg))
-						debugGOAPPrintf(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+						logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+						logGOAPDebug(color.InWhiteOverCyan(msg))
+						logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
 					}
 					pq.Push(&GOAPPQueueItem{path: newPath})
 				} else {
 					if DEBUG_GOAP {
-						debugGOAPPrintf("[_] %s not helpful", action.DisplayName())
+						logGOAPDebug("[_] %s not helpful", action.DisplayName())
 					}
 				}
 			}
 		}
 	}
-	debugGOAPPrintf("--------------------------/traverse")
+	logGOAPDebug("--------------------------/traverse")
 }
 
 func (p *GOAPPlanner) Plan(
@@ -127,32 +127,32 @@ func (p *GOAPPlanner) Plan(
 	// why wait for 2 or exhausting the pq?
 	t0 := time.Now()
 	for iter < maxIter && pq.Len() > 0 && resultPq.Len() < 2 {
-		debugGOAPPrintf("=== iter ===")
+		logGOAPDebug("=== iter ===")
 		here := pq.Pop().(*GOAPPQueueItem)
 		if DEBUG_GOAP {
-			debugGOAPPrintf(color.InRedOverGray("here:"))
-			debugGOAPPrintf(color.InWhiteOverBlue(color.InBold(GOAPPathToString(here.path))))
-			debugGOAPPrintf(color.InRedOverGray(fmt.Sprintf("(%d unfulfilled)",
+			logGOAPDebug(color.InRedOverGray("here:"))
+			logGOAPDebug(color.InWhiteOverBlue(color.InBold(GOAPPathToString(here.path))))
+			logGOAPDebug(color.InRedOverGray(fmt.Sprintf("(%d unfulfilled)",
 				here.path.remainings.NUnfulfilled())))
 		}
 
 		if here.path.remainings.NUnfulfilled() == 0 {
 			ok := p.eval.validateForward(here.path, start, goal)
 			if !ok {
-				debugGOAPPrintf(">>>>>>> potential solution rejected")
+				logGOAPDebug(">>>>>>> potential solution rejected")
 				continue
 			}
 
 			if DEBUG_GOAP {
-				debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
-				debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
-				debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
-				debugGOAPPrintf(color.InGreenOverWhite(color.InBold(fmt.Sprintf("    SOLUTION: %s", GOAPPathToString(here.path)))))
-				debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
-				debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
-				debugGOAPPrintf(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
-				debugGOAPPrintf(color.InGreenOverWhite(color.InBold(GOAPPathToString(here.path))))
-				debugGOAPPrintf(color.InGreenOverWhite(color.InBold(fmt.Sprintf("%d solutions found so far", resultPq.Len()+1))))
+				logGOAPDebug(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+				logGOAPDebug(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+				logGOAPDebug(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+				logGOAPDebug(color.InGreenOverWhite(color.InBold(fmt.Sprintf("    SOLUTION: %s", GOAPPathToString(here.path)))))
+				logGOAPDebug(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+				logGOAPDebug(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+				logGOAPDebug(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
+				logGOAPDebug(color.InGreenOverWhite(color.InBold(GOAPPathToString(here.path))))
+				logGOAPDebug(color.InGreenOverWhite(color.InBold(fmt.Sprintf("%d solutions found so far", resultPq.Len()+1))))
 			}
 			resultPq.Push(here)
 		} else {
@@ -163,19 +163,19 @@ func (p *GOAPPlanner) Plan(
 
 	dt := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	if iter >= maxIter {
-		debugGOAPPrintf("Took %f ms to reach max iter (%d)", dt, iter)
-		debugGOAPPrintf("================================ REACHED MAX ITER !!!")
+		logGOAPDebug("Took %f ms to reach max iter (%d)", dt, iter)
+		logGOAPDebug("================================ REACHED MAX ITER !!!")
 	}
 	if pq.Len() == 0 && resultPq.Len() == 0 {
-		debugGOAPPrintf("Took %f ms to exhaust pq without solution (%d iterations)", dt, iter)
+		logGOAPDebug("Took %f ms to exhaust pq without solution (%d iterations)", dt, iter)
 	}
 	if resultPq.Len() > 0 {
-		debugGOAPPrintf("Took %f ms to find %d solutions (%d iterations)", dt, resultPq.Len(), iter)
+		logGOAPDebug("Took %f ms to find %d solutions (%d iterations)", dt, resultPq.Len(), iter)
 		if pq.Len() == 0 {
-			debugGOAPPrintf("Exhausted pq")
+			logGOAPDebug("Exhausted pq")
 		}
 		for _, item := range *resultPq {
-			debugGOAPPrintf(color.InWhiteOverBlue(item.path))
+			logGOAPDebug(color.InWhiteOverBlue(item.path))
 		}
 		return resultPq.Pop().(*GOAPPQueueItem).path, true
 	} else {

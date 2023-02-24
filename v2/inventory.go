@@ -144,8 +144,7 @@ func (i *Inventory) DebitAllTags(tags ...string) []*Item {
 
 func (i *Inventory) Credit(stack *Item) {
 	if stack.Count == 0 {
-		Logger.Println(stack)
-		Logger.Printf("[WARNING] trying to Credit a stack (archetype %s) with count 0! Doing nothing.", stack.Archetype)
+		// a stack of zero items was probably created by a random number generator; ignore
 		return
 	}
 	// try to find a stack that this can be put in

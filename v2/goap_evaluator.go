@@ -45,13 +45,13 @@ func (e *GOAPEvaluator) actionAffectsVar(action *GOAPAction, varName string) {
 
 func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 	for _, action := range actions {
-		debugGOAPPrintf("[][][] adding action %s", action.DisplayName())
+		logGOAPDebug("[][][] adding action %s", action.DisplayName())
 		e.actions.Add(action)
 		// link up modal setters for effs matching modal varnames
 		for varName, _ := range action.effs {
 			e.actionAffectsVar(action, varName)
 			if modal, ok := e.modalVals[varName]; ok {
-				debugGOAPPrintf("[][][]     adding modal setter for %s", varName)
+				logGOAPDebug("[][][]     adding modal setter for %s", varName)
 				action.effModalSetters[varName] = modal.effModalSet
 			}
 		}
@@ -75,7 +75,7 @@ func (e *GOAPEvaluator) applyActionBasic(
 		op := action.ops[varName]
 		x := ws.vals[varName]
 		if DEBUG_GOAP {
-			debugGOAPPrintf("     %s       applying %s::%d x %s%s%d(%d) ; = %d",
+			logGOAPDebug("     %s       applying %s::%d x %s%s%d(%d) ; = %d",
 				color.InWhiteOverYellow(">>>"),
 				action.DisplayName(), action.Count, varName, op, eff.val, x,
 				eff.f(x))
@@ -83,7 +83,7 @@ func (e *GOAPEvaluator) applyActionBasic(
 		ws.vals[varName] = eff.f(x)
 	}
 	if DEBUG_GOAP {
-		debugGOAPPrintf(color.InBlueOverWhite(fmt.Sprintf("            ws after action: %v", ws.vals)))
+		logGOAPDebug(color.InBlueOverWhite(fmt.Sprintf("            ws after action: %v", ws.vals)))
 	}
 
 	return ws
@@ -95,7 +95,7 @@ func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState)
 	for varName, eff := range action.effs {
 		op := action.ops[varName]
 		x := ws.vals[varName]
-		debugGOAPPrintf("    %s        applying %s::%d x %s%s%d(%d) ; = %d",
+		logGOAPDebug("    %s        applying %s::%d x %s%s%d(%d) ; = %d",
 			color.InPurpleOverWhite(" >>>modal "),
 			action.DisplayName(), action.Count, varName, op, eff.val, x,
 			eff.f(x))
@@ -105,19 +105,19 @@ func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState)
 		}
 	}
 	if DEBUG_GOAP {
-		debugGOAPPrintf(color.InBlueOverWhite(fmt.Sprintf("            ws after action: %v", newWS.vals)))
+		logGOAPDebug(color.InBlueOverWhite(fmt.Sprintf("            ws after action: %v", newWS.vals)))
 	}
 
 	// re-check any modal vals
 	for varName, _ := range newWS.vals {
 		if modalVal, ok := e.modalVals[varName]; ok {
-			debugGOAPPrintf("              re-checking modal val %s", varName)
+			logGOAPDebug("              re-checking modal val %s", varName)
 			newWS.vals[varName] = modalVal.check(newWS)
 		}
 	}
 
 	if DEBUG_GOAP {
-		debugGOAPPrintf(color.InPurpleOverWhite(fmt.Sprintf("            ws after re-checking modal vals: %v", newWS.vals)))
+		logGOAPDebug(color.InPurpleOverWhite(fmt.Sprintf("            ws after re-checking modal vals: %v", newWS.vals)))
 	}
 	return newWS
 }
@@ -137,7 +137,7 @@ func (e *GOAPEvaluator) computeRemainingsOfPath(path *GOAPPath, start *GOAPWorld
 		path.statesAlong[i+1] = ws
 	}
 	path.remainings.surface[len(path.path)] = main.remaining(ws)
-	debugGOAPPrintf("  --- ws after path: %v", ws.vals)
+	logGOAPDebug("  --- ws after path: %v", ws.vals)
 }
 
 // action is the action to insert
@@ -175,7 +175,7 @@ func (e *GOAPEvaluator) isBetter(
 }
 
 func (e *GOAPEvaluator) presFulfilled(a *GOAPAction, ws *GOAPWorldState) bool {
-	debugGOAPPrintf("Checking presFulfilled")
+	logGOAPDebug("Checking presFulfilled")
 	modifiedWS := ws.CopyOf()
 	for varName, checkF := range a.preModalChecks {
 		modifiedWS.vals[varName] = checkF(ws)
@@ -189,14 +189,14 @@ func (e *GOAPEvaluator) validateForward(path *GOAPPath, start *GOAPWorldState, m
 	ws := start.CopyOf()
 	for _, action := range path.path {
 		if len(action.pres.vars) > 0 && !e.presFulfilled(action, ws) {
-			debugGOAPPrintf(">>>>>>> in validateForward, %s was not fulfilled", action.DisplayName())
+			logGOAPDebug(">>>>>>> in validateForward, %s was not fulfilled", action.DisplayName())
 			return false
 		}
 		ws = e.applyActionModal(action, ws)
 	}
 	endRemaining := main.remaining(ws)
 	if len(endRemaining.goalLeft) != 0 {
-		debugGOAPPrintf(">>>>>>> in validateForward, main goal was not fulfilled at end of path")
+		logGOAPDebug(">>>>>>> in validateForward, main goal was not fulfilled at end of path")
 		return false
 	}
 	return true
@@ -214,20 +214,20 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 		action *GOAPAction) (scale int, helpful bool) {
 
 		if DEBUG_GOAP {
-			debugGOAPPrintf("    Considering effs of %s for var %s. effs: %v", action.DisplayName(), varName, action.effs)
+			logGOAPDebug("    Considering effs of %s for var %s. effs: %v", action.DisplayName(), varName, action.effs)
 		}
 		for effVarName, eff := range action.effs {
 			if varName != effVarName {
-				debugGOAPPrintf("      [_] eff for %s doesn't affect var %s", effVarName, varName)
+				logGOAPDebug("      [_] eff for %s doesn't affect var %s", effVarName, varName)
 			} else {
-				debugGOAPPrintf("      [ ] eff affects var: %s; is it satisfactory/closer?", effVarName)
+				logGOAPDebug("      [ ] eff affects var: %s; is it satisfactory/closer?", effVarName)
 				// special handler for =
 				if eff.op == "=" {
 					if interval.Diff(float64(eff.f(start.vals[varName]))) == 0 {
-						debugGOAPPrintf("      [x] eff satisfactory")
+						logGOAPDebug("      [x] eff satisfactory")
 						return 1, true
 					} else {
-						debugGOAPPrintf("      [_] eff not satisfactory")
+						logGOAPDebug("      [_] eff not satisfactory")
 						return -1, false
 					}
 				}
@@ -236,13 +236,13 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 				needToBeat := interval.Diff(float64(stateAtPoint))
 				actionDiff := interval.Diff(float64(eff.f(stateAtPoint)))
 				if DEBUG_GOAP {
-					debugGOAPPrintf(path.String())
-					debugGOAPPrintf("            ws[%s] before insertion: %d", varName, stateAtPoint)
-					debugGOAPPrintf("              needToBeat diff: %d", int(needToBeat))
-					debugGOAPPrintf("              actionDiff: %d", int(actionDiff))
+					logGOAPDebug(path.String())
+					logGOAPDebug("            ws[%s] before insertion: %d", varName, stateAtPoint)
+					logGOAPDebug("              needToBeat diff: %d", int(needToBeat))
+					logGOAPDebug("              actionDiff: %d", int(actionDiff))
 				}
 				if math.Abs(actionDiff) < math.Abs(needToBeat) {
-					debugGOAPPrintf("      [X] eff closer")
+					logGOAPDebug("      [X] eff closer")
 					// compute how many of this action we need
 					// if we had diff 0, we just need one
 					if actionDiff == 0 {
@@ -263,7 +263,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 						return scale, true
 					}
 				} else {
-					debugGOAPPrintf("      [_] eff not closer")
+					logGOAPDebug("      [_] eff not closer")
 					return -1, false
 				}
 			}
@@ -273,7 +273,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 
 	helpsGoal := func(goalLeft map[string]*utils.NumericInterval) (scale int, helpful bool) {
 		for varName, interval := range goalLeft {
-			debugGOAPPrintf("    - considering effect on %s", varName)
+			logGOAPDebug("    - considering effect on %s", varName)
 			affectors := e.varActions[varName]
 			if _, affects := affectors[action]; affects {
 				scale, helpful := actionChangesVarWell(varName, interval, action)

@@ -58,13 +58,13 @@ func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
 		nUnfulfilled: 0,
 	}
 	if DEBUG_GOAP {
-		debugGOAPPrintf("      -+- checking remaining for goal: %s", debugGOAPGoalToString(g))
-		debugGOAPPrintf("      -+-     ws: %v", ws.vals)
+		logGOAPDebug("      -+- checking remaining for goal: %s", debugGOAPGoalToString(g))
+		logGOAPDebug("      -+-     ws: %v", ws.vals)
 	}
 	for varName, interval := range g.vars {
 		if stateVal, ok := ws.vals[varName]; ok {
 			diff := interval.Diff(float64(stateVal))
-			debugGOAPPrintf("                diff for %s: %.0f", varName, diff)
+			logGOAPDebug("                diff for %s: %.0f", varName, diff)
 			result.diffs[varName] = diff
 			if diff != 0 {
 				result.nUnfulfilled++

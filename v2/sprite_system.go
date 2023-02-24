@@ -65,7 +65,7 @@ func (s *SpriteSystem) LoadFiles(renderer *sdl.Renderer) {
 	files, err := ioutil.ReadDir("assets/images/sprites")
 	if err != nil {
 		Logger.Println(err)
-		Logger.Println("WARNING: could not open assets/images/sprites; skipping SpriteSystem.LoadFiles()")
+		logWarning("could not open assets/images/sprites; skipping SpriteSystem.LoadFiles()")
 		return
 	}
 	for _, f := range files {

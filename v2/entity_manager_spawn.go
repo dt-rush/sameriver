@@ -118,9 +118,8 @@ func (m *EntityManager) doSpawn(
 	// get an ID for the entity
 	// if maximum entity count reached, resize arrays then allocate id
 	if total, _ := m.NumEntities(); total == m.MaxEntities() {
-		msg := fmt.Sprintf("[WARNING] Reached entity capacity: %d. "+
-			"(entity manager should expand and tables and retry).", m.MaxEntities())
-		Logger.Println(msg)
+		logWarning("Reached entity capacity: %d"+
+			"; expanding component tables, system storage, and id pool", m.MaxEntities())
 		m.ExpandEntityTables()
 	}
 	e := m.entityIDAllocator.allocateID()

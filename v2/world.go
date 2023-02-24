@@ -3,16 +3,23 @@ package sameriver
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
 	"unsafe"
 
+	"github.com/TwiN/go-color"
+
 	"github.com/dt-rush/sameriver/v2/utils"
 )
 
 type World struct {
+
+	// rand.Seed for this world's run
+	Seed int
+
 	Width  float64
 	Height float64
 
@@ -87,8 +94,13 @@ func destructureWorldSpec(spec map[string]any) WorldSpec {
 }
 
 func NewWorld(spec map[string]any) *World {
+	// seed a random number from [1,108]
+	seed := rand.Intn(108) + 1
+	rand.Seed(int64(seed))
+	Logger.Println(color.InBold(color.InWhiteOverCyan(fmt.Sprintf("[world seed: %d]", seed))))
 	destructured := destructureWorldSpec(spec)
 	w := &World{
+		Seed:          seed,
 		Width:         float64(destructured.Width),
 		Height:        float64(destructured.Height),
 		Events:        NewEventBus(),
@@ -173,7 +185,7 @@ func (w *World) RegisterComponents(specs ...string) {
 			Logger.Println(fmt.Sprintf("[%s,%s already exists. Skipping...]", kind, name))
 			continue
 		} else {
-			Logger.Printf("[registering component %s,%s]", kind, name)
+			Logger.Printf("%s%s%s", color.InGreen("[registering component: "), fmt.Sprintf("%s,%s", color.InBlue(kind), name), color.InGreen("]"))
 			w.em.components.addComponent(kind, name)
 		}
 	}
