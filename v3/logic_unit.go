@@ -2,8 +2,6 @@ package sameriver
 
 import (
 	"time"
-
-	"github.com/dt-rush/sameriver/v3/utils"
 )
 
 type LogicUnit struct {
@@ -12,7 +10,7 @@ type LogicUnit struct {
 	active      bool
 	worldID     int
 	lastRun     time.Time
-	runSchedule *utils.TimeAccumulator
+	runSchedule *TimeAccumulator
 }
 
 func (l *LogicUnit) Activate() {

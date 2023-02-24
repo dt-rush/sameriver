@@ -3,19 +3,17 @@ package sameriver
 import (
 	"math"
 	"strings"
-
-	"github.com/dt-rush/sameriver/v3/utils"
 )
 
 type GOAPGoal struct {
 	spec map[string]int
-	vars map[string]*utils.NumericInterval
+	vars map[string]*NumericInterval
 }
 
 func NewGOAPGoal(spec map[string]int) *GOAPGoal {
 	g := &GOAPGoal{
 		spec: spec,
-		vars: make(map[string]*utils.NumericInterval),
+		vars: make(map[string]*NumericInterval),
 	}
 	g.Parametrize(1)
 
@@ -34,7 +32,7 @@ func (g *GOAPGoal) Parametrize(n int) *GOAPGoal {
 			split = strings.Split(spec, ",")
 		}
 		varName, op := split[0], split[1]
-		interval := utils.MakeNumericInterval(op, val)
+		interval := MakeNumericInterval(op, val)
 		g.vars[varName] = interval
 	}
 	return g
@@ -42,7 +40,7 @@ func (g *GOAPGoal) Parametrize(n int) *GOAPGoal {
 
 func (g *GOAPGoal) copyOf() *GOAPGoal {
 	result := &GOAPGoal{
-		vars: make(map[string]*utils.NumericInterval),
+		vars: make(map[string]*NumericInterval),
 	}
 	for varName, interval := range g.vars {
 		result.vars[varName] = interval
@@ -53,7 +51,7 @@ func (g *GOAPGoal) copyOf() *GOAPGoal {
 func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
 	result = &GOAPGoalRemaining{
 		goal:         g,
-		goalLeft:     make(map[string]*utils.NumericInterval),
+		goalLeft:     make(map[string]*NumericInterval),
 		diffs:        make(map[string]float64),
 		nUnfulfilled: 0,
 	}

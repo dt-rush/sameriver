@@ -5,8 +5,6 @@ import (
 
 	"math/rand"
 	"time"
-
-	"github.com/dt-rush/sameriver/v3/utils"
 )
 
 func TestBlackboardWorldEntities(t *testing.T) {
@@ -85,7 +83,7 @@ func TestBlackboardWorldEntities(t *testing.T) {
 
 	setupVillageWorldLogic := func() {
 
-		morningTimer := utils.NewTimeAccumulator(500)
+		morningTimer := NewTimeAccumulator(500)
 
 		villageBBMorning := func() {
 			bb.State["unfilledRoles"] = map[string]bool{

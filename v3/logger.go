@@ -5,7 +5,6 @@ import (
 	"os"
 )
 
-// global scope package singleton
 var Logger = log.New(
 	os.Stdout,
 	"",

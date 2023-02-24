@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/dt-rush/sameriver/v3/utils"
-
 	"github.com/TwiN/go-color"
 )
 
@@ -210,7 +208,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 
 	actionChangesVarWell := func(
 		varName string,
-		interval *utils.NumericInterval,
+		interval *NumericInterval,
 		action *GOAPAction) (scale int, helpful bool) {
 
 		if DEBUG_GOAP {
@@ -271,7 +269,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 		return -1, false
 	}
 
-	helpsGoal := func(goalLeft map[string]*utils.NumericInterval) (scale int, helpful bool) {
+	helpsGoal := func(goalLeft map[string]*NumericInterval) (scale int, helpful bool) {
 		for varName, interval := range goalLeft {
 			logGOAPDebug("    - considering effect on %s", varName)
 			affectors := e.varActions[varName]

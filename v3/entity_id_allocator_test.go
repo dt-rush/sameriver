@@ -2,17 +2,15 @@ package sameriver
 
 import (
 	"testing"
-
-	"github.com/dt-rush/sameriver/v3/utils"
 )
 
 func TestEntityIDAllocatorAllocateID(t *testing.T) {
-	et := NewEntityIDAllocator(MAX_ENTITIES, utils.NewIDGenerator())
+	et := NewEntityIDAllocator(MAX_ENTITIES, NewIDGenerator())
 	et.allocateID()
 }
 
 func TestEntityIDAllocatorDeallocateID(t *testing.T) {
-	et := NewEntityIDAllocator(MAX_ENTITIES, utils.NewIDGenerator())
+	et := NewEntityIDAllocator(MAX_ENTITIES, NewIDGenerator())
 	e := et.allocateID()
 	et.deallocate(e)
 	if len(et.currentEntities) != 0 {
@@ -24,7 +22,7 @@ func TestEntityIDAllocatorDeallocateID(t *testing.T) {
 }
 
 func TestEntityIDAllocatorAllocateMaxIDs(t *testing.T) {
-	et := NewEntityIDAllocator(MAX_ENTITIES, utils.NewIDGenerator())
+	et := NewEntityIDAllocator(MAX_ENTITIES, NewIDGenerator())
 	for i := 0; i < MAX_ENTITIES; i++ {
 		et.allocateID()
 	}
@@ -34,7 +32,7 @@ func TestEntityIDAllocatorAllocateMaxIDs(t *testing.T) {
 }
 
 func TestEntityIDAllocatorReallocateDeallocatedID(t *testing.T) {
-	et := NewEntityIDAllocator(MAX_ENTITIES, utils.NewIDGenerator())
+	et := NewEntityIDAllocator(MAX_ENTITIES, NewIDGenerator())
 	var e *Entity
 	for i := 0; i < MAX_ENTITIES; i++ {
 		allocated := et.allocateID()

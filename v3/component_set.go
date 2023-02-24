@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/dt-rush/sameriver/v3/utils"
 )
 
 type ComponentSet struct {
@@ -17,7 +15,7 @@ type ComponentSet struct {
 	intMap               map[string]int
 	float64Map           map[string]float64
 	timeMap              map[string]time.Time
-	timeAccumulatorMap   map[string]utils.TimeAccumulator
+	timeAccumulatorMap   map[string]TimeAccumulator
 	stringMap            map[string]string
 	spriteMap            map[string]Sprite
 	tagListMap           map[string]TagList
@@ -106,9 +104,9 @@ func makeComponentSet(componentSpecs map[string]any) ComponentSet {
 				cs.timeMap[name] = t
 			}
 		case "TimeAccumulator":
-			if t, ok := value.(utils.TimeAccumulator); ok {
+			if t, ok := value.(TimeAccumulator); ok {
 				if cs.timeAccumulatorMap == nil {
-					cs.timeAccumulatorMap = make(map[string]utils.TimeAccumulator)
+					cs.timeAccumulatorMap = make(map[string]TimeAccumulator)
 				}
 				cs.timeAccumulatorMap[name] = t
 			}

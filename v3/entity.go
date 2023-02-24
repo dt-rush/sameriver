@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/dt-rush/sameriver/v3/utils"
-
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
@@ -47,7 +45,7 @@ func (e *Entity) AddLogic(name string, F func(e *Entity, dt_ms float64)) *LogicU
 
 func (e *Entity) AddLogicWithSchedule(name string, F func(e *Entity, dt_ms float64), period float64) *LogicUnit {
 	l := e.AddLogic(name, F)
-	runSchedule := utils.NewTimeAccumulator(period)
+	runSchedule := NewTimeAccumulator(period)
 	l.runSchedule = &runSchedule
 	return l
 }

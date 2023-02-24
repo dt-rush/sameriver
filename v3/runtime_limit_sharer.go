@@ -2,8 +2,6 @@ package sameriver
 
 import (
 	"fmt"
-
-	"github.com/dt-rush/sameriver/v3/utils"
 )
 
 type AddRemoveLogicEvent struct {
@@ -116,7 +114,7 @@ func (r *RuntimeLimitSharer) SetSchedule(runnerName string, logicWorldID int, pe
 	runner := r.runnerMap[runnerName]
 	logicIX := runner.indexes[logicWorldID]
 	logic := runner.logicUnits[logicIX]
-	runSchedule := utils.NewTimeAccumulator(period_ms)
+	runSchedule := NewTimeAccumulator(period_ms)
 	logic.runSchedule = &runSchedule
 }
 

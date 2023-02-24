@@ -6,8 +6,6 @@ import (
 
 	"encoding/json"
 	"io/ioutil"
-
-	"github.com/dt-rush/sameriver/v3/utils"
 )
 
 func assureFloatMap(m any) map[string]float64 {
@@ -315,7 +313,7 @@ func (i *ItemSystem) SpawnItemEntity(pos Vec2D, item *Item) *Entity {
 		components["Sprite,Sprite"] = i.spriteSystem.GetSprite(arch.Entity["sprite"].(string))
 	}
 	if i.despawn_ms != nil {
-		components["TimeAccumulator,DespawnTimer"] = utils.NewTimeAccumulator(*i.despawn_ms)
+		components["TimeAccumulator,DespawnTimer"] = NewTimeAccumulator(*i.despawn_ms)
 	}
 
 	return i.w.Spawn(map[string]any{

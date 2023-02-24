@@ -1,12 +1,8 @@
 package sameriver
 
-import (
-	"github.com/dt-rush/sameriver/v3/utils"
-)
-
 type GOAPGoalRemaining struct {
 	goal         *GOAPGoal
-	goalLeft     map[string]*utils.NumericInterval
+	goalLeft     map[string]*NumericInterval
 	diffs        map[string]float64
 	nUnfulfilled int
 }

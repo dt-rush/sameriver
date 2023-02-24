@@ -11,8 +11,6 @@ import (
 	"unsafe"
 
 	"github.com/TwiN/go-color"
-
-	"github.com/dt-rush/sameriver/v3/utils"
 )
 
 type World struct {
@@ -23,7 +21,7 @@ type World struct {
 	Width  float64
 	Height float64
 
-	IdGen  *utils.IDGenerator
+	IdGen  *IDGenerator
 	Events *EventBus
 	em     *EntityManager
 
@@ -104,7 +102,7 @@ func NewWorld(spec map[string]any) *World {
 		Width:         float64(destructured.Width),
 		Height:        float64(destructured.Height),
 		Events:        NewEventBus(),
-		IdGen:         utils.NewIDGenerator(),
+		IdGen:         NewIDGenerator(),
 		systems:       make(map[string]System),
 		systemsIDs:    make(map[System]int),
 		worldLogics:   make(map[string]*LogicUnit),
@@ -350,7 +348,7 @@ func (w *World) AddWorldLogic(Name string, F func(dt_ms float64)) *LogicUnit {
 
 func (w *World) AddWorldLogicWithSchedule(Name string, F func(dt_ms float64), period_ms float64) *LogicUnit {
 	l := w.AddWorldLogic(Name, F)
-	runSchedule := utils.NewTimeAccumulator(period_ms)
+	runSchedule := NewTimeAccumulator(period_ms)
 	l.runSchedule = &runSchedule
 	return l
 }

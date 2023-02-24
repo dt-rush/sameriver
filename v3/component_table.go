@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dt-rush/sameriver/v3/utils"
-
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
@@ -29,7 +27,7 @@ type ComponentTable struct {
 	intMap             map[string][]int
 	float64Map         map[string][]float64
 	timeMap            map[string][]time.Time
-	timeAccumulatorMap map[string][]utils.TimeAccumulator
+	timeAccumulatorMap map[string][]TimeAccumulator
 	stringMap          map[string][]string
 	spriteMap          map[string][]Sprite
 	tagListMap         map[string][]TagList
@@ -53,7 +51,7 @@ func NewComponentTable(capacity int) *ComponentTable {
 		intMap:             make(map[string][]int),
 		float64Map:         make(map[string][]float64),
 		timeMap:            make(map[string][]time.Time),
-		timeAccumulatorMap: make(map[string][]utils.TimeAccumulator),
+		timeAccumulatorMap: make(map[string][]TimeAccumulator),
 		stringMap:          make(map[string][]string),
 		spriteMap:          make(map[string][]Sprite),
 		tagListMap:         make(map[string][]TagList),
@@ -94,7 +92,7 @@ func (ct *ComponentTable) expand(n int) {
 	}
 	for name, slice := range ct.timeAccumulatorMap {
 		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
-		extraSpace := make([]utils.TimeAccumulator, n)
+		extraSpace := make([]TimeAccumulator, n)
 		ct.timeAccumulatorMap[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.stringMap {
@@ -178,7 +176,7 @@ func (ct *ComponentTable) addComponent(kind, name string) {
 	case "Time":
 		ct.timeMap[name] = make([]time.Time, ct.capacity, 2*ct.capacity)
 	case "TimeAccumulator":
-		ct.timeAccumulatorMap[name] = make([]utils.TimeAccumulator, ct.capacity, 2*ct.capacity)
+		ct.timeAccumulatorMap[name] = make([]TimeAccumulator, ct.capacity, 2*ct.capacity)
 	case "String":
 		ct.stringMap[name] = make([]string, ct.capacity, 2*ct.capacity)
 	case "Sprite":
@@ -375,7 +373,7 @@ func (e *Entity) GetFloat64(name string) *float64 {
 func (e *Entity) GetTime(name string) *time.Time {
 	return &e.World.em.components.timeMap[name][e.ID]
 }
-func (e *Entity) GetTimeAccumulator(name string) *utils.TimeAccumulator {
+func (e *Entity) GetTimeAccumulator(name string) *TimeAccumulator {
 	return &e.World.em.components.timeAccumulatorMap[name][e.ID]
 }
 func (e *Entity) GetString(name string) *string {

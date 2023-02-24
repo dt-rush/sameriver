@@ -1,13 +1,9 @@
 package sameriver
 
-import (
-	"github.com/dt-rush/sameriver/v3/utils"
-)
-
 // used by the EntityManager to hold info about the allocated entities
 type EntityIDAllocator struct {
 	// the ID Generator given by the world the entity manager is in
-	IdGen *utils.IDGenerator
+	IdGen *IDGenerator
 	// list of available entity ID's which have previously been deallocated
 	availableIDs []int
 	// list of Entities which have been allocated
@@ -18,7 +14,7 @@ type EntityIDAllocator struct {
 	capacity int
 }
 
-func NewEntityIDAllocator(capacity int, IDGen *utils.IDGenerator) *EntityIDAllocator {
+func NewEntityIDAllocator(capacity int, IDGen *IDGenerator) *EntityIDAllocator {
 	return &EntityIDAllocator{
 		IdGen:           IDGen,
 		currentEntities: make(map[*Entity]bool),

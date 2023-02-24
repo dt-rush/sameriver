@@ -1,4 +1,4 @@
-package utils
+package sameriver
 
 type TimeAccumulator struct {
 	accum_ms  float64
