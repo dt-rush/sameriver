@@ -8,8 +8,11 @@ import (
 
 func BenchmarkEntityManagerSpawnDespawn(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		w := NewWorld(100, 100)
-		w.RegisterComponents("Vec2D,Position", "Vec2D,Box", "Vec2D,Velocity")
+		w := NewWorld(map[string]any{
+			"width":  100,
+			"height": 100,
+		})
+		w.RegisterComponents("Vec2D,Velocity")
 		for i := 0; i < MAX_ENTITIES; i++ {
 			w.Spawn(map[string]any{
 				"Vec2D,Position": Vec2D{100 * rand.Float64(), 100 * rand.Float64()},

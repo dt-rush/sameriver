@@ -158,18 +158,8 @@ func (ct *ComponentTable) ComponentExists(spec string) bool {
 	return false
 }
 
-func (ct *ComponentTable) AddComponent(spec string) {
-	// decode spec string
-	split := strings.Split(spec, ",")
-	kind := split[0]
-	name := split[1]
-
-	// guard against double insertion (many say it's a great time, but not here)
-	if already := ct.nameAndIndex(name); already {
-		Logger.Println(fmt.Sprintf("Warning: trying to add component but component with name %s already exists. Skipping.", name))
-		return
-	}
-
+func (ct *ComponentTable) addComponent(kind, name string) {
+	ct.nameAndIndex(name)
 	// create table in appropriate map
 	// (note we allocate with capacity 2* so that if we reach max entities the
 	// first time expanding the tables won't necessarily be expensive; but

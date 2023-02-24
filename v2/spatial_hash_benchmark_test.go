@@ -6,9 +6,10 @@ import (
 )
 
 func BenchmarkSpatialHashEntitiesWithinDistance(b *testing.B) {
-	w := NewWorld(100, 100)
-	sh := NewSpatialHashSystem(10, 10)
-	w.RegisterSystems(sh)
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
 
 	e := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
 
@@ -33,7 +34,7 @@ func BenchmarkSpatialHashEntitiesWithinDistance(b *testing.B) {
 	}
 	for i := 0; i < b.N; i++ {
 		w.Update(FRAME_DURATION_INT / 2)
-		sh.Hasher.EntitiesWithinDistance(
+		w.EntitiesWithinDistance(
 			*e.GetVec2D("Position"),
 			*e.GetVec2D("Box"),
 			30.0)

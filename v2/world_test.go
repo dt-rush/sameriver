@@ -330,9 +330,12 @@ func TestWorldDumpStats(t *testing.T) {
 }
 
 func TestWorldPredicateEntities(t *testing.T) {
-	w := NewWorld(100, 100)
-	sh := NewSpatialHashSystem(10, 10)
-	w.RegisterSystems(sh)
+	w := NewWorld(map[string]any{
+		"width":               100,
+		"height":              100,
+		"distanceHasherGridX": 10,
+		"distanceHasherGridY": 10,
+	})
 
 	e := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
 	w.TagEntity(e, "tree")
@@ -359,7 +362,7 @@ func TestWorldPredicateEntities(t *testing.T) {
 		}
 	}
 	w.Update(FRAME_DURATION_INT / 2)
-	nearGot := sh.Hasher.EntitiesWithinDistance(
+	nearGot := w.EntitiesWithinDistance(
 		*e.GetVec2D("Position"),
 		*e.GetVec2D("Box"),
 		30.0)
@@ -371,7 +374,7 @@ func TestWorldPredicateEntities(t *testing.T) {
 	}
 	treesFound := w.PredicateEntities(nearGot, isTree)
 	if len(treesFound) != 19 {
-		t.Fatal("Should have found 19 near trees (1 original, 18 radial)")
+		t.Fatal(fmt.Sprintf("Should have found 19 near trees (1 original, 18 radial); got %d", len(treesFound)))
 	}
 	allTrees := w.PredicateAllEntities(isTree)
 	if len(allTrees) != 37 {
