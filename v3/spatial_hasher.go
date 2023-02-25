@@ -138,7 +138,7 @@ func (h *SpatialHasher) CellsWithinDistance(pos, box Vec2D, d float64) [][2]int 
 	// first approximate which cells might be valid by simply
 	// extending the box by +d in each direction
 	approximatorPos := pos.ShiftedCenterToBottomLeft(box).Sub(Vec2D{d, d})
-	approximatorBox := box.Add(Vec2D{2 * d, 2 * d})
+	approximatorBox := Vec2D{2*d + box.X, 2*d + box.Y}
 	cellX0, cellX1, cellY0, cellY1 := h.CellRangeOfRect(approximatorPos, approximatorBox)
 	candidateCells := make([][2]int, 0)
 	for x := cellX0; x <= cellX1; x++ {
