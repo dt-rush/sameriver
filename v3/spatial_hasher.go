@@ -148,7 +148,7 @@ func (h *SpatialHasher) CellsWithinDistance(pos, box Vec2D, d float64) [][2]int 
 	}
 	for _, cellXY := range candidateCells {
 		cellPos, cellBox := h.GetCellPosAndBox(cellXY[0], cellXY[1])
-		if RectWithinDistanceOfRect(cellPos, cellBox, pos, box, d) {
+		if RectWithinDistanceOfRect(cellPos, cellBox, pos.ShiftedCenterToBottomLeft(box), box, d) {
 			cells = append(cells, cellXY)
 		}
 	}
