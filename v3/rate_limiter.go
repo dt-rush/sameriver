@@ -1,8 +1,9 @@
 package sameriver
 
 import (
-	"go.uber.org/atomic"
 	"time"
+
+	"go.uber.org/atomic"
 )
 
 // Like the above, but it can be reset while sleeping
@@ -16,17 +17,17 @@ func NewRateLimiter(delay time.Duration) *RateLimiter {
 }
 
 func (r *RateLimiter) Do(f func()) {
-	if r.limited.CAS(0, 1) {
+	if r.limited.CompareAndSwap(0, 1) {
 		f()
 		go func() {
 			time.Sleep(r.delay)
-			r.limited.CAS(1, 0)
+			r.limited.CompareAndSwap(1, 0)
 		}()
 	}
 }
 
 func (r *RateLimiter) Reset() {
-	r.limited.CAS(1, 0)
+	r.limited.CompareAndSwap(1, 0)
 }
 
 func (r *RateLimiter) Limited() bool {

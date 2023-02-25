@@ -1,11 +1,11 @@
 package sameriver
 
 import (
-	"errors"
 	"fmt"
-	"github.com/veandco/go-sdl2/sdl"
 	"sort"
 	"time"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 type LayeredRenderer struct {
@@ -64,13 +64,12 @@ func (lr *LayeredRenderer) RemoveLayerByName(name string) {
 }
 
 // get a layer by name
-func (lr *LayeredRenderer) GetLayerByName(name string) (*RenderLayer, error) {
+func (lr *LayeredRenderer) GetLayerByName(name string) *RenderLayer {
 	Logger.Println(lr.names)
-	if l, ok := lr.names[name]; ok {
-		return l, nil
-	} else {
-		return nil, errors.New(fmt.Sprintf("layer %s not found", name))
+	if _, ok := lr.names[name]; !ok {
+		panic(fmt.Sprintf("tried to GetLayerByName() for renderer layer that doesn't exist: %s", name))
 	}
+	return lr.names[name]
 }
 
 // render each layer, if active, returning elapsed time in ms

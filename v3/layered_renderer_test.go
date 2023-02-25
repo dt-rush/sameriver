@@ -1,9 +1,10 @@
 package sameriver
 
 import (
-	"github.com/veandco/go-sdl2/sdl"
 	"testing"
 	"time"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 func TestLayeredRendererAddRemove(t *testing.T) {
@@ -105,10 +106,7 @@ func TestLayeredRendererByName(t *testing.T) {
 	})
 	lr.AddLayer(lB)
 	// get layer A by name
-	l, err := lr.GetLayerByName("la")
-	if err != nil {
-		t.Fatal(err)
-	}
+	l := lr.GetLayerByName("la")
 	if l != lA {
 		t.Fatal("GetLayerByName() returned wrong layer")
 	}
@@ -123,8 +121,10 @@ func TestLayeredRendererByName(t *testing.T) {
 		t.Fatal("did not remove right layer by name")
 	}
 	// check failure for non-existent layer
-	l, err = lr.GetLayerByName("!!!!!!!!!!")
-	if err == nil {
-		t.Fatal("should have thrown error for GetLayerByName when name doesn't exist")
-	}
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("Should panic if retrieving layer that doesn't exist")
+		}
+	}()
+	lr.GetLayerByName("!!!!!!!!!!")
 }

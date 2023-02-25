@@ -43,7 +43,7 @@ func (l *TagList) Add(tags ...string) {
 }
 
 func (l *TagList) MergeIn(l2 TagList) {
-	for t, _ := range l2.tags {
+	for t := range l2.tags {
 		l.tags[t] = true
 	}
 	l.dirty = true
@@ -56,7 +56,7 @@ func (l *TagList) Remove(tag string) {
 
 func (l *TagList) CopyOf() TagList {
 	tagsCopy := make(map[string]bool, len(l.tags))
-	for tag, _ := range l.tags {
+	for tag := range l.tags {
 		tagsCopy[tag] = true
 	}
 	return TagList{
@@ -71,7 +71,7 @@ func (l *TagList) AsSlice() []string {
 		return l.slice
 	} else {
 		slice := make([]string, 0, len(l.tags))
-		for tag, _ := range l.tags {
+		for tag := range l.tags {
 			slice = append(slice, tag)
 		}
 		sort.Strings(slice)

@@ -46,7 +46,7 @@ func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 		logGOAPDebug("[][][] adding action %s", action.DisplayName())
 		e.actions.Add(action)
 		// link up modal setters for effs matching modal varnames
-		for varName, _ := range action.effs {
+		for varName := range action.effs {
 			e.actionAffectsVar(action, varName)
 			if modal, ok := e.modalVals[varName]; ok {
 				logGOAPDebug("[][][]     adding modal setter for %s", varName)
@@ -54,7 +54,7 @@ func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 			}
 		}
 		// link up modal checks for pres matching modal varnames
-		for varName, _ := range action.pres.vars {
+		for varName := range action.pres.vars {
 			if modal, ok := e.modalVals[varName]; ok {
 				action.preModalChecks[varName] = modal.check
 			}
@@ -107,7 +107,7 @@ func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState)
 	}
 
 	// re-check any modal vals
-	for varName, _ := range newWS.vals {
+	for varName := range newWS.vals {
 		if modalVal, ok := e.modalVals[varName]; ok {
 			logGOAPDebug("              re-checking modal val %s", varName)
 			newWS.vals[varName] = modalVal.check(newWS)
@@ -136,40 +136,6 @@ func (e *GOAPEvaluator) computeRemainingsOfPath(path *GOAPPath, start *GOAPWorld
 	}
 	path.remainings.surface[len(path.path)] = main.remaining(ws)
 	logGOAPDebug("  --- ws after path: %v", ws.vals)
-}
-
-// action is the action to insert
-// insertionIx is where to insert it
-// before is the path *without* that action inserted
-func (e *GOAPEvaluator) isBetter(
-	insertionIx int, action *GOAPAction, path *GOAPPath, start *GOAPWorldState) (better bool) {
-
-	// consider:
-	// before      [A B C D E]
-	// before.remainings: [Apre Bpre Cpre Dpre Epre Main]
-	// after       [A B X C D E]
-	// after.remainings: [Apre Bpre Xpre Cpre Dpre Epre Main]
-	// insertionIx 2
-	// we only need to check if [A B X] fulfills C's pre better than [A B]
-	//
-	// consider edge case:
-	//
-	// before []
-	// before.remainings: [Main]
-	// after [X]
-	// after.remainings: [Xpre, Main]
-	// insertionIx 0
-	beforeRemaining := path.remainings.surface[insertionIx] // [2] = Cpre
-	upToInsertion := make([]*GOAPAction, insertionIx+1)
-	copy(upToInsertion[:insertionIx], path.path[:insertionIx]) // [:2] [A B]
-	upToInsertion[insertionIx] = action                        // [A B X]
-	relevantGoal := beforeRemaining.goal                       // Cpre
-	ws := start.CopyOf()
-	for _, action := range upToInsertion {
-		ws = e.applyActionBasic(action, start, false)
-	}
-	insertionRemaining := relevantGoal.remaining(ws)
-	return insertionRemaining.nUnfulfilled < beforeRemaining.nUnfulfilled
 }
 
 func (e *GOAPEvaluator) presFulfilled(a *GOAPAction, ws *GOAPWorldState) bool {

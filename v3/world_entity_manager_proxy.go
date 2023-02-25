@@ -26,7 +26,7 @@ func (w *World) Despawn(e *Entity) {
 }
 
 func (w *World) DespawnAll() {
-	for e, _ := range w.em.GetCurrentEntitiesSetCopy() {
+	for e := range w.em.GetCurrentEntitiesSetCopy() {
 		w.RemoveAllEntityLogics(e)
 	}
 	w.em.DespawnAll()

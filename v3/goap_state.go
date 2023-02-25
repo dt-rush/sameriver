@@ -17,9 +17,6 @@ type GOAPModalVal struct {
 	// (eg. if we had a modal var involving atTree, it will set atTree: 0
 	// when our modal position has moved away from the tree)
 	check func(ws *GOAPWorldState) int
-	// either an int or a func(int) int, representing the value of this stateval
-	// when it appears in an eff, to be added to the world state
-	valAsEff int
 	// a func that is used when this state val appears in an eff, modifying
 	// modal state
 	effModalSet func(ws *GOAPWorldState, op string, x int)

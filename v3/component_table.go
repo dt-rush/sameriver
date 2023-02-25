@@ -3,23 +3,20 @@ package sameriver
 import (
 	"bytes"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
 type ComponentTable struct {
-	em *EntityManager
-
 	// the size of the tables
 	capacity int
 
-	next_ix int
-	ixs     map[string]int
-	ixs_rev map[int]string
-	names   map[string]bool
-	kinds   map[string]string
+	nextIx int
+	ixs    map[string]int
+	ixsRev map[int]string
+	names  map[string]bool
+	kinds  map[string]string
 
 	// data storage
 	vec2DMap           map[string][]Vec2D
@@ -41,10 +38,10 @@ func NewComponentTable(capacity int) *ComponentTable {
 	return &ComponentTable{
 		capacity: capacity,
 
-		ixs:     make(map[string]int),
-		ixs_rev: make(map[int]string),
-		names:   make(map[string]bool),
-		kinds:   make(map[string]string),
+		ixs:    make(map[string]int),
+		ixsRev: make(map[int]string),
+		names:  make(map[string]bool),
+		kinds:  make(map[string]string),
 
 		vec2DMap:           make(map[string][]Vec2D),
 		boolMap:            make(map[string][]bool),
@@ -132,32 +129,22 @@ func (ct *ComponentTable) expand(n int) {
 	ct.capacity += n
 }
 
-func (ct *ComponentTable) nameAndIndex(name string) bool {
-	if _, ok := ct.names[name]; ok {
-		return true
-	} else {
-		ct.names[name] = true
-	}
+func (ct *ComponentTable) nameAndIndex(name string) {
+	ct.names[name] = true
 	// increment index and store (used for bitarray generation)
-	ct.ixs[name] = ct.next_ix
-	ct.ixs_rev[ct.next_ix] = name
-	ct.next_ix++
-	return false
+	ct.ixs[name] = ct.nextIx
+	ct.ixsRev[ct.nextIx] = name
+	ct.nextIx++
 }
 
-func (ct *ComponentTable) ComponentExists(spec string) bool {
-	// decode spec string
-	split := strings.Split(spec, ",")
-	kind := split[0]
-	name := split[1]
-	if k, ok := ct.kinds[name]; ok {
-		return kind == k
+func (ct *ComponentTable) ComponentExists(name string) bool {
+	if _, ok := ct.names[name]; ok {
+		return true
 	}
 	return false
 }
 
 func (ct *ComponentTable) addComponent(kind, name string) {
-	ct.nameAndIndex(name)
 	// create table in appropriate map
 	// (note we allocate with capacity 2* so that if we reach max entities the
 	// first time expanding the tables won't necessarily be expensive; but
@@ -193,78 +180,80 @@ func (ct *ComponentTable) addComponent(kind, name string) {
 		panic(fmt.Sprintf("added component of kind %s has no case in component_table.go", kind))
 	}
 
-	// note name
+	// note name and kind
+	ct.nameAndIndex(name)
 	ct.kinds[name] = kind
 }
 
 func (ct *ComponentTable) AddCCC(custom CustomContiguousComponent) {
 	// guard against double insertion (many say it's a great time, but not here)
-	if already := ct.nameAndIndex(custom.Name()); already {
+	if _, already := ct.names[custom.Name()]; already {
 		logWarning("trying to add component but component with name %s already exists. Skipping.", custom.Name())
 		return
 	}
 	ct.cccMap[custom.Name()] = custom
 	ct.kinds[custom.Name()] = "Custom"
+	ct.nameAndIndex(custom.Name())
 	custom.AllocateTable(MAX_ENTITIES)
 }
 
 func (ct *ComponentTable) AssertValidComponentSet(cs ComponentSet) {
-	for name, _ := range cs.vec2DMap {
+	for name := range cs.vec2DMap {
 		if _, ok := ct.vec2DMap[name]; !ok {
 			panic(fmt.Sprintf("%s not found in vec2DMap", name))
 		}
 	}
-	for name, _ := range cs.boolMap {
+	for name := range cs.boolMap {
 		if _, ok := ct.boolMap[name]; !ok {
 			panic(fmt.Sprintf("%s not found in boolMap", name))
 		}
 	}
-	for name, _ := range cs.intMap {
+	for name := range cs.intMap {
 		if _, ok := ct.intMap[name]; !ok {
 			panic(fmt.Sprintf("%s not found in intMap", name))
 		}
 	}
-	for name, _ := range cs.float64Map {
+	for name := range cs.float64Map {
 		if _, ok := ct.float64Map[name]; !ok {
 			panic(fmt.Sprintf("%s not found in float64Map", name))
 		}
 	}
-	for name, _ := range cs.timeMap {
+	for name := range cs.timeMap {
 		if _, ok := ct.timeMap[name]; !ok {
 			panic(fmt.Sprintf("%s not found in timeMap", name))
 		}
 	}
-	for name, _ := range cs.stringMap {
+	for name := range cs.stringMap {
 		if _, ok := ct.stringMap[name]; !ok {
 			panic(fmt.Sprintf("%s not found in stringMap", name))
 		}
 	}
-	for name, _ := range cs.spriteMap {
+	for name := range cs.spriteMap {
 		if _, ok := ct.spriteMap[name]; !ok {
 			panic(fmt.Sprintf("%s not found in spriteMap", name))
 		}
 	}
-	for name, _ := range cs.tagListMap {
+	for name := range cs.tagListMap {
 		if _, ok := ct.tagListMap[name]; !ok {
 			panic(fmt.Sprintf("%s not found in tagListMap", name))
 		}
 	}
-	for name, _ := range cs.intMapMap {
+	for name := range cs.intMapMap {
 		if _, ok := ct.intMapMap[name]; !ok {
 			panic(fmt.Sprintf("%s not found in intMapMap", name))
 		}
 	}
-	for name, _ := range cs.floatMapMap {
+	for name := range cs.floatMapMap {
 		if _, ok := ct.floatMapMap[name]; !ok {
 			panic(fmt.Sprintf("%s not found in floatMapMap", name))
 		}
 	}
-	for name, _ := range cs.genericMap {
+	for name := range cs.genericMap {
 		if _, ok := ct.genericMap[name]; !ok {
 			panic(fmt.Sprintf("%s not found in genericMap", name))
 		}
 	}
-	for name, _ := range cs.customComponentsMap {
+	for name := range cs.customComponentsMap {
 		if _, ok := ct.cccMap[name]; !ok {
 			panic(fmt.Sprintf("%s not found in cccMap", name))
 		}
@@ -332,72 +321,102 @@ func (ct *ComponentTable) BitArrayFromComponentSet(spec map[string]any) bitarray
 
 func (ct *ComponentTable) bitArrayFromComponentSet(cs ComponentSet) bitarray.BitArray {
 	b := bitarray.NewBitArray(uint64(len(ct.ixs)))
-	for name, _ := range cs.names {
+	for name := range cs.names {
 		b.SetBit(uint64(ct.ixs[name]))
 	}
 	return b
 }
 
-// prints a string representation of a component bitarray as a set with
+// BitArrayToString prints a string representation of a component bitarray as a set with
 // string representations of each component type whose bit is set
 func (ct *ComponentTable) BitArrayToString(b bitarray.BitArray) string {
 	var buf bytes.Buffer
 	buf.WriteString("[")
+	names := make([]string, 0)
 	for i := uint64(0); i < uint64(len(ct.names)); i++ {
 		bit, _ := b.GetBit(i)
 		// the index into the array is the component type int from the
 		// iota const block in component_enum.go
 		if bit {
-			buf.WriteString(fmt.Sprintf("%s", ct.ixs_rev[int(i)]))
-			if i != uint64(len(ct.names)-1) {
-				buf.WriteString(", ")
-			}
+			names = append(names, ct.ixsRev[int(i)])
+		}
+	}
+	for i, name := range names {
+		buf.WriteString(name)
+		if i != len(names)-1 {
+			buf.WriteString(", ")
 		}
 	}
 	buf.WriteString("]")
 	return buf.String()
 }
 
+func (ct *ComponentTable) guardInvalidComponentGet(e *Entity, name string) {
+	if _, ok := ct.kinds[name]; !ok {
+		msg := fmt.Sprintf("Tried to access %s component; but there is no component with that name", name)
+		panic(msg)
+	}
+	bit, _ := e.ComponentBitArray.GetBit(uint64(e.World.em.components.ixs[name]))
+	if !bit {
+		msg := fmt.Sprintf("Tried to get %s component of entity without: %s", name, e)
+		panic(msg)
+	}
+}
+
 func (e *Entity) GetVec2D(name string) *Vec2D {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.vec2DMap[name][e.ID]
 }
 func (e *Entity) GetBool(name string) *bool {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.boolMap[name][e.ID]
 }
 func (e *Entity) GetInt(name string) *int {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.intMap[name][e.ID]
 }
 func (e *Entity) GetFloat64(name string) *float64 {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.float64Map[name][e.ID]
 }
 func (e *Entity) GetTime(name string) *time.Time {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.timeMap[name][e.ID]
 }
 func (e *Entity) GetTimeAccumulator(name string) *TimeAccumulator {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.timeAccumulatorMap[name][e.ID]
 }
 func (e *Entity) GetString(name string) *string {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.stringMap[name][e.ID]
 }
 func (e *Entity) GetSprite(name string) *Sprite {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.spriteMap[name][e.ID]
 }
 func (e *Entity) GetTagList(name string) *TagList {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.tagListMap[name][e.ID]
 }
 func (e *Entity) GetIntMap(name string) *IntMap {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.intMapMap[name][e.ID]
 }
 func (e *Entity) GetFloatMap(name string) *FloatMap {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.floatMapMap[name][e.ID]
 }
 func (e *Entity) GetGeneric(name string) interface{} {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return e.World.em.components.genericMap[name][e.ID]
 }
 func (e *Entity) SetGeneric(name string, val interface{}) {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	e.World.em.components.genericMap[name][e.ID] = val
 }
 func (e *Entity) GetVal(name string) interface{} {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	kind := e.World.em.components.kinds[name]
 	switch kind {
 	case "Vec2D":
@@ -427,11 +446,14 @@ func (e *Entity) GetVal(name string) interface{} {
 	}
 }
 
+// GetCustom returns the custom component data for the entity
 // NOTE: we have to provide a get and set method since we can't
 // return a pointer to interface{}
 func (e *Entity) GetCustom(name string) interface{} {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	return e.World.em.components.cccMap[name].Get(e)
 }
 func (e *Entity) SetCustom(name string, x interface{}) {
+	e.World.em.components.guardInvalidComponentGet(e, name)
 	e.World.em.components.cccMap[name].Set(e, x)
 }

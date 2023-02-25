@@ -27,7 +27,6 @@ type Event struct {
 
 type EventBus struct {
 	subscriberList SubscriberList
-	publishChannel chan Event
 	// number of goroutines spawned to publish events to subscriber channels
 	// that are full
 	nHanging atomic.Int32

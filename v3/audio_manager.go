@@ -9,7 +9,7 @@ package sameriver
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/veandco/go-sdl2/mix"
 )
@@ -24,7 +24,7 @@ type AudioManager struct {
 func (m *AudioManager) Init() {
 	m.audio = make(map[string](*mix.Chunk), 0)
 	// read all audio files in assets/audio
-	files, err := ioutil.ReadDir("assets/audio")
+	files, err := os.ReadDir("assets/audio")
 	if err != nil {
 		panic(err)
 	}

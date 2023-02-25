@@ -21,12 +21,12 @@ func TestWorldRegisterSystems(t *testing.T) {
 
 func TestWorldRegisterSystemsDuplicate(t *testing.T) {
 	defer func() {
-		if r := recover(); r != nil {
+		if r := recover(); r == nil {
+			t.Fatal("Should have panic'd")
 		}
 	}()
 	w := testingWorld()
 	w.RegisterSystems(newTestSystem(), newTestSystem())
-	t.Fatal("should have panic'd")
 }
 
 func TestWorldAddDependentSystems(t *testing.T) {
@@ -43,62 +43,62 @@ func TestWorldAddDependentSystems(t *testing.T) {
 
 func TestWorldUnresolvedSystemDependency(t *testing.T) {
 	defer func() {
-		if r := recover(); r != nil {
+		if r := recover(); r == nil {
+			t.Fatal("Should have panic'd")
 		}
 	}()
 	w := testingWorld()
 	w.RegisterSystems(
 		newTestDependentSystem(),
 	)
-	t.Fatal("should have panic'd")
 }
 
 func TestWorldNonPointerReceiverSystem(t *testing.T) {
 	defer func() {
-		if r := recover(); r != nil {
+		if r := recover(); r == nil {
+			t.Fatal("Should have panic'd")
 		}
 	}()
 	w := testingWorld()
 	w.RegisterSystems(
 		newTestNonPointerReceiverSystem(),
 	)
-	t.Fatal("should have panic'd")
 }
 
 func TestWorldMisnamedSystem(t *testing.T) {
 	defer func() {
-		if r := recover(); r != nil {
+		if r := recover(); r == nil {
+			t.Fatal("should have panic'd")
 		}
 	}()
 	w := testingWorld()
 	w.RegisterSystems(
 		newTestSystemThatIsMisnamed(),
 	)
-	t.Fatal("should have panic'd")
 }
 
 func TestWorldSystemDependencyNonPointer(t *testing.T) {
 	defer func() {
-		if r := recover(); r != nil {
+		if r := recover(); r == nil {
+			t.Fatal("should have panic'd")
 		}
 	}()
 	w := testingWorld()
-	w.RegisterSystems(
-		newTestDependentNonPointerSystem(),
-	)
-	t.Fatal("should have panic'd")
+	s := newTestDependentNonPointerSystem()
+	Logger.Println(s.ts)
+	w.RegisterSystems(s)
 }
 
 func TestWorldSystemDependencyNonSystem(t *testing.T) {
 	defer func() {
-		if r := recover(); r != nil {
+		if r := recover(); r == nil {
+			t.Fatal("should have panic'd")
 		}
 	}()
 	w := testingWorld()
-	w.RegisterSystems(
-		newTestDependentNonSystemSystem(),
-	)
-	t.Fatal("should have panic'd")
+	s := newTestDependentNonSystemSystem()
+	Logger.Println(s.ts)
+	w.RegisterSystems(s)
 }
 
 func TestWorldRunSystemsOnly(t *testing.T) {
@@ -113,13 +113,13 @@ func TestWorldRunSystemsOnly(t *testing.T) {
 
 func TestWorldAddWorldLogicDuplicate(t *testing.T) {
 	defer func() {
-		if r := recover(); r != nil {
+		if r := recover(); r == nil {
+			t.Fatal("should have panic'd")
 		}
 	}()
 	w := testingWorld()
 	w.AddWorldLogic("world-logic", func(dt_ms float64) {})
 	w.AddWorldLogic("world-logic", func(dt_ms float64) {})
-	t.Fatal("should have panic'd")
 }
 
 func TestWorldRunWorldLogicsOnly(t *testing.T) {
@@ -366,15 +366,15 @@ func TestWorldPredicateEntities(t *testing.T) {
 		*e.GetVec2D("Position"),
 		*e.GetVec2D("Box"),
 		30.0)
-	if len(nearGot) != 37 {
-		t.Fatal(fmt.Sprintf("Should be 37 near entities; got %d", len(nearGot)))
+	if len(nearGot) != len(near)+1 {
+		t.Fatalf("Should be %d near entities; got %d", len(near)+1, len(nearGot))
 	}
 	isTree := func(e *Entity) bool {
 		return w.EntityHasTag(e, "tree")
 	}
 	treesFound := w.PredicateEntities(nearGot, isTree)
 	if len(treesFound) != 19 {
-		t.Fatal(fmt.Sprintf("Should have found 19 near trees (1 original, 18 radial); got %d", len(treesFound)))
+		t.Fatalf("Should have found 19 near trees (1 original, 18 radial); got %d", len(treesFound))
 	}
 	allTrees := w.PredicateAllEntities(isTree)
 	if len(allTrees) != 37 {

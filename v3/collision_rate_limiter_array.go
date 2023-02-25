@@ -117,12 +117,12 @@ func (a *CollisionRateLimiterArray) Do(i, j int, f func()) {
 func (a *CollisionRateLimiterArray) Reset(e *Entity) {
 	// clear all where i = id
 	for _, r := range a.arr[e.ID] {
-		r.CAS(1, 0)
+		r.CompareAndSwap(1, 0)
 	}
 	// clear all where j = id
 	for i := 0; i < e.ID; i++ {
 		r := a.GetRateLimiter(i, e.ID)
-		r.CAS(1, 0)
+		r.CompareAndSwap(1, 0)
 	}
 }
 

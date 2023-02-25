@@ -1,6 +1,6 @@
-// moves entities according to their velocity
 package sameriver
 
+// moves entities according to their velocity
 type PhysicsSystem struct {
 	w               *World
 	physicsEntities *UpdatedEntityList
@@ -10,22 +10,22 @@ func NewPhysicsSystem() *PhysicsSystem {
 	return &PhysicsSystem{}
 }
 
-func (s *PhysicsSystem) GetComponentDeps() []string {
+func (p *PhysicsSystem) GetComponentDeps() []string {
 	return []string{"Vec2D,Position", "Vec2D,Velocity", "Vec2D,Box", "Float64,Mass"}
 }
 
-func (s *PhysicsSystem) LinkWorld(w *World) {
-	s.w = w
-	s.physicsEntities = w.em.GetSortedUpdatedEntityList(
+func (p *PhysicsSystem) LinkWorld(w *World) {
+	p.w = w
+	p.physicsEntities = w.em.GetSortedUpdatedEntityList(
 		EntityFilterFromComponentBitArray(
 			"physical",
 			w.em.components.BitArrayFromNames([]string{"Position", "Velocity", "Box", "Mass"})))
 }
 
-func (s *PhysicsSystem) Update(dt_ms float64) {
+func (p *PhysicsSystem) Update(dt_ms float64) {
 	// note: there are no function calls in the below, so we won't
 	// be preempted while computing physics (this is very good, get it over with)
-	for _, e := range s.physicsEntities.entities {
+	for _, e := range p.physicsEntities.entities {
 		// the logic is simpler to read that way
 		pos := e.GetVec2D("Position")
 		box := e.GetVec2D("Box")
@@ -39,9 +39,9 @@ func (s *PhysicsSystem) Update(dt_ms float64) {
 		if pos.X+dx < 0 {
 			// max out on the left
 			pos.X = 0
-		} else if pos.X+box.X+dx > float64(s.w.Width) {
+		} else if pos.X+box.X+dx > float64(p.w.Width) {
 			// max out on the right
-			pos.X = float64(s.w.Width) - box.X
+			pos.X = float64(p.w.Width) - box.X
 		} else {
 			// otherwise move in x freely
 			pos.X += dx
@@ -50,9 +50,9 @@ func (s *PhysicsSystem) Update(dt_ms float64) {
 		if pos.Y+dy < 0 {
 			// max out on the bottom
 			pos.Y = 0
-		} else if pos.Y+box.Y+dy > float64(s.w.Height) {
+		} else if pos.Y+box.Y+dy > float64(p.w.Height) {
 			// max out on the top
-			pos.Y = float64(s.w.Height) - box.Y
+			pos.Y = float64(p.w.Height) - box.Y
 		} else {
 			// otherwise move in y freely
 			pos.Y += dy

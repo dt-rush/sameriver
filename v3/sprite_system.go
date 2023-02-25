@@ -2,7 +2,7 @@ package sameriver
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/veandco/go-sdl2/img"
@@ -62,7 +62,7 @@ func (s *SpriteSystem) generateNilTexture(renderer *sdl.Renderer) {
 }
 
 func (s *SpriteSystem) LoadFiles(renderer *sdl.Renderer) {
-	files, err := ioutil.ReadDir("assets/images/sprites")
+	files, err := os.ReadDir("assets/images/sprites")
 	if err != nil {
 		Logger.Println(err)
 		logWarning("could not open assets/images/sprites; skipping SpriteSystem.LoadFiles()")

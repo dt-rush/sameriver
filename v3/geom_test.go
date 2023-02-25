@@ -1,7 +1,6 @@
 package sameriver
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -49,14 +48,14 @@ func TestRectWithinRect(t *testing.T) {
 
 	for _, pair := range within {
 		if !RectWithinRect(pair.pos0, pair.box0, pair.pos1, pair.box1) {
-			t.Fatal(fmt.Sprintf("%v,%v should be within %v,%v",
-				&pair.pos0, &pair.box0, &pair.pos1, &pair.box1))
+			t.Fatalf("%v,%v should be within %v,%v",
+				&pair.pos0, &pair.box0, &pair.pos1, &pair.box1)
 		}
 	}
 	for _, pair := range notWithin {
 		if RectWithinRect(pair.pos0, pair.box0, pair.pos1, pair.box1) {
-			t.Fatal(fmt.Sprintf("%v,%v should not be within %v,%v",
-				&pair.pos0, &pair.box0, &pair.pos1, &pair.box1))
+			t.Fatalf("%v,%v should not be within %v,%v",
+				&pair.pos0, &pair.box0, &pair.pos1, &pair.box1)
 		}
 	}
 }
@@ -87,28 +86,28 @@ func TestRectIntersectsRect(t *testing.T) {
 
 	for _, pair := range intersects {
 		if !RectIntersectsRect(pair.pos0, pair.box0, pair.pos1, pair.box1) {
-			t.Fatal(fmt.Sprintf("%v,%v should intersect %v,%v",
-				pair.pos0, pair.box0, pair.pos1, pair.box1))
+			t.Fatalf("%v,%v should intersect %v,%v",
+				pair.pos0, pair.box0, pair.pos1, pair.box1)
 		}
 		// swap rects and test again
 		pair.pos0, pair.pos1 = pair.pos1, pair.pos0
 		pair.box0, pair.box1 = pair.box1, pair.box0
 		if !RectIntersectsRect(pair.pos0, pair.box0, pair.pos1, pair.box1) {
-			t.Fatal(fmt.Sprintf("%v,%v should intersect %v,%v",
-				pair.pos0, pair.box0, pair.pos1, pair.box1))
+			t.Fatalf("%v,%v should intersect %v,%v",
+				pair.pos0, pair.box0, pair.pos1, pair.box1)
 		}
 	}
 	for _, pair := range doesntIntersect {
 		if RectIntersectsRect(pair.pos0, pair.box0, pair.pos1, pair.box1) {
-			t.Fatal(fmt.Sprintf("%v,%v should not intersect %v,%v",
-				pair.pos0, pair.box0, pair.pos1, pair.box1))
+			t.Fatalf("%v,%v should not intersect %v,%v",
+				pair.pos0, pair.box0, pair.pos1, pair.box1)
 		}
 		// swap rects and test again
 		pair.pos0, pair.pos1 = pair.pos1, pair.pos0
 		pair.box0, pair.box1 = pair.box1, pair.box0
 		if RectIntersectsRect(pair.pos0, pair.box0, pair.pos1, pair.box1) {
-			t.Fatal(fmt.Sprintf("%v,%v should not intersect %v,%v",
-				&pair.pos0, &pair.box0, &pair.pos1, &pair.box1))
+			t.Fatalf("%v,%v should not intersect %v,%v",
+				&pair.pos0, &pair.box0, &pair.pos1, &pair.box1)
 		}
 	}
 }

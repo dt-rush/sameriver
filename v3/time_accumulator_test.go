@@ -1,7 +1,6 @@
 package sameriver
 
 import (
-	"fmt"
 	"math"
 	"testing"
 )
@@ -46,8 +45,7 @@ func TestTimeAccumulatorCompletion(t *testing.T) {
 		}
 		completion := ta.Completion()
 		if math.Abs(completion-tcase[3]) > 0.01 {
-			t.Fatal(fmt.Sprintf("did not calculate completion properly for "+
-				"%v", tcase))
+			t.Fatalf("did not calculate completion properly for %v", tcase)
 		}
 	}
 }

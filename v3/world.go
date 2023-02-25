@@ -93,6 +93,7 @@ func destructureWorldSpec(spec map[string]any) WorldSpec {
 
 func NewWorld(spec map[string]any) *World {
 	// seed a random number from [1,108]
+	rand.Seed(time.Now().UnixNano())
 	seed := rand.Intn(108) + 1
 	rand.Seed(int64(seed))
 	Logger.Println(color.InBold(color.InWhiteOverCyan(fmt.Sprintf("[world seed: %d]", seed))))
@@ -129,6 +130,12 @@ func NewWorld(spec map[string]any) *World {
 			active:      true,
 			runSchedule: nil,
 		})
+	// register basic components
+	w.RegisterComponents(
+		"TagList,GenericTags",
+		"Vec2D,Position",
+		"Vec2D,Box",
+	)
 	// set up distance spatial hasher
 	w.SpatialHasher = NewSpatialHasher(
 		destructured.DistanceHasherGridX,
@@ -146,12 +153,7 @@ func NewWorld(spec map[string]any) *World {
 			active:      true,
 			runSchedule: nil,
 		})
-	// register basic components
-	w.RegisterComponents(
-		"TagList,GenericTags",
-		"Vec2D,Position",
-		"Vec2D,Box",
-	)
+
 	return w
 }
 
@@ -179,8 +181,8 @@ func (w *World) RegisterComponents(specs ...string) {
 		split := strings.Split(spec, ",")
 		kind := split[0]
 		name := split[1]
-		if w.em.components.ComponentExists(spec) {
-			Logger.Println(fmt.Sprintf("[%s,%s already exists. Skipping...]", kind, name))
+		if w.em.components.ComponentExists(name) {
+			Logger.Printf("[component %s already exists. Skipping...]", name)
 			continue
 		} else {
 			Logger.Printf("%s%s%s", color.InGreen("[registering component: "), fmt.Sprintf("%s,%s", color.InBlue(kind), name), color.InGreen("]"))
@@ -199,10 +201,19 @@ func (w *World) RegisterCCCs(customs []CustomContiguousComponent) {
 func (w *World) RegisterSystems(systems ...System) {
 	// add all systems
 	for _, s := range systems {
+		systemName := reflect.TypeOf(s).Elem().Name()
+		if !strings.HasSuffix(systemName, "System") {
+			panic(fmt.Sprintf("System names must end with System; got %s", systemName))
+		}
 		for _, spec := range s.GetComponentDeps() {
-			if !w.em.components.ComponentExists(spec) {
-				w.RegisterComponents(spec)
+			split := strings.Split(spec, ",")
+			name := split[1]
+			if w.em.components.ComponentExists(name) {
+				Logger.Printf("System %s depends on component %s, which is already registered.", systemName, name)
+				continue
 			}
+			Logger.Printf("Creating component %s wanted by system %s", spec, systemName)
+			w.RegisterComponents(spec)
 		}
 		w.addSystem(s)
 	}
@@ -219,7 +230,6 @@ func (w *World) SetSystemSchedule(systemName string, period_ms float64) {
 }
 
 func (w *World) addSystem(s System) {
-	w.assertSystemValid(s)
 	name := reflect.TypeOf(s).Elem().Name()
 	if _, ok := w.systems[name]; ok {
 		panic(fmt.Sprintf("double-add of system %s", name))
@@ -228,28 +238,18 @@ func (w *World) addSystem(s System) {
 	ID := w.IdGen.Next()
 	w.systemsIDs[s] = ID
 	s.LinkWorld(w)
-	logicName := fmt.Sprintf("%s", name)
 	// add logic immediately rather than wait for runtimeSharer.Share() to
 	// process the add/remove logic channel so that if we call SetSystemSchedule()
 	// immediately after RegisterSystems(), the LogicUnit will be in the runner
 	// to set the runSchedule on
 	w.runtimeSharer.addLogicImmediately("systems",
 		&LogicUnit{
-			name:        logicName,
+			name:        name,
 			worldID:     w.systemsIDs[s],
 			f:           s.Update,
 			active:      true,
 			runSchedule: nil,
 		})
-}
-
-func (w *World) assertSystemValid(s System) {
-	t := reflect.TypeOf(s)
-	typeName := t.Elem().Name()
-	if _, ok := s.(System); !ok {
-		panic(fmt.Sprintf("Can't add object of type %s - doesn't implement System interface", typeName))
-	}
-	w.assertSystemTypeValid(t)
 }
 
 func (w *World) assertSystemTypeValid(t reflect.Type) {

@@ -2,7 +2,7 @@ package sameriver
 
 func (w *World) PredicateAllEntities(p func(*Entity) bool) []*Entity {
 	entities := make([]*Entity, 0)
-	for e, _ := range w.GetCurrentEntitiesSet() {
+	for e := range w.GetCurrentEntitiesSet() {
 		entities = append(entities, e)
 	}
 	return w.PredicateEntities(entities, p)
@@ -23,7 +23,7 @@ func (w *World) PredicateEntities(entities []*Entity, p func(*Entity) bool) []*E
 
 func (w *World) EntitiesWithTags(tags ...string) []*Entity {
 	entities := make([]*Entity, 0)
-	for e, _ := range w.GetCurrentEntitiesSet() {
+	for e := range w.GetCurrentEntitiesSet() {
 		has := true
 		for _, tag := range tags {
 			has = has && w.EntityHasTag(e, tag)
@@ -37,7 +37,7 @@ func (w *World) EntitiesWithTags(tags ...string) []*Entity {
 
 func (w *World) ActiveEntitiesWithTags(tags ...string) []*Entity {
 	entities := make([]*Entity, 0)
-	for e, _ := range w.GetCurrentEntitiesSet() {
+	for e := range w.GetCurrentEntitiesSet() {
 		if !e.Active {
 			continue
 		}

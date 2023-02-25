@@ -28,7 +28,7 @@ func TestCollisionSystem(t *testing.T) {
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
 	select {
-	case _ = <-ec.C:
+	case <-ec.C:
 		break
 	default:
 		t.Fatal("collision event wasn't received within 1 frame")
@@ -56,7 +56,7 @@ func TestCollisionSystemMany(t *testing.T) {
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
 	select {
-	case _ = <-ec.C:
+	case <-ec.C:
 		break
 	default:
 		t.Fatal("collision event wasn't received within 1 frame")
@@ -72,7 +72,7 @@ func TestCollisionRateLimit(t *testing.T) {
 		t.Fatal("collision rate-limiter didn't prevent collision duplication")
 	}
 	for len(ec.C) > 0 {
-		_ = <-ec.C
+		<-ec.C
 	}
 	// wait for rate limit to die
 	time.Sleep(FRAME_DURATION)

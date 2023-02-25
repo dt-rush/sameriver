@@ -1,7 +1,6 @@
 package sameriver
 
 import (
-	"fmt"
 	"testing"
 	"time"
 )
@@ -59,8 +58,8 @@ func TestPhysicsSystemBounds(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 		}
 		if !RectWithinRect(*pos, *box, worldCenter, worldTopRight) {
-			t.Fatal(fmt.Sprintf("traveling with velocity %v placed entity "+
-				"outside world (at position %v, box %v)", *vel, *pos, *box))
+			t.Fatalf("traveling with velocity %v placed entity "+
+				"outside world (at position %v, box %v)", *vel, *pos, *box)
 		}
 	}
 }

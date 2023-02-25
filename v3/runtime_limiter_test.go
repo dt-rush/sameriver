@@ -26,7 +26,8 @@ func TestRuntimeLimiterAdd(t *testing.T) {
 
 func TestRuntimeLimiterAddDuplicate(t *testing.T) {
 	defer func() {
-		if r := recover(); r != nil {
+		if r := recover(); r == nil {
+			t.Fatal("Should have panic'd")
 		}
 	}()
 	r := NewRuntimeLimiter()
@@ -165,7 +166,7 @@ func TestRuntimeLimiterRemove(t *testing.T) {
 		r.Run(FRAME_DURATION_INT)
 	}
 	// remove it
-	Logger.Println(fmt.Sprintf("Removing logic: %s", logic.name))
+	Logger.Printf("Removing logic: %s", logic.name)
 	r.Remove(logic)
 	// test if removed
 	if _, ok := r.runtimeEstimates[logic]; ok {

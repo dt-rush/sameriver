@@ -85,6 +85,7 @@ func TestCCCBitArray(t *testing.T) {
 
 	b := e.ComponentBitArray
 	s := w.em.components.BitArrayToString(b)
+	Logger.Println(s)
 	// TODO: test string for XYZ
 	if valid, _ := regexp.MatchString("XYZ", s); !valid {
 		t.Errorf("XYZ not in component bit array -> string")

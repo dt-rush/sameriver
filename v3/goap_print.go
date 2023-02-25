@@ -65,13 +65,3 @@ func debugGOAPPrintGoalRemainingSurface(s *GOAPGoalRemainingSurface) {
 		}
 	}
 }
-
-func debugGOAPPrintWorldState(ws *GOAPWorldState) {
-	if ws == nil || len(ws.vals) == 0 {
-		logGOAPDebug("    nil")
-		return
-	}
-	for name, val := range ws.vals {
-		logGOAPDebug("    %s: %d", name, val)
-	}
-}

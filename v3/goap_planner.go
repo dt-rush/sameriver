@@ -41,8 +41,8 @@ func (p *GOAPPlanner) traverseFulfillers(
 		if g.nUnfulfilled == 0 {
 			continue
 		}
-		for varName, _ := range g.goalLeft {
-			for action, _ := range p.eval.varActions[varName] {
+		for varName := range g.goalLeft {
+			for action := range p.eval.varActions[varName] {
 				if DEBUG_GOAP {
 					logGOAPDebug("[ ] Considering action %s", action.DisplayName())
 				}

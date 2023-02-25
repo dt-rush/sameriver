@@ -70,10 +70,6 @@ func printDiffs(diffs map[string]float64) {
 	}
 }
 
-func printPath(p *GOAPPath) {
-	Logger.Printf(GOAPPathToString(p))
-}
-
 func TestGOAPGoalRemaining(t *testing.T) {
 	doTest := func(
 		g *GOAPGoal,
@@ -95,11 +91,11 @@ func TestGOAPGoalRemaining(t *testing.T) {
 		Logger.Println("-------------------")
 
 		if len(remaining.goalLeft) != nRemaining {
-			t.Fatal(fmt.Sprintf("Should have had %d goals remaining, had %d", nRemaining, len(remaining.goalLeft)))
+			t.Fatalf("Should have had %d goals remaining, had %d", nRemaining, len(remaining.goalLeft))
 		}
 		for _, name := range expectedRemaining {
 			if diffVal, ok := remaining.diffs[name]; !ok || diffVal == 0 {
-				t.Fatal(fmt.Sprintf("Should have had %s in diffs with value != 0", name))
+				t.Fatalf("Should have had %s in diffs with value != 0", name)
 			}
 		}
 	}
@@ -148,11 +144,14 @@ func TestGOAPGoalRemaining(t *testing.T) {
 
 func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	w := testingWorld()
-	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
 	w.RegisterComponents("Int,BoozeAmount")
 
-	e := testingSpawnPhysics(w)
+	e := w.Spawn(map[string]any{
+		"components": map[string]any{
+			"Int,BoozeAmount": 0,
+		},
+	})
+	Logger.Println(e)
 
 	p := NewGOAPPlanner(e)
 
@@ -689,6 +688,7 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 
 	e := w.Spawn(map[string]any{
 		"components": map[string]any{
+			"Vec2D,Position": Vec2D{0, 0},
 			"IntMap,State": map[string]int{
 				"drunk": 0,
 			},

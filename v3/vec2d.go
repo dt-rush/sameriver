@@ -1,4 +1,3 @@
-// simple 2D vector geometry class
 package sameriver
 
 import (
@@ -6,6 +5,7 @@ import (
 	"math/rand"
 )
 
+// simple 2D vector geometry class
 type Vec2D struct {
 	X float64
 	Y float64
@@ -18,40 +18,40 @@ func RandomUnitVec2D() Vec2D {
 	}.Unit()
 }
 
-func (v1 *Vec2D) Inc(v2 Vec2D) {
-	v1.X += v2.X
-	v1.Y += v2.Y
+func (v *Vec2D) Inc(v2 Vec2D) {
+	v.X += v2.X
+	v.Y += v2.Y
 }
 
-func (v1 Vec2D) Add(v2 Vec2D) Vec2D {
-	return Vec2D{v1.X + v2.X, v1.Y + v2.Y}
+func (v Vec2D) Add(v2 Vec2D) Vec2D {
+	return Vec2D{v.X + v2.X, v.Y + v2.Y}
 }
 
-func (v1 Vec2D) Sub(v2 Vec2D) Vec2D {
-	return Vec2D{v1.X - v2.X, v1.Y - v2.Y}
+func (v Vec2D) Sub(v2 Vec2D) Vec2D {
+	return Vec2D{v.X - v2.X, v.Y - v2.Y}
 }
 
-func (v1 Vec2D) Distance(v2 Vec2D) (dx, dy, d float64) {
-	dx = float64(v2.X - v1.X)
-	dy = float64(v2.Y - v1.Y)
+func (v Vec2D) Distance(v2 Vec2D) (dx, dy, d float64) {
+	dx = float64(v2.X - v.X)
+	dy = float64(v2.Y - v.Y)
 	d = math.Sqrt(dx*dx + dy*dy)
 	return dx, dy, d
 }
 
-func (v1 Vec2D) ScalarCross(v2 Vec2D) float64 {
-	return v1.X*v2.Y - v1.Y*v2.X
+func (v Vec2D) ScalarCross(v2 Vec2D) float64 {
+	return v.X*v2.Y - v.Y*v2.X
 }
 
-func (v1 Vec2D) Dot(v2 Vec2D) float64 {
-	return v1.X*v2.X + v1.Y*v2.Y
+func (v Vec2D) Dot(v2 Vec2D) float64 {
+	return v.X*v2.X + v.Y*v2.Y
 }
 
 func (v Vec2D) Magnitude() float64 {
 	return math.Sqrt(v.X*v.X + v.Y*v.Y)
 }
 
-func (v1 Vec2D) Project(v2 Vec2D) float64 {
-	return v1.Dot(v2.Unit())
+func (v Vec2D) Project(v2 Vec2D) float64 {
+	return v.Dot(v2.Unit())
 }
 
 func (v Vec2D) PerpendicularUnit() Vec2D {
@@ -84,11 +84,11 @@ func (v Vec2D) YComponent() Vec2D {
 	return Vec2D{0, v.Y}
 }
 
-func (v1 Vec2D) AngleBetween(v2 Vec2D) float64 {
-	if v1.Magnitude() == 0 || v2.Magnitude() == 0 {
+func (v Vec2D) AngleBetween(v2 Vec2D) float64 {
+	if v.Magnitude() == 0 || v2.Magnitude() == 0 {
 		return 0.0
 	}
-	d := v1.Dot(v2) / (v1.Magnitude() * v2.Magnitude())
+	d := v.Dot(v2) / (v.Magnitude() * v2.Magnitude())
 	if d >= 1.0 {
 		return 0.0
 	} else if d <= -1.0 {
@@ -98,26 +98,26 @@ func (v1 Vec2D) AngleBetween(v2 Vec2D) float64 {
 	}
 }
 
-func (pos *Vec2D) ShiftedCenterToBottomLeft(box Vec2D) Vec2D {
+func (v *Vec2D) ShiftedCenterToBottomLeft(box Vec2D) Vec2D {
 	return Vec2D{
-		pos.X - box.X/2,
-		pos.Y - box.Y/2,
+		v.X - box.X/2,
+		v.Y - box.Y/2,
 	}
 }
 
-func (pos *Vec2D) ShiftedBottomLeftToCenter(box Vec2D) Vec2D {
+func (v *Vec2D) ShiftedBottomLeftToCenter(box Vec2D) Vec2D {
 	return Vec2D{
-		pos.X + box.X/2,
-		pos.Y + box.Y/2,
+		v.X + box.X/2,
+		v.Y + box.Y/2,
 	}
 }
 
-func (pos *Vec2D) ShiftCenterToBottomLeft(box Vec2D) {
-	pos.X -= box.X / 2
-	pos.Y -= box.Y / 2
+func (v *Vec2D) ShiftCenterToBottomLeft(box Vec2D) {
+	v.X -= box.X / 2
+	v.Y -= box.Y / 2
 }
 
-func (pos *Vec2D) ShiftBottomLeftToCenter(box Vec2D) {
-	pos.X += box.X / 2
-	pos.Y += box.Y / 2
+func (v *Vec2D) ShiftBottomLeftToCenter(box Vec2D) {
+	v.X += box.X / 2
+	v.Y += box.Y / 2
 }

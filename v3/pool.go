@@ -32,7 +32,7 @@ func NewPool(capacity int, maker func() any, clearer func(any)) *Pool {
 		checkOutIxs: make(map[any]int),
 		dirty:       make(map[int]bool),
 	}
-	for i, _ := range p.pool {
+	for i := range p.pool {
 		p.pool[i] = maker()
 		p.avail[i] = i
 		p.dirty[i] = false
@@ -41,7 +41,7 @@ func NewPool(capacity int, maker func() any, clearer func(any)) *Pool {
 }
 
 func (p *Pool) Clear() {
-	for i, _ := range p.pool {
+	for i := range p.pool {
 		p.clearer(p.pool[i])
 	}
 }
@@ -49,7 +49,7 @@ func (p *Pool) Clear() {
 func (p *Pool) Expand(n int) {
 	emptySpace := make([]any, n)
 	newAvails := make([]int, n)
-	for i, _ := range emptySpace {
+	for i := range emptySpace {
 		emptySpace[i] = p.maker()
 		newAvails[i] = p.capacity + i
 	}

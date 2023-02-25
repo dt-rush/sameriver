@@ -102,7 +102,6 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 	} else {
 		*r.totalRuntime_ms = (*r.totalRuntime_ms + total_ms) / 2.0
 	}
-	r.totalRuntime_ms = r.totalRuntime_ms
 	// return overunder_ms
 	overunder_ms := allowance_ms - total_ms
 	if overunder_ms < 0 {
@@ -115,7 +114,7 @@ func (r *RuntimeLimiter) Add(logic *LogicUnit) {
 	// panic if adding duplicate by WorldID
 	if _, ok := r.indexes[logic.worldID]; ok {
 		panic(fmt.Sprintf("Double-add of same logic unit to RuntimeLimiter "+
-			"(WorldID: %d)", logic.worldID))
+			"(WorldID: %d; name: %s)", logic.worldID, logic.name))
 	}
 	r.logicUnits = append(r.logicUnits, logic)
 	r.indexes[logic.worldID] = len(r.logicUnits) - 1
@@ -132,9 +131,7 @@ func (r *RuntimeLimiter) Remove(l *LogicUnit) bool {
 		return false
 	}
 	// delete from runtimeEstimates
-	if _, ok := r.runtimeEstimates[l]; ok {
-		delete(r.runtimeEstimates, l)
-	}
+	delete(r.runtimeEstimates, l)
 	// delete from indexes
 	delete(r.indexes, l.worldID)
 	// delete from logicUnits by replacing the last element into its spot,

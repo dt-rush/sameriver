@@ -1,3 +1,4 @@
+// Package sameriver is a game engine, ya underdig?
 package sameriver
 
 import (
@@ -77,7 +78,7 @@ gameloop:
 		loopStart := time.Now()
 		// break the game loop when the end game loop channel gets a signal
 		select {
-		case _ = <-endScene:
+		case <-endScene:
 			break gameloop
 		default:
 			if scene.IsDone() {
@@ -97,7 +98,7 @@ gameloop:
 			scene.Update(dt_ms, allowance_ms)
 			lastUpdate = time.Now()
 			select {
-			case _ = <-fpsTicker.C:
+			case <-fpsTicker.C:
 				sdl.Do(func() {
 					g.blankScreen()
 					scene.Draw(g.Window, g.Renderer)

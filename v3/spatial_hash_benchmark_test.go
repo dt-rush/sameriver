@@ -13,8 +13,6 @@ func BenchmarkSpatialHashEntitiesWithinDistance(b *testing.B) {
 
 	e := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
 
-	near := make([]*Entity, 0)
-	far := make([]*Entity, 0)
 	for spawnRadius := 30.0; spawnRadius <= 38; spawnRadius += 8 {
 		for i := 0.0; i < 720; i += 10 {
 			theta := 2.0 * math.Pi * (i / 360)
@@ -22,14 +20,9 @@ func BenchmarkSpatialHashEntitiesWithinDistance(b *testing.B) {
 				spawnRadius * math.Cos(theta),
 				spawnRadius * math.Sin(theta),
 			}
-			spawned := testingSpawnSpatial(w,
+			testingSpawnSpatial(w,
 				e.GetVec2D("Position").Add(offset),
 				Vec2D{5, 5})
-			if spawnRadius == 30.0 {
-				near = append(near, spawned)
-			} else {
-				far = append(far, spawned)
-			}
 		}
 	}
 	for i := 0; i < b.N; i++ {

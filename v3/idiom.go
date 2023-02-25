@@ -14,7 +14,7 @@
 
 package sameriver
 
-func intMax(a, b int) int {
+func IntMax(a, b int) int {
 	if a > b {
 		return a
 	} else {
@@ -22,7 +22,7 @@ func intMax(a, b int) int {
 	}
 }
 
-func intMin(a, b int) int {
+func IntMin(a, b int) int {
 	if a < b {
 		return a
 	} else {
@@ -30,7 +30,7 @@ func intMin(a, b int) int {
 	}
 }
 
-func intAbs(x int) int {
+func IntAbs(x int) int {
 	if x >= 0 {
 		return x
 	} else {
@@ -53,12 +53,6 @@ func removeEntityFromSlice(slice *[]*Entity, x *Entity) {
 	}
 }
 
-func removeAtIndexInEntitySlice(slice *[]*Entity, index int) {
-	last_ix := len(*slice) - 1
-	(*slice)[index] = (*slice)[last_ix]
-	*slice = (*slice)[:last_ix]
-}
-
 // TODO: reverse arguments and remove pointer (we're not modifying!)
 func indexOfEntityInSlice(slice *[]*Entity, x *Entity) int {
 	for i, v := range *slice {
@@ -67,21 +61,6 @@ func indexOfEntityInSlice(slice *[]*Entity, x *Entity) int {
 		}
 	}
 	return -1
-}
-
-func appendStringToSlice(slice *[]string, x string) {
-	*slice = append(*slice, x)
-}
-
-func removeStringFromSlice(slice *[]string, x string) {
-	last_ix := len(*slice) - 1
-	for i, v := range *slice {
-		if v == x {
-			(*slice)[i] = (*slice)[last_ix]
-			*slice = (*slice)[:last_ix]
-			break
-		}
-	}
 }
 
 func removeEventChannelFromSlice(slice []*EventChannel, x *EventChannel) []*EventChannel {

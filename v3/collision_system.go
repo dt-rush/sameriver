@@ -1,3 +1,5 @@
+package sameriver
+
 // The collision detection in this sytem has 4 main parts:
 //
 // 1. a method to check collisions invoked by the game every game loop
@@ -30,7 +32,6 @@
 //	i  2      r r
 //	   3        r
 //	   4
-package sameriver
 
 import (
 	"time"

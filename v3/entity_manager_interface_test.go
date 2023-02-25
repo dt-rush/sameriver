@@ -114,10 +114,8 @@ func EntityManagerInterfaceTestQueueDespawn(
 func EntityManagerInterfaceTestDespawnAll(
 	em EntityManagerInterface, t *testing.T) {
 
-	entities := make([]*Entity, 0)
 	for i := 0; i < 64; i++ {
-		e := testingSpawnSimple(em)
-		entities = append(entities, e)
+		testingSpawnSimple(em)
 	}
 	for i := 0; i < 64; i++ {
 		testingQueueSpawnSimple(em)

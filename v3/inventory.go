@@ -34,9 +34,7 @@ func (i *Inventory) ItemsForDisplay() []*Item {
 
 func (i *Inventory) StacksForDisplay() []*Item {
 	result := make([]*Item, 0)
-	for _, item := range i.Stacks {
-		result = append(result, item)
-	}
+	result = append(result, i.Stacks...)
 	sort.Slice(result, func(i, j int) bool {
 		return strings.Compare(result[i].DisplayName(), result[j].DisplayName()) == -1
 	})

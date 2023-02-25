@@ -1,7 +1,6 @@
 package sameriver
 
 import (
-	"fmt"
 	"math"
 	"math/rand"
 	"testing"
@@ -40,10 +39,10 @@ func TestSpatialHashInsertion(t *testing.T) {
 				}
 			}
 			if !inCell {
-				t.Fatal(fmt.Sprintf("%v,%v was not mapped to cell %v",
+				t.Fatalf("%v,%v was not mapped to cell %v",
 					e.GetVec2D("Position"),
 					e.GetVec2D("Box"),
-					cell))
+					cell)
 			}
 		}
 	}
@@ -107,10 +106,10 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 			}
 		}
 		if !inCell {
-			t.Fatal(fmt.Sprintf("%v,%v was not mapped to cell %v",
+			t.Fatalf("%v,%v was not mapped to cell %v",
 				e.GetVec2D("Position"),
 				e.GetVec2D("Box"),
-				cell))
+				cell)
 		}
 	}
 }
@@ -128,24 +127,24 @@ func TestSpatialHashCellsWithinDistance(t *testing.T) {
 	// we're checking the radius at 0, 0, the corner of the world
 	cells := sh.Hasher.CellsWithinDistance(Vec2D{0, 0}, box, 25.0)
 	if len(cells) != 8 {
-		t.Fatal(fmt.Sprintf("circle centered at 0, 0 of radius 25 should touch 8 cells; got %d: %v", len(cells), cells))
+		t.Fatalf("circle centered at 0, 0 of radius 25 should touch 8 cells; got %d: %v", len(cells), cells)
 	}
 	cells = sh.Hasher.CellsWithinDistance(Vec2D{0, 0}, box, 29.0)
 	if len(cells) != 9 {
-		t.Fatal(fmt.Sprintf("circle centered at 0, 0 of radius 29 should touch 9 cells; got %d: %v", len(cells), cells))
+		t.Fatalf("circle centered at 0, 0 of radius 29 should touch 9 cells; got %d: %v", len(cells), cells)
 	}
 	// now check from a position not quite at the corner
 	cells = sh.Hasher.CellsWithinDistance(Vec2D{20, 20}, box, 29.0)
 	if len(cells) != 25 {
-		t.Fatal(fmt.Sprintf("circle centered at 20, 20 of radius 29 should touch 25 cells; got %d: %v", len(cells), cells))
+		t.Fatalf("circle centered at 20, 20 of radius 29 should touch 25 cells; got %d: %v", len(cells), cells)
 	}
 	cells = sh.Hasher.CellsWithinDistance(Vec2D{20, 20}, box, 7.0)
 	if len(cells) != 4 {
-		t.Fatal(fmt.Sprintf("circle centered at 20, 20 of radius 7 should touch 4 cells; got %d: %v", len(cells), cells))
+		t.Fatalf("circle centered at 20, 20 of radius 7 should touch 4 cells; got %d: %v", len(cells), cells)
 	}
 	cells = sh.Hasher.CellsWithinDistance(Vec2D{25, 25}, box, 1.0)
 	if len(cells) != 1 {
-		t.Fatal(fmt.Sprintf("circle centered at 25, 25 of radius 1 should touch 1 cell; got %d: %v", len(cells), cells))
+		t.Fatalf("circle centered at 25, 25 of radius 1 should touch 1 cell; got %d: %v", len(cells), cells)
 	}
 }
 
@@ -184,7 +183,7 @@ func TestSpatialHashEntitiesWithinDistance(t *testing.T) {
 		*e.GetVec2D("Box"),
 		30.0)
 	if len(nearGot) != 37 {
-		t.Fatal(fmt.Sprintf("Should be 37 near entities; got %d", len(nearGot)))
+		t.Fatalf("Should be 37 near entities; got %d", len(nearGot))
 	}
 	for _, eNear := range near {
 		if indexOfEntityInSlice(&nearGot, eNear) == -1 {
@@ -210,7 +209,6 @@ func TestSpatialHashEntitiesWithinDistanceApprox(t *testing.T) {
 	e := testingSpawnSpatial(w, Vec2D{50, 50}, Vec2D{5, 5})
 
 	near := make([]*Entity, 0)
-	far := make([]*Entity, 0)
 	for spawnRadius := 30.0; spawnRadius <= 38; spawnRadius += 8 {
 		for i := 0.0; i < 360; i += 10 {
 			theta := 2.0 * math.Pi * (i / 360)
@@ -223,8 +221,6 @@ func TestSpatialHashEntitiesWithinDistanceApprox(t *testing.T) {
 				Vec2D{5, 5})
 			if spawnRadius == 30.0 {
 				near = append(near, spawned)
-			} else {
-				far = append(far, spawned)
 			}
 		}
 	}
@@ -233,8 +229,14 @@ func TestSpatialHashEntitiesWithinDistanceApprox(t *testing.T) {
 		*e.GetVec2D("Position"),
 		*e.GetVec2D("Box"),
 		30.0)
+	// somehow by coincidence - and this can only be a sign that god exists -
+	// the number of near entities by exact calculation is 37, but the number
+	// of near entities by approx calculation (with the grid we defined) is 73.
+	// absolutely beautiful. ... well when you think about it, it makes sense.
+	// 36 + 1 = 37, 2*36 + 1 = 73
+	// but, that's still beautiful, and still a sign.
 	if len(nearGot) != 73 {
-		t.Fatal(fmt.Sprintf("Should be 37 near entities; got %d", len(nearGot)))
+		t.Fatalf("Should be 73 near entities; got %d", len(nearGot))
 	}
 	for _, eNear := range near {
 		if indexOfEntityInSlice(&nearGot, eNear) == -1 {
@@ -297,7 +299,7 @@ func TestSpatialHashExpand(t *testing.T) {
 			[2]int{1, 1},
 		},
 	}
-	for posbox, _ := range testData {
+	for posbox := range testData {
 		testingSpawnSpatial(w, posbox[0], posbox[1])
 	}
 	oldCapacity := cap(sh.Hasher.Table[0][0])

@@ -48,7 +48,7 @@ func (i *Item) GetArchetype() *ItemArchetype {
 
 func (i *Item) SetProperty(k string, v float64) {
 	if k == "degradation" {
-		for ix, _ := range i.Degradations {
+		for ix := range i.Degradations {
 			i.Degradations[ix] = v
 		}
 	} else {
@@ -70,31 +70,31 @@ const (
 	ITEM_LEAST_DEGRADED
 )
 
-func (s *Item) DebitStack(n int, leastOrMostDegraded int) *Item {
+func (i *Item) DebitStack(n int, leastOrMostDegraded int) *Item {
 	if n <= 0 {
-		panic(fmt.Sprintf("Tried to Debit stack %s for %d items", s.DisplayStr, n))
+		panic(fmt.Sprintf("Tried to Debit stack %s for %d items", i.DisplayStr, n))
 	}
-	if n > s.Count {
-		panic(fmt.Sprintf("Tried to Debit stack of %d items for %d", s.Count, n))
+	if n > i.Count {
+		panic(fmt.Sprintf("Tried to Debit stack of %d items for %d", i.Count, n))
 	}
 	// new stack
-	result := s.CopyOf()
+	result := i.CopyOf()
 	// update counts
-	s.Count -= n
+	i.Count -= n
 	result.Count = n
 	// reevaluate display strings
-	s.reevaluateDisplayStr()
+	i.reevaluateDisplayStr()
 	result.reevaluateDisplayStr()
 	// divide Degradations (they are sorted in increasing order)
-	if s.Degradations != nil {
-		full := s.Degradations
+	if i.Degradations != nil {
+		full := i.Degradations
 		result.Degradations = make([]float64, n)
 		switch leastOrMostDegraded {
 		case ITEM_MOST_DEGRADED:
-			s.Degradations = full[:len(full)-n]
+			i.Degradations = full[:len(full)-n]
 			copy(result.Degradations, full[len(full)-n:])
 		case ITEM_LEAST_DEGRADED:
-			s.Degradations = full[n+1:]
+			i.Degradations = full[n+1:]
 			copy(result.Degradations, full[:n])
 		}
 	}
@@ -203,8 +203,7 @@ func (i *Item) PropertiesForDisplay() []string {
 	} else {
 		result := make([]string, 0)
 		for k, v := range i.Properties {
-			var displayStr string
-			displayStr = fmt.Sprintf("%s %s", k, formatFloatForDisplay(v))
+			displayStr := fmt.Sprintf("%s %s", k, formatFloatForDisplay(v))
 			result = append(result, displayStr)
 		}
 		// include degradation value in properties, even though it's not actually

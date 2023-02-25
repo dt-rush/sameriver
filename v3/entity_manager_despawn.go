@@ -19,10 +19,10 @@ func (m *EntityManager) processDespawnChannel() {
 func (m *EntityManager) DespawnAll() {
 	// drain the spawn request channel of pending spawns
 	for len(m.spawnSubscription.C) > 0 {
-		_ = <-m.spawnSubscription.C
+		<-m.spawnSubscription.C
 	}
 	// iterate all entities which have been allocated and despawn them
-	for e, _ := range m.GetCurrentEntitiesSetCopy() {
+	for e := range m.GetCurrentEntitiesSetCopy() {
 		m.Despawn(e)
 	}
 }

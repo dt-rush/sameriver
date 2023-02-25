@@ -1,8 +1,9 @@
 package sameriver
 
 import (
-	"go.uber.org/atomic"
 	"math"
+
+	"go.uber.org/atomic"
 )
 
 type IDGenerator struct {
@@ -22,7 +23,7 @@ func (g *IDGenerator) Next() (ID int) {
 	// try to get ID from already-available freed IDs
 	if len(g.freed) > 0 {
 		// get first of freed (break immediately)
-		for freeID, _ := range g.freed {
+		for freeID := range g.freed {
 			ID = freeID
 			delete(g.freed, freeID)
 			break

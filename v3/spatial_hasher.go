@@ -7,8 +7,8 @@ import (
 	"unsafe"
 )
 
-// the actual cell data structure is a cellDimension x cellDimension array of
-// entities
+// SpatialHashTable is the table of cells; the actual data structure is a
+// gridX x gridY matrix where each cell is []*Entity
 type SpatialHashTable [][][]*Entity
 
 type SpatialHasher struct {
@@ -82,8 +82,8 @@ func (h *SpatialHasher) CellRangeOfRect(pos, box Vec2D) (cellX0, cellX1, cellY0,
 	return cellX0, cellX1, cellY0, cellY1
 }
 
-// find out how many cells the box centered at pos spans in x and y
-// used to iterate the entities and send them to the right cells
+// ScanAndInsertEntities finds out how many cells the box centered at pos spans
+// in x and y used to iterate the entities and send them to the right cells
 func (h *SpatialHasher) ScanAndInsertEntities() {
 	for _, e := range h.SpatialEntities.entities {
 		pos := e.GetVec2D("Position")
@@ -106,7 +106,7 @@ func (h *SpatialHasher) ScanAndInsertEntities() {
 	}
 }
 
-// get a *copy* of the current table which is safe to hold onto, mutate, etc.
+// TableCopy gets a *copy* of the current table which is safe to hold onto, mutate, etc.
 func (h *SpatialHasher) TableCopy() SpatialHashTable {
 	t2 := make(SpatialHashTable, h.GridX)
 	for x := 0; x < h.GridX; x++ {
@@ -129,7 +129,7 @@ func (h *SpatialHasher) GetCellPosAndBox(x, y int) (pos, box Vec2D) {
 	return pos, box
 }
 
-// calculate which cells are within the distance d from the closest
+// CellsWithinDistance calculates which cells are within the distance d from the closest
 // point on the box centered at pos (imagine a rounded-corner box
 // extending d past the limits of the box)
 func (h *SpatialHasher) CellsWithinDistance(pos, box Vec2D, d float64) [][2]int {
@@ -155,7 +155,7 @@ func (h *SpatialHasher) CellsWithinDistance(pos, box Vec2D, d float64) [][2]int 
 	return cells
 }
 
-// extend the box +d on all sides and return the cells it touches
+// CellsWithinDistanceApprox extends the box +d on all sides and returns the cells it touches
 // (NOTE: the corners will slightly over-estimate since they should
 // truly be rounded)
 // but it's a faster calculation
@@ -178,7 +178,8 @@ func (h *SpatialHasher) EntitiesWithinDistanceApprox(
 		func(e *Entity) bool { return true })
 }
 
-// uses the approx distance since it's faster. Overestimates slightly diagonally.
+// EntitiesWithinDistanceApproxFilter uses the approx distance since it's faster.
+// Overestimates slightly diagonally.
 func (h *SpatialHasher) EntitiesWithinDistanceApproxFilter(
 	pos, box Vec2D, d float64, predicate func(*Entity) bool) []*Entity {
 	results := make([]*Entity, 0)
@@ -224,7 +225,7 @@ func (h *SpatialHasher) EntitiesWithinDistanceFilter(
 	return results
 }
 
-// turn a SpatialHashTable into a String representation (NOTE: do *NOT* call
+// String turns a SpatialHashTable into a String representation (NOTE: do *NOT* call
 // this on a pointer returned from CurrentTablePointer unless you can be sure
 // that you have not called Update more than once - it does not
 // lock the table it reads, and if you call Update twice, you may
@@ -254,7 +255,7 @@ func (h *SpatialHasher) Expand(n int) {
 	for x := 0; x < h.GridX; x++ {
 		for y := 0; y < h.GridY; y++ {
 			oldCount := len(h.Table[x][y])
-			newCell := make([]*Entity, (h.capacity+n)/4, (h.capacity+n)/4)
+			newCell := make([]*Entity, (h.capacity+n)/4)
 			copy(newCell, h.Table[x][y])
 			h.Table[x][y] = newCell[:oldCount]
 		}

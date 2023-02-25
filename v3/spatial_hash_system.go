@@ -22,12 +22,12 @@ func (s *SpatialHashSystem) LinkWorld(w *World) {
 	s.Hasher = NewSpatialHasher(s.gridX, s.gridY, w)
 }
 
-func (h *SpatialHashSystem) Update(dt_ms float64) {
+func (s *SpatialHashSystem) Update(dt_ms float64) {
 	// clear any old data and run the computation
-	h.Hasher.ClearTable()
-	h.Hasher.ScanAndInsertEntities()
+	s.Hasher.ClearTable()
+	s.Hasher.ScanAndInsertEntities()
 }
 
-func (h *SpatialHashSystem) Expand(n int) {
-	h.Hasher.Expand(n)
+func (s *SpatialHashSystem) Expand(n int) {
+	s.Hasher.Expand(n)
 }

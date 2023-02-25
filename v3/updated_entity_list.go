@@ -1,5 +1,3 @@
-// a list of entities which have active = true, which receives updates to its
-// contents via the Signal() method
 package sameriver
 
 import (
@@ -20,6 +18,8 @@ type EntitySignal struct {
 	Entity     *Entity
 }
 
+// a list of entities which have active = true, which receives updates to its
+// contents via the Signal() method
 type UpdatedEntityList struct {
 	// the entities in the list (tagged with gen)
 	entities []*Entity

@@ -38,16 +38,6 @@ func (g *GOAPGoal) Parametrize(n int) *GOAPGoal {
 	return g
 }
 
-func (g *GOAPGoal) copyOf() *GOAPGoal {
-	result := &GOAPGoal{
-		vars: make(map[string]*NumericInterval),
-	}
-	for varName, interval := range g.vars {
-		result.vars[varName] = interval
-	}
-	return result
-}
-
 func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
 	result = &GOAPGoalRemaining{
 		goal:         g,

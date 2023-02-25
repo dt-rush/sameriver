@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"encoding/json"
-	"io/ioutil"
+	"io"
 )
 
 func assureFloatMap(m any) map[string]float64 {
@@ -271,7 +271,7 @@ func (i *ItemSystem) CreateStack(n int, spec map[string]any) *Item {
 	stack.reevaluateDisplayStr()
 	if item.Tags.Has("degrades") {
 		stack.Degradations = make([]float64, n)
-		for i, _ := range stack.Degradations {
+		for i := range stack.Degradations {
 			stack.Degradations[i] = 0
 		}
 	}
@@ -328,7 +328,7 @@ func (i *ItemSystem) LoadArchetypesFile(filename string) {
 	if err != nil {
 		panic(fmt.Sprintf("Trying to open %s - doesn't exist", filename))
 	}
-	contents, err := ioutil.ReadAll(jsonFile)
+	contents, err := io.ReadAll(jsonFile)
 	if err != nil {
 		panic(err)
 	}

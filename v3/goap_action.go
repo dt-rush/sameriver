@@ -97,19 +97,3 @@ func (a *GOAPAction) Parametrized(n int) *GOAPAction {
 	result.pres = result.pres.Parametrize(n)
 	return result
 }
-
-func (a *GOAPAction) affectsAnUnfulfilledVar(goal *GOAPGoal, preGoals map[string]*GOAPGoal) bool {
-	for varName, _ := range goal.vars {
-		if _, ok := a.effs[varName]; ok {
-			return true
-		}
-	}
-	for _, pre := range preGoals {
-		for varName, _ := range pre.vars {
-			if _, ok := a.effs[varName]; ok {
-				return true
-			}
-		}
-	}
-	return false
-}

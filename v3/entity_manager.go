@@ -188,7 +188,7 @@ func (m *EntityManager) GetCurrentEntitiesSet() map[*Entity]bool {
 // while iterating over it)
 func (m *EntityManager) GetCurrentEntitiesSetCopy() map[*Entity]bool {
 	setCopy := make(map[*Entity]bool, len(m.entityIDAllocator.currentEntities))
-	for e, _ := range m.entityIDAllocator.currentEntities {
+	for e := range m.entityIDAllocator.currentEntities {
 		setCopy[e] = true
 	}
 	return setCopy
@@ -203,7 +203,7 @@ func (m *EntityManager) String() string {
 func (m *EntityManager) DumpEntities() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("[\n")
-	for e, _ := range m.entityIDAllocator.currentEntities {
+	for e := range m.entityIDAllocator.currentEntities {
 		if e == nil {
 			continue
 		}
