@@ -31,8 +31,8 @@ func RunGame(spec GameInitSpec) {
 		g := &Game{
 			WindowSpec: spec.WindowSpec,
 			Screen: GameScreen{
-				W: float64(spec.WindowSpec.Width),
-				H: float64(spec.WindowSpec.Height),
+				W: spec.WindowSpec.Width,
+				H: spec.WindowSpec.Height,
 			},
 			loadingScene: spec.LoadingScene,
 			currentScene: spec.FirstScene,

@@ -11,6 +11,8 @@ func NewPhysicsSystem() *PhysicsSystem {
 }
 
 func (p *PhysicsSystem) GetComponentDeps() []string {
+	// TODO: do something with mass
+	// TODO: impart velocity to collided objects?
 	return []string{"Vec2D,Position", "Vec2D,Velocity", "Vec2D,Box", "Float64,Mass"}
 }
 
