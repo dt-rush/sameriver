@@ -352,11 +352,13 @@ func (ct *ComponentTable) BitArrayToString(b bitarray.BitArray) string {
 }
 
 func (ct *ComponentTable) guardInvalidComponentGet(e *Entity, name string) {
-	if _, ok := ct.kinds[name]; !ok {
+	var ix int
+	var ok bool
+	if ix, ok = ct.ixs[name]; !ok {
 		msg := fmt.Sprintf("Tried to access %s component; but there is no component with that name", name)
 		panic(msg)
 	}
-	bit, _ := e.ComponentBitArray.GetBit(uint64(e.World.em.components.ixs[name]))
+	bit, _ := e.ComponentBitArray.GetBit(uint64(ix))
 	if !bit {
 		msg := fmt.Sprintf("Tried to get %s component of entity without: %s", name, e)
 		panic(msg)

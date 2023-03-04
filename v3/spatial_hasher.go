@@ -178,14 +178,10 @@ func (h *SpatialHasher) clearTempTables() {
 */
 
 func (h *SpatialHasher) CellRangeOfRect(pos, box Vec2D) (cellX0, cellX1, cellY0, cellY1 int) {
-	clamp := func(x, min, max int) int {
-		return int(math.Min(float64(max), math.Max(float64(x), float64(min))))
-	}
-	// TODO: don't clamp here, test for out of bounds and `continue` in receivers
-	cellX0 = clamp(int(pos.X/h.CellSizeX), 0, h.GridX)
-	cellX1 = clamp(int((pos.X+box.X)/h.CellSizeX), 0, h.GridX)
-	cellY0 = clamp(int(pos.Y/h.CellSizeY), 0, h.GridY)
-	cellY1 = clamp(int((pos.Y+box.Y)/h.CellSizeY), 0, h.GridY)
+	cellX0 = int(pos.X / h.CellSizeX)
+	cellX1 = int((pos.X + box.X) / h.CellSizeX)
+	cellY0 = int(pos.Y / h.CellSizeY)
+	cellY1 = int((pos.Y + box.Y) / h.CellSizeY)
 	return cellX0, cellX1, cellY0, cellY1
 }
 

@@ -34,6 +34,8 @@ package sameriver
 //	   4
 
 import (
+	"runtime"
+	"sync"
 	"time"
 )
 
@@ -159,6 +161,34 @@ func (s *CollisionSystem) Update(dt_ms float64) {
 			s.checkEntities(entities)
 		}
 	}
+}
+
+// performs worse than regular single-threaded Update
+func (s *CollisionSystem) UpdateParallel(dt_ms float64) {
+	numWorkers := runtime.NumCPU()
+	stripeSize := s.sh.Hasher.GridY / numWorkers
+	var wg sync.WaitGroup
+	wg.Add(numWorkers)
+
+	for i := 0; i < numWorkers; i++ {
+		startIndex := i * stripeSize
+		endIndex := (i + 1) * stripeSize
+		if i == numWorkers-1 {
+			endIndex = s.sh.Hasher.GridY
+		}
+
+		go func(start, end int) {
+			defer wg.Done()
+			for x := 0; x < s.sh.Hasher.GridX; x++ {
+				for y := start; y < end; y++ {
+					entities := s.sh.Hasher.Entities(x, y)
+					s.checkEntities(entities)
+				}
+			}
+		}(startIndex, endIndex)
+	}
+
+	wg.Wait()
 }
 
 func (s *CollisionSystem) Expand(n int) {
