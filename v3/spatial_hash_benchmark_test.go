@@ -3,11 +3,18 @@ package sameriver
 import (
 	"math"
 	"math/rand"
+	"os"
+	"strconv"
 	"testing"
 )
 
+var GRIDX_VAL, GRIDX_OK = os.LookupEnv("GRIDX")
+var GRIDY_VAL, GRIDY_OK = os.LookupEnv("GRIDY")
+
 // see spatial_hasher.go comments above the scanandinsert functions
 // for benchmark data
+
+// also see benchmark_spatial_hash_compare.sh for influence of grid size
 
 /*
 func BenchmarkSpatialHashUpdateParallelD(b *testing.B) {
@@ -46,11 +53,19 @@ func BenchmarkSpatialHashUpdateParallelCSuper(b *testing.B) {
 */
 
 func BenchmarkSpatialHashUpdateParallelC(b *testing.B) {
+	var GRIDX, _ = strconv.Atoi(GRIDX_VAL)
+	var GRIDY, _ = strconv.Atoi(GRIDY_VAL)
+	if !GRIDX_OK {
+		GRIDX = 10
+	}
+	if !GRIDY_OK {
+		GRIDY = 10
+	}
 	w := NewWorld(map[string]any{
 		"width":               100,
 		"height":              100,
-		"distanceHasherGridX": 12,
-		"distanceHasherGridY": 12,
+		"distanceHasherGridX": GRIDX,
+		"distanceHasherGridY": GRIDY,
 	})
 	for i := 0; i < 1024; i++ {
 		testingSpawnSpatial(w,
@@ -98,11 +113,19 @@ func BenchmarkSpatialHashUpdateParallelA(b *testing.B) {
 */
 
 func BenchmarkSpatialHashUpdateSingleThread(b *testing.B) {
+	var GRIDX, _ = strconv.Atoi(GRIDX_VAL)
+	var GRIDY, _ = strconv.Atoi(GRIDY_VAL)
+	if !GRIDX_OK {
+		GRIDX = 10
+	}
+	if !GRIDY_OK {
+		GRIDY = 10
+	}
 	w := NewWorld(map[string]any{
 		"width":               100,
 		"height":              100,
-		"distanceHasherGridX": 10,
-		"distanceHasherGridY": 10,
+		"distanceHasherGridX": GRIDX,
+		"distanceHasherGridY": GRIDY,
 	})
 	for i := 0; i < 1024; i++ {
 		testingSpawnSpatial(w,

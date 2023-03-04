@@ -99,8 +99,11 @@ func (h *SpatialHasher) Entities(x, y int) []*Entity {
 
 func (h *SpatialHasher) Update() {
 	// if we only have 1 CPU, use single-threaded (don't needlessly use mutexes)
-	// and, single-threaded performs better when gridX*gridY > 100
-	if runtime.NumCPU() == 1 || (h.GridX*h.GridY > 100) {
+	// otherwise, single vs parallel isn't exactly clear which is better
+	// (see benchmark_spatial_hash_compare.sh); it depends on grid size and current CPU
+	// load. Let's assume all things being equal that parallel will be better if we
+	// have the cores for it
+	if runtime.NumCPU() == 1 {
 		h.singleThreadUpdate()
 	} else {
 		h.parallelUpdateC()
@@ -269,6 +272,8 @@ func (h *SpatialHasher) scanAndInsertEntitiesparallelCSuper() {
 */
 
 // 72912 ns/op (at GridX,GridY = 10,10)
+// ^^^ this performance was only seen under certain conditions. More often
+// we get something much closer to single-threaded performance
 func (h *SpatialHasher) scanAndInsertEntitiesparallelC() {
 	numWorkers := runtime.NumCPU()
 	// Launch workers to scan and insert into their own tables
