@@ -2,8 +2,91 @@ package sameriver
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 )
+
+/*
+func BenchmarkSpatialHashUpdateParallelD(b *testing.B) {
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
+	for i := 0; i < 1024; i++ {
+		testingSpawnSpatial(w,
+			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
+			Vec2D{5, 5})
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		w.SpatialHasher.ParallelUpdateD()
+	}
+}
+
+func BenchmarkSpatialHashUpdateParallelC(b *testing.B) {
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
+	for i := 0; i < 1024; i++ {
+		testingSpawnSpatial(w,
+			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
+			Vec2D{5, 5})
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		w.SpatialHasher.ParallelUpdateB()
+	}
+}
+
+func BenchmarkSpatialHashUpdateParallelB(b *testing.B) {
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
+	for i := 0; i < 1024; i++ {
+		testingSpawnSpatial(w,
+			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
+			Vec2D{5, 5})
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		w.SpatialHasher.ParallelUpdateB()
+	}
+}
+
+func BenchmarkSpatialHashUpdateParallelA(b *testing.B) {
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
+	for i := 0; i < 1024; i++ {
+		testingSpawnSpatial(w,
+			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
+			Vec2D{5, 5})
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		w.SpatialHasher.ParallelUpdateA()
+	}
+}
+*/
+
+func BenchmarkSpatialHashUpdateSingleThread(b *testing.B) {
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
+	for i := 0; i < 1024; i++ {
+		testingSpawnSpatial(w,
+			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
+			Vec2D{5, 5})
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		w.SpatialHasher.SingleThreadUpdate()
+	}
+}
 
 func BenchmarkSpatialHashEntitiesWithinDistance(b *testing.B) {
 	w := NewWorld(map[string]any{
@@ -25,8 +108,8 @@ func BenchmarkSpatialHashEntitiesWithinDistance(b *testing.B) {
 				Vec2D{5, 5})
 		}
 	}
+	w.SpatialHasher.Update()
 	for i := 0; i < b.N; i++ {
-		w.Update(FRAME_DURATION_INT / 2)
 		w.EntitiesWithinDistance(
 			*e.GetVec2D("Position"),
 			*e.GetVec2D("Box"),

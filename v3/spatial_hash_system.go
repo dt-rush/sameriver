@@ -24,8 +24,7 @@ func (s *SpatialHashSystem) LinkWorld(w *World) {
 
 func (s *SpatialHashSystem) Update(dt_ms float64) {
 	// clear any old data and run the computation
-	s.Hasher.ClearTable()
-	s.Hasher.ScanAndInsertEntities()
+	s.Hasher.Update()
 }
 
 func (s *SpatialHashSystem) Expand(n int) {

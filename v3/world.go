@@ -125,7 +125,7 @@ func NewWorld(spec map[string]any) *World {
 			name:    "entity-manager",
 			worldID: w.IdGen.Next(),
 			f: func(dt_ms float64) {
-				w.em.Update(FRAME_DURATION_INT / 2)
+				w.em.Update(dt_ms)
 			},
 			active:      true,
 			runSchedule: nil,
@@ -147,8 +147,7 @@ func NewWorld(spec map[string]any) *World {
 			name:    "distance-query-spatial-hasher",
 			worldID: w.IdGen.Next(),
 			f: func(dt_ms float64) {
-				w.SpatialHasher.ClearTable()
-				w.SpatialHasher.ScanAndInsertEntities()
+				w.SpatialHasher.Update()
 			},
 			active:      true,
 			runSchedule: nil,
@@ -159,7 +158,6 @@ func NewWorld(spec map[string]any) *World {
 
 func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	t0 := time.Now()
-	w.em.Update(FRAME_DURATION_INT / 2)
 	overunder_ms, starved := w.runtimeSharer.Share(allowance_ms)
 	if starved > 0 {
 		logWarning("Starvation of RuntimeLimiters occuring in World.Update(); Logic Units will be getting run less frequently.")
