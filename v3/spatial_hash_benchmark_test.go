@@ -6,6 +6,9 @@ import (
 	"testing"
 )
 
+// see spatial_hasher.go comments above the scanandinsert functions
+// for benchmark data
+
 /*
 func BenchmarkSpatialHashUpdateParallelD(b *testing.B) {
 	w := NewWorld(map[string]any{
@@ -24,6 +27,7 @@ func BenchmarkSpatialHashUpdateParallelD(b *testing.B) {
 }
 */
 
+/*
 func BenchmarkSpatialHashUpdateParallelCSuper(b *testing.B) {
 	w := NewWorld(map[string]any{
 		"width":  100,
@@ -39,11 +43,14 @@ func BenchmarkSpatialHashUpdateParallelCSuper(b *testing.B) {
 		w.SpatialHasher.parallelUpdateCSuper()
 	}
 }
+*/
 
 func BenchmarkSpatialHashUpdateParallelC(b *testing.B) {
 	w := NewWorld(map[string]any{
-		"width":  100,
-		"height": 100,
+		"width":               100,
+		"height":              100,
+		"distanceHasherGridX": 12,
+		"distanceHasherGridY": 12,
 	})
 	for i := 0; i < 1024; i++ {
 		testingSpawnSpatial(w,
@@ -92,8 +99,10 @@ func BenchmarkSpatialHashUpdateParallelA(b *testing.B) {
 
 func BenchmarkSpatialHashUpdateSingleThread(b *testing.B) {
 	w := NewWorld(map[string]any{
-		"width":  100,
-		"height": 100,
+		"width":               100,
+		"height":              100,
+		"distanceHasherGridX": 10,
+		"distanceHasherGridY": 10,
 	})
 	for i := 0; i < 1024; i++ {
 		testingSpawnSpatial(w,

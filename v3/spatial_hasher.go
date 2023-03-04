@@ -98,7 +98,9 @@ func (h *SpatialHasher) Entities(x, y int) []*Entity {
 }
 
 func (h *SpatialHasher) Update() {
-	if runtime.NumCPU() == 1 {
+	// if we only have 1 CPU, use single-threaded (don't needlessly use mutexes)
+	// and, single-threaded performs better when gridX*gridY > 100
+	if runtime.NumCPU() == 1 || (h.GridX*h.GridY > 100) {
 		h.singleThreadUpdate()
 	} else {
 		h.parallelUpdateC()
@@ -115,10 +117,12 @@ func (h *SpatialHasher) parallelUpdateD() {
 }
 */
 
+/*
 func (h *SpatialHasher) parallelUpdateCSuper() {
 	h.clearTable()
 	h.scanAndInsertEntitiesparallelCSuper()
 }
+*/
 
 func (h *SpatialHasher) parallelUpdateC() {
 	h.clearTable()
@@ -184,7 +188,7 @@ func (h *SpatialHasher) CellRangeOfRect(pos, box Vec2D) (cellX0, cellX1, cellY0,
 
 /*
 
-// 388985 ns/op
+// 388985 ns/op (at GridX,GridY = 10,10)
 // mainly due to malloc and sync.Map operations
 func (h *SpatialHasher) scanAndInsertEntitiesparallelD() {
 	numWorkers := runtime.NumCPU()
@@ -224,7 +228,8 @@ func (h *SpatialHasher) scanAndInsertEntitiesparallelD() {
 }
 */
 
-// 86611 ns/op
+/*
+// 86611 ns/op (at GridX,GridY = 10,10)
 // just slightly slower than using numWorkers = NumCPU (as in parallelC)
 func (h *SpatialHasher) scanAndInsertEntitiesparallelCSuper() {
 	// launch extra workers since we can expect to have some waiting on table mutexes
@@ -261,8 +266,9 @@ func (h *SpatialHasher) scanAndInsertEntitiesparallelCSuper() {
 	// Wait for all workers to finish
 	wg.Wait()
 }
+*/
 
-// 72912 ns/op
+// 72912 ns/op (at GridX,GridY = 10,10)
 func (h *SpatialHasher) scanAndInsertEntitiesparallelC() {
 	numWorkers := runtime.NumCPU()
 	// Launch workers to scan and insert into their own tables
@@ -300,7 +306,7 @@ func (h *SpatialHasher) scanAndInsertEntitiesparallelC() {
 }
 
 /*
-// 121352 ns/op
+// 121352 ns/op (at GridX,GridY = 10,10)
 // (mainly due to copying the slices in from tempTables)
 func (h *SpatialHasher) scanAndInsertEntitiesparallelB() {
 	numWorkers := runtime.NumCPU()
@@ -345,7 +351,7 @@ func (h *SpatialHasher) scanAndInsertEntitiesparallelB() {
 	}
 }
 
-// 301369 ns/op
+// 301369 ns/op (at GridX,GridY = 10,10)
 // (mainly due to runtime.lock2 and runtime.chansend)
 func (h *SpatialHasher) scanAndInsertEntitiesparallelA() {
 	// message type for sending/receiving workers
@@ -418,7 +424,7 @@ func (h *SpatialHasher) scanAndInsertEntitiesparallelA() {
 }
 */
 
-// 104519 ns/op
+// 104519 ns/op (at GridX,GridY = 10,10)
 // somewhat suprisingly, better than some parallel versions
 func (h *SpatialHasher) scanAndInsertEntitiesSingleThread() {
 	for _, e := range h.SpatialEntities.entities {
