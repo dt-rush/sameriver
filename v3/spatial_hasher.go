@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"runtime"
+	"sync"
 	"unsafe"
 )
 
@@ -21,13 +23,13 @@ type SpatialHasher struct {
 	Table [][][]*Entity
 
 	/*
-		// used in scanAndInsertEntitiesParallelD
+		// used in scanAndInsertEntitiesparallelD
 		syncMapTable sync.Map
-		// used in scanAndInsertEntitiesParallelC
-		tableMutexes [][]sync.Mutex
-		// used in scanAndInsertEntitiesParallelB
+		// used in scanAndInsertEntitiesparallelB
 		tempTables [][][][]*Entity
 	*/
+	// used in scanAndInsertEntitiesparallelC
+	tableMutexes [][]sync.Mutex
 
 	// capacity keeps track of the world's max entities
 	// so we can keep the right capacity (max entities / 4) in each grid cell
@@ -44,9 +46,9 @@ func NewSpatialHasher(gridX, gridY int, w *World) *SpatialHasher {
 	}
 	h.allocTable()
 	/*
-		h.allocTableMutexes()
 		h.allocTempTables()
 	*/
+	h.allocTableMutexes()
 	// get spatial entities from world
 	h.SpatialEntities = w.em.GetSortedUpdatedEntityList(
 		EntityFilterFromComponentBitArray("spatial",
@@ -82,6 +84,7 @@ func (h *SpatialHasher) allocTempTables() {
 		}
 	}
 }
+*/
 
 func (h *SpatialHasher) allocTableMutexes() {
 	h.tableMutexes = make([][]sync.Mutex, h.GridY)
@@ -89,43 +92,53 @@ func (h *SpatialHasher) allocTableMutexes() {
 		h.tableMutexes[x] = make([]sync.Mutex, h.GridX)
 	}
 }
-*/
 
 func (h *SpatialHasher) Entities(x, y int) []*Entity {
 	return h.Table[x][y]
 }
 
 func (h *SpatialHasher) Update() {
-	h.SingleThreadUpdate()
+	if runtime.NumCPU() == 1 {
+		h.singleThreadUpdate()
+	} else {
+		h.parallelUpdateC()
+	}
 }
 
 /*
-func (h *SpatialHasher) ParallelUpdateD() {
+func (h *SpatialHasher) parallelUpdateD() {
 	h.syncMapTable.Range(func(key, value interface{}) bool {
 		h.syncMapTable.Delete(key)
 		return true
 	})
-	h.scanAndInsertEntitiesParallelD()
-}
-
-func (h *SpatialHasher) ParallelUpdateC() {
-	h.clearTable()
-	h.scanAndInsertEntitiesParallelC()
-}
-
-func (h *SpatialHasher) ParallelUpdateB() {
-	h.clearTable()
-	h.clearTempTables()
-	h.scanAndInsertEntitiesParallelB()
-}
-
-func (h *SpatialHasher) ParallelUpdateA() {
-	h.clearTable()
-	h.scanAndInsertEntitiesParallelA()
+	h.scanAndInsertEntitiesparallelD()
 }
 */
 
-func (h *SpatialHasher) SingleThreadUpdate() {
+func (h *SpatialHasher) parallelUpdateCSuper() {
+	h.clearTable()
+	h.scanAndInsertEntitiesparallelCSuper()
+}
+
+func (h *SpatialHasher) parallelUpdateC() {
+	h.clearTable()
+	h.scanAndInsertEntitiesparallelC()
+}
+
+/*
+func (h *SpatialHasher) parallelUpdateB() {
+	h.clearTable()
+	h.clearTempTables()
+	h.scanAndInsertEntitiesparallelB()
+}
+
+func (h *SpatialHasher) parallelUpdateA() {
+	h.clearTable()
+	h.scanAndInsertEntitiesparallelA()
+}
+*/
+
+func (h *SpatialHasher) singleThreadUpdate() {
 	h.clearTable()
 	h.scanAndInsertEntitiesSingleThread()
 }
@@ -173,7 +186,7 @@ func (h *SpatialHasher) CellRangeOfRect(pos, box Vec2D) (cellX0, cellX1, cellY0,
 
 // 388985 ns/op
 // mainly due to malloc and sync.Map operations
-func (h *SpatialHasher) scanAndInsertEntitiesParallelD() {
+func (h *SpatialHasher) scanAndInsertEntitiesparallelD() {
 	numWorkers := runtime.NumCPU()
 
 	// Launch workers to scan and insert into their own tables
@@ -209,13 +222,48 @@ func (h *SpatialHasher) scanAndInsertEntitiesParallelD() {
 	// Wait for all workers to finish
 	wg.Wait()
 }
+*/
 
-// 115864 ns/op
-// (mainly due to waiting on tableMutexes)
-// NOTE: this might actually reach a point where it beats single-threaded
-// if we had more CPUs. But I'm running 8 for these results, and that's
-// already a lot.
-func (h *SpatialHasher) scanAndInsertEntitiesParallelC() {
+// 86611 ns/op
+// just slightly slower than using numWorkers = NumCPU (as in parallelC)
+func (h *SpatialHasher) scanAndInsertEntitiesparallelCSuper() {
+	// launch extra workers since we can expect to have some waiting on table mutexes
+	numWorkers := runtime.NumCPU() * 16
+	// Launch workers to scan and insert into their own tables
+	var wg sync.WaitGroup
+	wg.Add(numWorkers)
+	for i := 0; i < numWorkers; i++ {
+		go func(workerID int) {
+			defer wg.Done()
+			startIdx := int(math.Floor(float64(len(h.SpatialEntities.entities)) * float64(workerID) / float64(numWorkers)))
+			endIdx := int(math.Floor(float64(len(h.SpatialEntities.entities)) * float64(workerID+1) / float64(numWorkers)))
+
+			for j := startIdx; j < endIdx; j++ {
+				e := h.SpatialEntities.entities[j]
+				pos := e.GetVec2D("Position")
+				box := e.GetVec2D("Box")
+				cellX0, cellX1, cellY0, cellY1 := h.CellRangeOfRect(pos.ShiftedCenterToBottomLeft(*box), *box)
+
+				for y := cellY0; y <= cellY1; y++ {
+					for x := cellX0; x <= cellX1; x++ {
+						if x < 0 || x > h.GridX-1 ||
+							y < 0 || y > h.GridY-1 {
+							continue
+						}
+						h.tableMutexes[x][y].Lock()
+						h.Table[x][y] = append(h.Table[x][y], e)
+						h.tableMutexes[x][y].Unlock()
+					}
+				}
+			}
+		}(i)
+	}
+	// Wait for all workers to finish
+	wg.Wait()
+}
+
+// 72912 ns/op
+func (h *SpatialHasher) scanAndInsertEntitiesparallelC() {
 	numWorkers := runtime.NumCPU()
 	// Launch workers to scan and insert into their own tables
 	var wg sync.WaitGroup
@@ -251,9 +299,10 @@ func (h *SpatialHasher) scanAndInsertEntitiesParallelC() {
 	wg.Wait()
 }
 
+/*
 // 121352 ns/op
 // (mainly due to copying the slices in from tempTables)
-func (h *SpatialHasher) scanAndInsertEntitiesParallelB() {
+func (h *SpatialHasher) scanAndInsertEntitiesparallelB() {
 	numWorkers := runtime.NumCPU()
 	// Launch workers to scan and insert into their own tables
 	var wg sync.WaitGroup
@@ -298,7 +347,7 @@ func (h *SpatialHasher) scanAndInsertEntitiesParallelB() {
 
 // 301369 ns/op
 // (mainly due to runtime.lock2 and runtime.chansend)
-func (h *SpatialHasher) scanAndInsertEntitiesParallelA() {
+func (h *SpatialHasher) scanAndInsertEntitiesparallelA() {
 	// message type for sending/receiving workers
 	type EntityInCell struct {
 		e    *Entity
@@ -370,9 +419,7 @@ func (h *SpatialHasher) scanAndInsertEntitiesParallelA() {
 */
 
 // 104519 ns/op
-// somewhat suprisingly, better than parallel A-D
-// ScanAndInsertEntities finds out how many cells the box centered at pos spans
-// in x and y used to iterate the entities and send them to the right cells
+// somewhat suprisingly, better than some parallel versions
 func (h *SpatialHasher) scanAndInsertEntitiesSingleThread() {
 	for _, e := range h.SpatialEntities.entities {
 		pos := e.GetVec2D("Position")

@@ -19,7 +19,24 @@ func BenchmarkSpatialHashUpdateParallelD(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		w.SpatialHasher.ParallelUpdateD()
+		w.SpatialHasher.parallelUpdateD()
+	}
+}
+*/
+
+func BenchmarkSpatialHashUpdateParallelCSuper(b *testing.B) {
+	w := NewWorld(map[string]any{
+		"width":  100,
+		"height": 100,
+	})
+	for i := 0; i < 1024; i++ {
+		testingSpawnSpatial(w,
+			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
+			Vec2D{5, 5})
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		w.SpatialHasher.parallelUpdateCSuper()
 	}
 }
 
@@ -35,10 +52,11 @@ func BenchmarkSpatialHashUpdateParallelC(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		w.SpatialHasher.ParallelUpdateB()
+		w.SpatialHasher.parallelUpdateC()
 	}
 }
 
+/*
 func BenchmarkSpatialHashUpdateParallelB(b *testing.B) {
 	w := NewWorld(map[string]any{
 		"width":  100,
@@ -51,7 +69,7 @@ func BenchmarkSpatialHashUpdateParallelB(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		w.SpatialHasher.ParallelUpdateB()
+		w.SpatialHasher.parallelUpdateB()
 	}
 }
 
@@ -67,7 +85,7 @@ func BenchmarkSpatialHashUpdateParallelA(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		w.SpatialHasher.ParallelUpdateA()
+		w.SpatialHasher.parallelUpdateA()
 	}
 }
 */
@@ -84,7 +102,7 @@ func BenchmarkSpatialHashUpdateSingleThread(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		w.SpatialHasher.SingleThreadUpdate()
+		w.SpatialHasher.singleThreadUpdate()
 	}
 }
 
