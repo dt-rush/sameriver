@@ -19,7 +19,8 @@ func NewLayeredRenderer() *LayeredRenderer {
 	}
 }
 
-// sorted insert to layers array according to layer of provided RenderLayer
+// sorted insert to layers array according to layer of
+// provided RenderLayer
 func (lr *LayeredRenderer) AddLayer(l *RenderLayer) {
 	// sorted insert into array
 	index := sort.Search(len(lr.layers),

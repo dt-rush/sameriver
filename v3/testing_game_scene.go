@@ -1,8 +1,9 @@
 package sameriver
 
 import (
-	"github.com/veandco/go-sdl2/sdl"
 	"time"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 // mockup game scene

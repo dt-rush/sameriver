@@ -6,11 +6,11 @@ import (
 	"github.com/veandco/go-sdl2/ttf"
 )
 
-func MainMediaThread(f func()) {
+func SDLMainMediaThread(f func()) {
 	sdl.Main(f)
 }
 
-func InitMediaLayer() {
+func SDLInit() {
 	Logger.Println("Starting to init SDL")
 	defer func() {
 		Logger.Println("Finished init of SDL")
@@ -37,7 +37,7 @@ func InitMediaLayer() {
 	sdl.ShowCursor(0)
 }
 
-func CreateWindowAndRenderer(spec WindowSpec) (*sdl.Window, *sdl.Renderer) {
+func SDLCreateWindowAndRenderer(spec WindowSpec) (*sdl.Window, *sdl.Renderer) {
 	// create the window
 	flags := uint32(sdl.WINDOW_SHOWN)
 	if spec.Fullscreen {

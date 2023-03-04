@@ -26,8 +26,8 @@ type GameInitSpec struct {
 }
 
 func RunGame(spec GameInitSpec) {
-	MainMediaThread(func() {
-		InitMediaLayer()
+	SDLMainMediaThread(func() {
+		SDLInit()
 		g := &Game{
 			WindowSpec: spec.WindowSpec,
 			Screen: GameScreen{
@@ -38,7 +38,7 @@ func RunGame(spec GameInitSpec) {
 			currentScene: spec.FirstScene,
 			endScene:     make(chan bool),
 		}
-		g.Window, g.Renderer = CreateWindowAndRenderer(spec.WindowSpec)
+		g.Window, g.Renderer = SDLCreateWindowAndRenderer(spec.WindowSpec)
 		g.run()
 	})
 }

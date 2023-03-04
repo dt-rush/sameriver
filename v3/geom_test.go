@@ -4,6 +4,13 @@ import (
 	"testing"
 )
 
+type RectPair struct {
+	pos0 Vec2D
+	box0 Vec2D
+	pos1 Vec2D
+	box1 Vec2D
+}
+
 func TestRectWithinRect(t *testing.T) {
 	within := []RectPair{
 		RectPair{

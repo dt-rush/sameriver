@@ -4,13 +4,6 @@ import (
 	"math"
 )
 
-type RectPair struct {
-	pos0 Vec2D
-	box0 Vec2D
-	pos1 Vec2D
-	box1 Vec2D
-}
-
 // takes rectanges defined with pos in the center of the rect
 func RectWithinRect(pos0, box0, pos1, box1 Vec2D) bool {
 	pos0.ShiftCenterToBottomLeft(box0)

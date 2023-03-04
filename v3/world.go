@@ -162,7 +162,7 @@ func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	w.em.Update(FRAME_DURATION_INT / 2)
 	overunder_ms, starved := w.runtimeSharer.Share(allowance_ms)
 	if starved > 0 {
-		Logger.Println("Starvation of RuntimeLimiters occuring in World.Update(); Logic Units will be getting run less frequently.")
+		logWarning("Starvation of RuntimeLimiters occuring in World.Update(); Logic Units will be getting run less frequently.")
 	}
 	// maintain total runtime moving average
 	total := float64(time.Since(t0).Nanoseconds()) / 1.0e6

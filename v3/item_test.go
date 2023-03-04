@@ -133,7 +133,7 @@ func TestItemSystemSpawnItemEntitySprite(t *testing.T) {
 		Fullscreen: false}
 	// in a real game, the scene Init() gets a Game object and creates a new
 	// sprite system by passing game.Renderer
-	_, renderer := CreateWindowAndRenderer(windowSpec)
+	_, renderer := SDLCreateWindowAndRenderer(windowSpec)
 	sprites := NewSpriteSystem(renderer)
 
 	w.RegisterSystems(i, inventories, sprites)
