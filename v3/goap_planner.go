@@ -35,8 +35,14 @@ func (p *GOAPPlanner) traverseFulfillers(
 	}
 
 	// determine if action is good to insert anywhere
-	// consider, surface: [[q] [s t] [u]]
-	// iterate this with i
+	// consider
+	// path: [A, C]
+	// A.pre = [q], A fulfills s
+	// C.pre = [s t], C fulfills u
+	// remainings surface: [[q] [s t] [u]]
+	// and the corresponding regionOffsets [[0] [0 0] [0]]
+	// iterate surface with index i
+	// and iterate region of surface (ex [s t]) with index regionIx
 	for i, tgs := range here.path.remainings.surface {
 		if here.path.remainings.nUnfulfilledAtIx(i) == 0 {
 			continue
@@ -82,6 +88,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 						} else {
 							toInsert = action
 						}
+						// do the insertion
 						newPath := here.path.inserted(toInsert, insertionIx)
 						pathStr := newPath.String()
 						if _, ok := pathsSeen[pathStr]; ok {
@@ -90,7 +97,9 @@ func (p *GOAPPlanner) traverseFulfillers(
 						} else {
 							pathsSeen[pathStr] = true
 						}
+						// compute remainings
 						p.eval.computeRemainingsOfPath(newPath, start, goal)
+						newPath.remainings.regionOffsets = here.path.remainings.newRegionOffsetsAfterInsert(i, regionIx)
 						if DEBUG_GOAP {
 							msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
 								GOAPPathToString(newPath), newPath.cost)
@@ -98,6 +107,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 							logGOAPDebug(color.InWhiteOverCyan(msg))
 							logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
 						}
+						// push this valid candidate path to Queue
 						pq.Push(&GOAPPQueueItem{path: newPath})
 					} else {
 						if DEBUG_GOAP {
@@ -134,6 +144,7 @@ func (p *GOAPPlanner) Plan(
 
 	rootPath := NewGOAPPath(nil)
 	p.eval.computeRemainingsOfPath(rootPath, start, goal)
+	rootPath.remainings.regionOffsets[0] = make([]int, len(goal.temporalGoals))
 	backtrackRoot := &GOAPPQueueItem{
 		path:  rootPath,
 		index: -1, // going to be set by Push()
