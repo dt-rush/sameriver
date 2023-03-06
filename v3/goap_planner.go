@@ -24,7 +24,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 	pq *GOAPPriorityQueue,
 	start *GOAPWorldState,
 	here *GOAPPQueueItem,
-	goal *GOAPGoal,
+	goal *GOAPTemporalGoal,
 	pathsSeen map[string]bool) {
 
 	if DEBUG_GOAP {
@@ -35,59 +35,74 @@ func (p *GOAPPlanner) traverseFulfillers(
 	}
 
 	// determine if action is good to insert anywhere
-	// consider, surface: [Apre, Bpre, Main]
-	// consider inserting at 0 means fulfilling Apre
-	for i, g := range here.path.remainings.surface {
-		if g.nUnfulfilled == 0 {
+	// consider, surface: [[q] [s t] [u]]
+	// iterate this with i
+	for i, tgs := range here.path.remainings.surface {
+		if here.path.remainings.nUnfulfilledAtIx(i) == 0 {
 			continue
 		}
-		for varName := range g.goalLeft {
-			for action := range p.eval.varActions[varName] {
-				if DEBUG_GOAP {
-					logGOAPDebug("[ ] Considering action %s", action.DisplayName())
-				}
-				if DEBUG_GOAP {
-					var toSatisfyMsg string
-					if i == len(here.path.remainings.surface)-1 {
-						toSatisfyMsg = "main goal"
-					} else {
-						toSatisfyMsg = fmt.Sprintf("pre of %s", here.path.path[i].Name)
-					}
-					logGOAPDebug(color.InGreenOverGray(
-						fmt.Sprintf("checking if %s can be inserted at %d to satisfy %s",
-							action.DisplayName(), i, toSatisfyMsg)))
-				}
-				scale, helpful := p.eval.actionHelpsToInsert(start, here.path, i, action)
-				if helpful {
+		// for each region in this temporal grouping
+		for regionIx, tg := range tgs {
+			// for each var of its goals left
+			for varName := range tg.goalLeft {
+				// for the actions that affect this var
+				for action := range p.eval.varActions[varName] {
 					if DEBUG_GOAP {
-						logGOAPDebug("[X] %s helpful!", action.DisplayName())
+						logGOAPDebug("[ ] Considering action %s", action.DisplayName())
 					}
-					var toInsert *GOAPAction
-					if scale > 1 {
-						toInsert = action.Parametrized(scale)
-					} else {
-						toInsert = action
-					}
-					newPath := here.path.inserted(toInsert, i)
-					pathStr := newPath.String()
-					if _, ok := pathsSeen[pathStr]; ok {
-						logGOAPDebug(color.InRedOverGray("xxxxxxxxxxxxxxxxxxx path already seen xxxxxxxxxxxxxxxxxxxxx"))
-						continue
-					} else {
-						pathsSeen[pathStr] = true
-					}
-					p.eval.computeRemainingsOfPath(newPath, start, goal)
 					if DEBUG_GOAP {
-						msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
-							GOAPPathToString(newPath), newPath.cost)
-						logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
-						logGOAPDebug(color.InWhiteOverCyan(msg))
-						logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+						var toSatisfyMsg string
+						if i == len(here.path.remainings.surface)-1 {
+							toSatisfyMsg = "main goal"
+						} else {
+							toSatisfyMsg = fmt.Sprintf("pre of %s", here.path.path[i].Name)
+						}
+						logGOAPDebug(color.InGreenOverGray(
+							fmt.Sprintf("checking if %s can be inserted at %d to satisfy %s",
+								action.DisplayName(), i, toSatisfyMsg)))
 					}
-					pq.Push(&GOAPPQueueItem{path: newPath})
-				} else {
-					if DEBUG_GOAP {
-						logGOAPDebug("[_] %s not helpful", action.DisplayName())
+					// region offset data for surface temporal groupings has a
+					// parallel array, regionOffsets, for the calculation of
+					// insertionIx relative to the action whose precondition we're
+					// considering at the moment
+					insertionIx := i + here.path.remainings.regionOffsets[i][regionIx]
+					scale, helpful := p.eval.actionHelpsToInsert(
+						start,
+						here.path,
+						insertionIx,
+						tg,
+						action)
+					if helpful {
+						if DEBUG_GOAP {
+							logGOAPDebug("[X] %s helpful!", action.DisplayName())
+						}
+						var toInsert *GOAPAction
+						if scale > 1 {
+							toInsert = action.Parametrized(scale)
+						} else {
+							toInsert = action
+						}
+						newPath := here.path.inserted(toInsert, insertionIx)
+						pathStr := newPath.String()
+						if _, ok := pathsSeen[pathStr]; ok {
+							logGOAPDebug(color.InRedOverGray("xxxxxxxxxxxxxxxxxxx path already seen xxxxxxxxxxxxxxxxxxxxx"))
+							continue
+						} else {
+							pathsSeen[pathStr] = true
+						}
+						p.eval.computeRemainingsOfPath(newPath, start, goal)
+						if DEBUG_GOAP {
+							msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
+								GOAPPathToString(newPath), newPath.cost)
+							logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+							logGOAPDebug(color.InWhiteOverCyan(msg))
+							logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+						}
+						pq.Push(&GOAPPQueueItem{path: newPath})
+					} else {
+						if DEBUG_GOAP {
+							logGOAPDebug("[_] %s not helpful", action.DisplayName())
+						}
 					}
 				}
 			}
@@ -98,8 +113,11 @@ func (p *GOAPPlanner) traverseFulfillers(
 
 func (p *GOAPPlanner) Plan(
 	start *GOAPWorldState,
-	goal *GOAPGoal,
+	goalSpec any,
 	maxIter int) (solution *GOAPPath, ok bool) {
+
+	// convert goal spec into GOAPTemporalGoal
+	goal := NewGOAPTemporalGoal(goalSpec)
 
 	// populate start state with any modal vals at start
 	p.eval.PopulateModalStartState(start)

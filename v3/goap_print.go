@@ -56,12 +56,12 @@ func debugGOAPPrintGoalRemainingSurface(s *GOAPGoalRemainingSurface) {
 		logGOAPDebug(color.InYellowOverGreen("    none remaining    "))
 	}
 	logGOAPDebug(color.InBold(color.InRedOverGray("pres:")))
-	for i, goal := range s.surface {
+	for i, tgs := range s.surface {
 		if i == len(s.surface)-1 {
 			logGOAPDebug(color.InBold(color.InRedOverGray("main:")))
-			debugGOAPPrintGoalRemaining(s.surface[len(s.surface)-1])
-		} else {
-			debugGOAPPrintGoalRemaining(goal)
+		}
+		for _, tg := range tgs {
+			debugGOAPPrintGoalRemaining(tg)
 		}
 	}
 }

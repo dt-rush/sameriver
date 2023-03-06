@@ -187,13 +187,13 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	start := NewGOAPWorldState(nil)
 	p.eval.PopulateModalStartState(start)
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := map[string]int{
 		"drunk,>=": 3,
-	})
+	}
 
 	path := NewGOAPPath([]*GOAPAction{drink, drink})
 
-	p.eval.computeRemainingsOfPath(path, start, goal)
+	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
@@ -204,7 +204,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 
 	path = NewGOAPPath([]*GOAPAction{drink, drink, drink})
 
-	p.eval.computeRemainingsOfPath(path, start, goal)
+	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
@@ -217,7 +217,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	*booze = 3
 	p.eval.PopulateModalStartState(start)
 
-	p.eval.computeRemainingsOfPath(path, start, goal)
+	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
@@ -235,7 +235,9 @@ func TestGOAPActionPresFulfilled(t *testing.T) {
 			Logger.Println("world state:")
 			printWorldState(ws)
 			Logger.Println("action.pres:")
-			printGoal(a.pres)
+			for _, tg := range a.pres.temporalGoals {
+				printGoal(tg)
+			}
 			t.Fatal("Did not get expected value for action presfulfilled")
 		}
 	}

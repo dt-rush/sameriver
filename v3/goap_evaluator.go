@@ -54,9 +54,11 @@ func (e *GOAPEvaluator) AddActions(actions ...*GOAPAction) {
 			}
 		}
 		// link up modal checks for pres matching modal varnames
-		for varName := range action.pres.vars {
-			if modal, ok := e.modalVals[varName]; ok {
-				action.preModalChecks[varName] = modal.check
+		for _, tg := range action.pres.temporalGoals {
+			for varName := range tg.vars {
+				if modal, ok := e.modalVals[varName]; ok {
+					action.preModalChecks[varName] = modal.check
+				}
 			}
 		}
 	}
@@ -120,21 +122,31 @@ func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState)
 	return newWS
 }
 
-func (e *GOAPEvaluator) computeRemainingsOfPath(path *GOAPPath, start *GOAPWorldState, main *GOAPGoal) {
+func (e *GOAPEvaluator) computeRemainingsOfPath(path *GOAPPath, start *GOAPWorldState, main *GOAPTemporalGoal) {
 	ws := start.CopyOf()
-	path.remainings = NewGOAPGoalRemainingSurface()
-	// there is a goal in the surface for each action's pre + 1 for the end main goal
-	path.remainings.surface = make([]*GOAPGoalRemaining, len(path.path)+1)
+	// one []*GOAPGoalRemaining for each action pre + 1 for main
+	surfaceLen := len(path.path) + 1
+	surface := NewGOAPGoalRemainingSurface(surfaceLen)
 	// create the storage space for statesAlong
 	// consider, a path [A B C] will have 4 states: [start, postA, postB, postC (end)]
 	path.statesAlong = make([]*GOAPWorldState, len(path.path)+1)
 	path.statesAlong[0] = ws
 	for i, action := range path.path {
-		path.remainings.surface[i] = action.pres.remaining(ws)
-		ws = e.applyActionBasic(action, ws, true)
-		path.statesAlong[i+1] = ws
+		for _, tg := range action.pres.temporalGoals {
+			surface.surface[i] = append(
+				surface.surface[i],
+				tg.remaining(ws))
+			ws = e.applyActionBasic(action, ws, true)
+			path.statesAlong[i+1] = ws
+		}
 	}
-	path.remainings.surface[len(path.path)] = main.remaining(ws)
+	for _, tg := range main.temporalGoals {
+		surface.surface[surfaceLen-1] = append(
+			surface.surface[surfaceLen-1],
+			tg.remaining(ws))
+	}
+	path.remainings = surface
+	// TODO: is this on path?
 	logGOAPDebug("  --- ws after path: %v", ws.vals)
 }
 
@@ -144,22 +156,28 @@ func (e *GOAPEvaluator) presFulfilled(a *GOAPAction, ws *GOAPWorldState) bool {
 	for varName, checkF := range a.preModalChecks {
 		modifiedWS.vals[varName] = checkF(ws)
 	}
-	remaining := a.pres.remaining(modifiedWS)
-	return len(remaining.goalLeft) == 0
+	goalLeftCount := 0
+	for _, tg := range a.pres.temporalGoals {
+		goalLeftCount += len(tg.remaining(modifiedWS).goalLeft)
+	}
+	return goalLeftCount == 0
 }
 
-func (e *GOAPEvaluator) validateForward(path *GOAPPath, start *GOAPWorldState, main *GOAPGoal) bool {
+func (e *GOAPEvaluator) validateForward(path *GOAPPath, start *GOAPWorldState, main *GOAPTemporalGoal) bool {
 
 	ws := start.CopyOf()
 	for _, action := range path.path {
-		if len(action.pres.vars) > 0 && !e.presFulfilled(action, ws) {
+		if len(action.pres.temporalGoals) > 0 && !e.presFulfilled(action, ws) {
 			logGOAPDebug(">>>>>>> in validateForward, %s was not fulfilled", action.DisplayName())
 			return false
 		}
 		ws = e.applyActionModal(action, ws)
 	}
-	endRemaining := main.remaining(ws)
-	if len(endRemaining.goalLeft) != 0 {
+	endRemainingCount := 0
+	for _, tg := range main.temporalGoals {
+		endRemainingCount += len(tg.remaining(ws).goalLeft)
+	}
+	if endRemainingCount != 0 {
 		logGOAPDebug(">>>>>>> in validateForward, main goal was not fulfilled at end of path")
 		return false
 	}
@@ -170,6 +188,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 	start *GOAPWorldState,
 	path *GOAPPath,
 	insertionIx int,
+	goalToHelp *GOAPGoalRemaining,
 	action *GOAPAction) (scale int, helpful bool) {
 
 	actionChangesVarWell := func(
@@ -249,5 +268,5 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 		return -1, false
 	}
 
-	return helpsGoal(path.remainings.surface[insertionIx].goalLeft)
+	return helpsGoal(goalToHelp.goalLeft)
 }
