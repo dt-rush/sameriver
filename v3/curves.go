@@ -5,7 +5,7 @@ import (
 )
 
 // visual aid:
-// https://www.desmos.com/calculator/kw8fhm0qox
+// https://www.desmos.com/calculator/ylh21kqg4o
 
 type curves struct{}
 
@@ -27,8 +27,18 @@ func (c *curves) Quadratic(x float64) float64 {
 	return x * x
 }
 
+func (c *curves) Abs(x float64) float64 {
+	return math.Abs(x)
+}
+
 func (c *curves) Linear(x float64) float64 {
 	return (x + 1) / 2
+}
+
+func (c *curves) Exp(x float64) float64 {
+	q := math.Exp(2) / (math.Exp(2) - 1)
+	r := 1 / math.Exp(2)
+	return q * (math.Exp(x-1) - r)
 }
 
 func (c *curves) Greater(b float64) CurveFunc {
