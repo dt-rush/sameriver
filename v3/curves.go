@@ -180,16 +180,14 @@ func Decay(k float64) CurveFunc {
 // L_b (x, f_b) in desmos
 func LinearBounce(f float64) CurveFunc {
 	return func(x float64) float64 {
-		f *= math.Pow(x+1, 1.2) + 1
-		return (1 - Linear(x)) * (math.Cos(2*math.Pi*x*f) + 1) / 2
+		return (1 - Linear(x)) * (math.Cos(f*math.Pi*(x+1)) + 1) / 2
 	}
 }
 
 // E_b (x, f_b, k) in desmos
 func ExponentialBounce(f float64, k float64) CurveFunc {
 	return func(x float64) float64 {
-		f *= math.Pow(x+1, 1.2) + 1
-		return Decay(k)(x) * (math.Cos(2*math.Pi*x*f) + 1)
+		return Decay(k)(x) * (math.Cos(f*math.Pi*(x+1)) + 1) / 2
 	}
 }
 
