@@ -17,14 +17,6 @@ func Bell(mean, spread float64) CurveFunc {
 	}
 }
 
-// B_i(x, m_u, s_d) in desmos
-// a bell curve which is pinned to (-1, 0) and (1, 0)
-func BellPinned(mean, spread float64) CurveFunc {
-	return func(x float64) float64 {
-		return Bell(mean, spread)(x) * QuadK(100)(x)
-	}
-}
-
 // S(x, s) in desmos
 func Sigmoid(s float64) CurveFunc {
 	return func(x float64) float64 {
@@ -149,13 +141,11 @@ func ContinuousMayan(n int, smooth float64) CurveFunc {
 }
 
 // S_p(x, n, m_u, s) in desmos
-func SkewedMayan(n int, smooth float64, skew float64) CurveFunc {
+func SkewedMayan(n int, peak float64, smooth float64) CurveFunc {
 	return func(x float64) float64 {
 		// deform x from linear
-		// there is some serious fine-tuned magic going on here, beautiful
-		// but incomprehensible
-		skewFactor := math.Tan(math.Pi/2*skew) / math.E
-		d := 2*Shelf(-1, -0.1-skewFactor)(x) - 1
+		// such that it is -1 at x=-1, 0 at x=peak, 1 at x=1
+		d := LinearInterval(-1, peak)(x) + LinearInterval(peak, 1)(x) - 1
 		return ContinuousMayan(n, smooth)(d)
 	}
 }
@@ -177,6 +167,29 @@ func QuantizeX(f CurveFunc, n int) CurveFunc {
 		// quantized x
 		d := math.Floor(k*(x-1)/2)/(k/2) + 1 + 1/k
 		return f(d)
+	}
+}
+
+// D_c(x, k) in desmos
+func Decay(k float64) CurveFunc {
+	return func(x float64) float64 {
+		return math.Pow(math.Abs(x-1)/2, k)
+	}
+}
+
+// L_b (x, f_b) in desmos
+func LinearBounce(f float64) CurveFunc {
+	return func(x float64) float64 {
+		f *= math.Pow(x+1, 1.2) + 1
+		return (1 - Linear(x)) * (math.Cos(2*math.Pi*x*f) + 1) / 2
+	}
+}
+
+// E_b (x, f_b, k) in desmos
+func ExponentialBounce(f float64, k float64) CurveFunc {
+	return func(x float64) float64 {
+		f *= math.Pow(x+1, 1.2) + 1
+		return Decay(k)(x) * (math.Cos(2*math.Pi*x*f) + 1)
 	}
 }
 
