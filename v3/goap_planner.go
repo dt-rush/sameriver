@@ -2,7 +2,6 @@ package sameriver
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/TwiN/go-color"
@@ -88,84 +87,86 @@ func (p *GOAPPlanner) traverseFulfillers(
 		}
 	}
 
-	for i, tgs := range here.path.remainings.surface {
-		if here.path.remainings.nUnfulfilledAtIx(i) == 0 {
-			continue
-		}
-		// for each region in this temporal grouping
-		for regionIx, tg := range tgs {
-			// for each var of its goals left
-			for varName := range tg.goalLeft {
-				// for the actions that affect this var
-				for action := range p.eval.varActions[varName] {
-					if DEBUG_GOAP {
-						logGOAPDebug("[ ] Considering action %s", action.DisplayName())
-					}
-					if DEBUG_GOAP {
-						var toSatisfyMsg string
-						if i == len(here.path.remainings.surface)-1 {
-							toSatisfyMsg = "main goal"
-						} else {
-							toSatisfyMsg = fmt.Sprintf("pre of %s", here.path.path[i].Name)
-						}
-						logGOAPDebug(color.InGreenOverGray(
-							fmt.Sprintf("checking if %s can be inserted at %d to satisfy %s",
-								action.DisplayName(), i, toSatisfyMsg)))
-					}
-					// region offset data for surface temporal groupings has a
-					// parallel array, regionOffsets, for the calculation of
-					// insertionIx relative to the action whose precondition we're
-					// considering at the moment
-					insertionIx := i + here.path.remainings.regionOffsets[i][regionIx]
-					scale, helpful := p.eval.actionHelpsToInsert(
-						start,
-						here.path,
-						insertionIx,
-						tg,
-						action)
-					if helpful {
+	/*
+		for i, tgs := range here.path.remainings.surface {
+			if here.path.remainings.nUnfulfilledAtIx(i) == 0 {
+				continue
+			}
+			// for each region in this temporal grouping
+			for regionIx, tg := range tgs {
+				// for each var of its goals left
+				for varName := range tg.goalLeft {
+					// for the actions that affect this var
+					for action := range p.eval.varActions[varName] {
 						if DEBUG_GOAP {
-							logGOAPDebug("[X] %s helpful!", action.DisplayName())
+							logGOAPDebug("[ ] Considering action %s", action.DisplayName())
 						}
-						// parametrize to appropriate scale
-						var toInsert *GOAPAction
-						if scale > 1 {
-							toInsert = action.Parametrized(scale)
-						} else {
-							toInsert = action
+						if DEBUG_GOAP {
+							var toSatisfyMsg string
+							if i == len(here.path.remainings.surface)-1 {
+								toSatisfyMsg = "main goal"
+							} else {
+								toSatisfyMsg = fmt.Sprintf("pre of %s", here.path.path[i].Name)
+							}
+							logGOAPDebug(color.InGreenOverGray(
+								fmt.Sprintf("checking if %s can be inserted at %d to satisfy %s",
+									action.DisplayName(), i, toSatisfyMsg)))
 						}
-						// parent the action
+						// region offset data for surface temporal groupings has a
+						// parallel array, regionOffsets, for the calculation of
+						// insertionIx relative to the action whose precondition we're
+						// considering at the moment
+						insertionIx := i + here.path.remainings.regionOffsets[i][regionIx]
+						scale, helpful := p.eval.actionHelpsToInsert(
+							start,
+							here.path,
+							insertionIx,
+							tg,
+							action)
+						if helpful {
+							if DEBUG_GOAP {
+								logGOAPDebug("[X] %s helpful!", action.DisplayName())
+							}
+							// parametrize to appropriate scale
+							var toInsert *GOAPAction
+							if scale > 1 {
+								toInsert = action.Parametrized(scale)
+							} else {
+								toInsert = action
+							}
+							// parent the action
 
-						// do the insertion
-						newPath := here.path.inserted(toInsert, insertionIx)
-						pathStr := newPath.String()
-						if _, ok := pathsSeen[pathStr]; ok {
-							logGOAPDebug(color.InRedOverGray("xxxxxxxxxxxxxxxxxxx path already seen xxxxxxxxxxxxxxxxxxxxx"))
-							continue
+							// do the insertion
+							newPath := here.path.inserted(toInsert, insertionIx)
+							pathStr := newPath.String()
+							if _, ok := pathsSeen[pathStr]; ok {
+								logGOAPDebug(color.InRedOverGray("xxxxxxxxxxxxxxxxxxx path already seen xxxxxxxxxxxxxxxxxxxxx"))
+								continue
+							} else {
+								pathsSeen[pathStr] = true
+							}
+							// compute remainings
+							p.eval.computeRemainingsOfPath(newPath, start, goal)
+							newPath.remainings.regionOffsets = here.path.remainings.newRegionOffsetsAfterInsert(i, regionIx)
+							if DEBUG_GOAP {
+								msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
+									GOAPPathToString(newPath), newPath.cost)
+								logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+								logGOAPDebug(color.InWhiteOverCyan(msg))
+								logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+							}
+							// push this valid candidate path to Queue
+							pq.Push(&GOAPPQueueItem{path: newPath})
 						} else {
-							pathsSeen[pathStr] = true
-						}
-						// compute remainings
-						p.eval.computeRemainingsOfPath(newPath, start, goal)
-						newPath.remainings.regionOffsets = here.path.remainings.newRegionOffsetsAfterInsert(i, regionIx)
-						if DEBUG_GOAP {
-							msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
-								GOAPPathToString(newPath), newPath.cost)
-							logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
-							logGOAPDebug(color.InWhiteOverCyan(msg))
-							logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
-						}
-						// push this valid candidate path to Queue
-						pq.Push(&GOAPPQueueItem{path: newPath})
-					} else {
-						if DEBUG_GOAP {
-							logGOAPDebug("[_] %s not helpful", action.DisplayName())
+							if DEBUG_GOAP {
+								logGOAPDebug("[_] %s not helpful", action.DisplayName())
+							}
 						}
 					}
 				}
 			}
 		}
-	}
+	*/
 	logGOAPDebug("--------------------------/traverse")
 }
 

@@ -17,7 +17,7 @@ regionOffets [[0 0] [0]]
 
 path [B C]
 remainings [[r] [s t] [u]]
-regionOffsets [[0] [-1 0] [0]]
+regionOffsets [[0] [0 0] [0]]
 
 now we want to insert A at 0 to satisfy remainings[1][0] = s
 i = 1
@@ -55,6 +55,83 @@ for [s t], the region for s (A) is -2 from C:
 
  -2   0 v
 [ A Y B C]
+
+
+
+
+and let's say for argument that B didn't completely satisfy t, so we would
+want to insert Z into region 1 of [s t] (C's pre), and Z has nil pre
+
+we would insert at index(C) = 3, minus the offset for region 1 (0), resulting in
+
+[ A Y B Z C ]
+
+remainings    [[q] [m n] [r] [ ] [s  t] [u]]
+
+and the region offsets would be
+[[0] [0 0] [0] [ ] [-3 0] [0]]
+
+since for insertion to satisfy s, we need to go back 3 places:
+
+      -3        v
+[  A   |  Y B Z C ]
+
+
+
+
+and now, let's say we insert W to satisfy Y's pre[1], n, and W has pre [l] :
+
+[ A W Y B Z C ]
+
+remainings    
+
+now region offsets are:
+
+[ A   W    Y    B   Z     C ]
+[[q] [l] [m n] [r] [ ] [s  t] [u]]
+[[0] [0] [0 0] [0] [ ] [-4 0] [0]]
+
+
+
+
+now let's insert Q to satisfy m (Q has nil pre)
+
+[ A   W   Q    Y     B   Z    C  ]
+[[q] [l] [ ] [m n] [r] [ ] [s  t] [u]]
+[[0] [0] [ ] [0 0] [0] [ ] [-5 0] [0]]
+
+note Y has [0 0] since to insert for *either* m or n, we subtract 0
+
+
+
+now let's insert R to satisfy n (R has nil pre)
+
+[ A   W   Q   R    Y     B   Z    C  ]
+[[q] [l] [ ] [ ] [m  n] [r] [ ] [s  t] [u]]
+[[0] [0] [ ] [ ] [-1 0] [0] [ ] [-6 0] [0]]
+
+note Y now has [-1 0] since to insert for m we subtract 1, for n, 0
+
+
+
+now let's say m was not completely satisfied by Q, so we want to insert T (nil pre)
+
+[ A   W   Q   T   R    Y     B   Z    C  ]
+[[q] [l] [ ] [ ] [ ] [m  n] [r] [ ] [s  t] [u]]
+[[0] [0] [ ] [ ] [ ] [-1 0] [0] [ ] [-7 0] [0]]
+
+we don't update the region offset for m since we *still* want to insert any 
+of m's satisfiers at -1; we update region offset for m when *a region in front of it*
+gets inserted to
+
+
+
+
+
+
+
+
+
 
 
 
