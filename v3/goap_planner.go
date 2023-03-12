@@ -40,9 +40,29 @@ func (p *GOAPPlanner) traverseFulfillers(
 	// A.pre = [q], A fulfills s
 	// C.pre = [s t], C fulfills u
 	// remainings surface: [[q] [s t] [u]]
-	// and the corresponding regionOffsets [[0] [0 0] [0]]
-	// iterate surface with index i
-	// and iterate region of surface (ex [s t]) with index regionIx
+
+	// iterate path with index i
+	// and iterate temporal of surface (ex [s t]) with index regionIx
+
+	for i, tgs := range here.path.remainings.surface {
+		if here.path.remainings.nUnfulfilledAtIx(i) == 0 {
+			continue
+		}
+		var parent *GOAPAction
+		if i == len(here.path.remainings.surface)-1 {
+			parent = nil
+		} else {
+			parent = here.path.path[i]
+		}
+		for regionIx, tg := range tgs {
+			for varName := range tg.goalLeft {
+				for action := range p.eval.varActions[varName] {
+
+				}
+			}
+		}
+	}
+
 	for i, tgs := range here.path.remainings.surface {
 		if here.path.remainings.nUnfulfilledAtIx(i) == 0 {
 			continue
@@ -82,12 +102,15 @@ func (p *GOAPPlanner) traverseFulfillers(
 						if DEBUG_GOAP {
 							logGOAPDebug("[X] %s helpful!", action.DisplayName())
 						}
+						// parametrize to appropriate scale
 						var toInsert *GOAPAction
 						if scale > 1 {
 							toInsert = action.Parametrized(scale)
 						} else {
 							toInsert = action
 						}
+						// parent the action
+
 						// do the insertion
 						newPath := here.path.inserted(toInsert, insertionIx)
 						pathStr := newPath.String()

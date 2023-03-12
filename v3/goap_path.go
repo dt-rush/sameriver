@@ -5,10 +5,15 @@ import (
 )
 
 type GOAPPath struct {
-	path        []*GOAPAction
-	cost        int                       // set by GOAPPath.inserted()
-	statesAlong []*GOAPWorldState         // set in GOAPEvaluator.computeRemainingsOfPath()
-	remainings  *GOAPGoalRemainingSurface // set in GOAPEvaluator.computeRemainingsOfPath
+	path []*GOAPAction
+	cost int // set by GOAPPath.inserted()
+	// states after each action, from start state at [0]
+	// til the end state after the last action
+	statesAlong []*GOAPWorldState // set in GOAPEvaluator.computeRemainingsOfPath()
+	// goal remaining for each action's pres in the path
+	// plus the goal remaining for the main goal at
+	// the last index
+	remainings *GOAPGoalRemainingSurface // set in GOAPEvaluator.computeRemainingsOfPath
 }
 
 func NewGOAPPath(path []*GOAPAction) *GOAPPath {

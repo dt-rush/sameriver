@@ -7,6 +7,10 @@ import (
 )
 
 type GOAPAction struct {
+	// the action for one of whose pre's this action is a satisfier
+	// (nil if it's a satisfier for the main goal)
+	parent *GOAPAction
+
 	// the object used to construct this (used in Parametrized() to reconstruct)
 	spec map[string]any
 
@@ -90,5 +94,11 @@ func (a *GOAPAction) Parametrized(n int) *GOAPAction {
 	result := a.CopyOf()
 	result.Count = n
 	result.pres = result.pres.Parametrize(n)
+	return result
+}
+
+func (a *GOAPAction) ChildOf(p *GOAPAction) *GOAPAction {
+	result := a.CopyOf()
+	result.parent = p
 	return result
 }
