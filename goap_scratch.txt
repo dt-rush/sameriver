@@ -81,36 +81,41 @@ since for insertion to satisfy s, we need to go back 3 places:
 
 and now, let's say we insert W to satisfy Y's pre[1], n, and W has pre [l] :
 
-[ A W Y B Z C ]
+[ A   W     Y     B   Z     C ]
+[[q] [l] [ m  n] [r] [ ] [s  t] [u]]
+[[0] [0] [-1  0] [0] [ ] [-4 0] [0]]
 
-remainings    
-
-now region offsets are:
-
-[ A   W    Y    B   Z     C ]
-[[q] [l] [m n] [r] [ ] [s  t] [u]]
-[[0] [0] [0 0] [0] [ ] [-4 0] [0]]
-
+path   : [ A   W    Y    B   Z     C ]
+parents: [ C   Y    B    C   C     * ]
 
 
 
 now let's insert Q to satisfy m (Q has nil pre)
 
-[ A   W   Q    Y     B   Z    C  ]
-[[q] [l] [ ] [m n] [r] [ ] [s  t] [u]]
-[[0] [0] [ ] [0 0] [0] [ ] [-5 0] [0]]
+[ A   W   Q     Y     B   Z    C  ]
+[[q] [l] [ ] [ m  n] [r] [ ] [s  t] [u]]
+[[0] [0] [ ] [-1  0] [0] [ ] [-5 0] [0]]
 
-note Y has [0 0] since to insert for *either* m or n, we subtract 0
+path   : [ A   W    Q    Y    B   Z     C ]
+parents: [ C   Y    Y    B    C   C     * ]
+
+
 
 
 
 now let's insert R to satisfy n (R has nil pre)
 
-[ A   W   Q   R    Y     B   Z    C  ]
-[[q] [l] [ ] [ ] [m  n] [r] [ ] [s  t] [u]]
-[[0] [0] [ ] [ ] [-1 0] [0] [ ] [-6 0] [0]]
+[ A   W   Q   R     Y     B   Z    C  ]
+[[q] [l] [ ] [ ] [ m  n] [r] [ ] [s  t] [u]]
+[[0] [0] [ ] [ ] [-2  0] [0] [ ] [-6 0] [0]]
+
+path   : [ A   W    Q    R    Y    B   Z     C ]
+parents: [ C   Y    Y    Y    B    C   C     * ]
 
 note Y now has [-1 0] since to insert for m we subtract 1, for n, 0
+
+
+
 
 
 
