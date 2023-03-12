@@ -31,6 +31,30 @@ remainings [[q] [r] [s t] [u]]
 regionOffsets [[0] [0] [-1 0] [0]]
 
 
+// it doens't make sense... remainings and regionOffsets 
+// needs to have a recursive structure, so that it's like:
+
+path [A B C]
+remainings [[[[q] s] [[r] t]] u]
+
+// or, maybe... we can just iterate the actions, and have regionOffsets
+// be relative to each action, so we have
+
+path [A B C]
+remainings [[q] [r] [s t] [u]]
+regionOffsets [[0] [0] [-1 0] [0]]
+
+so then if we insert Y (with pre [m n]) to satisfy B's r, we get
+
+path [A Y B C]
+remainings    [[q] [m n] [r] [s  t] [u]]
+regionOffsets [[0] [0 0] [0] [-2 0] [0]]
+
+notice the update of regionoffsets traverses the parent tree, since, 
+for [s t], the region for s (A) is -2 from C:
+
+ -2   0 v
+[ A Y B C]
 
 
 
