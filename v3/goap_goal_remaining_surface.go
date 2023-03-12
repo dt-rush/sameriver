@@ -40,7 +40,7 @@ func NewGOAPGoalRemainingSurface(length int) *GOAPGoalRemainingSurface {
 	return s
 }
 
-func (s *GOAPGoalRemainingSurface) newRegionOffsetsAfterInsert(i int, regionIx int) [][]int {
+func (s *GOAPGoalRemainingSurface) newRegionOffsetsAfterInsert(i int, insertionIx int) [][]int {
 	newOffsets := make([][]int, len(s.regionOffsets))
 	for i, slice := range s.regionOffsets {
 		newOffsets[i] = make([]int, len(slice))

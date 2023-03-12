@@ -57,7 +57,32 @@ func (p *GOAPPlanner) traverseFulfillers(
 		for regionIx, tg := range tgs {
 			for varName := range tg.goalLeft {
 				for action := range p.eval.varActions[varName] {
-
+					insertionIx := i + here.path.remainings.regionOffsets[i][regionIx]
+					scale, helpful := p.eval.actionHelpsToInsert(
+						start,
+						here.path,
+						insertionIx,
+						tg,
+						action)
+					if helpful {
+						var toInsert *GOAPAction
+						if scale > 1 {
+							toInsert = action.Parametrized(scale)
+						} else {
+							toInsert = action
+						}
+						toInsert = toInsert.ChildOf(parent)
+						newPath := here.path.inserted(toInsert, insertionIx)
+						pathStr := newPath.String()
+						if _, ok := pathsSeen[pathStr]; ok {
+							continue
+						} else {
+							pathsSeen[pathStr] = true
+						}
+						p.eval.computeRemainingsOfPath(newPath, start, goal)
+						newPath.remainings.regionOffsets = here.path.remainings.newRegionOffsetsAfterInsert(i, insertionIx)
+						pq.Push(&GOAPPQueueItem{path: newPath})
+					}
 				}
 			}
 		}
