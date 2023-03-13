@@ -837,7 +837,6 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 			"inTemple,=": 1,
 		},
 	})
-	Logger.Printf("%v", enterTemple.pres)
 
 	p := NewGOAPPlanner(e)
 

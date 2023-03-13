@@ -1,6 +1,7 @@
 package sameriver
 
 import (
+	"container/heap"
 	"fmt"
 	"time"
 
@@ -89,7 +90,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 							pathsSeen[pathStr] = true
 						}
 						p.eval.computeRemainingsOfPath(newPath, start, goal)
-						pq.Push(&GOAPPQueueItem{path: newPath})
+						heap.Push(pq, &GOAPPQueueItem{path: newPath})
 					}
 				}
 			}
@@ -194,6 +195,7 @@ func (p *GOAPPlanner) Plan(
 
 	// used to return the solution with lowest cost among solutions found
 	resultPq := &GOAPPriorityQueue{}
+	heap.Init(resultPq)
 
 	// used to keep track of which paths we've already seen since there's multiple ways to
 	// reach a path in the insertion-based logic we use
@@ -201,6 +203,7 @@ func (p *GOAPPlanner) Plan(
 
 	// used for the search
 	pq := &GOAPPriorityQueue{}
+	heap.Init(pq)
 
 	rootPath := NewGOAPPath(nil)
 	p.eval.computeRemainingsOfPath(rootPath, start, goal)
@@ -209,7 +212,7 @@ func (p *GOAPPlanner) Plan(
 		path:  rootPath,
 		index: -1, // going to be set by Push()
 	}
-	pq.Push(backtrackRoot)
+	heap.Push(pq, backtrackRoot)
 
 	iter := 0
 	// TODO: should we just pop out the *very first result*?
@@ -217,7 +220,7 @@ func (p *GOAPPlanner) Plan(
 	t0 := time.Now()
 	for iter < maxIter && pq.Len() > 0 && resultPq.Len() < 2 {
 		logGOAPDebug("=== iter ===")
-		here := pq.Pop().(*GOAPPQueueItem)
+		here := heap.Pop(pq).(*GOAPPQueueItem)
 		if DEBUG_GOAP {
 			logGOAPDebug(color.InRedOverGray("here:"))
 			logGOAPDebug(color.InWhiteOverBlue(color.InBold(GOAPPathToString(here.path))))
@@ -243,7 +246,7 @@ func (p *GOAPPlanner) Plan(
 				logGOAPDebug(color.InGreenOverWhite(color.InBold(GOAPPathToString(here.path))))
 				logGOAPDebug(color.InGreenOverWhite(color.InBold(fmt.Sprintf("%d solutions found so far", resultPq.Len()+1))))
 			}
-			resultPq.Push(here)
+			heap.Push(resultPq, here)
 		} else {
 			p.traverseFulfillers(pq, start, here, goal, pathsSeen)
 			iter++
@@ -263,10 +266,13 @@ func (p *GOAPPlanner) Plan(
 		if pq.Len() == 0 {
 			logGOAPDebug("Exhausted pq")
 		}
-		for _, item := range *resultPq {
-			logGOAPDebug(color.InWhiteOverBlue(item.path))
+		results := make([]*GOAPPath, 0)
+		for resultPq.Len() > 0 {
+			pop := heap.Pop(resultPq).(*GOAPPQueueItem).path
+			results = append(results, pop)
+			logGOAPDebug("solution (cost %d): %s", pop.cost, color.InWhiteOverBlue(GOAPPathToString(pop)))
 		}
-		return resultPq.Pop().(*GOAPPQueueItem).path, true
+		return results[0], true
 	} else {
 		return nil, false
 	}

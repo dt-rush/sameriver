@@ -31,14 +31,19 @@ var logWarning = SubLogFunction(
 	"WARNING", true,
 	func(s string) string { return color.InYellow(color.InBold(s)) })
 
-var LOG_EVENTS_VAL, LOG_EVENTS_OK = os.LookupEnv("LOG_EVENTS")
-var LOG_EVENTS = LOG_EVENTS_OK && LOG_EVENTS_VAL == "true"
+var LOG_EVENTS = func() bool {
+	val := os.Getenv("LOG_EVENTS")
+	return val == "true"
+}()
+
 var logEvent = SubLogFunction(
 	"Events", LOG_EVENTS,
 	func(s string) string { return color.InWhiteOverPurple(s) })
 
-var DEBUG_GOAP_VAL, DEBUG_GOAP_OK = os.LookupEnv("DEBUG_GOAP")
-var DEBUG_GOAP = DEBUG_GOAP_OK && DEBUG_GOAP_VAL == "true"
+var DEBUG_GOAP = func() bool {
+	val := os.Getenv("DEBUG_GOAP")
+	return val == "true"
+}()
 var logGOAPDebug = SubLogFunction(
 	"GOAP", DEBUG_GOAP,
 	func(s string) string { return s })
