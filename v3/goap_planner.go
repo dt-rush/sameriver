@@ -31,6 +31,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 		logGOAPDebug(color.InRedOverGray("remaining:"))
 		debugGOAPPrintGoalRemainingSurface(here.path.remainings)
 		logGOAPDebug("%d possible actions", len(p.eval.actions.set))
+		logGOAPDebug("regionOffsets: %v", here.path.regionOffsets)
 	}
 
 	// determine if action is good to insert anywhere
@@ -49,14 +50,22 @@ func (p *GOAPPlanner) traverseFulfillers(
 		}
 		var parent *GOAPAction
 		if i == len(here.path.remainings.surface)-1 {
+			logGOAPDebug("    nil parent (satisfying main goal)")
 			parent = nil
 		} else {
+			logGOAPDebug("    parent: %s", here.path.path[i].Name)
 			parent = here.path.path[i]
 		}
 		for regionIx, tg := range tgs {
+			logGOAPDebug("    surface[i:%d][regionIx:%d]", i, regionIx)
+			logGOAPDebug("        |")
+			logGOAPDebug("        |")
 			for varName := range tg.goalLeft {
 				for action := range p.eval.varActions[varName] {
+					logGOAPDebug("        |")
+					logGOAPDebug("        └>varName: %s", varName)
 					insertionIx := i + here.path.regionOffsets[i][regionIx]
+					logGOAPDebug("    insertionIx: %d", insertionIx)
 					scale, helpful := p.eval.actionHelpsToInsert(
 						start,
 						here.path,
@@ -173,6 +182,8 @@ func (p *GOAPPlanner) Plan(
 	start *GOAPWorldState,
 	goalSpec any,
 	maxIter int) (solution *GOAPPath, ok bool) {
+
+	logGOAPDebug("Planning...")
 
 	// convert goal spec into GOAPTemporalGoal
 	goal := NewGOAPTemporalGoal(goalSpec)

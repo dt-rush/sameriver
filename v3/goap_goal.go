@@ -16,7 +16,6 @@ func NewGOAPGoal(spec map[string]int) *GOAPGoal {
 		vars: make(map[string]*NumericInterval),
 	}
 	g.Parametrize(1)
-
 	return g
 }
 

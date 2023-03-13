@@ -55,15 +55,31 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 	}
 	a.insertionIx = insertionIx
 	a.regionIx = regionIx
+	// copy regionOffsets data
+	path.regionOffsets = make([][]int, len(p.regionOffsets))
+	for i := 0; i < len(p.regionOffsets); i++ {
+		path.regionOffsets[i] = make([]int, len(p.regionOffsets[i]))
+		copy(path.regionOffsets[i], p.regionOffsets[i])
+	}
+
 	// go up tree, updating regionOffsets
 	node := a
-	for {
+	for node != nil {
 		// if goal isnt' temporal (length 1), no update at this level
 		// (note remainings here is before including the pres of a,
 		// and we haven't udpated the insertionIx of the old path actions,
 		// so we can use node.insertionIx of a node (from a.parent on up)
 		// to get its goal surface
-		if len(p.remainings.surface[node.parent.insertionIx]) == 1 {
+		// surfaceIx is the surface index of the temporal goal this action satisfies
+		var surfaceIx int
+		if node.parent == nil {
+			surfaceIx = len(p.remainings.surface) - 1
+		} else {
+			logGOAPDebug("    node.parent = %s, parent.insertionIx = %d", node.parent.Name, node.parent.insertionIx)
+			surfaceIx = node.parent.insertionIx
+		}
+		logGOAPDebug("    insert.parent surfaceIx: %d", surfaceIx)
+		if len(p.remainings.surface[surfaceIx]) == 1 {
 			node = node.parent
 			continue
 		}
@@ -74,17 +90,19 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 		}
 		// thus, regionIx > 1 had the insertion, and we need to shift the regions to its left
 		// by -1
-		for ri := node.regionIx - 1; ri >= 0; ri++ {
-			path.regionOffsets[node.parent.insertionIx][ri] -= 1
+		for ri := node.regionIx - 1; ri >= 0; ri-- {
+			logGOAPDebug("            updating regionOffsets[%d][%d]", surfaceIx, ri)
+			path.regionOffsets[surfaceIx][ri] -= 1
 		}
-		if node == nil {
-			break
-		} else {
-			node = node.parent
-		}
+		node = node.parent
 	}
+	// insert regionOffsets for a.pres
+	path.regionOffsets = append(
+		path.regionOffsets[:insertionIx+1],
+		path.regionOffsets[insertionIx:]...)
+	path.regionOffsets[insertionIx] = make([]int, len(a.pres.temporalGoals))
 	if DEBUG_GOAP {
-		logGOAPDebug("  regionOffsets: %v", path.regionOffsets)
+		logGOAPDebug("  regionOffsets after insert&update: %v", path.regionOffsets)
 	}
 	// update action indexes after insertion
 	for j := insertionIx + 1; j < len(path.path); j++ {

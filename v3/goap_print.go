@@ -55,10 +55,11 @@ func debugGOAPPrintGoalRemainingSurface(s *GOAPGoalRemainingSurface) {
 	if s.NUnfulfilled() == 0 {
 		logGOAPDebug(color.InYellowOverGreen("    none remaining    "))
 	}
-	logGOAPDebug(color.InBold(color.InRedOverGray("pres:")))
+	logGOAPDebug(color.InBold(color.InRedOverGray("%d pres:")), len(s.surface)-1)
 	for i, tgs := range s.surface {
+		logGOAPDebug("surface[%d] (%d region(s)):", i, len(s.surface[i]))
 		if i == len(s.surface)-1 {
-			logGOAPDebug(color.InBold(color.InRedOverGray("main:")))
+			logGOAPDebug(color.InBold(color.InRedOverGray("%d main:")), len(tgs))
 		}
 		for _, tg := range tgs {
 			debugGOAPPrintGoalRemaining(tg)

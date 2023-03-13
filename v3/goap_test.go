@@ -535,9 +535,9 @@ func TestGOAPPlanSimple(t *testing.T) {
 		},
 	})
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := map[string]int{
 		"atTree,=": 1,
-	})
+	}
 
 	Logger.Println(*e.GetVec2D("Position"))
 
@@ -837,6 +837,7 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 			"inTemple,=": 1,
 		},
 	})
+	Logger.Printf("%v", enterTemple.pres)
 
 	p := NewGOAPPlanner(e)
 
@@ -847,10 +848,14 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 		"rituallyPure": 0,
 	})
 
-	goal := NewGOAPGoal(map[string]int{
-		"drunk,>=":   3,
-		"inTemple,=": 1,
-	})
+	goal := []any{
+		map[string]int{
+			"drunk,>=": 3,
+		},
+		map[string]int{
+			"inTemple,=": 1,
+		},
+	}
 	t0 := time.Now()
 	plan, ok := p.Plan(ws, goal, 500)
 	if !ok {

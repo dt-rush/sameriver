@@ -51,7 +51,7 @@ func GOAPEffFunc(a *GOAPAction, op string, val int) func(int) int {
 func NewGOAPAction(spec map[string]interface{}) *GOAPAction {
 	name := spec["name"].(string)
 	cost := spec["cost"].(int)
-	var pres any
+	pres := spec["pres"]
 	effs := spec["effs"].(map[string]int)
 
 	a := &GOAPAction{

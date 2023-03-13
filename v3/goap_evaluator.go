@@ -136,9 +136,9 @@ func (e *GOAPEvaluator) computeRemainingsOfPath(path *GOAPPath, start *GOAPWorld
 			surface.surface[i] = append(
 				surface.surface[i],
 				tg.remaining(ws))
-			ws = e.applyActionBasic(action, ws, true)
-			path.statesAlong[i+1] = ws
 		}
+		ws = e.applyActionBasic(action, ws, true)
+		path.statesAlong[i+1] = ws
 	}
 	for _, tg := range main.temporalGoals {
 		surface.surface[surfaceLen-1] = append(
