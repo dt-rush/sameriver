@@ -14,6 +14,10 @@ type GOAPPath struct {
 	// plus the goal remaining for the main goal at
 	// the last index
 	remainings *GOAPGoalRemainingSurface // set in GOAPEvaluator.computeRemainingsOfPath
+	// parallel array to path:
+	// the region offsets to insert the temporal groups of the pres for each
+	// action at i
+	regionOffsets [][]int
 }
 
 func NewGOAPPath(path []*GOAPAction) *GOAPPath {
@@ -21,7 +25,8 @@ func NewGOAPPath(path []*GOAPAction) *GOAPPath {
 		path = make([]*GOAPAction, 0)
 	}
 	return &GOAPPath{
-		path: path,
+		path:          path,
+		regionOffsets: [][]int{[]int{}},
 	}
 }
 
@@ -37,32 +42,49 @@ func (p *GOAPPath) costOfAdd(a *GOAPAction) int {
 	return cost
 }
 
-/*
-// path [A B]
-insertionIx: 0
-newSlice: [_ _ _]
-copy(newSlice[:0], path[:0]) // [_ _ _]
-newslice[0] = a              // [X _ _]
-copy(newslice[1:], path[0:]) // [X A B]
-
-// path: []
-insertionIx: 0
-newSlice: [_]
-copy(newSlice[:0], path[:0]) // [_]
-newslice[0] = a              // [X]
-copy(newslice[1:], path[0:]) // [X]
-*/
-func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int) *GOAPPath {
-	// copy actions into new slice
+// regionIx is the region index this action was inserted into, satisfying
+func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPPath {
+	// copy actions into new slice, and put a at insertionIx
 	newSlice := make([]*GOAPAction, len(p.path)+1)
 	copy(newSlice[:insertionIx], p.path[:insertionIx])
 	newSlice[insertionIx] = a
 	copy(newSlice[insertionIx+1:], p.path[insertionIx:])
-	result := &GOAPPath{
+	path := &GOAPPath{
 		path: newSlice,
 		cost: p.costOfAdd(a),
 	}
-	return result
+	a.insertionIx = insertionIx
+	a.regionIx = regionIx
+	// go up tree, updating regionOffsets
+	node := a
+	for {
+		// if goal isnt' temporal (length 1), no update at this level
+		if len(p.remainings.surface[node.insertionIx]) == 1 {
+			node = node.parent
+			continue
+		}
+		// if we inserted to regionIx 0, there's nothing to the left of it needed an updated offset
+		if node.regionIx == 0 {
+			node = node.parent
+			continue
+		}
+		// thus, regionIx > 1 had the insertion, and we need to shift the regions to its left
+		// by -1
+		for ri := node.regionIx - 1; ri >= 0; ri++ {
+			path.regionOffsets[node.parent.insertionIx][ri] -= 1
+		}
+		if node == nil {
+			break
+		} else {
+			node = node.parent
+		}
+	}
+	// update action indexes after insertion
+	for j := insertionIx + 1; j < len(path.path); j++ {
+		path.path[j].insertionIx++
+	}
+	// update this aciton's index
+	return path
 }
 
 func (p *GOAPPath) String() string {

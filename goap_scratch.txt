@@ -209,6 +209,13 @@ terminate
 
 
 
+but what if going up the tree, we reached the *main goal* as temporal?
+
+consider [u v]
+
+and we inserted C at region0 of [u v],
+
+we'd have node nil but surface at its i has a goal
 
 
 
@@ -226,27 +233,6 @@ terminate
 
 
 
-
-
-
-
-
-
-
-let's say we had
-
-path [A C]
-remainings [[q] [s t] [u]]
-regionOffsets [[0] [0 0] [0]]
-
-now we want to insert B at 1 to satisfy remainings[1][1] = t
-i = 1
-regionIx = 1
-insertionIx = 1 // HOW DO WE COMPUTE?
-
-we should compare if [A B] satisfies t better than [A]
-
-stateAtPoint = path.statesAlong[insertionIx] = path.statesAlong[1] (result of [A])
 
 
 

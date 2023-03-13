@@ -11,6 +11,11 @@ type GOAPAction struct {
 	// (nil if it's a satisfier for the main goal)
 	parent *GOAPAction
 
+	// the index in the list at which this action is inserted
+	insertionIx int
+	// the region index of the temporal region this was inserted into, satisfying
+	regionIx int
+
 	// the object used to construct this (used in Parametrized() to reconstruct)
 	spec map[string]any
 

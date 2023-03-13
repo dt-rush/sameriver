@@ -56,7 +56,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 		for regionIx, tg := range tgs {
 			for varName := range tg.goalLeft {
 				for action := range p.eval.varActions[varName] {
-					insertionIx := i + here.path.remainings.regionOffsets[i][regionIx]
+					insertionIx := i + here.path.regionOffsets[i][regionIx]
 					scale, helpful := p.eval.actionHelpsToInsert(
 						start,
 						here.path,
@@ -66,12 +66,12 @@ func (p *GOAPPlanner) traverseFulfillers(
 					if helpful {
 						var toInsert *GOAPAction
 						if scale > 1 {
-							toInsert = action.Parametrized(scale)
+							toInsert = action.Parametrized(scale) // yields a copy
 						} else {
-							toInsert = action
+							toInsert = action.CopyOf()
 						}
 						toInsert = toInsert.ChildOf(parent)
-						newPath := here.path.inserted(toInsert, insertionIx)
+						newPath := here.path.inserted(toInsert, insertionIx, regionIx)
 						pathStr := newPath.String()
 						if _, ok := pathsSeen[pathStr]; ok {
 							continue
@@ -79,7 +79,6 @@ func (p *GOAPPlanner) traverseFulfillers(
 							pathsSeen[pathStr] = true
 						}
 						p.eval.computeRemainingsOfPath(newPath, start, goal)
-						newPath.remainings.regionOffsets = here.path.remainings.newRegionOffsetsAfterInsert(i, insertionIx)
 						pq.Push(&GOAPPQueueItem{path: newPath})
 					}
 				}
@@ -193,7 +192,7 @@ func (p *GOAPPlanner) Plan(
 
 	rootPath := NewGOAPPath(nil)
 	p.eval.computeRemainingsOfPath(rootPath, start, goal)
-	rootPath.remainings.regionOffsets[0] = make([]int, len(goal.temporalGoals))
+	rootPath.regionOffsets[0] = make([]int, len(goal.temporalGoals))
 	backtrackRoot := &GOAPPQueueItem{
 		path:  rootPath,
 		index: -1, // going to be set by Push()
