@@ -81,9 +81,9 @@ func (e *GOAPEvaluator) applyActionBasic(
 			logGOAPDebug("     %s       %d x %s%s%d(%d) ; = %d",
 				color.InWhiteOverYellow(">>>"),
 				action.Count, varName, op, eff.val, x,
-				eff.f(x))
+				eff.f(action.Count, x))
 		}
-		ws.vals[varName] = eff.f(x)
+		ws.vals[varName] = eff.f(action.Count, x)
 	}
 	if DEBUG_GOAP {
 		logGOAPDebug(color.InBlueOverWhite(fmt.Sprintf("            ws after action: %v", ws.vals)))
@@ -101,7 +101,7 @@ func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState)
 		logGOAPDebug("    %s        applying %s::%d x %s%s%d(%d) ; = %d",
 			color.InPurpleOverWhite(" >>>modal "),
 			action.DisplayName(), action.Count, varName, op, eff.val, x,
-			eff.f(x))
+			eff.f(action.Count, x))
 		// do modal set
 		if setter, ok := action.effModalSetters[varName]; ok {
 			setter(newWS, op, action.Count*eff.val)
@@ -209,7 +209,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 				logGOAPDebug("      [ ] eff affects var: %s; is it satisfactory/closer?", effVarName)
 				// special handler for =
 				if eff.op == "=" {
-					if interval.Diff(float64(eff.f(start.vals[varName]))) == 0 {
+					if interval.Diff(float64(eff.f(action.Count, start.vals[varName]))) == 0 {
 						logGOAPDebug("      [x] eff satisfactory")
 						return 1, true
 					} else {
@@ -220,7 +220,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 				// all other cases
 				stateAtPoint := path.statesAlong[insertionIx].vals[varName]
 				needToBeat := interval.Diff(float64(stateAtPoint))
-				actionDiff := interval.Diff(float64(eff.f(stateAtPoint)))
+				actionDiff := interval.Diff(float64(eff.f(action.Count, stateAtPoint)))
 				if DEBUG_GOAP {
 					logGOAPDebug(path.String())
 					logGOAPDebug("            ws[%s] = %d (before)", varName, stateAtPoint)

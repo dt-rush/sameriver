@@ -32,19 +32,19 @@ type GOAPAction struct {
 type GOAPEff struct {
 	val int
 	op  string
-	f   func(int) int
+	f   func(count int, x int) int
 }
 
-func GOAPEffFunc(a *GOAPAction, op string, val int) func(int) int {
+func GOAPEffFunc(op string, val int) func(count int, x int) int {
 	switch op {
 	case "+":
-		return func(x int) int { return a.Count*val + x }
+		return func(count int, x int) int { return count*val + x }
 	case "-":
-		return func(x int) int { return x - a.Count*val }
+		return func(count int, x int) int { return x - count*val }
 	case "=":
-		return func(x int) int { return val }
+		return func(count int, x int) int { return val }
 	default:
-		panic("Got an unspecined op in GOAPEffFunc() [valid: +,-,=]")
+		panic("Got an unspecified op in GOAPEffFunc() [valid: +,-,=]")
 	}
 }
 
@@ -71,7 +71,7 @@ func NewGOAPAction(spec map[string]interface{}) *GOAPAction {
 		eff := &GOAPEff{
 			val: val,
 			op:  op,
-			f:   GOAPEffFunc(a, op, val),
+			f:   GOAPEffFunc(op, val),
 		}
 		a.effs[varName] = eff
 		a.ops[varName] = op
