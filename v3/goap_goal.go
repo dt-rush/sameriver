@@ -24,6 +24,7 @@ func (g *GOAPGoal) Parametrized(n int) *GOAPGoal {
 		vars: make(map[string]*NumericInterval),
 	}
 	for spec, val := range g.spec {
+		logGOAPDebug("        parametrizing %s:%d by %d", spec, val, n)
 		var split []string
 		macroSplit := strings.Split(spec, ":")
 		// if there is a macro ("EACH")

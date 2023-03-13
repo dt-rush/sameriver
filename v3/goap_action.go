@@ -59,7 +59,7 @@ func NewGOAPAction(spec map[string]interface{}) *GOAPAction {
 		Name:            name,
 		Count:           1,
 		cost:            cost,
-		pres:            NewGOAPTemporalGoal(pres).Parametrized(1),
+		pres:            NewGOAPTemporalGoal(pres),
 		preModalChecks:  make(map[string]func(ws *GOAPWorldState) int),               // set by GOAPEvaluator
 		effModalSetters: make(map[string]func(ws *GOAPWorldState, op string, x int)), // set by GOAPEvaluator
 		effs:            make(map[string]*GOAPEff),
@@ -88,11 +88,8 @@ func (a *GOAPAction) DisplayName() string {
 }
 
 func (a *GOAPAction) CopyOf() *GOAPAction {
-	result := NewGOAPAction(a.spec)
-	result.Count = a.Count
-	result.preModalChecks = a.preModalChecks
-	result.effModalSetters = a.effModalSetters
-	return result
+	result := *a
+	return &result
 }
 
 func (a *GOAPAction) Parametrized(n int) *GOAPAction {
