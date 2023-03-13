@@ -7,12 +7,12 @@ type GOAPTemporalGoal struct {
 func NewGOAPTemporalGoal(spec any) *GOAPTemporalGoal {
 	tg := &GOAPTemporalGoal{}
 	if specmap, single := spec.(map[string]int); single {
-		tg.temporalGoals = []*GOAPGoal{NewGOAPGoal(specmap)}
+		tg.temporalGoals = []*GOAPGoal{newGOAPGoal(specmap)}
 	} else if specarr, temporal := spec.([]any); temporal {
 		tg.temporalGoals = make([]*GOAPGoal, 0)
 		for i := 0; i < len(specarr); i++ {
 			specmapi := specarr[i].(map[string]int)
-			tg.temporalGoals = append(tg.temporalGoals, NewGOAPGoal(specmapi))
+			tg.temporalGoals = append(tg.temporalGoals, newGOAPGoal(specmapi))
 		}
 	}
 	return tg

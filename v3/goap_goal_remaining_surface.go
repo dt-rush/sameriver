@@ -20,7 +20,7 @@ type GOAPGoalRemainingSurface struct {
 	surface [][]*GOAPGoalRemaining
 }
 
-func NewGOAPGoalRemainingSurface(length int) *GOAPGoalRemainingSurface {
+func newGOAPGoalRemainingSurface(length int) *GOAPGoalRemainingSurface {
 	s := &GOAPGoalRemainingSurface{
 		surface: make([][]*GOAPGoalRemaining, length),
 	}

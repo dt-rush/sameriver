@@ -101,7 +101,7 @@ func TestGOAPGoalRemaining(t *testing.T) {
 	}
 
 	doTest(
-		NewGOAPGoal(map[string]int{
+		newGOAPGoal(map[string]int{
 			"hasGlove,=": 1,
 			"hasAxe,=":   1,
 			"atTree,=":   1,
@@ -116,7 +116,7 @@ func TestGOAPGoalRemaining(t *testing.T) {
 	)
 
 	doTest(
-		NewGOAPGoal(map[string]int{
+		newGOAPGoal(map[string]int{
 			"hasGlove,=": 1,
 			"hasAxe,=":   1,
 			"atTree,=":   1,
@@ -131,7 +131,7 @@ func TestGOAPGoalRemaining(t *testing.T) {
 	)
 
 	doTest(
-		NewGOAPGoal(map[string]int{
+		newGOAPGoal(map[string]int{
 			"drunk,>=": 3,
 		}),
 		NewGOAPWorldState(map[string]int{
@@ -433,7 +433,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	// test applyAction
 	//
 
-	g := NewGOAPGoal(map[string]int{
+	g := newGOAPGoal(map[string]int{
 		"atTree,=": 1,
 	})
 	appliedState := eval.applyActionBasic(goToTree, NewGOAPWorldState(nil), true)
@@ -453,7 +453,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	Logger.Println("diffs:")
 	printDiffs(remaining.diffs)
 
-	g2 := NewGOAPGoal(map[string]int{
+	g2 := newGOAPGoal(map[string]int{
 		"atTree,=": 1,
 		"drunk,>=": 10,
 	})
@@ -589,7 +589,7 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 		},
 	})
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := newGOAPGoal(map[string]int{
 		"drunk,=": 1,
 	})
 
@@ -601,7 +601,7 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 
 	Logger.Println(planner.Plan(ws, goal, 50))
 
-	goal = NewGOAPGoal(map[string]int{
+	goal = newGOAPGoal(map[string]int{
 		"drunk,=": 3,
 	})
 	Logger.Println(planner.Plan(ws, goal, 50))
@@ -660,7 +660,7 @@ func TestGOAPPlanSimpleEnough(t *testing.T) {
 	planner.eval.AddModalVals(drunkModal)
 	planner.eval.AddActions(drink, purifyOneself)
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := newGOAPGoal(map[string]int{
 		"drunk,=":        10,
 		"rituallyPure,=": 1,
 	})
@@ -1085,7 +1085,7 @@ func TestGOAPPlanResponsibleFridgeUsage(t *testing.T) {
 		"fridgeOpen": 0,
 	})
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := newGOAPGoal(map[string]int{
 		"fridgeOpen,=": 0,
 		"food,=":       1,
 	})

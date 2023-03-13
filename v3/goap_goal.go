@@ -10,7 +10,7 @@ type GOAPGoal struct {
 	vars map[string]*NumericInterval
 }
 
-func NewGOAPGoal(spec map[string]int) *GOAPGoal {
+func newGOAPGoal(spec map[string]int) *GOAPGoal {
 	g := &GOAPGoal{
 		spec: spec,
 		vars: make(map[string]*NumericInterval),

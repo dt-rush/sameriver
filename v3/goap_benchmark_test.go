@@ -171,7 +171,7 @@ func BenchmarkGOAPClassic(b *testing.B) {
 		"woodChopped": 0,
 	})
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := newGOAPGoal(map[string]int{
 		"woodChopped,=": 3,
 	})
 	b.ResetTimer()
@@ -375,7 +375,7 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 		"rituallyPure": 0,
 	})
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := newGOAPGoal(map[string]int{
 		"drunk,>=":   3,
 		"inTemple,=": 1,
 	})
@@ -451,7 +451,7 @@ func BenchmarkGOAPSimple(b *testing.B) {
 
 	ws := NewGOAPWorldState(nil)
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := newGOAPGoal(map[string]int{
 		"combat,=": 1,
 	})
 

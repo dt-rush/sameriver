@@ -129,7 +129,7 @@ func (e *GOAPEvaluator) computeRemainingsOfPath(path *GOAPPath, start *GOAPWorld
 	ws := start.CopyOf()
 	// one []*GOAPGoalRemaining for each action pre + 1 for main
 	surfaceLen := len(path.path) + 1
-	surface := NewGOAPGoalRemainingSurface(surfaceLen)
+	surface := newGOAPGoalRemainingSurface(surfaceLen)
 	// create the storage space for statesAlong
 	// consider, a path [A B C] will have 4 states: [start, postA, postB, postC (end)]
 	path.statesAlong = make([]*GOAPWorldState, len(path.path)+1)
