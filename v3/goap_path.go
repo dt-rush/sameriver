@@ -46,9 +46,14 @@ func (p *GOAPPath) costOfAdd(a *GOAPAction) int {
 func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPPath {
 	// copy actions into new slice, and put a at insertionIx
 	newSlice := make([]*GOAPAction, len(p.path)+1)
-	copy(newSlice[:insertionIx], p.path[:insertionIx])
+	for i := 0; i < insertionIx; i++ {
+		newSlice[i] = p.path[i].CopyOf()
+	}
 	newSlice[insertionIx] = a
-	copy(newSlice[insertionIx+1:], p.path[insertionIx:])
+	for i := insertionIx + 1; i < len(newSlice); i++ {
+		newSlice[i] = p.path[i-1].CopyOf()
+	}
+
 	path := &GOAPPath{
 		path: newSlice,
 		cost: p.costOfAdd(a),
@@ -108,6 +113,11 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 	for j := insertionIx + 1; j < len(path.path); j++ {
 		path.path[j].insertionIx++
 	}
+	insertionIxs := make([]int, len(path.path))
+	for i, ac := range path.path {
+		insertionIxs[i] = ac.insertionIx
+	}
+	logGOAPDebug("  insertionIxs after insert&update: %v", insertionIxs)
 	// add regionOffsets
 	// update this aciton's index
 	return path
