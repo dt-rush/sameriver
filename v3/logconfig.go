@@ -14,6 +14,7 @@ func SubLogFunction(
 	moduleName string,
 	flag bool,
 	wrapper func(s string) string) func(s string, params ...interface{}) {
+
 	prefix := fmt.Sprintf("[%s] ", moduleName)
 	return func(format string, params ...interface{}) {
 		switch {
@@ -27,23 +28,24 @@ func SubLogFunction(
 	}
 }
 
+func getEnv(s string) func() bool {
+	return func() bool {
+		return os.Getenv(s) == "true"
+	}
+}
+
 var logWarning = SubLogFunction(
 	"WARNING", true,
 	func(s string) string { return color.InYellow(color.InBold(s)) })
 
-var LOG_EVENTS = func() bool {
-	val := os.Getenv("LOG_EVENTS")
-	return val == "true"
-}()
+var LOG_EVENTS = getEnv("LOG_EVENTS")
 
 var logEvent = SubLogFunction(
-	"Events", LOG_EVENTS,
+	"Events", LOG_EVENTS(),
 	func(s string) string { return color.InWhiteOverPurple(s) })
 
-var DEBUG_GOAP = func() bool {
-	val := os.Getenv("DEBUG_GOAP")
-	return val == "true"
-}()
+var DEBUG_GOAP = getEnv("DEBUG_GOAP")
+
 var logGOAPDebug = SubLogFunction(
-	"GOAP", DEBUG_GOAP,
+	"GOAP", DEBUG_GOAP(),
 	func(s string) string { return s })

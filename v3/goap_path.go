@@ -106,7 +106,7 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 		path.regionOffsets[:insertionIx+1],
 		path.regionOffsets[insertionIx:]...)
 	path.regionOffsets[insertionIx] = make([]int, len(a.pres.temporalGoals))
-	if DEBUG_GOAP {
+	if DEBUG_GOAP() {
 		logGOAPDebug("  regionOffsets after insert&update: %v", path.regionOffsets)
 	}
 	// update action indexes after insertion

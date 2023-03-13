@@ -48,7 +48,7 @@ func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {
 		diffs:        make(map[string]float64),
 		nUnfulfilled: 0,
 	}
-	if DEBUG_GOAP {
+	if DEBUG_GOAP() {
 		logGOAPDebug("      -+- checking remaining for goal: %s", debugGOAPGoalToString(g))
 		logGOAPDebug("      -+-     ws: %v", ws.vals)
 	}
