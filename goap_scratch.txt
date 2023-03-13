@@ -31,6 +31,7 @@ remainings [[q] [r] [s t] [u]]
 regionOffsets [[0] [0] [-1 0] [0]]
 
 
+
 // it doens't make sense... remainings and regionOffsets 
 // needs to have a recursive structure, so that it's like:
 
@@ -99,11 +100,33 @@ now let's insert Q to satisfy m (Q has nil pre)
 path   : [ A   W    Q    Y    B   Z     C ]
 parents: [ C   Y    Y    B    C   C     * ]
 
+updating regionOffsets:
+inserted Q @ regionIx 0 of [m n]
+
+start at node = parent of inserted
+node: Y (region0 of [r])
+[m  n]
+[-1 0]
+Q inserted at region 0 of [m n], so no update needed (no region to the left of region0)
+
+now traverse to parent
+node: B (region1 of [s t])
+[r]
+[0]
+temporal goal [r] has length 1, so no update needed (always insert at 0 for unordered)
+
+now traverse to parent
+node: C (region0 of [u])
+[s t]
+[-4 0] -> [-5 0]
+B inserted at region 1 of [s t] so push back all regions below 1 (region0) by 1
 
 
 
 
-now let's insert R to satisfy n (R has nil pre)
+
+
+now let's say n was not completely satisfied by W, so we want to insert R (nil pre)
 
 [ A   W   Q   R     Y     B   Z    C  ]
 [[q] [l] [ ] [ ] [ m  n] [r] [ ] [s  t] [u]]
@@ -112,7 +135,30 @@ now let's insert R to satisfy n (R has nil pre)
 path   : [ A   W    Q    R    Y    B   Z     C ]
 parents: [ C   Y    Y    Y    B    C   C     * ]
 
-note Y now has [-1 0] since to insert for m we subtract 1, for n, 0
+updating regionoffsets:
+inserted: R @ regionIx 1 of [m n]
+
+start at node = parent of inserted
+node: Y (region0 of [r])
+[m  n]
+[-1 0] -> [-2 0]
+R inserted at region 1 of [m n], so push back all regions below 1 (region0) by 1
+
+now traverse to parent
+node: B (region1 of [s t])
+[r]
+[0]
+temporal goal [r] has length 1, so no update needed (always insert at 0 for unordered)
+
+now traverse to parent
+node: C (region0 of [u])
+[s t]
+[-5 0] -> [-6 0]
+B inserted at region 1 of [s t] so push back all regions below 1 (region0) by 1
+
+
+
+
 
 
 
@@ -123,11 +169,58 @@ now let's say m was not completely satisfied by Q, so we want to insert T (nil p
 
 [ A   W   Q   T   R    Y     B   Z    C  ]
 [[q] [l] [ ] [ ] [ ] [m  n] [r] [ ] [s  t] [u]]
-[[0] [0] [ ] [ ] [ ] [-1 0] [0] [ ] [-7 0] [0]]
+[[0] [0] [ ] [ ] [ ] [-2 0] [0] [ ] [-7 0] [0]]
+
+path   : [ A   W    Q    T    R    Y    B   Z     C ]
+parents: [ C   Y    Y    Y    Y    B    C   C     * ]
 
 we don't update the region offset for m since we *still* want to insert any 
-of m's satisfiers at -1; we update region offset for m when *a region in front of it*
+of m's satisfiers at -2; we update region offset for m when *a region in front of it*
 gets inserted to
+
+
+updating regionoffsets:
+inserted: T @ regionIx 0 of [m n]
+
+start at node = parent of inserted
+node: Y (region0 of [r])
+[m  n]
+[-2 0] -> [-2 0]
+insert region was 0, so no update needed to regionoffsets at this level (continue to insert region0 at -2)
+
+now traverse to parent
+node: B (region1 of [s t])
+[r]
+[0]
+temporal goal [r] has length 1, so no update needed (always insert at 0 for unordered)
+
+now traverse to parent
+node: C (region0 of [u])
+[s t]
+[-6 0] -> [-7 0]
+inserted in subtree t at regionIx1, so push back all regions below 1 (region0) by 1
+
+now traverse to parent
+node: nil
+terminate
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
