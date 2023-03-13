@@ -1011,10 +1011,14 @@ func TestGOAPPlanClassic(t *testing.T) {
 	chopTree := NewGOAPAction(map[string]any{
 		"name": "chopTree",
 		"cost": 1,
-		"pres": map[string]int{
-			"hasGlove,=": 1,
-			"hasAxe,=":   1,
-			"atTree,=":   1,
+		"pres": []any{
+			map[string]int{
+				"hasGlove,=": 1,
+				"hasAxe,=":   1,
+			},
+			map[string]int{
+				"atTree,=": 1,
+			},
 		},
 		"effs": map[string]int{
 			"woodChopped,+": 1,
@@ -1028,9 +1032,9 @@ func TestGOAPPlanClassic(t *testing.T) {
 
 	ws := NewGOAPWorldState(nil)
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := map[string]int{
 		"woodChopped,=": 3,
-	})
+	}
 	t0 := time.Now()
 	plan, ok := p.Plan(ws, goal, 500)
 	if !ok {
