@@ -15,11 +15,14 @@ func NewGOAPGoal(spec map[string]int) *GOAPGoal {
 		spec: spec,
 		vars: make(map[string]*NumericInterval),
 	}
-	g.Parametrize(1)
-	return g
+	return g.Parametrized(1)
 }
 
-func (g *GOAPGoal) Parametrize(n int) *GOAPGoal {
+func (g *GOAPGoal) Parametrized(n int) *GOAPGoal {
+	result := &GOAPGoal{
+		spec: g.spec,
+		vars: make(map[string]*NumericInterval),
+	}
 	for spec, val := range g.spec {
 		var split []string
 		macroSplit := strings.Split(spec, ":")
@@ -32,9 +35,9 @@ func (g *GOAPGoal) Parametrize(n int) *GOAPGoal {
 		}
 		varName, op := split[0], split[1]
 		interval := MakeNumericInterval(op, val)
-		g.vars[varName] = interval
+		result.vars[varName] = interval
 	}
-	return g
+	return result
 }
 
 func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {

@@ -71,13 +71,16 @@ func (e *GOAPEvaluator) applyActionBasic(
 		ws = ws.CopyOf()
 	}
 
+	logGOAPDebug("     %s   applying %s",
+		color.InWhiteOverYellow(">>>"),
+		action.DisplayName())
 	for varName, eff := range action.effs {
 		op := action.ops[varName]
 		x := ws.vals[varName]
 		if DEBUG_GOAP {
-			logGOAPDebug("     %s       applying %s::%d x %s%s%d(%d) ; = %d",
+			logGOAPDebug("     %s       %d x %s%s%d(%d) ; = %d",
 				color.InWhiteOverYellow(">>>"),
-				action.DisplayName(), action.Count, varName, op, eff.val, x,
+				action.Count, varName, op, eff.val, x,
 				eff.f(x))
 		}
 		ws.vals[varName] = eff.f(x)
@@ -197,7 +200,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 		action *GOAPAction) (scale int, helpful bool) {
 
 		if DEBUG_GOAP {
-			logGOAPDebug("    Considering effs of %s for var %s. effs: %v", action.DisplayName(), varName, action.effs)
+			logGOAPDebug("    Considering effs of %s for var %s. effs: %v", color.InYellowOverWhite(action.DisplayName()), varName, action.effs)
 		}
 		for effVarName, eff := range action.effs {
 			if varName != effVarName {
@@ -220,7 +223,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 				actionDiff := interval.Diff(float64(eff.f(stateAtPoint)))
 				if DEBUG_GOAP {
 					logGOAPDebug(path.String())
-					logGOAPDebug("            ws[%s] before insertion: %d", varName, stateAtPoint)
+					logGOAPDebug("            ws[%s] = %d (before)", varName, stateAtPoint)
 					logGOAPDebug("              needToBeat diff: %d", int(needToBeat))
 					logGOAPDebug("              actionDiff: %d", int(actionDiff))
 				}

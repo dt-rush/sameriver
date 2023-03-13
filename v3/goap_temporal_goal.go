@@ -18,9 +18,9 @@ func NewGOAPTemporalGoal(spec any) *GOAPTemporalGoal {
 	return tg
 }
 
-func (tg *GOAPTemporalGoal) Parametrize(n int) *GOAPTemporalGoal {
+func (tg *GOAPTemporalGoal) Parametrized(n int) *GOAPTemporalGoal {
 	for i, g := range tg.temporalGoals {
-		tg.temporalGoals[i] = g.Parametrize(n)
+		tg.temporalGoals[i] = g.Parametrized(n)
 	}
 	return tg
 }

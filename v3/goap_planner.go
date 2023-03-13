@@ -57,11 +57,12 @@ func (p *GOAPPlanner) traverseFulfillers(
 			parent = here.path.path[i]
 		}
 		for regionIx, tg := range tgs {
-			logGOAPDebug("    surface[i:%d][regionIx:%d]", i, regionIx)
+			logGOAPDebug("  surface[i:%d][regionIx:%d]", i, regionIx)
 			logGOAPDebug("        |")
 			logGOAPDebug("        |")
 			for varName := range tg.goalLeft {
 				for action := range p.eval.varActions[varName] {
+					logGOAPDebug("       ...")
 					logGOAPDebug("        |")
 					logGOAPDebug("        └>varName: %s", varName)
 					insertionIx := i + here.path.regionOffsets[i][regionIx]

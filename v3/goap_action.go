@@ -59,7 +59,7 @@ func NewGOAPAction(spec map[string]interface{}) *GOAPAction {
 		Name:            name,
 		Count:           1,
 		cost:            cost,
-		pres:            NewGOAPTemporalGoal(pres).Parametrize(1),
+		pres:            NewGOAPTemporalGoal(pres).Parametrized(1),
 		preModalChecks:  make(map[string]func(ws *GOAPWorldState) int),               // set by GOAPEvaluator
 		effModalSetters: make(map[string]func(ws *GOAPWorldState, op string, x int)), // set by GOAPEvaluator
 		effs:            make(map[string]*GOAPEff),
@@ -96,9 +96,10 @@ func (a *GOAPAction) CopyOf() *GOAPAction {
 }
 
 func (a *GOAPAction) Parametrized(n int) *GOAPAction {
+	logGOAPDebug("    parametrizing %s x %d", a.Name, n)
 	result := a.CopyOf()
 	result.Count = n
-	result.pres = result.pres.Parametrize(n)
+	result.pres = result.pres.Parametrized(n)
 	return result
 }
 

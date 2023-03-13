@@ -110,8 +110,8 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 		logGOAPDebug("  regionOffsets after insert&update: %v", path.regionOffsets)
 	}
 	// update action indexes after insertion
-	for j := insertionIx + 1; j < len(path.path); j++ {
-		path.path[j].insertionIx++
+	for i := 0; i < len(path.path); i++ {
+		path.path[i].insertionIx = i
 	}
 	insertionIxs := make([]int, len(path.path))
 	for i, ac := range path.path {
