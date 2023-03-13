@@ -52,15 +52,15 @@ func printGoalRemainingSurface(s *GOAPGoalRemainingSurface) {
 	if s.NUnfulfilled() == 0 {
 		Logger.Println("    nil")
 	} else {
-		for i, goal := range s.surface {
+		for i, tgs := range s.surface {
 			if i == len(s.surface)-1 {
 				Logger.Printf(color.InBold(color.InRedOverGray("main:")))
-				printGoalRemaining(s.surface[len(s.surface)-1])
-			} else {
-				debugGOAPPrintGoalRemaining(goal)
+
+			}
+			for _, tg := range tgs {
+				printGoalRemaining(tg)
 			}
 		}
-
 	}
 }
 
@@ -197,7 +197,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
-	mainGoalRemaining := path.remainings.surface[len(path.remainings.surface)-1]
+	mainGoalRemaining := path.remainings.surface[len(path.remainings.surface)-1][0]
 	if path.remainings.NUnfulfilled() != 3 || len(mainGoalRemaining.goalLeft) != 1 {
 		t.Fatal("Remaining was not calculated properly")
 	}
@@ -208,7 +208,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
-	mainGoalRemaining = path.remainings.surface[len(path.remainings.surface)-1]
+	mainGoalRemaining = path.remainings.surface[len(path.remainings.surface)-1][0]
 	if path.remainings.NUnfulfilled() != 3 || len(mainGoalRemaining.goalLeft) != 0 {
 		t.Fatal("Remaining was not calculated properly")
 	}

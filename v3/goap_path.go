@@ -59,7 +59,11 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 	node := a
 	for {
 		// if goal isnt' temporal (length 1), no update at this level
-		if len(p.remainings.surface[node.insertionIx]) == 1 {
+		// (note remainings here is before including the pres of a,
+		// and we haven't udpated the insertionIx of the old path actions,
+		// so we can use node.insertionIx of a node (from a.parent on up)
+		// to get its goal surface
+		if len(p.remainings.surface[node.parent.insertionIx]) == 1 {
 			node = node.parent
 			continue
 		}
@@ -79,10 +83,14 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 			node = node.parent
 		}
 	}
+	if DEBUG_GOAP {
+		logGOAPDebug("  regionOffsets: %v", path.regionOffsets)
+	}
 	// update action indexes after insertion
 	for j := insertionIx + 1; j < len(path.path); j++ {
 		path.path[j].insertionIx++
 	}
+	// add regionOffsets
 	// update this aciton's index
 	return path
 }

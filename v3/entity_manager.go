@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
 )
 
 // Provides services related to entities
@@ -50,10 +51,13 @@ func (m *EntityManager) Components() *ComponentTable {
 }
 
 // called once per scene Update() for scenes holding an entity manager
-func (m *EntityManager) Update(allowance_ms float64) {
+func (m *EntityManager) Update(allowance_ms float64) float64 {
+	t0 := time.Now()
 	// TODO: base spawning off allowance. Spawn enough and do no more.
 	m.processDespawnChannel()
 	m.processSpawnChannel()
+	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1e6
+	return allowance_ms - dt_ms
 }
 
 // set an entity Active and notify all active entity lists
