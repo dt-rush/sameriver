@@ -10,18 +10,21 @@ type GOAPGoal struct {
 	vars map[string]*NumericInterval
 }
 
-func NewGOAPGoal(spec map[string]int) *GOAPGoal {
+func newGOAPGoal(spec map[string]int) *GOAPGoal {
 	g := &GOAPGoal{
 		spec: spec,
 		vars: make(map[string]*NumericInterval),
 	}
-	g.Parametrize(1)
-
-	return g
+	return g.Parametrized(1)
 }
 
-func (g *GOAPGoal) Parametrize(n int) *GOAPGoal {
+func (g *GOAPGoal) Parametrized(n int) *GOAPGoal {
+	result := &GOAPGoal{
+		spec: g.spec,
+		vars: make(map[string]*NumericInterval),
+	}
 	for spec, val := range g.spec {
+		logGOAPDebug("        parametrizing %s:%d by %d", spec, val, n)
 		var split []string
 		macroSplit := strings.Split(spec, ":")
 		// if there is a macro ("EACH")
@@ -33,9 +36,9 @@ func (g *GOAPGoal) Parametrize(n int) *GOAPGoal {
 		}
 		varName, op := split[0], split[1]
 		interval := MakeNumericInterval(op, val)
-		g.vars[varName] = interval
+		result.vars[varName] = interval
 	}
-	return g
+	return result
 }
 
 func (g *GOAPGoal) remaining(ws *GOAPWorldState) (result *GOAPGoalRemaining) {

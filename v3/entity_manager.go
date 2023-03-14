@@ -52,11 +52,12 @@ func (m *EntityManager) Components() *ComponentTable {
 
 // called once per scene Update() for scenes holding an entity manager
 func (m *EntityManager) Update(allowance_ms float64) float64 {
-	// TODO: base spawning off allowance. Spawn enough and do no more.
 	t0 := time.Now()
+	// TODO: base spawning off allowance. Spawn enough and do no more.
 	m.processDespawnChannel()
 	m.processSpawnChannel()
-	return float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1e6
+	return allowance_ms - dt_ms
 }
 
 // set an entity Active and notify all active entity lists

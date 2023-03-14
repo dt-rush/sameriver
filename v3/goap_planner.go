@@ -1,6 +1,7 @@
 package sameriver
 
 import (
+	"container/heap"
 	"fmt"
 	"strings"
 	"time"
@@ -24,7 +25,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 	pq *GOAPPriorityQueue,
 	start *GOAPWorldState,
 	here *GOAPPQueueItem,
-	goal *GOAPGoal,
+	goal *GOAPTemporalGoal,
 	pathsSeen map[string]bool) {
 
 	if DEBUG_GOAP {
@@ -32,61 +33,89 @@ func (p *GOAPPlanner) traverseFulfillers(
 		logGOAPDebug(color.InRedOverGray("remaining:"))
 		debugGOAPPrintGoalRemainingSurface(here.path.remainings)
 		logGOAPDebug("%d possible actions", len(p.eval.actions.set))
+		logGOAPDebug("regionOffsets: %v", here.path.regionOffsets)
 	}
 
 	// determine if action is good to insert anywhere
-	// consider, surface: [Apre, Bpre, Main]
-	// consider inserting at 0 means fulfilling Apre
-	for i, g := range here.path.remainings.surface {
-		if g.nUnfulfilled == 0 {
+	// consider
+	// path: [A, C]
+	// A.pre = [q], A fulfills s
+	// C.pre = [s t], C fulfills u
+	// remainings surface: [[q] [s t] [u]]
+
+	// iterate path with index i
+	// and iterate temporal goal of surface (ex iterate inside [s t]) with index regionIx
+
+	for i, tgs := range here.path.remainings.surface {
+		if here.path.remainings.nUnfulfilledAtIx(i) == 0 {
 			continue
 		}
-		for varName := range g.goalLeft {
-			for action := range p.eval.varActions[varName] {
-				if DEBUG_GOAP {
-					logGOAPDebug("[ ] Considering action %s", action.DisplayName())
-				}
-				if DEBUG_GOAP {
-					var toSatisfyMsg string
-					if i == len(here.path.remainings.surface)-1 {
-						toSatisfyMsg = "main goal"
-					} else {
-						toSatisfyMsg = fmt.Sprintf("pre of %s", here.path.path[i].Name)
-					}
-					logGOAPDebug(color.InGreenOverGray(
-						fmt.Sprintf("checking if %s can be inserted at %d to satisfy %s",
-							action.DisplayName(), i, toSatisfyMsg)))
-				}
-				scale, helpful := p.eval.actionHelpsToInsert(start, here.path, i, action)
-				if helpful {
+		var parent *GOAPAction
+		if i == len(here.path.remainings.surface)-1 {
+			logGOAPDebug("    nil parent (satisfying main goal)")
+			parent = nil
+		} else {
+			logGOAPDebug("    parent: %s", here.path.path[i].Name)
+			parent = here.path.path[i]
+		}
+		for regionIx, tg := range tgs {
+			logGOAPDebug("  surface[i:%d][regionIx:%d]", i, regionIx)
+			logGOAPDebug("        |")
+			logGOAPDebug("        |")
+			for varName := range tg.goalLeft {
+				for action := range p.eval.varActions[varName] {
+					logGOAPDebug("       ...")
+					logGOAPDebug("        |")
+					logGOAPDebug("        └>varName: %s", varName)
+
+					insertionIx := i + here.path.regionOffsets[i][regionIx]
+					logGOAPDebug("    insertionIx: %d", insertionIx)
+
 					if DEBUG_GOAP {
-						logGOAPDebug("[X] %s helpful!", action.DisplayName())
+						var toSatisfyMsg string
+						if i == len(here.path.remainings.surface)-1 {
+							toSatisfyMsg = "main goal"
+						} else {
+							toSatisfyMsg = fmt.Sprintf("pre of %s", here.path.path[i].Name)
+						}
+						logGOAPDebug(color.InGreenOverGray(
+							fmt.Sprintf("checking if %s can be inserted at %d to satisfy %s",
+								action.DisplayName(), i, toSatisfyMsg)))
 					}
-					var toInsert *GOAPAction
-					if scale > 1 {
-						toInsert = action.Parametrized(scale)
+					scale, helpful := p.eval.actionHelpsToInsert(
+						start,
+						here.path,
+						insertionIx,
+						tg,
+						action)
+					if helpful {
+						if DEBUG_GOAP {
+							logGOAPDebug("[X] %s helpful!", action.DisplayName())
+						}
+						var toInsert *GOAPAction
+						if scale > 1 {
+							toInsert = action.Parametrized(scale) // yields a copy
+						} else {
+							toInsert = action.CopyOf()
+						}
+						toInsert = toInsert.ChildOf(parent)
+						newPath := here.path.inserted(toInsert, insertionIx, regionIx)
+						pathStr := newPath.String()
+						if _, ok := pathsSeen[pathStr]; ok {
+							continue
+						} else {
+							pathsSeen[pathStr] = true
+						}
+						p.eval.computeRemainingsOfPath(newPath, start, goal)
+						if DEBUG_GOAP {
+							msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
+								GOAPPathToString(newPath), newPath.cost)
+							logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+							logGOAPDebug(color.InWhiteOverCyan(msg))
+							logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
+						}
+						heap.Push(pq, &GOAPPQueueItem{path: newPath})
 					} else {
-						toInsert = action
-					}
-					newPath := here.path.inserted(toInsert, i)
-					pathStr := newPath.String()
-					if _, ok := pathsSeen[pathStr]; ok {
-						logGOAPDebug(color.InRedOverGray("xxxxxxxxxxxxxxxxxxx path already seen xxxxxxxxxxxxxxxxxxxxx"))
-						continue
-					} else {
-						pathsSeen[pathStr] = true
-					}
-					p.eval.computeRemainingsOfPath(newPath, start, goal)
-					if DEBUG_GOAP {
-						msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
-							GOAPPathToString(newPath), newPath.cost)
-						logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
-						logGOAPDebug(color.InWhiteOverCyan(msg))
-						logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
-					}
-					pq.Push(&GOAPPQueueItem{path: newPath})
-				} else {
-					if DEBUG_GOAP {
 						logGOAPDebug("[_] %s not helpful", action.DisplayName())
 					}
 				}
@@ -98,14 +127,20 @@ func (p *GOAPPlanner) traverseFulfillers(
 
 func (p *GOAPPlanner) Plan(
 	start *GOAPWorldState,
-	goal *GOAPGoal,
+	goalSpec any,
 	maxIter int) (solution *GOAPPath, ok bool) {
+
+	logGOAPDebug("Planning...")
+
+	// convert goal spec into GOAPTemporalGoal
+	goal := NewGOAPTemporalGoal(goalSpec)
 
 	// populate start state with any modal vals at start
 	p.eval.PopulateModalStartState(start)
 
 	// used to return the solution with lowest cost among solutions found
 	resultPq := &GOAPPriorityQueue{}
+	heap.Init(resultPq)
 
 	// used to keep track of which paths we've already seen since there's multiple ways to
 	// reach a path in the insertion-based logic we use
@@ -113,14 +148,16 @@ func (p *GOAPPlanner) Plan(
 
 	// used for the search
 	pq := &GOAPPriorityQueue{}
+	heap.Init(pq)
 
 	rootPath := NewGOAPPath(nil)
 	p.eval.computeRemainingsOfPath(rootPath, start, goal)
+	rootPath.regionOffsets[0] = make([]int, len(goal.temporalGoals))
 	backtrackRoot := &GOAPPQueueItem{
 		path:  rootPath,
 		index: -1, // going to be set by Push()
 	}
-	pq.Push(backtrackRoot)
+	heap.Push(pq, backtrackRoot)
 
 	iter := 0
 	// TODO: should we just pop out the *very first result*?
@@ -128,7 +165,7 @@ func (p *GOAPPlanner) Plan(
 	t0 := time.Now()
 	for iter < maxIter && pq.Len() > 0 && resultPq.Len() < 2 {
 		logGOAPDebug("=== iter ===")
-		here := pq.Pop().(*GOAPPQueueItem)
+		here := heap.Pop(pq).(*GOAPPQueueItem)
 		if DEBUG_GOAP {
 			logGOAPDebug(color.InRedOverGray("here:"))
 			logGOAPDebug(color.InWhiteOverBlue(color.InBold(GOAPPathToString(here.path))))
@@ -154,7 +191,7 @@ func (p *GOAPPlanner) Plan(
 				logGOAPDebug(color.InGreenOverWhite(color.InBold(GOAPPathToString(here.path))))
 				logGOAPDebug(color.InGreenOverWhite(color.InBold(fmt.Sprintf("%d solutions found so far", resultPq.Len()+1))))
 			}
-			resultPq.Push(here)
+			heap.Push(resultPq, here)
 		} else {
 			p.traverseFulfillers(pq, start, here, goal, pathsSeen)
 			iter++
@@ -174,10 +211,13 @@ func (p *GOAPPlanner) Plan(
 		if pq.Len() == 0 {
 			logGOAPDebug("Exhausted pq")
 		}
-		for _, item := range *resultPq {
-			logGOAPDebug(color.InWhiteOverBlue(item.path))
+		results := make([]*GOAPPath, 0)
+		for resultPq.Len() > 0 {
+			pop := heap.Pop(resultPq).(*GOAPPQueueItem).path
+			results = append(results, pop)
+			logGOAPDebug("solution (cost %d): %s", pop.cost, color.InWhiteOverBlue(GOAPPathToString(pop)))
 		}
-		return resultPq.Pop().(*GOAPPQueueItem).path, true
+		return results[0], true
 	} else {
 		return nil, false
 	}

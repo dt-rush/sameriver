@@ -52,15 +52,15 @@ func printGoalRemainingSurface(s *GOAPGoalRemainingSurface) {
 	if s.NUnfulfilled() == 0 {
 		Logger.Println("    nil")
 	} else {
-		for i, goal := range s.surface {
+		for i, tgs := range s.surface {
 			if i == len(s.surface)-1 {
 				Logger.Printf(color.InBold(color.InRedOverGray("main:")))
-				printGoalRemaining(s.surface[len(s.surface)-1])
-			} else {
-				debugGOAPPrintGoalRemaining(goal)
+
+			}
+			for _, tg := range tgs {
+				printGoalRemaining(tg)
 			}
 		}
-
 	}
 }
 
@@ -101,7 +101,7 @@ func TestGOAPGoalRemaining(t *testing.T) {
 	}
 
 	doTest(
-		NewGOAPGoal(map[string]int{
+		newGOAPGoal(map[string]int{
 			"hasGlove,=": 1,
 			"hasAxe,=":   1,
 			"atTree,=":   1,
@@ -116,7 +116,7 @@ func TestGOAPGoalRemaining(t *testing.T) {
 	)
 
 	doTest(
-		NewGOAPGoal(map[string]int{
+		newGOAPGoal(map[string]int{
 			"hasGlove,=": 1,
 			"hasAxe,=":   1,
 			"atTree,=":   1,
@@ -131,7 +131,7 @@ func TestGOAPGoalRemaining(t *testing.T) {
 	)
 
 	doTest(
-		NewGOAPGoal(map[string]int{
+		newGOAPGoal(map[string]int{
 			"drunk,>=": 3,
 		}),
 		NewGOAPWorldState(map[string]int{
@@ -187,29 +187,29 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	start := NewGOAPWorldState(nil)
 	p.eval.PopulateModalStartState(start)
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := map[string]int{
 		"drunk,>=": 3,
-	})
+	}
 
-	path := NewGOAPPath([]*GOAPAction{drink, drink})
+	path := NewGOAPPath([]*GOAPAction{drink.Parametrized(2)})
 
-	p.eval.computeRemainingsOfPath(path, start, goal)
+	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
-	mainGoalRemaining := path.remainings.surface[len(path.remainings.surface)-1]
-	if path.remainings.NUnfulfilled() != 3 || len(mainGoalRemaining.goalLeft) != 1 {
+	mainGoalRemaining := path.remainings.surface[len(path.remainings.surface)-1][0]
+	if path.remainings.NUnfulfilled() != 2 || len(mainGoalRemaining.goalLeft) != 1 {
 		t.Fatal("Remaining was not calculated properly")
 	}
 
-	path = NewGOAPPath([]*GOAPAction{drink, drink, drink})
+	path = NewGOAPPath([]*GOAPAction{drink.Parametrized(3)})
 
-	p.eval.computeRemainingsOfPath(path, start, goal)
+	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
-	mainGoalRemaining = path.remainings.surface[len(path.remainings.surface)-1]
-	if path.remainings.NUnfulfilled() != 3 || len(mainGoalRemaining.goalLeft) != 0 {
+	mainGoalRemaining = path.remainings.surface[len(path.remainings.surface)-1][0]
+	if path.remainings.NUnfulfilled() != 1 || len(mainGoalRemaining.goalLeft) != 0 {
 		t.Fatal("Remaining was not calculated properly")
 	}
 
@@ -217,7 +217,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	*booze = 3
 	p.eval.PopulateModalStartState(start)
 
-	p.eval.computeRemainingsOfPath(path, start, goal)
+	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
@@ -235,7 +235,9 @@ func TestGOAPActionPresFulfilled(t *testing.T) {
 			Logger.Println("world state:")
 			printWorldState(ws)
 			Logger.Println("action.pres:")
-			printGoal(a.pres)
+			for _, tg := range a.pres.temporalGoals {
+				printGoal(tg)
+			}
 			t.Fatal("Did not get expected value for action presfulfilled")
 		}
 	}
@@ -431,7 +433,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	// test applyAction
 	//
 
-	g := NewGOAPGoal(map[string]int{
+	g := newGOAPGoal(map[string]int{
 		"atTree,=": 1,
 	})
 	appliedState := eval.applyActionBasic(goToTree, NewGOAPWorldState(nil), true)
@@ -451,7 +453,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	Logger.Println("diffs:")
 	printDiffs(remaining.diffs)
 
-	g2 := NewGOAPGoal(map[string]int{
+	g2 := newGOAPGoal(map[string]int{
 		"atTree,=": 1,
 		"drunk,>=": 10,
 	})
@@ -533,9 +535,9 @@ func TestGOAPPlanSimple(t *testing.T) {
 		},
 	})
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := map[string]int{
 		"atTree,=": 1,
-	})
+	}
 
 	Logger.Println(*e.GetVec2D("Position"))
 
@@ -587,7 +589,7 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 		},
 	})
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := newGOAPGoal(map[string]int{
 		"drunk,=": 1,
 	})
 
@@ -599,7 +601,7 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 
 	Logger.Println(planner.Plan(ws, goal, 50))
 
-	goal = NewGOAPGoal(map[string]int{
+	goal = newGOAPGoal(map[string]int{
 		"drunk,=": 3,
 	})
 	Logger.Println(planner.Plan(ws, goal, 50))
@@ -658,7 +660,7 @@ func TestGOAPPlanSimpleEnough(t *testing.T) {
 	planner.eval.AddModalVals(drunkModal)
 	planner.eval.AddActions(drink, purifyOneself)
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := newGOAPGoal(map[string]int{
 		"drunk,=":        10,
 		"rituallyPure,=": 1,
 	})
@@ -845,10 +847,14 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 		"rituallyPure": 0,
 	})
 
-	goal := NewGOAPGoal(map[string]int{
-		"drunk,>=":   3,
-		"inTemple,=": 1,
-	})
+	goal := []any{
+		map[string]int{
+			"drunk,>=": 3,
+		},
+		map[string]int{
+			"inTemple,=": 1,
+		},
+	}
 	t0 := time.Now()
 	plan, ok := p.Plan(ws, goal, 500)
 	if !ok {
@@ -1005,10 +1011,14 @@ func TestGOAPPlanClassic(t *testing.T) {
 	chopTree := NewGOAPAction(map[string]any{
 		"name": "chopTree",
 		"cost": 1,
-		"pres": map[string]int{
-			"hasGlove,=": 1,
-			"hasAxe,=":   1,
-			"atTree,=":   1,
+		"pres": []any{
+			map[string]int{
+				"hasGlove,=": 1,
+				"hasAxe,=":   1,
+			},
+			map[string]int{
+				"atTree,=": 1,
+			},
 		},
 		"effs": map[string]int{
 			"woodChopped,+": 1,
@@ -1022,9 +1032,9 @@ func TestGOAPPlanClassic(t *testing.T) {
 
 	ws := NewGOAPWorldState(nil)
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := map[string]int{
 		"woodChopped,=": 3,
-	})
+	}
 	t0 := time.Now()
 	plan, ok := p.Plan(ws, goal, 500)
 	if !ok {
@@ -1075,10 +1085,10 @@ func TestGOAPPlanResponsibleFridgeUsage(t *testing.T) {
 		"fridgeOpen": 0,
 	})
 
-	goal := NewGOAPGoal(map[string]int{
+	goal := map[string]int{
 		"fridgeOpen,=": 0,
 		"food,=":       1,
-	})
+	}
 	t0 := time.Now()
 	plan, ok := p.Plan(ws, goal, 500)
 	if !ok {

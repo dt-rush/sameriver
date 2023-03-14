@@ -7,13 +7,22 @@ import (
 )
 
 type GOAPAction struct {
+	// the action for one of whose pre's this action is a satisfier
+	// (nil if it's a satisfier for the main goal)
+	parent *GOAPAction
+
+	// the index in the list at which this action is inserted
+	insertionIx int
+	// the region index of the temporal region this was inserted into, satisfying
+	regionIx int
+
 	// the object used to construct this (used in Parametrized() to reconstruct)
 	spec map[string]any
 
 	Name            string
 	Count           int
 	cost            IntOrFunc
-	pres            *GOAPGoal
+	pres            *GOAPTemporalGoal
 	preModalChecks  map[string]func(ws *GOAPWorldState) int
 	effModalSetters map[string]func(ws *GOAPWorldState, op string, x int)
 	effs            map[string]*GOAPEff
@@ -23,31 +32,26 @@ type GOAPAction struct {
 type GOAPEff struct {
 	val int
 	op  string
-	f   func(int) int
+	f   func(count int, x int) int
 }
 
-func GOAPEffFunc(a *GOAPAction, op string, val int) func(int) int {
+func GOAPEffFunc(op string, val int) func(count int, x int) int {
 	switch op {
 	case "+":
-		return func(x int) int { return a.Count*val + x }
+		return func(count int, x int) int { return count*val + x }
 	case "-":
-		return func(x int) int { return x - a.Count*val }
+		return func(count int, x int) int { return x - count*val }
 	case "=":
-		return func(x int) int { return val }
+		return func(count int, x int) int { return val }
 	default:
-		panic("Got an unspecined op in GOAPEffFunc() [valid: +,-,=]")
+		panic("Got an unspecified op in GOAPEffFunc() [valid: +,-,=]")
 	}
 }
 
 func NewGOAPAction(spec map[string]interface{}) *GOAPAction {
 	name := spec["name"].(string)
 	cost := spec["cost"].(int)
-	var pres map[string]int
-	if spec["pres"] == nil {
-		pres = nil
-	} else {
-		pres = spec["pres"].(map[string]int)
-	}
+	pres := spec["pres"]
 	effs := spec["effs"].(map[string]int)
 
 	a := &GOAPAction{
@@ -55,7 +59,7 @@ func NewGOAPAction(spec map[string]interface{}) *GOAPAction {
 		Name:            name,
 		Count:           1,
 		cost:            cost,
-		pres:            NewGOAPGoal(pres).Parametrize(1),
+		pres:            NewGOAPTemporalGoal(pres),
 		preModalChecks:  make(map[string]func(ws *GOAPWorldState) int),               // set by GOAPEvaluator
 		effModalSetters: make(map[string]func(ws *GOAPWorldState, op string, x int)), // set by GOAPEvaluator
 		effs:            make(map[string]*GOAPEff),
@@ -67,7 +71,7 @@ func NewGOAPAction(spec map[string]interface{}) *GOAPAction {
 		eff := &GOAPEff{
 			val: val,
 			op:  op,
-			f:   GOAPEffFunc(a, op, val),
+			f:   GOAPEffFunc(op, val),
 		}
 		a.effs[varName] = eff
 		a.ops[varName] = op
@@ -84,16 +88,20 @@ func (a *GOAPAction) DisplayName() string {
 }
 
 func (a *GOAPAction) CopyOf() *GOAPAction {
-	result := NewGOAPAction(a.spec)
-	result.Count = a.Count
-	result.preModalChecks = a.preModalChecks
-	result.effModalSetters = a.effModalSetters
-	return result
+	result := *a
+	return &result
 }
 
 func (a *GOAPAction) Parametrized(n int) *GOAPAction {
+	logGOAPDebug("    parametrizing %s x %d", a.Name, n)
 	result := a.CopyOf()
 	result.Count = n
-	result.pres = result.pres.Parametrize(n)
+	result.pres = result.pres.Parametrized(n)
+	return result
+}
+
+func (a *GOAPAction) ChildOf(p *GOAPAction) *GOAPAction {
+	result := a.CopyOf()
+	result.parent = p
 	return result
 }

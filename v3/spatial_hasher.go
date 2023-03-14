@@ -178,10 +178,13 @@ func (h *SpatialHasher) clearTempTables() {
 */
 
 func (h *SpatialHasher) CellRangeOfRect(pos, box Vec2D) (cellX0, cellX1, cellY0, cellY1 int) {
-	cellX0 = int(pos.X / h.CellSizeX)
-	cellX1 = int((pos.X + box.X) / h.CellSizeX)
-	cellY0 = int(pos.Y / h.CellSizeY)
-	cellY1 = int((pos.Y + box.Y) / h.CellSizeY)
+	clamp := func(x, min, max int) int {
+		return int(math.Min(float64(max), math.Max(float64(x), float64(min))))
+	}
+	cellX0 = clamp(int(pos.X/h.CellSizeX), 0, h.GridX-1)
+	cellX1 = clamp(int((pos.X+box.X)/h.CellSizeX), 0, h.GridX-1)
+	cellY0 = clamp(int(pos.Y/h.CellSizeY), 0, h.GridY-1)
+	cellY1 = clamp(int((pos.Y+box.Y)/h.CellSizeY), 0, h.GridY-1)
 	return cellX0, cellX1, cellY0, cellY1
 }
 
@@ -289,10 +292,6 @@ func (h *SpatialHasher) scanAndInsertEntitiesparallelC() {
 
 				for y := cellY0; y <= cellY1; y++ {
 					for x := cellX0; x <= cellX1; x++ {
-						if x < 0 || x > h.GridX-1 ||
-							y < 0 || y > h.GridY-1 {
-							continue
-						}
 						h.tableMutexes[x][y].Lock()
 						h.Table[x][y] = append(h.Table[x][y], e)
 						h.tableMutexes[x][y].Unlock()
@@ -438,10 +437,6 @@ func (h *SpatialHasher) scanAndInsertEntitiesSingleThread() {
 		cellX0, cellX1, cellY0, cellY1 := h.CellRangeOfRect(pos.ShiftedCenterToBottomLeft(*box), *box)
 		for x := cellX0; x <= cellX1; x++ {
 			for y := cellY0; y <= cellY1; y++ {
-				if x < 0 || x > h.GridX-1 ||
-					y < 0 || y > h.GridY-1 {
-					continue
-				}
 				cell := &h.Table[x][y]
 				*cell = append(*cell, e)
 			}
