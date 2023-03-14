@@ -9,14 +9,14 @@ import (
 /*
 goos: linux
 goarch: amd64
-pkg: github.com/dt-rush/sameriver/v2
+pkg: github.com/dt-rush/sameriver/v3
 cpu: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz
 BenchmarkGOAPClassic
-BenchmarkGOAPClassic-8   	    2612	    388596 ns/op	  208938 B/op	    3736 allocs/op
+BenchmarkGOAPClassic-8   	    2826	    393938 ns/op	  211500 B/op	    4367 allocs/op
 PASS
-ok  	github.com/dt-rush/sameriver/v2	1.255s
+ok  	github.com/dt-rush/sameriver/v3	1.324s
 
-(2081 / s), given planning might take up about 10% of logics per frame share, that's about 200 per second
+(2134 / s), given planning might take up about 10% of logics per frame share, that's about 210 per second
 */
 func BenchmarkGOAPClassic(b *testing.B) {
 	w := testingWorld()
@@ -152,10 +152,14 @@ func BenchmarkGOAPClassic(b *testing.B) {
 	chopTree := NewGOAPAction(map[string]any{
 		"name": "chopTree",
 		"cost": 1,
-		"pres": map[string]int{
-			"hasGlove,=": 1,
-			"hasAxe,=":   1,
-			"atTree,=":   1,
+		"pres": []any{
+			map[string]int{
+				"hasGlove,=": 1,
+				"hasAxe,=":   1,
+			},
+			map[string]int{
+				"atTree,=": 1,
+			},
 		},
 		"effs": map[string]int{
 			"woodChopped,+": 1,
@@ -171,9 +175,9 @@ func BenchmarkGOAPClassic(b *testing.B) {
 		"woodChopped": 0,
 	})
 
-	goal := newGOAPGoal(map[string]int{
+	goal := map[string]int{
 		"woodChopped,=": 3,
-	})
+	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		p.Plan(ws, goal, 500)
@@ -184,14 +188,11 @@ func BenchmarkGOAPClassic(b *testing.B) {
 /*
 goos: linux
 goarch: amd64
-pkg: github.com/dt-rush/sameriver/v2
+pkg: github.com/dt-rush/sameriver/v3
 cpu: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz
-BenchmarkGOAPAlanWatts
-BenchmarkGOAPAlanWatts-8   	    6112	    176718 ns/op	   90335 B/op	    1612 allocs/op
+BenchmarkGOAPAlanWatts-8   	    4833	    234326 ns/op	  122463 B/op	    2700 allocs/op
 PASS
-ok  	github.com/dt-rush/sameriver/v2	1.224s
-
-(4993 / s) given planning might take up about 10% of logics per frame share, that's about 500 per second
+ok  	github.com/dt-rush/sameriver/v3	2.226s
 */
 func BenchmarkGOAPAlanWatts(b *testing.B) {
 	w := testingWorld()
@@ -200,7 +201,7 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 	items := NewItemSystem(nil)
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
-	w.RegisterComponents("IntMap,State")
+	w.RegisterComponents("IntMap,State", "Generic,Inventory")
 
 	items.CreateArchetype(map[string]any{
 		"name":        "bottle_booze",
@@ -375,10 +376,10 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 		"rituallyPure": 0,
 	})
 
-	goal := newGOAPGoal(map[string]int{
+	goal := map[string]int{
 		"drunk,>=":   3,
 		"inTemple,=": 1,
-	})
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -389,14 +390,12 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 /*
 goos: linux
 goarch: amd64
-pkg: github.com/dt-rush/sameriver/v2
+pkg: github.com/dt-rush/sameriver/v3
 cpu: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz
 BenchmarkGOAPSimple
-BenchmarkGOAPSimple-8   	   56072	     18475 ns/op	   15112 B/op	     273 allocs/op
+BenchmarkGOAPSimple-8   	   32990	     37155 ns/op	   22424 B/op	     490 allocs/op
 PASS
-ok  	github.com/dt-rush/sameriver/v2	2.487s
-
-(22546 / s  == 360 / frame (16ms)) given planning might take up about 10% of logics per frame share, that's about 2000 per second
+ok  	github.com/dt-rush/sameriver/v3	1.725s
 */
 func BenchmarkGOAPSimple(b *testing.B) {
 	w := testingWorld()
@@ -451,9 +450,9 @@ func BenchmarkGOAPSimple(b *testing.B) {
 
 	ws := NewGOAPWorldState(nil)
 
-	goal := newGOAPGoal(map[string]int{
+	goal := map[string]int{
 		"combat,=": 1,
-	})
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

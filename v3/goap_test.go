@@ -1085,10 +1085,10 @@ func TestGOAPPlanResponsibleFridgeUsage(t *testing.T) {
 		"fridgeOpen": 0,
 	})
 
-	goal := newGOAPGoal(map[string]int{
+	goal := map[string]int{
 		"fridgeOpen,=": 0,
 		"food,=":       1,
-	})
+	}
 	t0 := time.Now()
 	plan, ok := p.Plan(ws, goal, 500)
 	if !ok {
