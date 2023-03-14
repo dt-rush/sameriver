@@ -200,8 +200,7 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 	items := NewItemSystem(nil)
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
-
-	w.RegisterComponents("IntMap,State", "Generic,Inventory")
+	w.RegisterComponents("IntMap,State")
 
 	items.CreateArchetype(map[string]any{
 		"name":        "bottle_booze",
@@ -220,6 +219,10 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 				"drunk": 0,
 			},
 			"Generic,Inventory": inventories.Create(nil),
+			"Vec2D,Position":    Vec2D{10, 10},
+			"Vec2D,Velocity":    Vec2D{0, 0},
+			"Vec2D,Box":         Vec2D{1, 1},
+			"Float64,Mass":      3.0,
 		},
 	})
 
