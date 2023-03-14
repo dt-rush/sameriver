@@ -83,8 +83,8 @@ since for insertion to satisfy s, we need to go back 3 places:
 and now, let's say we insert W to satisfy Y's pre[1], n, and W has pre [l] :
 
 [ A   W     Y     B   Z     C ]
-[[q] [l] [ m  n] [r] [ ] [s  t] [u]]
-[[0] [0] [-1  0] [0] [ ] [-4 0] [0]]
+[[q] [ ] [ m  n] [r] [ ] [s  t] [u]]
+[[0] [ ] [-1  0] [0] [ ] [-4 0] [0]]
 
 path   : [ A   W    Y    B   Z     C ]
 parents: [ C   Y    B    C   C     * ]
@@ -93,11 +93,11 @@ parents: [ C   Y    B    C   C     * ]
 
 now let's insert Q to satisfy m (Q has nil pre)
 
-[ A   W   Q     Y     B   Z    C  ]
-[[q] [l] [ ] [ m  n] [r] [ ] [s  t] [u]]
-[[0] [0] [ ] [-1  0] [0] [ ] [-5 0] [0]]
+[ A   Q   W     Y     B   Z    C  ]
+[[q] [ ] [ ] [ m  n] [r] [ ] [s  t] [u]]
+[[0] [ ] [ ] [-1  0] [0] [ ] [-5 0] [0]]
 
-path   : [ A   W    Q    Y    B   Z     C ]
+path   : [ A   Q    W    Y    B   Z     C ]
 parents: [ C   Y    Y    B    C   C     * ]
 
 updating regionOffsets:
@@ -128,11 +128,11 @@ B inserted at region 1 of [s t] so push back all regions below 1 (region0) by 1
 
 now let's say n was not completely satisfied by W, so we want to insert R (nil pre)
 
-[ A   W   Q   R     Y     B   Z    C  ]
-[[q] [l] [ ] [ ] [ m  n] [r] [ ] [s  t] [u]]
-[[0] [0] [ ] [ ] [-2  0] [0] [ ] [-6 0] [0]]
+[ A   Q   W   R     Y     B   Z    C  ]
+[[q] [ ] [ ] [l] [ m  n] [r] [ ] [s  t] [u]]
+[[0] [ ] [ ] [0] [-2  0] [0] [ ] [-6 0] [0]]
 
-path   : [ A   W    Q    R    Y    B   Z     C ]
+path   : [ A   Q    W    R    Y    B   Z     C ]
 parents: [ C   Y    Y    Y    B    C   C     * ]
 
 updating regionoffsets:
@@ -167,11 +167,11 @@ B inserted at region 1 of [s t] so push back all regions below 1 (region0) by 1
 
 now let's say m was not completely satisfied by Q, so we want to insert T (nil pre)
 
-[ A   W   Q   T   R    Y     B   Z    C  ]
-[[q] [l] [ ] [ ] [ ] [m  n] [r] [ ] [s  t] [u]]
-[[0] [0] [ ] [ ] [ ] [-2 0] [0] [ ] [-7 0] [0]]
+[ A   Q   W   R   T    Y     B   Z    C  ]
+[[q] [ ] [l] [ ] [ ] [m  n] [r] [ ] [s  t] [u]]
+[[0] [ ] [0] [ ] [ ] [-2 0] [0] [ ] [-7 0] [0]]
 
-path   : [ A   W    Q    T    R    Y    B   Z     C ]
+path   : [ A   Q    W    R    T    Y    B   Z     C ]
 parents: [ C   Y    Y    Y    Y    B    C   C     * ]
 
 we don't update the region offset for m since we *still* want to insert any 
@@ -209,15 +209,14 @@ terminate
 
 
 
-but what if going up the tree, we reached the *main goal* as temporal?
+now E satisfies R's pre l
 
-consider [u v]
+[ A   Q   W   E   R   T    Y     B   Z    C  ]
+[[q] [ ] [l] [ ] [ ] [ ] [m  n] [r] [ ] [s  t] [u]]
+[[0] [ ] [0] [ ] [ ] [ ] [-3 0] [0] [ ] [-8 0] [0]]
 
-and we inserted C at region0 of [u v],
-
-we'd have node nil but surface at its i has a goal
-
-
+path   : [ A   Q    W    E    R    T    Y    B   Z     C ]
+parents: [ C   Y    Y    R    Y    Y    B    C   C     * ]
 
 
 
