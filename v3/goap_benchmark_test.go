@@ -16,7 +16,18 @@ cpu: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz
 */
 
 /*
-BenchmarkGOAPClassic-8   	    2985	    336720 ns/op	  211484 B/op	    4367 allocs/op
+BenchmarkGOAPClassic
+BenchmarkGOAPClassic-8   	    2443	    549238 ns/op	  211534 B/op	    4367 allocs/op
+BenchmarkGOAPClassic-8   	    2934	    391883 ns/op	  211543 B/op	    4367 allocs/op
+BenchmarkGOAPClassic-8   	    3348	    407299 ns/op	  211537 B/op	    4367 allocs/op
+BenchmarkGOAPClassic-8   	    2844	    426119 ns/op	  211546 B/op	    4367 allocs/op
+BenchmarkGOAPClassic-8   	    2755	    404956 ns/op	  211545 B/op	    4367 allocs/op
+BenchmarkGOAPClassic-8   	    3117	    397921 ns/op	  211538 B/op	    4367 allocs/op
+BenchmarkGOAPClassic-8   	    2510	    405034 ns/op	  211543 B/op	    4367 allocs/op
+PASS
+ok  	github.com/dt-rush/sameriver/v3	10.639s
+
+about 2380 per second or 238 if planning gets 10% of runtime per frame
 */
 func BenchmarkGOAPClassic(b *testing.B) {
 	w := testingWorld()
@@ -186,7 +197,18 @@ func BenchmarkGOAPClassic(b *testing.B) {
 }
 
 /*
-BenchmarkGOAPAlanWatts-8   	    8746	    133460 ns/op	   81229 B/op	    1763 allocs/op
+BenchmarkGOAPAlanWatts
+BenchmarkGOAPAlanWatts-8   	    6974	    149900 ns/op	   81253 B/op	    1763 allocs/op
+BenchmarkGOAPAlanWatts-8   	    7536	    136743 ns/op	   81252 B/op	    1763 allocs/op
+BenchmarkGOAPAlanWatts-8   	    8928	    131337 ns/op	   81250 B/op	    1763 allocs/op
+BenchmarkGOAPAlanWatts-8   	    9349	    137459 ns/op	   81251 B/op	    1763 allocs/op
+BenchmarkGOAPAlanWatts-8   	    7573	    143881 ns/op	   81250 B/op	    1763 allocs/op
+BenchmarkGOAPAlanWatts-8   	    8674	    146659 ns/op	   81252 B/op	    1763 allocs/op
+BenchmarkGOAPAlanWatts-8   	    8470	    136132 ns/op	   81252 B/op	    1763 allocs/op
+PASS
+ok  	github.com/dt-rush/sameriver/v3	9.050s
+
+avg about 7000 per second or 700 if we give planning 10% of time per frame
 */
 func BenchmarkGOAPAlanWatts(b *testing.B) {
 	w := testingWorld()
@@ -386,7 +408,18 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 }
 
 /*
-BenchmarkGOAPSimple-8   	   32990	     37155 ns/op	   22424 B/op	     490 allocs/op
+BenchmarkGOAPSimple
+BenchmarkGOAPSimple-8   	   34522	     39616 ns/op	   22424 B/op	     490 allocs/op
+BenchmarkGOAPSimple-8   	   33502	     35879 ns/op	   22424 B/op	     489 allocs/op
+BenchmarkGOAPSimple-8   	   37714	     31034 ns/op	   22424 B/op	     489 allocs/op
+BenchmarkGOAPSimple-8   	   37502	     32084 ns/op	   22424 B/op	     490 allocs/op
+BenchmarkGOAPSimple-8   	   39062	     32116 ns/op	   22424 B/op	     489 allocs/op
+BenchmarkGOAPSimple-8   	   36994	     32680 ns/op	   22424 B/op	     490 allocs/op
+BenchmarkGOAPSimple-8   	   37473	     32743 ns/op	   22424 B/op	     490 allocs/op
+PASS
+ok  	github.com/dt-rush/sameriver/v3	10.998s
+
+about 28000 per second, or 2800 if planning gets 10% of runtime per frame
 */
 func BenchmarkGOAPSimple(b *testing.B) {
 	w := testingWorld()
