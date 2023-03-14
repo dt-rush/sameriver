@@ -7,16 +7,16 @@ import (
 )
 
 /*
+benchmark output comment data in reference to machine:
+
 goos: linux
 goarch: amd64
 pkg: github.com/dt-rush/sameriver/v3
 cpu: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz
-BenchmarkGOAPClassic
-BenchmarkGOAPClassic-8   	    2826	    393938 ns/op	  211500 B/op	    4367 allocs/op
-PASS
-ok  	github.com/dt-rush/sameriver/v3	1.324s
+*/
 
-(2134 / s), given planning might take up about 10% of logics per frame share, that's about 210 per second
+/*
+BenchmarkGOAPClassic-8   	    2985	    336720 ns/op	  211484 B/op	    4367 allocs/op
 */
 func BenchmarkGOAPClassic(b *testing.B) {
 	w := testingWorld()
@@ -186,13 +186,7 @@ func BenchmarkGOAPClassic(b *testing.B) {
 }
 
 /*
-goos: linux
-goarch: amd64
-pkg: github.com/dt-rush/sameriver/v3
-cpu: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz
-BenchmarkGOAPAlanWatts-8   	    4833	    234326 ns/op	  122463 B/op	    2700 allocs/op
-PASS
-ok  	github.com/dt-rush/sameriver/v3	2.226s
+BenchmarkGOAPAlanWatts-8   	    5624	    223731 ns/op	  122457 B/op	    2700 allocs/op
 */
 func BenchmarkGOAPAlanWatts(b *testing.B) {
 	w := testingWorld()
@@ -388,14 +382,7 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 }
 
 /*
-goos: linux
-goarch: amd64
-pkg: github.com/dt-rush/sameriver/v3
-cpu: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz
-BenchmarkGOAPSimple
 BenchmarkGOAPSimple-8   	   32990	     37155 ns/op	   22424 B/op	     490 allocs/op
-PASS
-ok  	github.com/dt-rush/sameriver/v3	1.725s
 */
 func BenchmarkGOAPSimple(b *testing.B) {
 	w := testingWorld()
