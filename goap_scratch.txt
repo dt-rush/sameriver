@@ -1,6 +1,81 @@
 
 
 
+let's say we've been opportunistically using insert-before and simpler insert (no regionoffsets)
+since no temporal goals have been encountered yet
+
+main g
+
+A.pre q
+Y.pre r
+B.pre s
+C.pre u
+
+A satisfies u
+B satisfies u
+
+...
+
+[A Y B C]
+remainings [[q] [r] [s] [t] [u] [v]]
+path   : [ A   Y   B   C ]
+parents: [ C   B   C   * ]
+
+now we want to insert X to satisfy A's pre q, and X has temporal pre [m n]
+
+[X A Y B C]
+remainings [[m n] [r] [s] [t] [u] [v]]
+path   : [ X   A   Y   B   C ]
+parents: [ A   C   B   C   * ]
+
+what should region offsets be?
+
+[[m n] [r] [s] [t] [u] [v]]
+[[0 0] [0] [0] [0] [0] [0]]
+
+start to use insertionIx relative to regions, and start to update regions
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 remainings [[u]]
 regionOffets [[0]]
