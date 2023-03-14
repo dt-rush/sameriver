@@ -191,25 +191,25 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 		"drunk,>=": 3,
 	}
 
-	path := NewGOAPPath([]*GOAPAction{drink, drink})
+	path := NewGOAPPath([]*GOAPAction{drink.Parametrized(2)})
 
 	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
 	mainGoalRemaining := path.remainings.surface[len(path.remainings.surface)-1][0]
-	if path.remainings.NUnfulfilled() != 3 || len(mainGoalRemaining.goalLeft) != 1 {
+	if path.remainings.NUnfulfilled() != 2 || len(mainGoalRemaining.goalLeft) != 1 {
 		t.Fatal("Remaining was not calculated properly")
 	}
 
-	path = NewGOAPPath([]*GOAPAction{drink, drink, drink})
+	path = NewGOAPPath([]*GOAPAction{drink.Parametrized(3)})
 
 	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
 	mainGoalRemaining = path.remainings.surface[len(path.remainings.surface)-1][0]
-	if path.remainings.NUnfulfilled() != 3 || len(mainGoalRemaining.goalLeft) != 0 {
+	if path.remainings.NUnfulfilled() != 1 || len(mainGoalRemaining.goalLeft) != 0 {
 		t.Fatal("Remaining was not calculated properly")
 	}
 
