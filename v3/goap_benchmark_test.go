@@ -186,7 +186,7 @@ func BenchmarkGOAPClassic(b *testing.B) {
 }
 
 /*
-BenchmarkGOAPAlanWatts-8   	    5624	    223731 ns/op	  122457 B/op	    2700 allocs/op
+BenchmarkGOAPAlanWatts-8   	    8746	    133460 ns/op	   81229 B/op	    1763 allocs/op
 */
 func BenchmarkGOAPAlanWatts(b *testing.B) {
 	w := testingWorld()
@@ -370,9 +370,13 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 		"rituallyPure": 0,
 	})
 
-	goal := map[string]int{
-		"drunk,>=":   3,
-		"inTemple,=": 1,
+	goal := []any{
+		map[string]int{
+			"drunk,>=": 3,
+		},
+		map[string]int{
+			"inTemple,=": 1,
+		},
 	}
 
 	b.ResetTimer()
