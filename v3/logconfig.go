@@ -28,24 +28,16 @@ func SubLogFunction(
 	}
 }
 
-func getEnv(s string) func() bool {
-	return func() bool {
-		return os.Getenv(s) == "true"
-	}
-}
-
 var logWarning = SubLogFunction(
 	"WARNING", true,
 	func(s string) string { return color.InYellow(color.InBold(s)) })
 
-var LOG_EVENTS = getEnv("LOG_EVENTS")
-
+var LOG_EVENTS = os.Getenv("LOG_EVENTS") == "true"
 var logEvent = SubLogFunction(
-	"Events", LOG_EVENTS(),
+	"Events", LOG_EVENTS,
 	func(s string) string { return color.InWhiteOverPurple(s) })
 
-var DEBUG_GOAP = getEnv("DEBUG_GOAP")
-
+var DEBUG_GOAP = os.Getenv("DEBUG_GOAP") == "true"
 var logGOAPDebug = SubLogFunction(
-	"GOAP", DEBUG_GOAP(),
+	"GOAP", DEBUG_GOAP,
 	func(s string) string { return s })

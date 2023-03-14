@@ -66,7 +66,6 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 		path.regionOffsets[i] = make([]int, len(p.regionOffsets[i]))
 		copy(path.regionOffsets[i], p.regionOffsets[i])
 	}
-
 	// go up tree, updating regionOffsets
 	node := a
 	for node != nil {
@@ -106,9 +105,7 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 		path.regionOffsets[:insertionIx+1],
 		path.regionOffsets[insertionIx:]...)
 	path.regionOffsets[insertionIx] = make([]int, len(a.pres.temporalGoals))
-	if DEBUG_GOAP() {
-		logGOAPDebug("  regionOffsets after insert&update: %v", path.regionOffsets)
-	}
+	logGOAPDebug("  regionOffsets after insert&update: %v", path.regionOffsets)
 	// update action indexes after insertion
 	for i := 0; i < len(path.path); i++ {
 		path.path[i].insertionIx = i

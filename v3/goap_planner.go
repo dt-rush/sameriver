@@ -28,7 +28,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 	goal *GOAPTemporalGoal,
 	pathsSeen map[string]bool) {
 
-	if DEBUG_GOAP() {
+	if DEBUG_GOAP {
 		logGOAPDebug("traverse--------------------------")
 		logGOAPDebug(color.InRedOverGray("remaining:"))
 		debugGOAPPrintGoalRemainingSurface(here.path.remainings)
@@ -44,7 +44,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 	// remainings surface: [[q] [s t] [u]]
 
 	// iterate path with index i
-	// and iterate temporal of surface (ex [s t]) with index regionIx
+	// and iterate temporal goal of surface (ex iterate inside [s t]) with index regionIx
 
 	for i, tgs := range here.path.remainings.surface {
 		if here.path.remainings.nUnfulfilledAtIx(i) == 0 {
@@ -71,7 +71,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 					insertionIx := i + here.path.regionOffsets[i][regionIx]
 					logGOAPDebug("    insertionIx: %d", insertionIx)
 
-					if DEBUG_GOAP() {
+					if DEBUG_GOAP {
 						var toSatisfyMsg string
 						if i == len(here.path.remainings.surface)-1 {
 							toSatisfyMsg = "main goal"
@@ -89,7 +89,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 						tg,
 						action)
 					if helpful {
-						if DEBUG_GOAP() {
+						if DEBUG_GOAP {
 							logGOAPDebug("[X] %s helpful!", action.DisplayName())
 						}
 						var toInsert *GOAPAction
@@ -107,7 +107,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 							pathsSeen[pathStr] = true
 						}
 						p.eval.computeRemainingsOfPath(newPath, start, goal)
-						if DEBUG_GOAP() {
+						if DEBUG_GOAP {
 							msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
 								GOAPPathToString(newPath), newPath.cost)
 							logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
@@ -166,7 +166,7 @@ func (p *GOAPPlanner) Plan(
 	for iter < maxIter && pq.Len() > 0 && resultPq.Len() < 2 {
 		logGOAPDebug("=== iter ===")
 		here := heap.Pop(pq).(*GOAPPQueueItem)
-		if DEBUG_GOAP() {
+		if DEBUG_GOAP {
 			logGOAPDebug(color.InRedOverGray("here:"))
 			logGOAPDebug(color.InWhiteOverBlue(color.InBold(GOAPPathToString(here.path))))
 			logGOAPDebug(color.InRedOverGray(fmt.Sprintf("(%d unfulfilled)",
@@ -180,7 +180,7 @@ func (p *GOAPPlanner) Plan(
 				continue
 			}
 
-			if DEBUG_GOAP() {
+			if DEBUG_GOAP {
 				logGOAPDebug(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
 				logGOAPDebug(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))
 				logGOAPDebug(color.InGreenOverWhite(color.InBold(">>>>>>>>>>>>>>>>>>>>>>")))

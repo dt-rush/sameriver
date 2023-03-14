@@ -77,7 +77,7 @@ func (e *GOAPEvaluator) applyActionBasic(
 	for varName, eff := range action.effs {
 		op := action.ops[varName]
 		x := ws.vals[varName]
-		if DEBUG_GOAP() {
+		if DEBUG_GOAP {
 			logGOAPDebug("     %s       %d x %s%s%d(%d) ; = %d",
 				color.InWhiteOverYellow(">>>"),
 				action.Count, varName, op, eff.val, x,
@@ -85,7 +85,7 @@ func (e *GOAPEvaluator) applyActionBasic(
 		}
 		ws.vals[varName] = eff.f(action.Count, x)
 	}
-	if DEBUG_GOAP() {
+	if DEBUG_GOAP {
 		logGOAPDebug(color.InBlueOverWhite(fmt.Sprintf("            ws after action: %v", ws.vals)))
 	}
 
@@ -107,7 +107,7 @@ func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState)
 			setter(newWS, op, action.Count*eff.val)
 		}
 	}
-	if DEBUG_GOAP() {
+	if DEBUG_GOAP {
 		logGOAPDebug(color.InBlueOverWhite(fmt.Sprintf("            ws after action: %v", newWS.vals)))
 	}
 
@@ -119,7 +119,7 @@ func (e *GOAPEvaluator) applyActionModal(action *GOAPAction, ws *GOAPWorldState)
 		}
 	}
 
-	if DEBUG_GOAP() {
+	if DEBUG_GOAP {
 		logGOAPDebug(color.InPurpleOverWhite(fmt.Sprintf("            ws after re-checking modal vals: %v", newWS.vals)))
 	}
 	return newWS
@@ -199,7 +199,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 		interval *NumericInterval,
 		action *GOAPAction) (scale int, helpful bool) {
 
-		if DEBUG_GOAP() {
+		if DEBUG_GOAP {
 			logGOAPDebug("    Considering effs of %s for var %s. effs: %v", color.InYellowOverWhite(action.DisplayName()), varName, action.effs)
 		}
 		for effVarName, eff := range action.effs {
@@ -221,7 +221,7 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 				stateAtPoint := path.statesAlong[insertionIx].vals[varName]
 				needToBeat := interval.Diff(float64(stateAtPoint))
 				actionDiff := interval.Diff(float64(eff.f(action.Count, stateAtPoint)))
-				if DEBUG_GOAP() {
+				if DEBUG_GOAP {
 					logGOAPDebug(path.String())
 					logGOAPDebug("            ws[%s] = %d (before)", varName, stateAtPoint)
 					logGOAPDebug("              needToBeat diff: %d", int(needToBeat))
