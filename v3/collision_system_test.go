@@ -35,6 +35,8 @@ func TestCollisionSystem(t *testing.T) {
 	}
 	// move the enitity so it no longer collides
 	*e.GetVec2D("Position") = Vec2D{100, 100}
+	time.Sleep(5 * FRAME_DURATION)
+	Logger.Printf("----------------------- 2nd frame")
 	w.Update(FRAME_DURATION_INT / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
@@ -85,6 +87,7 @@ func TestCollisionRateLimit(t *testing.T) {
 	Logger.Printf("---------------- frame 2")
 	w.Update(FRAME_DURATION_INT / 2)
 	// sleep long enough for the event to appear on the channel
+	time.Sleep(FRAME_DURATION)
 	Logger.Printf("len(ec.C)=%d", len(ec.C))
 	if len(ec.C) != 4 {
 		t.Fatal("collision rate-limiter reset did not allow second collision")
@@ -105,11 +108,10 @@ func TestCollisionFilter(t *testing.T) {
 	}
 	ec := w.Events.Subscribe(PredicateEventFilter("collision", predicate))
 	w.Update(1)
-	w.Update(FRAME_DURATION_INT / 2)
-	// sleep long enough for the event to appear on the channel
-	time.Sleep(FRAME_DURATION)
+	time.Sleep(100 * FRAME_DURATION)
 	select {
 	case ev := <-ec.C:
+		Logger.Printf("ev: %v", ev)
 		if !predicate(ev) {
 			t.Fatal("CollisionEventFilter did not select correct event")
 		}

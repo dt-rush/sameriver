@@ -95,6 +95,7 @@ func (ev *EventBus) notifySubscribers(e Event) {
 					if ev.nHanging.Load() > EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
 						notifyExtraFull()
 					}
+					Logger.Printf("putting in channel: %v", e)
 					c.C <- e
 					ev.nHanging.Add(-1)
 				}()

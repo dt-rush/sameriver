@@ -91,6 +91,7 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 func (s *CollisionSystem) DoCollide(i *Entity, j *Entity) {
 	s.rateLimiterArray.Do(i.ID, j.ID,
 		func() {
+			Logger.Printf("Publishing")
 			s.w.Events.Publish("collision",
 				CollisionData{This: i, Other: j})
 			s.w.Events.Publish("collision",
@@ -151,6 +152,7 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 // events for each possible collision [i][j] using the rate limiter at [i][j]
 // in rateLimiters, so if we already sent one within the timeout, we just move on.
 func (s *CollisionSystem) Update(dt_ms float64) {
+	Logger.Printf("CollisionSystem.Update()")
 	// NOTE: The ID's in collidableEntities are in sorted order,
 	// so the rateLimiterArray access condition that i < j is respected
 	// check each possible collison between entities in the list by doing a
@@ -158,6 +160,7 @@ func (s *CollisionSystem) Update(dt_ms float64) {
 	for x := 0; x < s.sh.Hasher.GridX; x++ {
 		for y := 0; y < s.sh.Hasher.GridY; y++ {
 			entities := s.sh.Hasher.Entities(x, y)
+			Logger.Printf("checking entities: %v", entities)
 			s.checkEntities(entities)
 		}
 	}

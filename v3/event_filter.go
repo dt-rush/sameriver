@@ -7,6 +7,8 @@ type EventFilter struct {
 
 // for simple event queries, predicate is never tested
 func (q *EventFilter) Test(e Event) bool {
+	Logger.Printf("q: %v", q)
+	Logger.Printf("e: %v", e)
 	return q.eventType == e.Type && (q.predicate == nil || q.predicate(e))
 }
 
