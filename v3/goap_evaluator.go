@@ -28,9 +28,9 @@ func (e *GOAPEvaluator) AddModalVals(vals ...GOAPModalVal) {
 	}
 }
 
-func (e *GOAPEvaluator) PopulateModalStartState(ws *GOAPWorldState) {
-	for varName, val := range e.modalVals {
-		ws.vals[varName] = val.check(ws)
+func (e *GOAPEvaluator) checkModalInto(varName string, ws *GOAPWorldState) {
+	if _, ok := e.modalVals[varName]; ok {
+		ws.vals[varName] = e.modalVals[varName].check(ws)
 	}
 }
 

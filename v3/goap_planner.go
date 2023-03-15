@@ -92,6 +92,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 						if DEBUG_GOAP {
 							logGOAPDebug("[X] %s helpful!", action.DisplayName())
 						}
+						// construct the path (with parametrised action)
 						var toInsert *GOAPAction
 						if scale > 1 {
 							toInsert = action.Parametrized(scale) // yields a copy
@@ -100,13 +101,24 @@ func (p *GOAPPlanner) traverseFulfillers(
 						}
 						toInsert = toInsert.ChildOf(parent)
 						newPath := here.path.inserted(toInsert, insertionIx, regionIx)
+						// guard against visit to already-seen path
 						pathStr := newPath.String()
 						if _, ok := pathsSeen[pathStr]; ok {
 							continue
 						} else {
 							pathsSeen[pathStr] = true
 						}
+						// compute remainings of path
 						p.eval.computeRemainingsOfPath(newPath, start, goal)
+						// check any modal vals in the pres of action that aren't already
+						// in the start state
+						for _, tg := range toInsert.pres.temporalGoals {
+							for varName := range tg.vars {
+								if _, already := start.vals[varName]; !already {
+									p.eval.checkModalInto(varName, start)
+								}
+							}
+						}
 						if DEBUG_GOAP {
 							msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %d)",
 								GOAPPathToString(newPath), newPath.cost)
@@ -130,13 +142,23 @@ func (p *GOAPPlanner) Plan(
 	goalSpec any,
 	maxIter int) (solution *GOAPPath, ok bool) {
 
+	// we may be writing to this with modal vals as we explore and don't want
+	// to pollute the caller's state object
+	start = start.CopyOf()
+
 	logGOAPDebug("Planning...")
 
 	// convert goal spec into GOAPTemporalGoal
 	goal := NewGOAPTemporalGoal(goalSpec)
 
 	// populate start state with any modal vals at start
-	p.eval.PopulateModalStartState(start)
+	for _, tg := range goal.temporalGoals {
+		for varName := range tg.vars {
+			if _, already := start.vals[varName]; !already {
+				p.eval.checkModalInto(varName, start)
+			}
+		}
+	}
 
 	// used to return the solution with lowest cost among solutions found
 	resultPq := &GOAPPriorityQueue{}

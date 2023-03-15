@@ -185,7 +185,6 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	p.eval.AddActions(drink)
 
 	start := NewGOAPWorldState(nil)
-	p.eval.PopulateModalStartState(start)
 
 	goal := map[string]int{
 		"drunk,>=": 3,
@@ -215,7 +214,6 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 
 	booze := e.GetInt("BoozeAmount")
 	*booze = 3
-	p.eval.PopulateModalStartState(start)
 
 	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
