@@ -22,6 +22,9 @@ type RuntimeLimiter struct {
 	// used to estimate the time cost in milliseconds of running a function,
 	// so that we can try to stay below the limit provided
 	runtimeEstimates map[*LogicUnit]float64
+	// we run a logic unit at most every x ms where x is the runtime estimate
+	// so, we need to keep track of when it last ran
+	lastRun map[*LogicUnit]time.Time
 	// used to lookup the logicUnits slice index given an object to which
 	// the LogicUnit is coupled, it's Parent (for System.Update() instances,
 	// this is the System, for world LogicUnits this is the LogicUnit itself
@@ -40,6 +43,7 @@ func NewRuntimeLimiter() *RuntimeLimiter {
 	return &RuntimeLimiter{
 		logicUnits:       make([]*LogicUnit, 0),
 		runtimeEstimates: make(map[*LogicUnit]float64),
+		lastRun:          make(map[*LogicUnit]time.Time),
 		indexes:          make(map[int]int),
 	}
 }
@@ -56,9 +60,6 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 	}
 	for remaining_ms > 0 && len(r.logicUnits) > 0 {
 		logic := r.logicUnits[r.runIX]
-		if logic.lastRun.IsZero() {
-			logic.lastRun = time.Now()
-		}
 		estimate, hasEstimate := r.runtimeEstimates[logic]
 		var t0 time.Time
 		var elapsed_ms float64
@@ -68,16 +69,26 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			return remaining_ms
 		}
 		// else, we're either at the first func, or we have no estimate for this
-		// one, or the estimate is within allowance_ms. SO run it
-		if !hasEstimate ||
+		// one, or the estimate is within allowance_ms. SO run it ... if it's
+		// scheduled
+		if (!hasEstimate ||
 			(hasEstimate && estimate <= allowance_ms) ||
-			(hasEstimate && estimate > allowance_ms && r.runIX == r.startIX) {
+			(hasEstimate && estimate > allowance_ms && r.runIX == r.startIX)) &&
+			r.Tick(logic) {
+
 			t0 = time.Now()
-			dt_ms := float64(time.Since(logic.lastRun).Nanoseconds()) / 1.0e6
-			if logic.active &&
-				(logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)) {
+			var dt_ms float64
+			var scheduled bool
+			if _, ok := r.lastRun[logic]; ok {
+				dt_ms = float64(time.Since(r.lastRun[logic]).Nanoseconds()) / 1.0e6
+				scheduled = logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)
+			} else {
+				dt_ms = 0
+				scheduled = true
+			}
+			if logic.active && scheduled {
 				logic.f(dt_ms)
-				logic.lastRun = time.Now()
+				r.lastRun[logic] = time.Now()
 			}
 			elapsed_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 			// update estimate stat
@@ -108,6 +119,14 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 		r.overrun = true
 	}
 	return overunder_ms
+}
+
+func (r *RuntimeLimiter) Tick(logic *LogicUnit) bool {
+	if t, ok := r.lastRun[logic]; ok {
+		return float64(time.Since(t).Nanoseconds())/1.0e6 > r.runtimeEstimates[logic]
+	} else {
+		return true
+	}
 }
 
 func (r *RuntimeLimiter) Add(logic *LogicUnit) {

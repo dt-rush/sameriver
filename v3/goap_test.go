@@ -173,7 +173,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 		"name": "drink",
 		"cost": 1,
 		"pres": map[string]int{
-			"hasBooze,>": 0,
+			"EACH:hasBooze,>=": 1,
 		},
 		"effs": map[string]int{
 			"drunk,+":    1,
@@ -185,12 +185,15 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	p.eval.AddActions(drink)
 
 	start := NewGOAPWorldState(nil)
+	p.eval.checkModalInto("hasBooze", start)
 
 	goal := map[string]int{
 		"drunk,>=": 3,
 	}
 
 	path := NewGOAPPath([]*GOAPAction{drink.Parametrized(2)})
+
+	Logger.Printf("-------------------------------------------- 1")
 
 	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
@@ -200,6 +203,8 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	if path.remainings.NUnfulfilled() != 2 || len(mainGoalRemaining.goalLeft) != 1 {
 		t.Fatal("Remaining was not calculated properly")
 	}
+
+	Logger.Printf("-------------------------------------------- 2")
 
 	path = NewGOAPPath([]*GOAPAction{drink.Parametrized(3)})
 
@@ -212,8 +217,14 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 		t.Fatal("Remaining was not calculated properly")
 	}
 
+	Logger.Printf("-------------------------------------------- 3")
+
 	booze := e.GetInt("BoozeAmount")
 	*booze = 3
+
+	p.eval.checkModalInto("hasBooze", start)
+
+	Logger.Printf("start: %v", start.vals)
 
 	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 

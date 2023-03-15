@@ -54,6 +54,7 @@ func TestRuntimeLimiterRun(t *testing.T) {
 		runSchedule: nil})
 	for i := 0; i < 32; i++ {
 		r.Run(FRAME_DURATION_INT)
+		time.Sleep(FRAME_DURATION)
 	}
 	Logger.Println(x)
 	if x != 32 {
@@ -222,6 +223,7 @@ func TestRuntimeLimitShare(t *testing.T) {
 	}
 	for i := 0; i < LOOPS; i++ {
 		sharer.Share((N+M)*SLEEP + 100)
+		time.Sleep(FRAME_DURATION)
 	}
 	expected := N*LOOPS + M*LOOPS
 	sum := 0
@@ -265,6 +267,7 @@ func TestRuntimeLimitShareInsertWhileRunning(t *testing.T) {
 		}
 		// ensure there's always enough time to run every one
 		sharer.Share(5 * N * SLEEP)
+		time.Sleep(FRAME_DURATION)
 	}
 	Logger.Printf("Result: %d", counter)
 	expected := N*LOOPS + 3

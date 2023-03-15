@@ -222,6 +222,7 @@ func (w *World) RegisterSystems(systems ...System) {
 }
 
 func (w *World) SetSystemSchedule(systemName string, period_ms float64) {
+	Logger.Printf("Setting %s period_ms %f", systemName, period_ms)
 	system := w.systems[systemName]
 	systemLogicWorldID := w.systemsIDs[system]
 	w.runtimeSharer.SetSchedule("systems", systemLogicWorldID, period_ms)

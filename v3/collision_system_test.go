@@ -52,6 +52,7 @@ func TestCollisionSystemMany(t *testing.T) {
 	w.SetSystemSchedule("CollisionSystem", 5)
 	w.Update(FRAME_DURATION_INT / 2)
 	time.Sleep(5 * FRAME_DURATION)
+	Logger.Printf("----------------------- 2nd frame")
 	w.Update(FRAME_DURATION_INT / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
@@ -78,10 +79,13 @@ func TestCollisionRateLimit(t *testing.T) {
 	time.Sleep(FRAME_DURATION)
 	// check if we can reset the rate lmiiter
 	w.Update(FRAME_DURATION_INT / 2)
+	time.Sleep(5 * FRAME_DURATION)
+	Logger.Printf("Sleeping %f ms", float64(5*FRAME_DURATION/time.Millisecond))
 	cs.rateLimiterArray.Reset(e)
+	Logger.Printf("---------------- frame 2")
 	w.Update(FRAME_DURATION_INT / 2)
 	// sleep long enough for the event to appear on the channel
-	time.Sleep(FRAME_DURATION)
+	Logger.Printf("len(ec.C)=%d", len(ec.C))
 	if len(ec.C) != 4 {
 		t.Fatal("collision rate-limiter reset did not allow second collision")
 	}

@@ -1,15 +1,11 @@
 package sameriver
 
-import (
-	"time"
-)
-
 type LogicUnit struct {
+	// TODO: export name and active
 	name        string
 	f           func(dt_ms float64)
 	active      bool
 	worldID     int
-	lastRun     time.Time
 	runSchedule *TimeAccumulator
 }
 
@@ -19,6 +15,4 @@ func (l *LogicUnit) Activate() {
 
 func (l *LogicUnit) Deactivate() {
 	l.active = false
-	// zero lastRun
-	l.lastRun = time.Time{}
 }
