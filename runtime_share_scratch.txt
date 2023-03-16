@@ -1,6 +1,42 @@
 
+right now how it works is, say we have 4 runners
+
+A B C D
+
+it will try to run all three within allowance / 3
+
+let's say they complete at
+
+A 100
+B 90
+C 50
+D 100
+
+then it will divide the remaining time in 4, make that the new per runner allownce,
+and run them again.
+
+what it really should do is divide the remaining time *between the 10% of B and 50% of C that didn't get a chance to run yet* .. or should it?
 
 
+well let's think - what would cause B to only go to 90 if C has anything left to use?
+it reached a logic that is too heavy for its allowance, ok...
+
+and C? why did it only go to 50? a runner only goes < 100% when it has none more to pack into the allowance according to estimates, so it too reached estimates that are too heavy for the allowance.
+
+so the (10+50)/300 = 20% percent of allowance remaining now gets divided into 4,
+
+and they each get 5% of the total allowance (originally they got 25% each) to run
+whateve relse they can run
+
+but... what will they have to run with this 5%? A has already done 100, D has already done 100, and B and C who did not complete theirs with 25% budget pushed to its limit, what will they now do? maybe the 50% C is missing gets thereby shared more evenly with B and lets it make some incremental progress?
+
+let's say they each only got 50% done, will giving them the remaining time evenly even do anything? no
+
+
+
+
+
+what if we don't even loop more than once?
 
 
 

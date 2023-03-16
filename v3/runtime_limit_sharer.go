@@ -118,41 +118,57 @@ func (r *RuntimeLimitSharer) SetSchedule(runnerName string, logicWorldID int, pe
 	logic.runSchedule = &runSchedule
 }
 
-func (r *RuntimeLimitSharer) Share(allowance_ms float64) (remaining_ms float64, starved int) {
+func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, starved int) {
 	// process addition and removal of logics (they get buffered in a channel
 	// so we aren't adding logics while iterating logics)
 	r.ProcessAddRemoveLogics()
 
-	remaining_ms = allowance_ms
+	overunder_ms = allowance_ms
 	ran := 0
 	// while we have allowance_ms, keep trying to run all runners
-	// note: everybody gets firsts before anyone gets seconds
+	// note: everybody gets firsts before anyone gets seconds; this is controlled
+	// using starvedMode.
 	// and, to avoid spinning way too many times when load is light,
 	// we have MAX_LOOPS set to an arbitrary 16 (16 update cycles per
 	// frame is not bad! haha)
 	MAX_LOOPS := 16
-	loops := 0
-	for allowance_ms >= 0 && loops < MAX_LOOPS {
-		perRunner_ms := allowance_ms / float64(len(r.runners))
-		for allowance_ms >= 0 && ran < len(r.runners) {
+	loop := 0
+	remaining_ms := allowance_ms
+	starvedMode := false
+	for remaining_ms >= 0 && loop < MAX_LOOPS {
+		toShare_ms := remaining_ms
+		totalStarvation := 0.0
+		for remaining_ms >= 0 && ran < len(r.runners) {
 			runner := r.runners[r.runIX]
-			overunder_ms := runner.Run(perRunner_ms)
-			used := perRunner_ms - overunder_ms
-			allowance_ms -= used
-			// increment to run next runner even if it didn't finish its own
-			// internal runIx wraparound.
-			// this means it will get another chance to finish itself when its
-			// turn comes back around for sharing the perRunner_ms that remains
+			var runnerAllowance float64
+			if !starvedMode {
+				runnerAllowance = toShare_ms / float64(len(r.runners))
+			} else {
+				runnerAllowance = toShare_ms * (runner.starvation / totalStarvation)
+			}
+			if !starvedMode || (starvedMode && runner.starvation != 0) {
+				overunder_ms := runner.Run(runnerAllowance)
+				totalStarvation += runner.starvation
+				used := runnerAllowance - overunder_ms
+				remaining_ms -= used
+				ran++
+			}
 			r.runIX = (r.runIX + 1) % len(r.runners)
-			ran++
 		}
-		loops++
+		starvedMode = totalStarvation > 0
+		loop++
 	}
-	// starved 0 means they all ran once
+	// above we were concerned with starvation of logics inside runners, now
+	// we are concerned with starvation of entire runners. This can happen
+	// when a runner that we encounter as we iterate the runners uses up, in
+	// one logic func, more than its own budget + another, so that we quit
+	// the runner iteration at remaining <= 0 before the later runner(s) got
+	// a chance to even run.
+	// starved 0 means they all ran once (even if they didn't complete*)
 	// starved < 0 means at least one ran more than once
 	// starved > 0 means at least one didn't run
 	starved = len(r.runners) - ran
-	return allowance_ms, starved
+	return remaining_ms, starved
 }
 
 func (r *RuntimeLimitSharer) DumpStats() map[string](map[string]float64) {

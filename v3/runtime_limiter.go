@@ -40,11 +40,21 @@ type RuntimeLimiter struct {
 	totalRuntime_ms *float64
 	// overrun flag gets set whenever we are exceeding the allowance_ms
 	overrun bool
-	// starved is a counter that gets updated each Run() to keep track of
-	// how many logic units didn't get to run ( > 0 if we didn't iterate the full
-	// list in the given allowance_ms)
-	// TODO: take some kind of action on this in RuntimeLimitSharer
-	starved int
+	// coefficient 0.0 to 1.0, percentage of runners in the last Run() cycle
+	// from startIx back around to itself that did not get to run. Used
+	// to allot extra allowance time left over once all runners have run once
+	// to let starving runners try to use the leftover time to run something
+	// for example, say 12 ms are available. 2 ms are given to each of 6 runners.
+	// the first 5 complete to 100% and don't even use their full budget, but the
+	// 6th runner starves at 20% complete using its mere 2 ms. then, the remaining
+	// time left over, say 7 ms, is portioned entirely to the 6th runner to try to
+	// complete. If there were 2 of 6 that starved at 20% each, they would divide
+	// the remaining ms in half. If one starved at 10% and the other at 30%, then
+	// the 10% one would get (10 / (10 + 30))th of the time, and the other would
+	// get (30 / (10 + 30))th. The division of the spoils proceeds like this, with
+	// leftover time alloted proportional to starvation in this way, until the
+	// total starve of those that ran is zero.
+	starvation float64
 }
 
 func NewRuntimeLimiter() *RuntimeLimiter {
@@ -156,7 +166,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 		r.overrun = true
 	}
 	// calculate starved
-	r.starved = len(r.logicUnits) - ran
+	r.starvation = float64(len(r.logicUnits)-ran) / float64(len(r.logicUnits))
 	return overunder_ms
 }
 
