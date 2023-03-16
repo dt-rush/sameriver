@@ -22,6 +22,9 @@ type RuntimeLimiter struct {
 	// used to estimate the time cost in milliseconds of running a function,
 	// so that we can try to stay below the limit provided
 	runtimeEstimates map[*LogicUnit]float64
+	// keep track of whether we have skipped this logic unit once already due to
+	// a bad estimate - if we did, we will override the consideration of the estimate
+	skippedBadEstimate map[*LogicUnit]bool
 	// we run a logic unit at most every x ms where x is the runtime estimate
 	// so, we need to keep track of when it last ran
 	lastRun map[*LogicUnit]time.Time
@@ -37,14 +40,20 @@ type RuntimeLimiter struct {
 	totalRuntime_ms *float64
 	// overrun flag gets set whenever we are exceeding the allowance_ms
 	overrun bool
+	// starved is a counter that gets updated each Run() to keep track of
+	// how many logic units didn't get to run ( > 0 if we didn't iterate the full
+	// list in the given allowance_ms)
+	// TODO: take some kind of action on this in RuntimeLimitSharer
+	starved int
 }
 
 func NewRuntimeLimiter() *RuntimeLimiter {
 	return &RuntimeLimiter{
-		logicUnits:       make([]*LogicUnit, 0),
-		runtimeEstimates: make(map[*LogicUnit]float64),
-		lastRun:          make(map[*LogicUnit]time.Time),
-		indexes:          make(map[int]int),
+		logicUnits:         make([]*LogicUnit, 0),
+		runtimeEstimates:   make(map[*LogicUnit]float64),
+		skippedBadEstimate: make(map[*LogicUnit]bool),
+		lastRun:            make(map[*LogicUnit]time.Time),
+		indexes:            make(map[int]int),
 	}
 }
 
@@ -58,47 +67,75 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 		r.finished = true
 		return
 	}
-	for remaining_ms > 0 && len(r.logicUnits) > 0 {
+	ran := 0
+	for remaining_ms > 0 {
 		logic := r.logicUnits[r.runIX]
+
+		// check whether this logic has ever run
+		_, hasRunBefore := r.lastRun[logic]
+		// check its estimate
 		estimate, hasEstimate := r.runtimeEstimates[logic]
-		var t0 time.Time
-		var elapsed_ms float64
+
 		// if we've already run at least one, quit early on estimated overrun
-		if (r.runIX != r.startIX) && hasEstimate && (estimate > allowance_ms) {
+		if (r.runIX != r.startIX) && hasRunBefore && (estimate > allowance_ms) {
 			r.overrun = true
 			return remaining_ms
 		}
-		// else, we're either at the first func, or we have no estimate for this
-		// one, or the estimate is within allowance_ms. SO run it ... if it's
-		// scheduled
-		if (!hasEstimate ||
-			(hasEstimate && estimate <= allowance_ms) ||
-			(hasEstimate && estimate > allowance_ms && r.runIX == r.startIX)) &&
-			r.Tick(logic) {
 
-			t0 = time.Now()
-			var dt_ms float64
-			var scheduled bool
-			if _, ok := r.lastRun[logic]; ok {
-				dt_ms = float64(time.Since(r.lastRun[logic]).Nanoseconds()) / 1.0e6
-				scheduled = logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)
-			} else {
-				dt_ms = 0
-				scheduled = true
-			}
-			if logic.active && scheduled {
-				logic.f(dt_ms)
-				r.lastRun[logic] = time.Now()
-			}
-			elapsed_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
-			// update estimate stat
-			if !hasEstimate {
-				r.runtimeEstimates[logic] = elapsed_ms
-			} else {
-				r.runtimeEstimates[logic] =
-					(r.runtimeEstimates[logic] + elapsed_ms) / 2.0
-			}
+		// estimate looks good if it's below allowance OR the estimate is above
+		// allowance but we left off at this index last time; so we should get the
+		// painful function over with rather than stall here forever or wait
+		// to execute it when we get enough allowance (may never happen)
+		estimateLooksGood := (hasEstimate && estimate <= allowance_ms) ||
+			(hasEstimate && estimate > allowance_ms && r.runIX == r.startIX)
+		// override bad estimate if this logic unit was skipped for a bad estimate
+		// once already
+		if skipped, ok := r.skippedBadEstimate[logic]; ok && skipped {
+			estimateLooksGood = true
+			r.skippedBadEstimate[logic] = false
 		}
+
+		// if the time since the last run of this logic is > the runtime estimate
+		// (that is, a function taking 1ms to run on avg should run at most
+		// every 1ms)
+		durationHasElapsed := r.tick(logic)
+
+		// obviously the logic must be active
+		isActive := logic.active
+
+		// get real time since last run
+		var dt_ms float64
+		if hasRunBefore {
+			dt_ms = float64(time.Since(r.lastRun[logic]).Nanoseconds()) / 1.0e6
+		} else {
+			dt_ms = 0
+		}
+
+		// finally, if it has a runschedule defined, we should also tick that
+		// amount of time
+		scheduled := logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)
+
+		var elapsed_ms float64
+		if !hasRunBefore ||
+			(isActive && estimateLooksGood && durationHasElapsed && scheduled) {
+
+			t0 := time.Now()
+			// note that we start lastrun from the moment the function starts, since
+			// say it starts at t=0ms, takes 4 ms to run, then if it comes up to run
+			// again at t=8ms (r.tick()), it will be 8ms dt_ms since the last time
+			// it ran
+			r.lastRun[logic] = time.Now()
+			logic.f(dt_ms)
+			elapsed_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
+			r.updateEstimate(logic, elapsed_ms)
+			ran++
+		} else if !estimateLooksGood {
+			// if we didn't run because the estimate didn't look good, set a flag
+			// so that next time we reach this, even if the estimate looks bad,
+			// we run it anyway
+			r.skippedBadEstimate[logic] = true
+		}
+
 		remaining_ms -= elapsed_ms
 		r.runIX = (r.runIX + 1) % len(r.logicUnits)
 		if r.runIX == r.startIX {
@@ -113,19 +150,30 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 	} else {
 		*r.totalRuntime_ms = (*r.totalRuntime_ms + total_ms) / 2.0
 	}
-	// return overunder_ms
+	// calculate overunder
 	overunder_ms := allowance_ms - total_ms
 	if overunder_ms < 0 {
 		r.overrun = true
 	}
+	// calculate starved
+	r.starved = len(r.logicUnits) - ran
 	return overunder_ms
 }
 
-func (r *RuntimeLimiter) Tick(logic *LogicUnit) bool {
+func (r *RuntimeLimiter) tick(logic *LogicUnit) bool {
 	if t, ok := r.lastRun[logic]; ok {
 		return float64(time.Since(t).Nanoseconds())/1.0e6 > r.runtimeEstimates[logic]
 	} else {
 		return true
+	}
+}
+
+func (r *RuntimeLimiter) updateEstimate(logic *LogicUnit, elapsed_ms float64) {
+	if _, ok := r.runtimeEstimates[logic]; !ok {
+		r.runtimeEstimates[logic] = elapsed_ms
+	} else {
+		r.runtimeEstimates[logic] =
+			(r.runtimeEstimates[logic] + elapsed_ms) / 2.0
 	}
 }
 

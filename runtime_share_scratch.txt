@@ -1,0 +1,41 @@
+
+
+
+
+
+
+consider Share()
+
+
+let's say we have 4 runners
+
+we divide allowance_ms = 12 into 4
+
+3 each
+
+runner0 runs 3 functions:
+
+1ms 1ms 5ms
+
+(allowance_ms -= 6)
+
+runner1 runs 3 functions
+
+1ms 1ms 4ms
+
+(allowance_ms -= 6) now 0
+
+ran = 2
+len(r.runners) = 3
+so starved = 1
+
+
+
+
+
+now what if we had
+
+0
+1ms 1ms 12ms
+
+then 1 and 2 get starved
