@@ -156,7 +156,7 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 
 	x := 0
 	N_HEAVY := 5
-	weight := 0.3
+	weight := 0.5
 	for i := 0; i < N_HEAVY; i++ {
 		name := fmt.Sprintf("heavy-%d", i)
 		r.Add(&LogicUnit{

@@ -79,8 +79,20 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 		return
 	}
 	ran := 0
+	/*
+		const (
+			RoundRobin int = iota
+			Opportunistic
+		)
+		// TODO: use mode to be either roundrobin or, once it meets its first
+		// too-heavy function, go opportunistic
+		mode := RoundRobin
+	*/
+
 	for remaining_ms > 0 {
+		// TODO: fetch in different way for opportunistic (uses sorted list)
 		logic := r.logicUnits[r.runIX]
+
 		logRuntimeLimiter("--- %s", logic.name)
 
 		// check whether this logic has ever run
@@ -151,11 +163,14 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			ran++
 		}
 		remaining_ms -= elapsed_ms
+
+		// TODO: increment / use above different ix for roundrobin vs opportunistic
 		r.runIX = (r.runIX + 1) % len(r.logicUnits)
 		if r.runIX == r.startIX {
 			r.finished = true
 			break
 		}
+
 	}
 	total_ms := float64(time.Since(tStart).Nanoseconds()) / 1.0e6
 	// maintain moving average of totalRuntime_ms
