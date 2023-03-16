@@ -41,3 +41,8 @@ var DEBUG_GOAP = os.Getenv("DEBUG_GOAP") == "true"
 var logGOAPDebug = SubLogFunction(
 	"GOAP", DEBUG_GOAP,
 	func(s string) string { return s })
+
+var DEBUG_RUNTIME_LIMITER = os.Getenv("DEBUG_RUNTIME_LIMITER") == "true"
+var logRuntimeLimiter = SubLogFunction(
+	"RuntimeLimiter", DEBUG_RUNTIME_LIMITER,
+	func(s string) string { return s })

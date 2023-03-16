@@ -8,8 +8,8 @@ import (
 // used to store a set of logicUnits which want to be executed together and
 // frequently, but which are tolerant of being partitioned in time in order to
 // stay within a certain time constraint (for example, running all the world
-// logic we can within 4 milliseocnds, picking up where we left off next
-// Update() loop)
+// logic we can within 4 milliseconds, hopefully looping back around to wherever
+// we started, but if not, picking up where we left off next Run()
 type RuntimeLimiter struct {
 	// used to degrade gracefully under time pressure, by picking up where we
 	// left off in the iteration of logicUnits to run in the case that we can't
@@ -22,12 +22,13 @@ type RuntimeLimiter struct {
 	// used to estimate the time cost in milliseconds of running a function,
 	// so that we can try to stay below the limit provided
 	runtimeEstimates map[*LogicUnit]float64
-	// keep track of whether we have skipped this logic unit once already due to
-	// a bad estimate - if we did, we will override the consideration of the estimate
-	skippedBadEstimate map[*LogicUnit]bool
-	// we run a logic unit at most every x ms where x is the runtime estimate
-	// so, we need to keep track of when it last ran
+	// used to provide an accurate dt_ms to each logic unit so it can integrate
+	// time smooth and proper
 	lastRun map[*LogicUnit]time.Time
+	// we run a logic unit with a gap of at least x ms where it takes x ms
+	// to run. so a function taking 4ms will have at least 4 ms after it finishes
+	// til the next time it runs, so we need to keep track of when logicunits end.
+	lastEnd map[*LogicUnit]time.Time
 	// used to lookup the logicUnits slice index given an object to which
 	// the LogicUnit is coupled, it's Parent (for System.Update() instances,
 	// this is the System, for world LogicUnits this is the LogicUnit itself
@@ -59,11 +60,11 @@ type RuntimeLimiter struct {
 
 func NewRuntimeLimiter() *RuntimeLimiter {
 	return &RuntimeLimiter{
-		logicUnits:         make([]*LogicUnit, 0),
-		runtimeEstimates:   make(map[*LogicUnit]float64),
-		skippedBadEstimate: make(map[*LogicUnit]bool),
-		lastRun:            make(map[*LogicUnit]time.Time),
-		indexes:            make(map[int]int),
+		logicUnits:       make([]*LogicUnit, 0),
+		runtimeEstimates: make(map[*LogicUnit]float64),
+		lastRun:          make(map[*LogicUnit]time.Time),
+		lastEnd:          make(map[*LogicUnit]time.Time),
+		indexes:          make(map[int]int),
 	}
 }
 
@@ -80,29 +81,30 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 	ran := 0
 	for remaining_ms > 0 {
 		logic := r.logicUnits[r.runIX]
+		logRuntimeLimiter("--- %s", logic.name)
 
 		// check whether this logic has ever run
 		_, hasRunBefore := r.lastRun[logic]
 		// check its estimate
 		estimate, hasEstimate := r.runtimeEstimates[logic]
 
-		// if we've already run at least one, quit early on estimated overrun
-		if (r.runIX != r.startIX) && hasRunBefore && (estimate > allowance_ms) {
-			r.overrun = true
-			return remaining_ms
-		}
-
 		// estimate looks good if it's below allowance OR the estimate is above
 		// allowance but we left off at this index last time; so we should get the
 		// painful function over with rather than stall here forever or wait
 		// to execute it when we get enough allowance (may never happen)
-		estimateLooksGood := (hasEstimate && estimate <= allowance_ms) ||
+		estimateLooksGood := (hasEstimate && estimate <= remaining_ms) ||
 			(hasEstimate && estimate > allowance_ms && r.runIX == r.startIX)
-		// override bad estimate if this logic unit was skipped for a bad estimate
-		// once already
-		if skipped, ok := r.skippedBadEstimate[logic]; ok && skipped {
-			estimateLooksGood = true
-			r.skippedBadEstimate[logic] = false
+		logRuntimeLimiter("estimateLooksGood: %t", estimateLooksGood)
+		if hasEstimate && !estimateLooksGood {
+			// NOTE: exiting early when we hit our first bad estimate may be
+			// suboptimal in the sense that it leaves extra unused time that
+			// smaller logic units ahead might have used, but trying to
+			// implement skipping of heavy logics that also doesn't leave them
+			// behind, leading to them getting starved is very hard to manage.
+			// when we exit early, our starvation is > 0.0 so we will receive
+			// a proportional share of the total leftover time in the next
+			// loop inside Share()
+			return remaining_ms
 		}
 
 		// if the time since the last run of this logic is > the runtime estimate
@@ -126,26 +128,28 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 		scheduled := logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)
 
 		var elapsed_ms float64
+
+		if DEBUG_RUNTIME_LIMITER {
+			logRuntimeLimiter("hasRunBefore: %t", hasRunBefore)
+			logRuntimeLimiter("isActive: %t", isActive)
+			logRuntimeLimiter("durationHasElapsed: %t", durationHasElapsed)
+			logRuntimeLimiter("scheduled: %t", scheduled)
+		}
 		if !hasRunBefore ||
-			(isActive && estimateLooksGood && durationHasElapsed && scheduled) {
+			(isActive && durationHasElapsed && scheduled) {
 
 			t0 := time.Now()
 			// note that we start lastrun from the moment the function starts, since
 			// say it starts at t=0ms, takes 4 ms to run, then if it comes up to run
-			// again at t=8ms (r.tick()), it will be 8ms dt_ms since the last time
-			// it ran
+			// again at t=8ms (r.tick()), it will get dt_ms of 8 ms, the proper
+			// intervening time since it last integrated a dt_ms increment.
 			r.lastRun[logic] = time.Now()
 			logic.f(dt_ms)
+			r.lastEnd[logic] = time.Now()
 			elapsed_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 			r.updateEstimate(logic, elapsed_ms)
 			ran++
-		} else if !estimateLooksGood {
-			// if we didn't run because the estimate didn't look good, set a flag
-			// so that next time we reach this, even if the estimate looks bad,
-			// we run it anyway
-			r.skippedBadEstimate[logic] = true
 		}
-
 		remaining_ms -= elapsed_ms
 		r.runIX = (r.runIX + 1) % len(r.logicUnits)
 		if r.runIX == r.startIX {
@@ -171,7 +175,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 }
 
 func (r *RuntimeLimiter) tick(logic *LogicUnit) bool {
-	if t, ok := r.lastRun[logic]; ok {
+	if t, ok := r.lastEnd[logic]; ok {
 		return float64(time.Since(t).Nanoseconds())/1.0e6 > r.runtimeEstimates[logic]
 	} else {
 		return true
