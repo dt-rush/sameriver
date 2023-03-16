@@ -7,6 +7,9 @@ type LogicUnit struct {
 	active      bool
 	worldID     int
 	runSchedule *TimeAccumulator
+	// hotness increments every time this logic is run
+	// note: this doesn't overflow since it gets normalised
+	hotness int
 }
 
 func (l *LogicUnit) Activate() {

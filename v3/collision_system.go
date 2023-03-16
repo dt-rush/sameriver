@@ -91,7 +91,6 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 func (s *CollisionSystem) DoCollide(i *Entity, j *Entity) {
 	s.rateLimiterArray.Do(i.ID, j.ID,
 		func() {
-			Logger.Printf("Publishing")
 			s.w.Events.Publish("collision",
 				CollisionData{This: i, Other: j})
 			s.w.Events.Publish("collision",
@@ -160,7 +159,6 @@ func (s *CollisionSystem) Update(dt_ms float64) {
 	for x := 0; x < s.sh.Hasher.GridX; x++ {
 		for y := 0; y < s.sh.Hasher.GridY; y++ {
 			entities := s.sh.Hasher.Entities(x, y)
-			Logger.Printf("checking entities: %v", entities)
 			s.checkEntities(entities)
 		}
 	}

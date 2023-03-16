@@ -140,6 +140,11 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 		totalStarvation := 0.0
 		for remaining_ms >= 0 && ran < len(r.runners) {
 			runner := r.runners[r.runIX]
+			// if it doesn't look like this will run in the remaining time,
+			// better to quit early to not harm framerate
+			if runner.totalRuntime_ms != nil && *runner.totalRuntime_ms > remaining_ms {
+				break
+			}
 			var runnerAllowance float64
 			if !starvedMode {
 				runnerAllowance = toShare_ms / float64(len(r.runners))

@@ -2,6 +2,7 @@ package sameriver
 
 import (
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -10,17 +11,34 @@ import (
 // stay within a certain time constraint (for example, running all the world
 // logic we can within 4 milliseconds, hopefully looping back around to wherever
 // we started, but if not, picking up where we left off next Run()
+//
+// it traverses logics round-robin until it reaches the first one that can't fit
+// in the time remaining, then switches into opportunistic mode: it uses
+// logic.hotness to sort them in ascending frequency of invocation and execute
+// any as it iterates that sorted list which it can, excluding those
+// which can't run in the remaining_ms when we get to them
 type RuntimeLimiter struct {
 	// used to degrade gracefully under time pressure, by picking up where we
 	// left off in the iteration of logicUnits to run in the case that we can't
-	// get to all of them within the milliseconds allotted
-	startIX  int
-	runIX    int
-	finished bool
+	// get to all of them within the milliseconds allotted; used for round-robin
+	// iteration
+	startIx  int
+	runIx    int
+	finished bool // whether we finished the round-robin, back to startIx
+	// used for opportunistic time-fill of remaining once round-robin reaches
+	// the first func too heavy to run
+	oppIx int
 	// used so we can iterate the added logicUnits in order
 	logicUnits []*LogicUnit
+	// logicUnits sorted by hotness ascending, which is an int incremented every time
+	// the func gets run. this is used when, in round-robin scheduling according to
+	// runIx, we reach the first unit that can't run in the budget. then we look
+	// opportunistically to run any funcs which can in the time remaining sorted
+	// ascending by hotness (hence we try to maintain a uniform distribution of
+	// which funcs get called in opportunistic mode)
+	ascendingHotness []*LogicUnit
 	// used to estimate the time cost in milliseconds of running a function,
-	// so that we can try to stay below the limit provided
+	// so that we can try to stay below the allowance_ms given to Run()
 	runtimeEstimates map[*LogicUnit]float64
 	// used to provide an accurate dt_ms to each logic unit so it can integrate
 	// time smooth and proper
@@ -61,6 +79,7 @@ type RuntimeLimiter struct {
 func NewRuntimeLimiter() *RuntimeLimiter {
 	return &RuntimeLimiter{
 		logicUnits:       make([]*LogicUnit, 0),
+		ascendingHotness: make([]*LogicUnit, 0),
 		runtimeEstimates: make(map[*LogicUnit]float64),
 		lastRun:          make(map[*LogicUnit]time.Time),
 		lastEnd:          make(map[*LogicUnit]time.Time),
@@ -69,7 +88,7 @@ func NewRuntimeLimiter() *RuntimeLimiter {
 }
 
 func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
-	r.startIX = r.runIX
+	r.startIx = r.runIx
 	r.finished = false
 	tStart := time.Now()
 	r.overrun = false
@@ -79,19 +98,20 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 		return
 	}
 	ran := 0
-	/*
-		const (
-			RoundRobin int = iota
-			Opportunistic
-		)
-		// TODO: use mode to be either roundrobin or, once it meets its first
-		// too-heavy function, go opportunistic
-		mode := RoundRobin
-	*/
-
+	const (
+		RoundRobin int = iota
+		Opportunistic
+	)
+	mode := RoundRobin
 	for remaining_ms > 0 {
 		// TODO: fetch in different way for opportunistic (uses sorted list)
-		logic := r.logicUnits[r.runIX]
+		var logic *LogicUnit
+		switch mode {
+		case RoundRobin:
+			logic = r.logicUnits[r.runIx]
+		case Opportunistic:
+			logic = r.ascendingHotness[r.oppIx]
+		}
 
 		logRuntimeLimiter("--- %s", logic.name)
 
@@ -105,18 +125,28 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 		// painful function over with rather than stall here forever or wait
 		// to execute it when we get enough allowance (may never happen)
 		estimateLooksGood := (hasEstimate && estimate <= remaining_ms) ||
-			(hasEstimate && estimate > allowance_ms && r.runIX == r.startIX)
+			(hasEstimate && estimate > allowance_ms && r.runIx == r.startIx)
 		logRuntimeLimiter("estimateLooksGood: %t", estimateLooksGood)
-		if hasEstimate && !estimateLooksGood {
-			// NOTE: exiting early when we hit our first bad estimate may be
-			// suboptimal in the sense that it leaves extra unused time that
-			// smaller logic units ahead might have used, but trying to
-			// implement skipping of heavy logics that also doesn't leave them
-			// behind, leading to them getting starved is very hard to manage.
-			// when we exit early, our starvation is > 0.0 so we will receive
-			// a proportional share of the total leftover time in the next
-			// loop inside Share()
-			return remaining_ms
+		// used to skip past iteration of this element in opportunistic mode
+		oppSkip := false
+		// pop into opportunistic at first bad estimate of roundrobin
+		switch mode {
+		case RoundRobin:
+			if hasEstimate && !estimateLooksGood {
+				mode = Opportunistic
+				r.oppIx = 0
+				// we sort the logics by hotness only when opportunistic needs it,
+				// so it always represents the state of things just when we popped
+				// into it initially.
+				sort.Slice(r.ascendingHotness, func(i, j int) bool {
+					return r.logicUnits[i].hotness < r.logicUnits[j].hotness
+				})
+				continue
+			}
+		case Opportunistic:
+			if hasEstimate && !estimateLooksGood {
+				oppSkip = true
+			}
 		}
 
 		// if the time since the last run of this logic is > the runtime estimate
@@ -139,8 +169,6 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 		// amount of time
 		scheduled := logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)
 
-		var elapsed_ms float64
-
 		if DEBUG_RUNTIME_LIMITER {
 			logRuntimeLimiter("hasRunBefore: %t", hasRunBefore)
 			logRuntimeLimiter("isActive: %t", isActive)
@@ -148,7 +176,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			logRuntimeLimiter("scheduled: %t", scheduled)
 		}
 		if !hasRunBefore ||
-			(isActive && durationHasElapsed && scheduled) {
+			(isActive && durationHasElapsed && scheduled && !oppSkip) {
 
 			t0 := time.Now()
 			// note that we start lastrun from the moment the function starts, since
@@ -157,18 +185,30 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			// intervening time since it last integrated a dt_ms increment.
 			r.lastRun[logic] = time.Now()
 			logic.f(dt_ms)
+			logic.hotness++
 			r.lastEnd[logic] = time.Now()
-			elapsed_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
+			elapsed_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 			r.updateEstimate(logic, elapsed_ms)
 			ran++
+			remaining_ms -= elapsed_ms
 		}
-		remaining_ms -= elapsed_ms
 
-		// TODO: increment / use above different ix for roundrobin vs opportunistic
-		r.runIX = (r.runIX + 1) % len(r.logicUnits)
-		if r.runIX == r.startIX {
-			r.finished = true
-			break
+		// end round-robin iteration if we reached back to where we started
+		if mode == RoundRobin {
+			r.runIx = (r.runIx + 1) % len(r.logicUnits)
+			if r.runIx == r.startIx {
+				r.finished = true
+				break
+			}
+		}
+		// end opportunistic iteration if we've looked at all the funcs there are
+		// to run
+		if mode == Opportunistic {
+			r.oppIx = (r.oppIx + 1) % len(r.logicUnits)
+			if r.oppIx == 0 {
+				r.finished = true
+				break
+			}
 		}
 
 	}
@@ -214,6 +254,7 @@ func (r *RuntimeLimiter) Add(logic *LogicUnit) {
 	}
 	r.logicUnits = append(r.logicUnits, logic)
 	r.indexes[logic.worldID] = len(r.logicUnits) - 1
+	r.insertAscendingHotness(logic)
 }
 
 func (r *RuntimeLimiter) Remove(l *LogicUnit) bool {
@@ -241,12 +282,12 @@ func (r *RuntimeLimiter) Remove(l *LogicUnit) bool {
 		r.indexes[nowAtIndex.worldID] = index
 	}
 	r.logicUnits = r.logicUnits[:lastIndex]
-	// update runIX - if we removed an entity earlier in the list,
-	// we should subtract 1 to keep runIX at it's same position. If we
+	// update runIx - if we removed an entity earlier in the list,
+	// we should subtract 1 to keep runIx at it's same position. If we
 	// removed one later in the list or equal to the current position,
 	// we do nothing
-	if index < r.runIX {
-		r.runIX--
+	if index < r.runIx {
+		r.runIx--
 	}
 	// success!
 	return true
@@ -281,4 +322,12 @@ func (r *RuntimeLimiter) DumpStats() (stats map[string]float64, total float64) {
 		total = *r.totalRuntime_ms
 	}
 	return
+}
+
+func (r *RuntimeLimiter) insertAscendingHotness(logic *LogicUnit) {
+	i := sort.Search(len(r.ascendingHotness),
+		func(ix int) bool { return r.ascendingHotness[ix].hotness > logic.hotness })
+	r.ascendingHotness = append(r.ascendingHotness, nil)
+	copy(r.ascendingHotness[i+1:], r.ascendingHotness[i:])
+	r.ascendingHotness[i] = logic
 }

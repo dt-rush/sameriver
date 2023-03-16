@@ -120,10 +120,20 @@ func TestRuntimeLimiterLimiting(t *testing.T) {
 	}
 }
 
-func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
+func TestRuntimeLimiterLoad(t *testing.T) {
+	r := NewRuntimeLimiter()
+
 	allowance_ms := 100.0
+	N_EPSILON := 3
+	epsilon_factor := 0.1
+	N_HEAVY := 5
+	heavy_factor := 0.5
 
 	Logger.Printf("allowance_ms: %f", allowance_ms)
+	Logger.Printf("N_EPSILON: %v", N_EPSILON)
+	Logger.Printf("epsilon_factor: %v", epsilon_factor)
+	Logger.Printf("N_HEAVY: %v", N_HEAVY)
+	Logger.Printf("heavy_factor: %v", heavy_factor)
 
 	frame := -1
 	seq := make([][]string, 0)
@@ -133,21 +143,23 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 	pushFrame := func() {
 		frame++
 		seq = append(seq, make([]string, 0))
+		Logger.Printf("------------------ frame %d ----------------------", frame)
 	}
 	printFrame := func() {
 		b, _ := json.MarshalIndent(seq[frame], "", "\t")
 		Logger.Printf(string(b))
+		for _, l := range r.logicUnits {
+			Logger.Printf("%s: h%d", l.name, l.hotness)
+		}
 	}
 
-	r := NewRuntimeLimiter()
-	N_EPSILON := 3
 	for i := 0; i < N_EPSILON; i++ {
 		name := fmt.Sprintf("epsilon-%d", i)
 		r.Add(&LogicUnit{
 			name:    name,
 			worldID: i,
 			f: func(dt_ms float64) {
-				time.Sleep(time.Duration(allowance_ms*0.1) * time.Millisecond)
+				time.Sleep(time.Duration(epsilon_factor*allowance_ms) * time.Millisecond)
 				markRan(name)
 			},
 			active:      true,
@@ -155,8 +167,6 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 	}
 
 	x := 0
-	N_HEAVY := 5
-	weight := 0.5
 	for i := 0; i < N_HEAVY; i++ {
 		name := fmt.Sprintf("heavy-%d", i)
 		r.Add(&LogicUnit{
@@ -165,7 +175,7 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 			f: func(dt_ms float64) {
 				x += 1
 				markRan(name)
-				time.Sleep(time.Duration(weight*allowance_ms) * time.Millisecond)
+				time.Sleep(time.Duration(heavy_factor*allowance_ms) * time.Millisecond)
 			},
 			active:      true,
 			runSchedule: nil})
@@ -189,7 +199,7 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 	// since it's never run before, running the logic will set its estimate
 	runFrame(1.0)
 
-	heavyFirstFrame := int(math.Ceil((1.0 - (float64(N_EPSILON) * 0.1)) / weight))
+	heavyFirstFrame := int(math.Ceil((1.0 - (float64(N_EPSILON) * 0.1)) / heavy_factor))
 	Logger.Printf("Expecting %d heavies to have run in first frame", heavyFirstFrame)
 	if x != heavyFirstFrame {
 		t.Fatalf("Should've run %d heavies on first frame", heavyFirstFrame)
@@ -210,6 +220,10 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 	// run a bunch of frames
 	for i := 0; i < 12; i++ {
 		runFrame(1.0)
+	}
+	// run a bunch of constricted frames
+	for i := 0; i < 12; i++ {
+		runFrame(0.333)
 	}
 }
 
