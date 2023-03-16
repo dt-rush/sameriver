@@ -3,6 +3,7 @@ package sameriver
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 )
@@ -120,7 +121,9 @@ func TestRuntimeLimiterLimiting(t *testing.T) {
 }
 
 func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
-	ms_duration := 100.0
+	allowance_ms := 100.0
+
+	Logger.Printf("allowance_ms: %f", allowance_ms)
 
 	frame := -1
 	seq := make([][]string, 0)
@@ -144,7 +147,7 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 			name:    name,
 			worldID: i,
 			f: func(dt_ms float64) {
-				time.Sleep(time.Duration(ms_duration*0.1) * time.Millisecond)
+				time.Sleep(time.Duration(allowance_ms*0.1) * time.Millisecond)
 				markRan(name)
 			},
 			active:      true,
@@ -152,7 +155,8 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 	}
 
 	x := 0
-	N_HEAVY := 3
+	N_HEAVY := 5
+	weight := 0.3
 	for i := 0; i < N_HEAVY; i++ {
 		name := fmt.Sprintf("heavy-%d", i)
 		r.Add(&LogicUnit{
@@ -161,18 +165,21 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 			f: func(dt_ms float64) {
 				x += 1
 				markRan(name)
-				time.Sleep(time.Duration(ms_duration*0.9) * time.Millisecond)
+				time.Sleep(time.Duration(weight*allowance_ms) * time.Millisecond)
 			},
 			active:      true,
 			runSchedule: nil})
 	}
 
 	runFrame := func(allowanceScale float64) {
+		t0 := time.Now()
 		if allowanceScale != 1 {
 			Logger.Printf("<CONSTRICTED FRAME>")
 		}
 		pushFrame()
-		r.Run(allowanceScale * ms_duration)
+		r.Run(allowanceScale * allowance_ms)
+		elapsed := float64(time.Since(t0).Nanoseconds()) / 1.0e6
+		Logger.Printf("elapsed: %f ms", elapsed)
 		printFrame()
 		if allowanceScale != 1 {
 			Logger.Printf("</CONSTRICTED FRAME>")
@@ -182,15 +189,17 @@ func TestRuntimeLimiterDoNotRunEstimatedSlow(t *testing.T) {
 	// since it's never run before, running the logic will set its estimate
 	runFrame(1.0)
 
-	if x != 1 {
-		t.Fatal("Should've run one heavy on first frame")
+	heavyFirstFrame := int(math.Ceil((1.0 - (float64(N_EPSILON) * 0.1)) / weight))
+	Logger.Printf("Expecting %d heavies to have run in first frame", heavyFirstFrame)
+	if x != heavyFirstFrame {
+		t.Fatalf("Should've run %d heavies on first frame", heavyFirstFrame)
 	}
 
 	// now we try to run it again, but give it no time to run (exceeds estimate)
 	runFrame(0.1)
 
-	if x != 2 {
-		t.Fatal("should've ran second heavy since it didn't run ever to know better")
+	if x != heavyFirstFrame+1 {
+		t.Fatal("should've ran one more heavy in a constricted frame")
 	}
 
 	// what happens after the second heavy has run when we give only a tenth of the time?
