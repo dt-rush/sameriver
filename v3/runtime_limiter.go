@@ -103,6 +103,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 		Opportunistic
 	)
 	mode := RoundRobin
+	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
 	for remaining_ms > 0 {
 		// TODO: fetch in different way for opportunistic (uses sorted list)
 		var logic *LogicUnit
@@ -126,15 +127,20 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			// allowance but we left off at this index last time; so we should get the
 			// painful function over with rather than stall here forever or wait
 			// to execute it when we get enough allowance (may never happen)
-			estimateLooksGood := (hasEstimate && estimate <= remaining_ms) ||
-				(hasEstimate && estimate > allowance_ms && r.runIx == r.startIx)
+			estimateLooksGood := hasEstimate && estimate <= remaining_ms
 			logRuntimeLimiter("estimateLooksGood: %t", estimateLooksGood)
 			// used to skip past iteration of this element in opportunistic mode
 			oppSkip := false
 			// pop into opportunistic at first bad estimate of roundrobin
 			switch mode {
 			case RoundRobin:
-				if hasEstimate && !estimateLooksGood {
+				// if the estimate is bad and we've run at least one func
+				// then pop into opportunistic. Note that the behaviour such that
+				// if the estimate is bad in round robin and we're at the first
+				// func of the Run(), then run it regardless. We can never expect
+				// to get more allowance than we have right now, so we might as well
+				// get the heavy func out of the way.
+				if hasEstimate && !estimateLooksGood && r.runIx != r.startIx {
 					mode = Opportunistic
 					r.oppIx = 0
 					// we sort the logics by hotness only when opportunistic needs it,
@@ -193,13 +199,14 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 					logRuntimeLimiter("OPPORTUNISTIC: %s", logic.name)
 				}
 				logic.f(dt_ms)
+				elapsed_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 				logic.hotness++
 				r.normalizeHotness(logic.hotness)
 				r.lastEnd[logic] = time.Now()
-				elapsed_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 				r.updateEstimate(logic, elapsed_ms)
 				ran++
 				remaining_ms -= elapsed_ms
+				logRuntimeLimiter("remaining after %s: %f (-%f)", logic.name, remaining_ms, elapsed_ms)
 			}
 		}
 

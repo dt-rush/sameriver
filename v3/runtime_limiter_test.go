@@ -119,20 +119,26 @@ func TestRuntimeLimiterLimiting(t *testing.T) {
 	}
 }
 
+// simulate very overloaded conditions
 func TestRuntimeLimiterLoad(t *testing.T) {
 	r := NewRuntimeLimiter()
 
-	allowance_ms := 100.0
-	N_EPSILON := 12
+	// time.Sleep doesn't like amounts < 1ms, so we scale up the time axis
+	// to allow proper sleeping
+	allowance_ms := 64.0
+	N_EPSILON := 10
 	epsilon_factor := 0.1
 	N_HEAVY := 5
-	heavy_factor := 0.5
+	heavy_factor := 0.7
+
+	totalLoad := float64(N_EPSILON)*epsilon_factor + float64(N_HEAVY)*heavy_factor
 
 	Logger.Printf("allowance_ms: %f", allowance_ms)
 	Logger.Printf("N_EPSILON: %v", N_EPSILON)
 	Logger.Printf("epsilon_factor: %v", epsilon_factor)
 	Logger.Printf("N_HEAVY: %v", N_HEAVY)
 	Logger.Printf("heavy_factor: %v", heavy_factor)
+	Logger.Printf("total load: %f", totalLoad)
 
 	frame := -1
 	seq := make([][]string, 0)
@@ -158,7 +164,10 @@ func TestRuntimeLimiterLoad(t *testing.T) {
 			name:    name,
 			worldID: i,
 			f: func(dt_ms float64) {
-				time.Sleep(time.Duration(epsilon_factor*allowance_ms) * time.Millisecond)
+				Logger.Printf("epsilon func sleeping %f ms", float64(time.Duration(epsilon_factor*allowance_ms*1e6)*time.Nanosecond)/1e6)
+				t0 := time.Now()
+				time.Sleep(time.Duration(epsilon_factor*allowance_ms*1e6) * time.Nanosecond)
+				Logger.Printf("Sleep took %f ms", float64(time.Since(t0).Nanoseconds())/1e6)
 				markRan(name)
 			},
 			active:      true,
@@ -188,8 +197,8 @@ func TestRuntimeLimiterLoad(t *testing.T) {
 		pushFrame()
 		r.Run(allowanceScale * allowance_ms)
 		elapsed := float64(time.Since(t0).Nanoseconds()) / 1.0e6
-		Logger.Printf("elapsed: %f ms", elapsed)
 		printFrame()
+		Logger.Printf("            elapsed: %f ms", elapsed)
 		if allowanceScale != 1 {
 			Logger.Printf("</CONSTRICTED FRAME>")
 		}
