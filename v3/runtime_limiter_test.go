@@ -124,9 +124,9 @@ func TestRuntimeLimiterLoad(t *testing.T) {
 	r := NewRuntimeLimiter()
 
 	allowance_ms := 100.0
-	N_EPSILON := 3
+	N_EPSILON := 5
 	epsilon_factor := 0.1
-	N_HEAVY := 5
+	N_HEAVY := 2
 	heavy_factor := 0.5
 
 	Logger.Printf("allowance_ms: %f", allowance_ms)

@@ -139,7 +139,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 				// so it always represents the state of things just when we popped
 				// into it initially.
 				sort.Slice(r.ascendingHotness, func(i, j int) bool {
-					return r.logicUnits[i].hotness < r.logicUnits[j].hotness
+					return r.ascendingHotness[i].hotness < r.ascendingHotness[j].hotness
 				})
 				continue
 			}
@@ -184,6 +184,12 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			// again at t=8ms (r.tick()), it will get dt_ms of 8 ms, the proper
 			// intervening time since it last integrated a dt_ms increment.
 			r.lastRun[logic] = time.Now()
+			switch mode {
+			case RoundRobin:
+				logRuntimeLimiter("ROUND_ROBIN: %s", logic.name)
+			case Opportunistic:
+				logRuntimeLimiter("OPPORTUNISTIC: %s", logic.name)
+			}
 			logic.f(dt_ms)
 			logic.hotness++
 			r.lastEnd[logic] = time.Now()
