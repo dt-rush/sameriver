@@ -113,90 +113,94 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			logic = r.ascendingHotness[r.oppIx]
 		}
 
-		logRuntimeLimiter("--- %s", logic.name)
+		if logic.active {
 
-		// check whether this logic has ever run
-		_, hasRunBefore := r.lastRun[logic]
-		// check its estimate
-		estimate, hasEstimate := r.runtimeEstimates[logic]
+			logRuntimeLimiter("--- %s", logic.name)
 
-		// estimate looks good if it's below allowance OR the estimate is above
-		// allowance but we left off at this index last time; so we should get the
-		// painful function over with rather than stall here forever or wait
-		// to execute it when we get enough allowance (may never happen)
-		estimateLooksGood := (hasEstimate && estimate <= remaining_ms) ||
-			(hasEstimate && estimate > allowance_ms && r.runIx == r.startIx)
-		logRuntimeLimiter("estimateLooksGood: %t", estimateLooksGood)
-		// used to skip past iteration of this element in opportunistic mode
-		oppSkip := false
-		// pop into opportunistic at first bad estimate of roundrobin
-		switch mode {
-		case RoundRobin:
-			if hasEstimate && !estimateLooksGood {
-				mode = Opportunistic
-				r.oppIx = 0
-				// we sort the logics by hotness only when opportunistic needs it,
-				// so it always represents the state of things just when we popped
-				// into it initially.
-				sort.Slice(r.ascendingHotness, func(i, j int) bool {
-					return r.ascendingHotness[i].hotness < r.ascendingHotness[j].hotness
-				})
-				continue
-			}
-		case Opportunistic:
-			if hasEstimate && !estimateLooksGood {
-				oppSkip = true
-			}
-		}
+			// check whether this logic has ever run
+			_, hasRunBefore := r.lastRun[logic]
+			// check its estimate
+			estimate, hasEstimate := r.runtimeEstimates[logic]
 
-		// if the time since the last run of this logic is > the runtime estimate
-		// (that is, a function taking 1ms to run on avg should run at most
-		// every 1ms)
-		durationHasElapsed := r.tick(logic)
-
-		// obviously the logic must be active
-		isActive := logic.active
-
-		// get real time since last run
-		var dt_ms float64
-		if hasRunBefore {
-			dt_ms = float64(time.Since(r.lastRun[logic]).Nanoseconds()) / 1.0e6
-		} else {
-			dt_ms = 0
-		}
-
-		// finally, if it has a runschedule defined, we should also tick that
-		// amount of time
-		scheduled := logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)
-
-		if DEBUG_RUNTIME_LIMITER {
-			logRuntimeLimiter("hasRunBefore: %t", hasRunBefore)
-			logRuntimeLimiter("isActive: %t", isActive)
-			logRuntimeLimiter("durationHasElapsed: %t", durationHasElapsed)
-			logRuntimeLimiter("scheduled: %t", scheduled)
-		}
-		if !hasRunBefore ||
-			(isActive && durationHasElapsed && scheduled && !oppSkip) {
-
-			t0 := time.Now()
-			// note that we start lastrun from the moment the function starts, since
-			// say it starts at t=0ms, takes 4 ms to run, then if it comes up to run
-			// again at t=8ms (r.tick()), it will get dt_ms of 8 ms, the proper
-			// intervening time since it last integrated a dt_ms increment.
-			r.lastRun[logic] = time.Now()
+			// estimate looks good if it's below allowance OR the estimate is above
+			// allowance but we left off at this index last time; so we should get the
+			// painful function over with rather than stall here forever or wait
+			// to execute it when we get enough allowance (may never happen)
+			estimateLooksGood := (hasEstimate && estimate <= remaining_ms) ||
+				(hasEstimate && estimate > allowance_ms && r.runIx == r.startIx)
+			logRuntimeLimiter("estimateLooksGood: %t", estimateLooksGood)
+			// used to skip past iteration of this element in opportunistic mode
+			oppSkip := false
+			// pop into opportunistic at first bad estimate of roundrobin
 			switch mode {
 			case RoundRobin:
-				logRuntimeLimiter("ROUND_ROBIN: %s", logic.name)
+				if hasEstimate && !estimateLooksGood {
+					mode = Opportunistic
+					r.oppIx = 0
+					// we sort the logics by hotness only when opportunistic needs it,
+					// so it always represents the state of things just when we popped
+					// into it initially.
+					sort.Slice(r.ascendingHotness, func(i, j int) bool {
+						return r.ascendingHotness[i].hotness < r.ascendingHotness[j].hotness
+					})
+					continue
+				}
 			case Opportunistic:
-				logRuntimeLimiter("OPPORTUNISTIC: %s", logic.name)
+				if hasEstimate && !estimateLooksGood {
+					oppSkip = true
+				}
 			}
-			logic.f(dt_ms)
-			logic.hotness++
-			r.lastEnd[logic] = time.Now()
-			elapsed_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
-			r.updateEstimate(logic, elapsed_ms)
-			ran++
-			remaining_ms -= elapsed_ms
+
+			// if the time since the last run of this logic is > the runtime estimate
+			// (that is, a function taking 1ms to run on avg should run at most
+			// every 1ms)
+			durationHasElapsed := r.tick(logic)
+
+			// obviously the logic must be active
+			isActive := logic.active
+
+			// get real time since last run
+			var dt_ms float64
+			if hasRunBefore {
+				dt_ms = float64(time.Since(r.lastRun[logic]).Nanoseconds()) / 1.0e6
+			} else {
+				dt_ms = 0
+			}
+
+			// finally, if it has a runschedule defined, we should also tick that
+			// amount of time
+			scheduled := logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)
+
+			if DEBUG_RUNTIME_LIMITER {
+				logRuntimeLimiter("hasRunBefore: %t", hasRunBefore)
+				logRuntimeLimiter("isActive: %t", isActive)
+				logRuntimeLimiter("durationHasElapsed: %t", durationHasElapsed)
+				logRuntimeLimiter("scheduled: %t", scheduled)
+			}
+			if !hasRunBefore ||
+				(durationHasElapsed && scheduled && !oppSkip) {
+
+				t0 := time.Now()
+				// note that we start lastrun from the moment the function starts, since
+				// say it starts at t=0ms, takes 4 ms to run, then if it comes up to run
+				// again at t=8ms (r.tick()), it will get dt_ms of 8 ms, the proper
+				// intervening time since it last integrated a dt_ms increment.
+				r.lastRun[logic] = time.Now()
+				switch mode {
+				case RoundRobin:
+					logRuntimeLimiter("ROUND_ROBIN: %s", logic.name)
+				case Opportunistic:
+					logRuntimeLimiter("OPPORTUNISTIC: %s", logic.name)
+				}
+				logic.f(dt_ms)
+				logic.hotness++
+				r.normalizeHotness(logic.hotness)
+				r.lastEnd[logic] = time.Now()
+				elapsed_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
+				r.updateEstimate(logic, elapsed_ms)
+				ran++
+				remaining_ms -= elapsed_ms
+			}
 		}
 
 		// end round-robin iteration if we reached back to where we started
@@ -216,7 +220,6 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 				break
 			}
 		}
-
 	}
 	total_ms := float64(time.Since(tStart).Nanoseconds()) / 1.0e6
 	// maintain moving average of totalRuntime_ms
@@ -240,6 +243,17 @@ func (r *RuntimeLimiter) tick(logic *LogicUnit) bool {
 		return float64(time.Since(t).Nanoseconds())/1.0e6 > r.runtimeEstimates[logic]
 	} else {
 		return true
+	}
+}
+
+// every time we increment a logic's hotness, we check if it is now max int
+// if it is, we reset hotness of all funcs to 0, call it a debt jubilee
+func (r *RuntimeLimiter) normalizeHotness(hot int) {
+	maxInt := int(^uint(0) >> 1)
+	if hot == maxInt {
+		for _, logic := range r.logicUnits {
+			logic.hotness = 0
+		}
 	}
 }
 
