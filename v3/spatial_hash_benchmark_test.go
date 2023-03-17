@@ -16,42 +16,6 @@ var GRIDY_VAL, GRIDY_OK = os.LookupEnv("GRIDY")
 
 // also see benchmark_spatial_hash_compare.sh for influence of grid size
 
-/*
-func BenchmarkSpatialHashUpdateParallelD(b *testing.B) {
-	w := NewWorld(map[string]any{
-		"width":  100,
-		"height": 100,
-	})
-	for i := 0; i < 1024; i++ {
-		testingSpawnSpatial(w,
-			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
-			Vec2D{5, 5})
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		w.SpatialHasher.parallelUpdateD()
-	}
-}
-*/
-
-/*
-func BenchmarkSpatialHashUpdateParallelCSuper(b *testing.B) {
-	w := NewWorld(map[string]any{
-		"width":  100,
-		"height": 100,
-	})
-	for i := 0; i < 1024; i++ {
-		testingSpawnSpatial(w,
-			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
-			Vec2D{5, 5})
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		w.SpatialHasher.parallelUpdateCSuper()
-	}
-}
-*/
-
 func BenchmarkSpatialHashUpdateParallelC(b *testing.B) {
 	var GRIDX, _ = strconv.Atoi(GRIDX_VAL)
 	var GRIDY, _ = strconv.Atoi(GRIDY_VAL)
@@ -77,40 +41,6 @@ func BenchmarkSpatialHashUpdateParallelC(b *testing.B) {
 		w.SpatialHasher.parallelUpdateC()
 	}
 }
-
-/*
-func BenchmarkSpatialHashUpdateParallelB(b *testing.B) {
-	w := NewWorld(map[string]any{
-		"width":  100,
-		"height": 100,
-	})
-	for i := 0; i < 1024; i++ {
-		testingSpawnSpatial(w,
-			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
-			Vec2D{5, 5})
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		w.SpatialHasher.parallelUpdateB()
-	}
-}
-
-func BenchmarkSpatialHashUpdateParallelA(b *testing.B) {
-	w := NewWorld(map[string]any{
-		"width":  100,
-		"height": 100,
-	})
-	for i := 0; i < 1024; i++ {
-		testingSpawnSpatial(w,
-			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
-			Vec2D{5, 5})
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		w.SpatialHasher.parallelUpdateA()
-	}
-}
-*/
 
 func BenchmarkSpatialHashUpdateSingleThread(b *testing.B) {
 	var GRIDX, _ = strconv.Atoi(GRIDX_VAL)
