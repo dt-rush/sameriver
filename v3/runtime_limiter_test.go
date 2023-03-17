@@ -125,7 +125,7 @@ func TestRuntimeLimiterLoad(t *testing.T) {
 
 	// time.Sleep doesn't like amounts < 1ms, so we scale up the time axis
 	// to allow proper sleeping
-	allowance_ms := 64.0
+	allowance_ms := 10.0
 	N_EPSILON := 10
 	epsilon_factor := 0.1
 	N_HEAVY := 5
