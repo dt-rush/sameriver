@@ -2,6 +2,9 @@ package sameriver
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/TwiN/go-color"
 )
 
 type AddRemoveLogicEvent struct {
@@ -14,6 +17,7 @@ type RuntimeLimitSharer struct {
 	runIX            int
 	runners          []*RuntimeLimiter
 	runnerMap        map[string]*RuntimeLimiter
+	runnerNames      map[*RuntimeLimiter]string
 	addRemoveChannel chan AddRemoveLogicEvent
 }
 
@@ -21,6 +25,7 @@ func NewRuntimeLimitSharer() *RuntimeLimitSharer {
 	r := &RuntimeLimitSharer{
 		runners:          make([]*RuntimeLimiter, 0),
 		runnerMap:        make(map[string]*RuntimeLimiter),
+		runnerNames:      make(map[*RuntimeLimiter]string),
 		addRemoveChannel: make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
 	}
 	return r
@@ -33,6 +38,7 @@ func (r *RuntimeLimitSharer) RegisterRunner(name string) {
 	runner := NewRuntimeLimiter()
 	r.runners = append(r.runners, runner)
 	r.runnerMap[name] = runner
+	r.runnerNames[runner] = name
 }
 
 func (r *RuntimeLimitSharer) ProcessAddRemoveLogics() {
@@ -124,7 +130,6 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 	r.ProcessAddRemoveLogics()
 
 	overunder_ms = allowance_ms
-	ran := 0
 	// while we have allowance_ms, keep trying to run all runners
 	// note: everybody gets firsts before anyone gets seconds; this is controlled
 	// using starvedMode.
@@ -135,32 +140,42 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 	loop := 0
 	remaining_ms := allowance_ms
 	starvedMode := false
+	var lastStarvation float64
+	logRuntimeLimiter("\n====================\nshare loop\n====================\n")
 	for remaining_ms >= 0 && loop < MAX_LOOPS {
 		toShare_ms := remaining_ms
+		logRuntimeLimiter("\n===\nloop = %d, total share = %f ms\n===\n", loop, toShare_ms)
 		totalStarvation := 0.0
-		for remaining_ms >= 0 && ran < len(r.runners) {
+		considered := 0
+		for ran := 0; remaining_ms >= 0 && considered < len(r.runners); {
+			considered++
 			runner := r.runners[r.runIX]
-			// if it doesn't look like this will run in the remaining time,
-			// better to quit early to not harm framerate
-			if runner.totalRuntime_ms != nil && *runner.totalRuntime_ms > remaining_ms {
-				break
-			}
 			var runnerAllowance float64
 			if !starvedMode {
 				runnerAllowance = toShare_ms / float64(len(r.runners))
 			} else {
-				runnerAllowance = toShare_ms * (runner.starvation / totalStarvation)
+				logRuntimeLimiter("|||||| %f * (%f / %f)", toShare_ms, runner.starvation, lastStarvation)
+				runnerAllowance = toShare_ms * (runner.starvation / lastStarvation)
 			}
+			logRuntimeLimiter("%s.starvation = %f", r.runnerNames[runner], runner.starvation)
 			if !starvedMode || (starvedMode && runner.starvation != 0) {
-				overunder_ms := runner.Run(runnerAllowance)
+				logRuntimeLimiter(color.InWhiteOverBlue(fmt.Sprintf("|||||| sharing %f ms to %s", runnerAllowance, r.runnerNames[runner])))
+				// loop > 0 is the parameter of Run(), bonsuTime (AKA bonusTime)
+				t0 := time.Now()
+				runner.Run(runnerAllowance, loop > 0)
 				totalStarvation += runner.starvation
-				used := runnerAllowance - overunder_ms
+				if runner.starvation != 0 {
+					logRuntimeLimiter(color.InYellow(fmt.Sprintf("%s.starvation = %f", r.runnerNames[runner], runner.starvation)))
+				}
+				used := float64(time.Since(t0).Nanoseconds()) / 1e6
 				remaining_ms -= used
+				logRuntimeLimiter(color.InWhiteOverBlue(fmt.Sprintf("[remaining_ms: %f]", remaining_ms)))
 				ran++
 			}
 			r.runIX = (r.runIX + 1) % len(r.runners)
 		}
-		starvedMode = totalStarvation > 0
+		starvedMode = (totalStarvation > 0)
+		lastStarvation = totalStarvation
 		loop++
 	}
 	// above we were concerned with starvation of logics inside runners, now
@@ -172,7 +187,12 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 	// starved 0 means they all ran once (even if they didn't complete*)
 	// starved < 0 means at least one ran more than once
 	// starved > 0 means at least one didn't run
-	starved = len(r.runners) - ran
+	starved = 0
+	for i := 0; i < len(r.runners); i++ {
+		if r.runners[i].starvation > 0 {
+			starved++
+		}
+	}
 	return remaining_ms, starved
 }
 

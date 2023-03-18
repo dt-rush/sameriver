@@ -59,7 +59,12 @@ type RuntimeLimiter struct {
 	totalRuntime_ms *float64
 	// overrun flag gets set whenever we are exceeding the allowance_ms
 	overrun bool
-	// coefficient 0.0 to 1.0, percentage of runners in the last Run() cycle
+	// ranRobin : number that ran by round robin since last time bonsuTime = false
+	// (that is, when loop = 0 in Share())
+	ranRobin int
+	// ranOpp : number that ran by opportunistic since last time bonsuTime = false
+	ranOpp int
+	// starvation : coefficient 0.0 to 1.0, percentage of runners in the last Run() cycle
 	// from startIx back around to itself that did not get to run. Used
 	// to allot extra allowance time left over once all runners have run once
 	// to let starving runners try to use the leftover time to run something
@@ -87,9 +92,14 @@ func NewRuntimeLimiter() *RuntimeLimiter {
 	}
 }
 
-func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
-	r.startIx = r.runIx
-	r.finished = false
+func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms float64) {
+	if !bonsuTime {
+		// if we're at loop = 0, the initial share from the RuntimeLimitSharer
+		// this runner is in, we set startIx
+		r.startIx = r.runIx
+		// else, startix remains where it was on last time loop = 0,
+		r.finished = false
+	}
 	tStart := time.Now()
 	r.overrun = false
 	remaining_ms = allowance_ms
@@ -97,14 +107,37 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 		r.finished = true
 		return
 	}
-	ran := 0
+	if !bonsuTime {
+		r.ranRobin = 0
+		r.ranOpp = 0
+		r.starvation = 0
+	}
 	const (
 		RoundRobin int = iota
 		Opportunistic
 	)
 	mode := RoundRobin
 	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
+	loopOverhead_ms_worst := 0.0
 	for remaining_ms > 0 {
+		if remaining_ms < loopOverhead_ms_worst {
+			logRuntimeLimiter("XXX OVERHEAD BAIL XXX")
+			break
+		}
+		tLoop := time.Now()
+		if DEBUG_RUNTIME_LIMITER {
+			modeStr := ""
+			if bonsuTime {
+				modeStr += "BonsuTime "
+			}
+			switch mode {
+			case RoundRobin:
+				modeStr += "RoundRobin"
+			case Opportunistic:
+				modeStr += "Opportunistic"
+			}
+			logRuntimeLimiter(">>>iter: %s", modeStr)
+		}
 		// TODO: fetch in different way for opportunistic (uses sorted list)
 		var logic *LogicUnit
 		switch mode {
@@ -114,6 +147,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			logic = r.ascendingHotness[r.oppIx]
 		}
 
+		var func_ms float64
 		if logic.active {
 
 			logRuntimeLimiter("--- %s", logic.name)
@@ -127,29 +161,48 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 			// allowance but we left off at this index last time; so we should get the
 			// painful function over with rather than stall here forever or wait
 			// to execute it when we get enough allowance (may never happen)
+			// (first update remaining_ms so it's as accurate as possible)
+			remaining_ms = allowance_ms - float64(time.Since(tStart).Nanoseconds())/1e6
 			estimateLooksGood := hasEstimate && estimate <= remaining_ms
 			logRuntimeLimiter("estimateLooksGood: %t", estimateLooksGood)
+			logRuntimeLimiter("estimate: %f", estimate)
 			// used to skip past iteration of this element in opportunistic mode
 			oppSkip := false
-			// pop into opportunistic at first bad estimate of roundrobin
 			switch mode {
 			case RoundRobin:
+				// pop into opportunistic at first bad estimate of roundrobin
+				// running the first roundrobin element regardless of time
+				// estimate if Share() loop == 0 (bonsuTime is true)
+				//
 				// if the estimate is bad and we've run at least one func
 				// then pop into opportunistic. Note that the behaviour such that
 				// if the estimate is bad in round robin and we're at the first
 				// func of the Run(), then run it regardless. We can never expect
 				// to get more allowance than we have right now, so we might as well
 				// get the heavy func out of the way.
-				if hasEstimate && !estimateLooksGood && r.runIx != r.startIx {
-					mode = Opportunistic
-					r.oppIx = 0
-					// we sort the logics by hotness only when opportunistic needs it,
-					// so it always represents the state of things just when we popped
-					// into it initially.
-					sort.Slice(r.ascendingHotness, func(i, j int) bool {
-						return r.ascendingHotness[i].hotness < r.ascendingHotness[j].hotness
-					})
-					continue
+				// r.runIx != r.startIx
+				if hasEstimate && !estimateLooksGood {
+					// only drop into opportunistic when runIx > startIx or bonsuTime
+					//
+					// in other words, since Run() defaults to roundrobin to
+					// begin with, we will - when bonsuTime is false
+					// (Share() loop == 0) - run the func regardless of
+					// hasEstimate && !estimateLooksGood.
+					// conversely,
+					// when bonsuTime is true, we will immediately drop
+					// into opportunistic if the first roundrobin element is
+					// too heavy, and not run it
+					if r.runIx != r.startIx || bonsuTime {
+						mode = Opportunistic
+						r.oppIx = 0
+						// we sort the logics by hotness only when opportunistic
+						// needs it, so it always represents the state of
+						// things just when we popped into it initially.
+						sort.Slice(r.ascendingHotness, func(i, j int) bool {
+							return r.ascendingHotness[i].hotness < r.ascendingHotness[j].hotness
+						})
+						continue
+					}
 				}
 			case Opportunistic:
 				if hasEstimate && !estimateLooksGood {
@@ -194,19 +247,24 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 				r.lastRun[logic] = time.Now()
 				switch mode {
 				case RoundRobin:
-					logRuntimeLimiter("ROUND_ROBIN: %s", logic.name)
+					logRuntimeLimiter("----------------------------------------- ROUND_ROBIN: %s", logic.name)
 				case Opportunistic:
-					logRuntimeLimiter("OPPORTUNISTIC: %s", logic.name)
+					logRuntimeLimiter("----------------------------------------- OPPORTUNISTIC: %s", logic.name)
 				}
 				logic.f(dt_ms)
-				elapsed_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
+				func_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 				logic.hotness++
 				r.normalizeHotness(logic.hotness)
 				r.lastEnd[logic] = time.Now()
-				r.updateEstimate(logic, elapsed_ms)
-				ran++
-				remaining_ms -= elapsed_ms
-				logRuntimeLimiter("remaining after %s: %f (-%f)", logic.name, remaining_ms, elapsed_ms)
+				r.updateEstimate(logic, func_ms)
+				switch mode {
+				case RoundRobin:
+					r.ranRobin++
+				case Opportunistic:
+					r.ranOpp++
+				}
+				remaining_ms = allowance_ms - float64(time.Since(tStart).Nanoseconds())/1e6
+				logRuntimeLimiter("remaining after %s: %f", logic.name, remaining_ms)
 			}
 		}
 
@@ -227,6 +285,11 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 				break
 			}
 		}
+
+		overhead := float64(time.Since(tLoop).Nanoseconds())/1e6 - func_ms
+		if overhead > loopOverhead_ms_worst {
+			loopOverhead_ms_worst = overhead
+		}
 	}
 	total_ms := float64(time.Since(tStart).Nanoseconds()) / 1.0e6
 	// maintain moving average of totalRuntime_ms
@@ -241,7 +304,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64) (remaining_ms float64) {
 		r.overrun = true
 	}
 	// calculate starved
-	r.starvation = float64(len(r.logicUnits)-ran) / float64(len(r.logicUnits))
+	r.starvation = float64(len(r.logicUnits)-r.ranRobin) / float64(len(r.logicUnits))
 	return overunder_ms
 }
 

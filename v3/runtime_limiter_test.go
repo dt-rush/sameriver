@@ -54,7 +54,7 @@ func TestRuntimeLimiterRun(t *testing.T) {
 		active:      true,
 		runSchedule: nil})
 	for i := 0; i < 32; i++ {
-		r.Run(FRAME_DURATION_INT)
+		r.Run(FRAME_DURATION_INT, false)
 		time.Sleep(FRAME_DURATION)
 	}
 	Logger.Println(x)
@@ -75,7 +75,7 @@ func TestRuntimeLimiterOverrun(t *testing.T) {
 		f:           func(dt_ms float64) { time.Sleep(150 * time.Millisecond) },
 		active:      true,
 		runSchedule: nil})
-	remaining_ms := r.Run(100)
+	remaining_ms := r.Run(100, false)
 	if remaining_ms > 0 {
 		t.Fatal("overrun time not calculated properly")
 	}
@@ -92,7 +92,7 @@ func TestRuntimeLimiterUnderrun(t *testing.T) {
 		f:           func(dt_ms float64) { time.Sleep(100 * time.Millisecond) },
 		active:      true,
 		runSchedule: nil})
-	remaining_ms := r.Run(300)
+	remaining_ms := r.Run(300, false)
 	if !(remaining_ms > 0 && remaining_ms <= 200) {
 		t.Fatal("underrun time not calculated properly")
 	}
@@ -113,7 +113,7 @@ func TestRuntimeLimiterLimiting(t *testing.T) {
 		f:           func(dt_ms float64) { fastRan = true },
 		active:      true,
 		runSchedule: nil})
-	r.Run(2)
+	r.Run(2, false)
 	if fastRan {
 		t.Fatal("continued running logic despite using up allowed milliseconds")
 	}
@@ -195,7 +195,7 @@ func TestRuntimeLimiterLoad(t *testing.T) {
 			Logger.Printf("<CONSTRICTED FRAME>")
 		}
 		pushFrame()
-		r.Run(allowanceScale * allowance_ms)
+		r.Run(allowanceScale*allowance_ms, false)
 		elapsed := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 		printFrame()
 		Logger.Printf("            elapsed: %f ms", elapsed)
@@ -256,7 +256,7 @@ func TestRuntimeLimiterRemove(t *testing.T) {
 	r.Add(logic)
 	// run logic a few times so that it has runtimeEstimate data
 	for i := 0; i < 32; i++ {
-		r.Run(FRAME_DURATION_INT)
+		r.Run(FRAME_DURATION_INT, false)
 	}
 	// remove it
 	Logger.Printf("Removing logic: %s", logic.name)
