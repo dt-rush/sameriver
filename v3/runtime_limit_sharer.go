@@ -197,6 +197,9 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 		lastStarvation = totalStarvation
 		loop++
 	}
+	if DEBUG_RUNTIME_LIMITER && loop == MAX_LOOPS {
+		logRuntimeLimiter("Reached MAX_LOOPS in RuntimeSharer with %f percent time remaining", 100*remaining_ms/allowance_ms)
+	}
 	// above we were concerned with starvation of logics inside runners, now
 	// we are concerned with starvation of entire runners. This can happen
 	// when a runner that we encounter as we iterate the runners uses up, in

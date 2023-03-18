@@ -212,6 +212,9 @@ func (h *SpatialHasher) CellsWithinDistance(pos, box Vec2D, d float64) [][2]int 
 	candidateCells := make([][2]int, 0)
 	for x := cellX0; x <= cellX1; x++ {
 		for y := cellY0; y <= cellY1; y++ {
+			if x < 0 || x >= h.GridX || y < 0 || y >= h.GridY {
+				continue
+			}
 			candidateCells = append(candidateCells, [2]int{x, y})
 		}
 	}
@@ -235,6 +238,9 @@ func (h *SpatialHasher) CellsWithinDistanceApprox(pos, box Vec2D, d float64) [][
 	candidateCells := make([][2]int, 0)
 	for x := cellX0; x <= cellX1; x++ {
 		for y := cellY0; y <= cellY1; y++ {
+			if x < 0 || x >= h.GridX || y < 0 || y >= h.GridY {
+				continue
+			}
 			candidateCells = append(candidateCells, [2]int{x, y})
 		}
 	}

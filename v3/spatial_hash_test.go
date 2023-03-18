@@ -124,8 +124,10 @@ func TestSpatialHashCellsWithinDistance(t *testing.T) {
 
 	box := Vec2D{0, 0}
 
+	// TODO: 0,0 should be the center of the world
 	// we're checking the radius at 0, 0, the corner of the world
 	cells := sh.Hasher.CellsWithinDistance(Vec2D{0, 0}, box, 25.0)
+	Logger.Printf("len(cells) = %d", len(cells))
 	if len(cells) != 8 {
 		t.Fatalf("circle centered at 0, 0 of radius 25 should touch 8 cells; got %d: %v", len(cells), cells)
 	}

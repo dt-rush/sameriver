@@ -309,7 +309,13 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 		r.overrun = true
 	}
 	// calculate starved
-	r.starvation = float64(len(r.logicUnits)-r.ranRobin) / float64(len(r.logicUnits))
+	if r.ranRobin == 0 {
+		r.starvation = 1.0
+	} else if r.ranRobin > 0 && r.ranRobin <= len(r.logicUnits) {
+		r.starvation = float64(len(r.logicUnits)-r.ranRobin) / float64(len(r.logicUnits))
+	} else if r.ranRobin > len(r.logicUnits) {
+		r.starvation = 0.0
+	}
 	return overunder_ms
 }
 
