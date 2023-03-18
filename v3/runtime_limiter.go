@@ -82,7 +82,7 @@ type RuntimeLimiter struct {
 	// keep track of the worst case loop overhead (time to iterate a logic unit
 	// minus time it takes to execute)
 	// after being set the first time, tracks a moving avg
-	loopOverhead_ms_worst float64
+	loopOverhead_ms float64
 }
 
 func NewRuntimeLimiter() *RuntimeLimiter {
@@ -124,7 +124,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 	worstOverheadThisTime := 0.0
 	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
 	for remaining_ms > 0 {
-		if remaining_ms < 3*r.loopOverhead_ms_worst {
+		if remaining_ms < 3*r.loopOverhead_ms {
 			logRuntimeLimiter("XXX RUN() OVERHEAD BAIL XXX")
 			break
 		}
@@ -295,12 +295,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 			worstOverheadThisTime = overhead
 		}
 	}
-	if worstOverheadThisTime > r.loopOverhead_ms_worst {
-		r.loopOverhead_ms_worst = worstOverheadThisTime
-	} else {
-		// else decay toward better worst overhead
-		r.loopOverhead_ms_worst = 0.9*r.loopOverhead_ms_worst + 0.1*worstOverheadThisTime
-	}
+	r.updateOverhead(worstOverheadThisTime)
 	total_ms := float64(time.Since(tStart).Nanoseconds()) / 1.0e6
 	// maintain moving average of totalRuntime_ms
 	if r.totalRuntime_ms == nil {
@@ -323,6 +318,15 @@ func (r *RuntimeLimiter) tick(logic *LogicUnit) bool {
 		return float64(time.Since(t).Nanoseconds())/1.0e6 > r.runtimeEstimates[logic]
 	} else {
 		return true
+	}
+}
+
+func (r *RuntimeLimiter) updateOverhead(worstThisTime float64) {
+	if worstThisTime > r.loopOverhead_ms {
+		r.loopOverhead_ms = worstThisTime
+	} else {
+		// else decay toward better worst overhead
+		r.loopOverhead_ms = 0.9*r.loopOverhead_ms + 0.1*worstThisTime
 	}
 }
 

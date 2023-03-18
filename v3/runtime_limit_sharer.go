@@ -19,6 +19,9 @@ type RuntimeLimitSharer struct {
 	runnerMap        map[string]*RuntimeLimiter
 	runnerNames      map[*RuntimeLimiter]string
 	addRemoveChannel chan AddRemoveLogicEvent
+
+	// used to keep track of expected worst case loop overhead
+	innerLoopOverhead_ms float64
 }
 
 func NewRuntimeLimitSharer() *RuntimeLimitSharer {
@@ -143,15 +146,15 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 	starvedMode := false
 	var lastStarvation float64
 	logRuntimeLimiter("\n====================\nshare loop\n====================\n")
-	loopOverhead_ms_worst := 0.0
 	overheadBail := false
 	for remaining_ms >= 0 && loop < MAX_LOOPS && !overheadBail {
 		toShare_ms := remaining_ms
 		logRuntimeLimiter("\n===\nloop = %d, total share = %f ms\n===\n", loop, toShare_ms)
 		totalStarvation := 0.0
 		considered := 0
+		worstOverheadThisTime := 0.0
 		for ran := 0; remaining_ms >= 0 && considered < len(r.runners); {
-			if remaining_ms < loopOverhead_ms_worst {
+			if remaining_ms < r.innerLoopOverhead_ms {
 				logRuntimeLimiter("XXX SHARE() OVERHEAD BAIL XXX")
 				overheadBail = true
 				break
@@ -184,11 +187,12 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 			}
 
 			overhead := float64(time.Since(tLoop).Nanoseconds())/1e6 - used
-			if overhead > loopOverhead_ms_worst {
-				loopOverhead_ms_worst = overhead
+			if overhead > worstOverheadThisTime {
+				worstOverheadThisTime = overhead
 			}
 			r.runIX = (r.runIX + 1) % len(r.runners)
 		}
+		r.updateOverhead(worstOverheadThisTime)
 		starvedMode = (totalStarvation > 0)
 		lastStarvation = totalStarvation
 		loop++
@@ -209,6 +213,16 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 		}
 	}
 	return remaining_ms, starved
+}
+
+func (r *RuntimeLimitSharer) updateOverhead(worstThisTime float64) {
+	if worstThisTime > r.innerLoopOverhead_ms {
+		r.innerLoopOverhead_ms = worstThisTime
+	} else {
+		// else decay toward better worst overhead
+		r.innerLoopOverhead_ms = 0.9*r.innerLoopOverhead_ms + 0.1*worstThisTime
+	}
+
 }
 
 func (r *RuntimeLimitSharer) DumpStats() map[string](map[string]float64) {
