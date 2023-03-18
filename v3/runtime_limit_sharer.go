@@ -153,7 +153,8 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 		totalStarvation := 0.0
 		considered := 0
 		worstOverheadThisTime := 0.0
-		for ran := 0; remaining_ms >= 0 && considered < len(r.runners); {
+		var ran int
+		for ran = 0; remaining_ms >= 0 && considered < len(r.runners); {
 			if remaining_ms < r.innerLoopOverhead_ms {
 				logRuntimeLimiter("XXX SHARE() OVERHEAD BAIL XXX")
 				overheadBail = true
@@ -171,7 +172,9 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 				runnerAllowance = toShare_ms * (runner.starvation / lastStarvation)
 			}
 			logRuntimeLimiter("%s.starvation = %f", r.runnerNames[runner], runner.starvation)
-			if !starvedMode || (starvedMode && runner.starvation != 0) {
+			runnerOverheadLooksGood := remaining_ms > 3*runner.loopOverhead_ms
+			logRuntimeLimiter("Run()? starvedMode: %t, runnerOverheadLooksGood: %t, starvedMode: %t, runner.starvation: %f", starvedMode, runnerOverheadLooksGood, starvedMode, runner.starvation)
+			if !starvedMode || (runnerOverheadLooksGood && starvedMode && runner.starvation != 0) {
 				logRuntimeLimiter(color.InWhiteOverBlue(fmt.Sprintf("|||||| sharing %f ms to %s", runnerAllowance, r.runnerNames[runner])))
 				// loop > 0 is the parameter of Run(), bonsuTime (AKA bonusTime)
 				t0 := time.Now()
@@ -193,8 +196,12 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 			r.runIX = (r.runIX + 1) % len(r.runners)
 		}
 		r.updateOverhead(worstOverheadThisTime)
-		starvedMode = (totalStarvation > 0)
-		lastStarvation = totalStarvation
+		if ran == 0 {
+			break
+		} else {
+			starvedMode = (totalStarvation > 0)
+			lastStarvation = totalStarvation
+		}
 		loop++
 	}
 	if DEBUG_RUNTIME_LIMITER && loop == MAX_LOOPS {

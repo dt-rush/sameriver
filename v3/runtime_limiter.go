@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
+	"github.com/TwiN/go-color"
 )
 
 // used to store a set of logicUnits which want to be executed together and
@@ -297,6 +299,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 	}
 	r.updateOverhead(worstOverheadThisTime)
 	total_ms := float64(time.Since(tStart).Nanoseconds()) / 1.0e6
+	logRuntimeLimiter(color.InWhiteOverGreen(fmt.Sprintf("Run() total: %f ms", total_ms)))
 	// maintain moving average of totalRuntime_ms
 	if r.totalRuntime_ms == nil {
 		r.totalRuntime_ms = &total_ms
@@ -320,7 +323,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 }
 
 func (r *RuntimeLimiter) tick(logic *LogicUnit) bool {
-	if t, ok := r.lastEnd[logic]; ok {
+	if t, ok := r.lastRun[logic]; ok {
 		return float64(time.Since(t).Nanoseconds())/1.0e6 > r.runtimeEstimates[logic]
 	} else {
 		return true
