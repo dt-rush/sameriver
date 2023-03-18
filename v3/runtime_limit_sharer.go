@@ -138,9 +138,9 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 	// note: everybody gets firsts before anyone gets seconds; this is controlled
 	// using starvedMode.
 	// and, to avoid spinning way too many times when load is light,
-	// we have MAX_LOOPS set to an arbitrary 16 (16 update cycles per
+	// we have MAX_LOOPS set to an arbitrary 8 (8 update cycles per
 	// frame is not bad! haha)
-	MAX_LOOPS := 16
+	MAX_LOOPS := 8
 	loop := 0
 	remaining_ms := allowance_ms
 	starvedMode := false
