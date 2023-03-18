@@ -79,6 +79,9 @@ type RuntimeLimiter struct {
 	// leftover time alloted proportional to starvation in this way, until the
 	// total starve of those that ran is zero.
 	starvation float64
+	// keep track of the worst case loop overhead (time to iterate a logic unit
+	// minus time it takes to execute)
+	loopOverhead_ms_worst float64
 }
 
 func NewRuntimeLimiter() *RuntimeLimiter {
@@ -118,10 +121,9 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 	)
 	mode := RoundRobin
 	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
-	loopOverhead_ms_worst := 0.0
 	for remaining_ms > 0 {
-		if remaining_ms < loopOverhead_ms_worst {
-			logRuntimeLimiter("XXX OVERHEAD BAIL XXX")
+		if remaining_ms < 3*r.loopOverhead_ms_worst {
+			logRuntimeLimiter("XXX RUN() OVERHEAD BAIL XXX")
 			break
 		}
 		tLoop := time.Now()
@@ -287,8 +289,8 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 		}
 
 		overhead := float64(time.Since(tLoop).Nanoseconds())/1e6 - func_ms
-		if overhead > loopOverhead_ms_worst {
-			loopOverhead_ms_worst = overhead
+		if overhead > r.loopOverhead_ms_worst {
+			r.loopOverhead_ms_worst = overhead
 		}
 	}
 	total_ms := float64(time.Since(tStart).Nanoseconds()) / 1.0e6

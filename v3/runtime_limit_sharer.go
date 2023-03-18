@@ -125,6 +125,7 @@ func (r *RuntimeLimitSharer) SetSchedule(runnerName string, logicWorldID int, pe
 }
 
 func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, starved int) {
+	tStart := time.Now()
 	// process addition and removal of logics (they get buffered in a channel
 	// so we aren't adding logics while iterating logics)
 	r.ProcessAddRemoveLogics()
@@ -142,12 +143,21 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 	starvedMode := false
 	var lastStarvation float64
 	logRuntimeLimiter("\n====================\nshare loop\n====================\n")
-	for remaining_ms >= 0 && loop < MAX_LOOPS {
+	loopOverhead_ms_worst := 0.0
+	overheadBail := false
+	for remaining_ms >= 0 && loop < MAX_LOOPS && !overheadBail {
 		toShare_ms := remaining_ms
 		logRuntimeLimiter("\n===\nloop = %d, total share = %f ms\n===\n", loop, toShare_ms)
 		totalStarvation := 0.0
 		considered := 0
 		for ran := 0; remaining_ms >= 0 && considered < len(r.runners); {
+			if remaining_ms < loopOverhead_ms_worst {
+				logRuntimeLimiter("XXX SHARE() OVERHEAD BAIL XXX")
+				overheadBail = true
+				break
+			}
+			tLoop := time.Now()
+			var used float64
 			considered++
 			runner := r.runners[r.runIX]
 			var runnerAllowance float64
@@ -167,10 +177,15 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 				if runner.starvation != 0 {
 					logRuntimeLimiter(color.InYellow(fmt.Sprintf("%s.starvation = %f", r.runnerNames[runner], runner.starvation)))
 				}
-				used := float64(time.Since(t0).Nanoseconds()) / 1e6
-				remaining_ms -= used
+				used = float64(time.Since(t0).Nanoseconds()) / 1e6
+				remaining_ms = allowance_ms - float64(time.Since(tStart).Nanoseconds())/1e6
 				logRuntimeLimiter(color.InWhiteOverBlue(fmt.Sprintf("[remaining_ms: %f]", remaining_ms)))
 				ran++
+			}
+
+			overhead := float64(time.Since(tLoop).Nanoseconds())/1e6 - used
+			if overhead > loopOverhead_ms_worst {
+				loopOverhead_ms_worst = overhead
 			}
 			r.runIX = (r.runIX + 1) % len(r.runners)
 		}
