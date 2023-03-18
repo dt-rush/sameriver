@@ -91,7 +91,7 @@ gameloop:
 			// if we overran last loop, we get proportionally less time this loop
 			// (this keeps frame-rate steady while we try to run scene.Update() as
 			// often as possible)
-			allowance_ms := float64(FRAME_DURATION_INT)
+			allowance_ms := float64(FRAME_MS)
 			if overrun_ms > 0 {
 				allowance_ms -= overrun_ms
 			}
@@ -113,7 +113,7 @@ gameloop:
 		// and we'll skip any sleeping. Note that scene.Draw() only occurs
 		// every fpsTicker tick anyway, so
 		elapsed_ms := float64(time.Since(loopStart) / 1e6)
-		overrun_ms = elapsed_ms - FRAME_DURATION_INT
+		overrun_ms = elapsed_ms - FRAME_MS
 		if overrun_ms < 0 {
 			time.Sleep(time.Duration(-overrun_ms * float64(time.Millisecond)))
 		}

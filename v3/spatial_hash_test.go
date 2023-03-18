@@ -29,7 +29,7 @@ func TestSpatialHashInsertion(t *testing.T) {
 		e := testingSpawnSpatial(w, posbox[0], posbox[1])
 		entityCells[e] = cells
 	}
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	for e, cells := range entityCells {
 		for _, cell := range cells {
 			inCell := false
@@ -60,7 +60,7 @@ func TestSpatialHashMany(t *testing.T) {
 			Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
 			Vec2D{5, 5})
 	}
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	n_entities := len(w.GetActiveEntitiesSet())
 	seen := make(map[*Entity]bool)
 	found := 0
@@ -97,7 +97,7 @@ func TestSpatialHashLargeEntity(t *testing.T) {
 		[2]int{2, 2},
 	}
 	e := testingSpawnSpatial(w, pos, box)
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	for _, cell := range cells {
 		inCell := false
 		for _, entity := range sh.Hasher.Entities(cell[0], cell[1]) {
@@ -179,7 +179,7 @@ func TestSpatialHashEntitiesWithinDistance(t *testing.T) {
 			}
 		}
 	}
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	nearGot := w.EntitiesWithinDistance(
 		*e.GetVec2D("Position"),
 		*e.GetVec2D("Box"),
@@ -226,7 +226,7 @@ func TestSpatialHashEntitiesWithinDistanceApprox(t *testing.T) {
 			}
 		}
 	}
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	nearGot := sh.Hasher.EntitiesWithinDistanceApprox(
 		*e.GetVec2D("Position"),
 		*e.GetVec2D("Box"),
@@ -255,8 +255,8 @@ func TestSpatialHashTableCopy(t *testing.T) {
 	sh := NewSpatialHashSystem(10, 10)
 	w.RegisterSystems(sh)
 	testingSpawnSpatial(w, Vec2D{1, 1}, Vec2D{1, 1})
-	w.Update(FRAME_DURATION_INT / 2)
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
+	w.Update(FRAME_MS / 2)
 	table := sh.Hasher.Table
 	tableCopy := sh.Hasher.TableCopy()
 	if table[0][0][0] != tableCopy[0][0][0] {
@@ -279,7 +279,7 @@ func TestSpatialHashTableToString(t *testing.T) {
 			Vec2D{rand.Float64() * 1024, rand.Float64() * 1024},
 			Vec2D{5, 5})
 	}
-	w.Update(FRAME_DURATION_INT)
+	w.Update(FRAME_MS)
 	s1 := sh.Hasher.String()
 	if len(s1) < len(s0) {
 		t.Fatal("spatial hash did not show entities in its String() representation")
@@ -307,7 +307,7 @@ func TestSpatialHashExpand(t *testing.T) {
 	oldCapacity := cap(sh.Hasher.Table[0][0])
 	Logger.Printf("oldCapacity: %d", oldCapacity)
 
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	Logger.Println(sh.Hasher.Table)
 
 	sh.Expand(MAX_ENTITIES / 2)

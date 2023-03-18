@@ -24,7 +24,7 @@ func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) 
 
 func TestCollisionSystem(t *testing.T) {
 	w, _, ec, e := testingSetupCollision()
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
 	select {
@@ -37,7 +37,7 @@ func TestCollisionSystem(t *testing.T) {
 	*e.GetVec2D("Position") = Vec2D{100, 100}
 	time.Sleep(5 * FRAME_DURATION)
 	Logger.Printf("----------------------- 2nd frame")
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
 	if len(ec.C) != 1 {
@@ -52,10 +52,10 @@ func TestCollisionSystemMany(t *testing.T) {
 	}
 	Logger.Printf("%d entities.", len(w.GetCurrentEntitiesSet()))
 	w.SetSystemSchedule("CollisionSystem", 5)
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	time.Sleep(5 * FRAME_DURATION)
 	Logger.Printf("----------------------- 2nd frame")
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
 	select {
@@ -69,7 +69,7 @@ func TestCollisionSystemMany(t *testing.T) {
 func TestCollisionRateLimit(t *testing.T) {
 	w, cs, ec, e := testingSetupCollision()
 	w.Update(1)
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	time.Sleep(FRAME_DURATION)
 	if len(ec.C) == 4 {
 		t.Fatal("collision rate-limiter didn't prevent collision duplication")
@@ -80,12 +80,12 @@ func TestCollisionRateLimit(t *testing.T) {
 	// wait for rate limit to die
 	time.Sleep(FRAME_DURATION)
 	// check if we can reset the rate lmiiter
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	time.Sleep(5 * FRAME_DURATION)
 	Logger.Printf("Sleeping %f ms", float64(5*FRAME_DURATION/time.Millisecond))
 	cs.rateLimiterArray.Reset(e)
 	Logger.Printf("---------------- frame 2")
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
 	Logger.Printf("len(ec.C)=%d", len(ec.C))

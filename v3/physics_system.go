@@ -7,12 +7,17 @@ import (
 
 // moves entities according to their velocity
 type PhysicsSystem struct {
+	granularity     int
 	w               *World
 	physicsEntities *UpdatedEntityList
 }
 
 func NewPhysicsSystem() *PhysicsSystem {
-	return &PhysicsSystem{}
+	return NewPhysicsSystemWithGranularity(1)
+}
+
+func NewPhysicsSystemWithGranularity(granularity int) *PhysicsSystem {
+	return &PhysicsSystem{granularity: granularity}
 }
 
 func (p *PhysicsSystem) GetComponentDeps() []string {
@@ -30,7 +35,11 @@ func (p *PhysicsSystem) LinkWorld(w *World) {
 }
 
 func (p *PhysicsSystem) Update(dt_ms float64) {
-	p.ParallelUpdate(dt_ms)
+	sum_dt := 0.0
+	for i := 0; i < p.granularity; i++ {
+		p.ParallelUpdate(dt_ms / float64(p.granularity))
+		sum_dt += dt_ms / float64(p.granularity)
+	}
 }
 
 func (p *PhysicsSystem) ParallelUpdate(dt_ms float64) {

@@ -116,10 +116,10 @@ func TestBlackboardWorldEntities(t *testing.T) {
 	spawnVillager("baker")
 	setupVillageWorldLogic()
 
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	time.Sleep(550 * time.Millisecond)
-	w.Update(FRAME_DURATION_INT / 2)
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
+	w.Update(FRAME_MS / 2)
 	for e, role := range bb.State["todayRoles"].(map[*Entity]string) {
 		Logger.Printf("%d will be doing '%s'", e.ID, role)
 	}

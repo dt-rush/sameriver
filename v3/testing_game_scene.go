@@ -39,7 +39,7 @@ func (s *testingGameScene) HandleKeyboardEvent(keyboard_event *sdl.KeyboardEvent
 	s.handleKeyboardEventRan = true
 }
 func (s *testingGameScene) IsDone() bool {
-	return s.accum_ms >= 8*FRAME_DURATION_INT
+	return s.accum_ms >= 8*FRAME_MS
 }
 func (s *testingGameScene) NextScene() Scene {
 	s.nextSceneRan = true

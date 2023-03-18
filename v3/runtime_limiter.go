@@ -131,6 +131,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 			break
 		}
 		tLoop := time.Now()
+
 		if DEBUG_RUNTIME_LIMITER {
 			modeStr := ""
 			if bonsuTime {
@@ -144,7 +145,8 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 			}
 			logRuntimeLimiter(">>>iter: %s", modeStr)
 		}
-		// TODO: fetch in different way for opportunistic (uses sorted list)
+
+		// select logic according to mode
 		var logic *LogicUnit
 		switch mode {
 		case RoundRobin:

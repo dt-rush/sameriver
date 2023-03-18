@@ -154,8 +154,8 @@ func TestRuntimeLimitSharerScalePhysics(t *testing.T) {
 	e := testingSpawnPhysics(w)
 	*e.GetVec2D("Velocity") = Vec2D{1, 1}
 	// Update twice since physics system won't run the first time(needs a dt)
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	Logger.Printf("In World.Update() 0, physics ran extra %d times", physics_extra_calls)
 	time.Sleep(FRAME_DURATION)
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 }

@@ -16,7 +16,7 @@ func BenchmarkPhysicsSystemManySingleThreadUpdate(b *testing.B) {
 	}
 	// Update twice since physics system won't run the first time(needs a dt)
 	for i := 0; i < b.N; i++ {
-		ps.SingleThreadUpdate(FRAME_DURATION_INT / 2)
+		ps.SingleThreadUpdate(FRAME_MS / 2)
 	}
 }
 
@@ -30,6 +30,6 @@ func BenchmarkPhysicsSystemManyParallelUpdate(b *testing.B) {
 	}
 	// Update twice since physics system won't run the first time(needs a dt)
 	for i := 0; i < b.N; i++ {
-		ps.ParallelUpdate(FRAME_DURATION_INT / 2)
+		ps.ParallelUpdate(FRAME_MS / 2)
 	}
 }

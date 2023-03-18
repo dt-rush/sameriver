@@ -105,7 +105,7 @@ func TestWorldRunSystemsOnly(t *testing.T) {
 	w := testingWorld()
 	ts := newTestSystem()
 	w.RegisterSystems(ts)
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	if ts.updates == 0 {
 		t.Fatal("failed to update system")
 	}
@@ -127,7 +127,7 @@ func TestWorldRunWorldLogicsOnly(t *testing.T) {
 	x := 0
 	w.AddWorldLogic("logic", func(dt_ms float64) { x += 1 })
 	w.ActivateAllWorldLogics()
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	if x == 0 {
 		t.Fatal("failed to run logic")
 	}
@@ -139,7 +139,7 @@ func TestWorldRunEntityLogicsOnly(t *testing.T) {
 	e := testingSpawnSimple(w)
 	e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
 	w.ActivateAllEntityLogics()
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	if x == 0 {
 		t.Fatal("failed to run logic")
 	}
@@ -147,7 +147,7 @@ func TestWorldRunEntityLogicsOnly(t *testing.T) {
 
 func TestWorldRunAllLogicTypes(t *testing.T) {
 	w, ts, worldUpdates, entityUpdates := testingWorldWithAllLogicTypes()
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	if ts.updates == 0 {
 		t.Fatal("failed to update system")
 	}
@@ -166,7 +166,7 @@ func TestWorldRemoveWorldLogic(t *testing.T) {
 	w.AddWorldLogic(name, func(dt_ms float64) { x += 1 })
 	w.RemoveWorldLogic(name)
 	for i := 0; i < 32; i++ {
-		w.Update(FRAME_DURATION_INT)
+		w.Update(FRAME_MS)
 	}
 	if x != 0 {
 		t.Fatal("logic was removed but still ran during Update()")
@@ -180,7 +180,7 @@ func TestWorldRemoveEntityLogic(t *testing.T) {
 	e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
 	e.RemoveLogic("incrementer")
 	for i := 0; i < 32; i++ {
-		w.Update(FRAME_DURATION_INT)
+		w.Update(FRAME_MS)
 	}
 	if x != 0 {
 		t.Fatal("logic was removed but still ran during Update()")
@@ -192,7 +192,7 @@ func TestWorldActivateWorldLogic(t *testing.T) {
 	x := 0
 	name := "l1"
 	w.AddWorldLogic(name, func(dt_ms float64) { x += 1 })
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	if x == 0 {
 		t.Fatal("logic should have been active and run - did not")
 	}
@@ -207,7 +207,7 @@ func TestWorldActivateAllWorldLogics(t *testing.T) {
 		w.AddWorldLogic(name, func(dt_ms float64) { x += 1 })
 	}
 	w.ActivateAllWorldLogics()
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	if x < n {
 		t.Fatal("logics all should have been activated - some did not run")
 	}
@@ -232,9 +232,9 @@ func TestWorldDeativateAllWorldLogics(t *testing.T) {
 		name := fmt.Sprintf("logic-%d", i)
 		w.AddWorldLogic(name, func(dt_ms float64) { x += 1 })
 	}
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	w.DeactivateAllWorldLogics()
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	Logger.Println(x)
 	if x < n {
 		t.Fatal("logics all should have been deactivated, but some ran")
@@ -246,7 +246,7 @@ func TestWorldEntityLogicActiveDefault(t *testing.T) {
 	x := 0
 	e := testingSpawnSimple(w)
 	e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	if x == 0 {
 		t.Fatal("logic should have been active and run - did not")
 	}
@@ -261,7 +261,7 @@ func TestWorldActivateAllEntityLogics(t *testing.T) {
 		e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
 	}
 	w.ActivateAllEntityLogics()
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	if x < n {
 		t.Fatal("logics all should have been activated - some did not run")
 	}
@@ -286,9 +286,9 @@ func TestWorldDeativateAllEntityLogics(t *testing.T) {
 		e := testingSpawnSimple(w)
 		e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
 	}
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	w.DeactivateAllEntityLogics()
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	if x < n {
 		t.Fatal("logics all should have been deactivated, but some ran")
 	}
@@ -296,7 +296,7 @@ func TestWorldDeativateAllEntityLogics(t *testing.T) {
 
 func TestWorldDumpStats(t *testing.T) {
 	w, _, _, _ := testingWorldWithAllLogicTypes()
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	// test dump stats object
 	stats := w.DumpStats()
 	if len(stats) <= 1 {
@@ -361,7 +361,7 @@ func TestWorldPredicateEntities(t *testing.T) {
 			}
 		}
 	}
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	nearGot := w.EntitiesWithinDistance(
 		*e.GetVec2D("Position"),
 		*e.GetVec2D("Box"),

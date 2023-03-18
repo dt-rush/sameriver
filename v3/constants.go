@@ -16,7 +16,7 @@ const AUDIO_ON = true
 
 const FPS = 60
 const FRAME_DURATION = (1000 / FPS) * time.Millisecond
-const FRAME_DURATION_INT = (1000 / FPS)
+const FRAME_MS = (1000 / FPS)
 const MAX_ENTITIES = 4096
 
 // a subscriber getting 4096 events in a single update tick is insane,

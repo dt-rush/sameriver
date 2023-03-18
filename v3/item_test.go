@@ -172,9 +172,9 @@ func TestItemSystemDespawnItemEntity(t *testing.T) {
 	coinEntity := i.SpawnItemEntity(Vec2D{10, 10}, coin)
 	Logger.Println(coinEntity)
 	// draw the entity
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	time.Sleep(600 * time.Millisecond)
-	w.Update(FRAME_DURATION_INT / 2)
+	w.Update(FRAME_MS / 2)
 	if !coinEntity.Despawned {
 		t.Fatal("Should have despawned after time!")
 	}

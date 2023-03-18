@@ -53,7 +53,7 @@ func EntityManagerInterfaceTestQueueSpawn(
 	testingQueueSpawnSimple(em)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
-	em.Update(FRAME_DURATION_INT / 2)
+	em.Update(FRAME_MS / 2)
 	total, _ := em.NumEntities()
 	if total != 1 {
 		t.Fatal("should have spawned an entity after processing spawn " +
@@ -74,8 +74,8 @@ func EntityManagerInterfaceTestQueueSpawnFull(
 	time.Sleep(FRAME_DURATION)
 	// update *twice*, allowing the extra events to process despite having seen
 	// a full spawn subscription channel the first time
-	em.Update(FRAME_DURATION_INT / 2)
-	em.Update(FRAME_DURATION_INT / 2)
+	em.Update(FRAME_MS / 2)
+	em.Update(FRAME_MS / 2)
 	total, _ := em.NumEntities()
 	if total != EVENT_SUBSCRIBER_CHANNEL_CAPACITY+2 {
 		t.Fatal("should have spawned entities after processing spawn " +
@@ -103,7 +103,7 @@ func EntityManagerInterfaceTestQueueDespawn(
 	em.QueueDespawn(e)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
-	em.Update(FRAME_DURATION_INT / 2)
+	em.Update(FRAME_MS / 2)
 	total, _ := em.NumEntities()
 	if total != 0 {
 		t.Fatal("should have despawned an entity after processing despawn " +
@@ -125,7 +125,7 @@ func EntityManagerInterfaceTestDespawnAll(
 	if total != 0 {
 		t.Fatal("did not despawn all entities")
 	}
-	em.Update(FRAME_DURATION_INT / 2)
+	em.Update(FRAME_MS / 2)
 	total, _ = em.NumEntities()
 	if total != 0 {
 		t.Fatal("DespawnAll() did not discard pending spawn requests")

@@ -54,7 +54,7 @@ func TestRuntimeLimiterRun(t *testing.T) {
 		active:      true,
 		runSchedule: nil})
 	for i := 0; i < 32; i++ {
-		r.Run(FRAME_DURATION_INT, false)
+		r.Run(FRAME_MS, false)
 		time.Sleep(FRAME_DURATION)
 	}
 	Logger.Println(x)
@@ -256,7 +256,7 @@ func TestRuntimeLimiterRemove(t *testing.T) {
 	r.Add(logic)
 	// run logic a few times so that it has runtimeEstimate data
 	for i := 0; i < 32; i++ {
-		r.Run(FRAME_DURATION_INT, false)
+		r.Run(FRAME_MS, false)
 	}
 	// remove it
 	Logger.Printf("Removing logic: %s", logic.name)
