@@ -31,6 +31,13 @@ func TestPhysicsSystemWithGranularity(t *testing.T) {
 	runFrame := func() {
 		w.Update(FRAME_MS / physicsTimeShareReciprocal)
 		wg.Update(FRAME_MS / physicsTimeShareReciprocal)
+		time.Sleep(FRAME_DURATION)
+	}
+
+	observePos := func() {
+		Logger.Printf("normal pos: %v", *pos)
+		Logger.Printf("granular pos: %v", *posg)
+		Logger.Printf("position.x ratio: %f", pos.X/posg.X)
 	}
 
 	// Frame 0
@@ -44,9 +51,7 @@ func TestPhysicsSystemWithGranularity(t *testing.T) {
 	for _, l := range wg.RuntimeSharer.runnerMap["systems"].logicUnits {
 		Logger.Printf("granular %s: h%d", l.name, l.hotness)
 	}
-	Logger.Printf("normal pos: %v", *pos)
-	Logger.Printf("granular pos: %v", *posg)
-	time.Sleep(FRAME_DURATION)
+	observePos()
 
 	// Frame 1
 	Logger.Println("TEST FRAME 2")
@@ -57,7 +62,6 @@ func TestPhysicsSystemWithGranularity(t *testing.T) {
 	if *posg == posg0 {
 		t.Fatal("failed to update position in granular")
 	}
-	// TODO: fix this somehow?
 	// as of this comment, 2023-03-18, observe that the numeric result is different;
 	// this is *at least* because
 	// the physics update is getting slightly different unstable dts, due ultimately to
@@ -65,8 +69,21 @@ func TestPhysicsSystemWithGranularity(t *testing.T) {
 	// based on wall time since it last scheduled it, which can vary over a single
 	// frame as it tries to pack in the time and repeatedly polls time since last
 	// run.
-	Logger.Printf("normal pos: %v", *pos)
-	Logger.Printf("granular pos: %v", *posg)
+	observePos()
+
+	// let's observe the behaviour over a longer term
+	for i := 0; i < 30; i++ {
+		runFrame()
+	}
+	Logger.Printf("+ 30 frames:")
+	// observe that they're actually closer than after the 1st or 2nd frame
+	observePos()
+	for i := 0; i < 60; i++ {
+		runFrame()
+	}
+	Logger.Printf("+ 60 frames:")
+	// observe that they're actually closer than after the 1st or 2nd frame
+	observePos()
 }
 
 func TestPhysicsSystemMotion(t *testing.T) {
