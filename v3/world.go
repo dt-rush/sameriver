@@ -31,7 +31,7 @@ type World struct {
 	// interface, not a struct type like LogicUnit that can have a name field
 	systemsIDs map[System]int
 
-	// logics invoked regularly by runtimeSharer
+	// logics invoked regularly by RuntimeSharer
 	worldLogics map[string]*LogicUnit
 
 	// funcs that can be called by name with data and get a result,
@@ -43,7 +43,7 @@ type World struct {
 
 	// for sharing runtime among the various runtimelimiter kinds
 	// and contains the RuntimeLimiters to which we Add() LogicUnits
-	runtimeSharer *RuntimeLimitSharer
+	RuntimeSharer *RuntimeLimitSharer
 
 	// for statistics tracking - the avg ms used to run World.Update()
 	totalRuntimeAvg_ms *float64
@@ -109,18 +109,18 @@ func NewWorld(spec map[string]any) *World {
 		worldLogics:   make(map[string]*LogicUnit),
 		funcs:         NewFuncSet(nil),
 		blackboards:   make(map[string]*Blackboard),
-		runtimeSharer: NewRuntimeLimitSharer(),
+		RuntimeSharer: NewRuntimeLimitSharer(),
 	}
 
 	// set up runtimesharer
-	w.runtimeSharer.RegisterRunner("entity-manager")
-	w.runtimeSharer.RegisterRunner("systems")
-	w.runtimeSharer.RegisterRunner("world")
-	w.runtimeSharer.RegisterRunner("entities")
-	w.runtimeSharer.RegisterRunner("distance-query-spatial-hasher")
+	w.RuntimeSharer.RegisterRunner("entity-manager")
+	w.RuntimeSharer.RegisterRunner("systems")
+	w.RuntimeSharer.RegisterRunner("world")
+	w.RuntimeSharer.RegisterRunner("entities")
+	w.RuntimeSharer.RegisterRunner("distance-query-spatial-hasher")
 	// init entitymanager
 	w.em = NewEntityManager(w)
-	w.runtimeSharer.AddLogic("entity-manager",
+	w.RuntimeSharer.AddLogic("entity-manager",
 		&LogicUnit{
 			name:    "entity-manager",
 			worldID: w.IdGen.Next(),
@@ -142,7 +142,7 @@ func NewWorld(spec map[string]any) *World {
 		destructured.DistanceHasherGridY,
 		w,
 	)
-	w.runtimeSharer.AddLogic("distance-query-spatial-hasher",
+	w.RuntimeSharer.AddLogic("distance-query-spatial-hasher",
 		&LogicUnit{
 			name:    "distance-query-spatial-hasher",
 			worldID: w.IdGen.Next(),
@@ -158,7 +158,7 @@ func NewWorld(spec map[string]any) *World {
 
 func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	t0 := time.Now()
-	overunder_ms, starved := w.runtimeSharer.Share(allowance_ms)
+	overunder_ms, starved := w.RuntimeSharer.Share(allowance_ms)
 	if starved > 0 {
 		logWarning("Starvation of RuntimeLimiters occuring in World.Update(); Logic Units will be getting run less frequently.")
 	}
@@ -225,7 +225,7 @@ func (w *World) SetSystemSchedule(systemName string, period_ms float64) {
 	Logger.Printf("Setting %s period_ms %f", systemName, period_ms)
 	system := w.systems[systemName]
 	systemLogicWorldID := w.systemsIDs[system]
-	w.runtimeSharer.SetSchedule("systems", systemLogicWorldID, period_ms)
+	w.RuntimeSharer.SetSchedule("systems", systemLogicWorldID, period_ms)
 }
 
 func (w *World) addSystem(s System) {
@@ -237,11 +237,11 @@ func (w *World) addSystem(s System) {
 	ID := w.IdGen.Next()
 	w.systemsIDs[s] = ID
 	s.LinkWorld(w)
-	// add logic immediately rather than wait for runtimeSharer.Share() to
+	// add logic immediately rather than wait for RuntimeSharer.Share() to
 	// process the add/remove logic channel so that if we call SetSystemSchedule()
 	// immediately after RegisterSystems(), the LogicUnit will be in the runner
 	// to set the runSchedule on
-	w.runtimeSharer.addLogicImmediately("systems",
+	w.RuntimeSharer.addLogicImmediately("systems",
 		&LogicUnit{
 			name:        name,
 			worldID:     w.systemsIDs[s],
@@ -341,7 +341,7 @@ func (w *World) AddWorldLogic(Name string, F func(dt_ms float64)) *LogicUnit {
 		runSchedule: nil,
 	}
 	w.worldLogics[Name] = l
-	w.runtimeSharer.AddLogic("world", l)
+	w.RuntimeSharer.AddLogic("world", l)
 	return l
 }
 
@@ -354,18 +354,18 @@ func (w *World) AddWorldLogicWithSchedule(Name string, F func(dt_ms float64), pe
 
 func (w *World) RemoveWorldLogic(Name string) {
 	if logic, ok := w.worldLogics[Name]; ok {
-		w.runtimeSharer.RemoveLogic("world", logic)
+		w.RuntimeSharer.RemoveLogic("world", logic)
 		delete(w.worldLogics, Name)
 		w.IdGen.Free(logic.worldID)
 	}
 }
 
 func (w *World) ActivateAllWorldLogics() {
-	w.runtimeSharer.ActivateAll("world")
+	w.RuntimeSharer.ActivateAll("world")
 }
 
 func (w *World) DeactivateAllWorldLogics() {
-	w.runtimeSharer.DeactivateAll("world")
+	w.RuntimeSharer.DeactivateAll("world")
 }
 
 func (w *World) ActivateWorldLogic(name string) {
@@ -381,28 +381,28 @@ func (w *World) DeactivateWorldLogic(name string) {
 }
 
 func (w *World) addEntityLogic(e *Entity, l *LogicUnit) *LogicUnit {
-	w.runtimeSharer.AddLogic("entities", l)
+	w.RuntimeSharer.AddLogic("entities", l)
 	return l
 }
 
 func (w *World) removeEntityLogic(e *Entity, l *LogicUnit) {
-	w.runtimeSharer.RemoveLogic("entities", l)
+	w.RuntimeSharer.RemoveLogic("entities", l)
 	w.IdGen.Free(l.worldID)
 }
 
 func (w *World) RemoveAllEntityLogics(e *Entity) {
 	for _, l := range e.Logics {
-		w.runtimeSharer.RemoveLogic("entities", l)
+		w.RuntimeSharer.RemoveLogic("entities", l)
 		w.IdGen.Free(l.worldID)
 	}
 }
 
 func (w *World) ActivateAllEntityLogics() {
-	w.runtimeSharer.ActivateAll("entities")
+	w.RuntimeSharer.ActivateAll("entities")
 }
 
 func (w *World) DeactivateAllEntityLogics() {
-	w.runtimeSharer.DeactivateAll("entities")
+	w.RuntimeSharer.DeactivateAll("entities")
 }
 
 func (w *World) ActivateEntityLogics(e *Entity) {
@@ -452,7 +452,7 @@ func (w *World) String() string {
 }
 
 func (w *World) DumpStats() map[string](map[string]float64) {
-	stats := w.runtimeSharer.DumpStats()
+	stats := w.RuntimeSharer.DumpStats()
 	// add total Update() runtime avg
 	if w.totalRuntimeAvg_ms != nil {
 		stats["totals"]["total"] = *w.totalRuntimeAvg_ms

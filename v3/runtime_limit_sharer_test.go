@@ -126,3 +126,36 @@ func TestRuntimeLimitSharerLoad(t *testing.T) {
 		runFrame(1.0)
 	}
 }
+
+// TODO: this doesn't actually work properly, since each invocation of a physics
+// function would need ot receive the dt_ms relative to the last run. we really need for
+//   - the runtimelimiter to allow looping of logics - when they come up in
+//     iteration, we try to run them n times instead of just once
+func TestRuntimeLimitSharerScalePhysics(t *testing.T) {
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+	extraPhysicsRunner := w.RuntimeSharer.RegisterRunner("extra-physics")
+	physics_scale := 3
+	physics_extra_calls := 0
+	for i := 0; i < physics_scale; i++ {
+		extraPhysics := &LogicUnit{
+			name:    fmt.Sprintf("physics-extra-%d", i),
+			worldID: w.IdGen.Next(),
+			f: func(dt_ms float64) {
+				physics_extra_calls++
+				ps.Update(dt_ms)
+			},
+			active:      true,
+			runSchedule: nil,
+		}
+		extraPhysicsRunner.Add(extraPhysics)
+	}
+	e := testingSpawnPhysics(w)
+	*e.GetVec2D("Velocity") = Vec2D{1, 1}
+	// Update twice since physics system won't run the first time(needs a dt)
+	w.Update(FRAME_DURATION_INT / 2)
+	Logger.Printf("In World.Update() 0, physics ran extra %d times", physics_extra_calls)
+	time.Sleep(FRAME_DURATION)
+	w.Update(FRAME_DURATION_INT / 2)
+}

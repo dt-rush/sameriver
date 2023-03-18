@@ -34,7 +34,7 @@ func NewRuntimeLimitSharer() *RuntimeLimitSharer {
 	return r
 }
 
-func (r *RuntimeLimitSharer) RegisterRunner(name string) {
+func (r *RuntimeLimitSharer) RegisterRunner(name string) *RuntimeLimiter {
 	if _, ok := r.runnerMap[name]; ok {
 		panic(fmt.Sprintf("Trying to double-add RuntimeLimiter %s", name))
 	}
@@ -42,6 +42,7 @@ func (r *RuntimeLimitSharer) RegisterRunner(name string) {
 	r.runners = append(r.runners, runner)
 	r.runnerMap[name] = runner
 	r.runnerNames[runner] = name
+	return runner
 }
 
 func (r *RuntimeLimitSharer) ProcessAddRemoveLogics() {

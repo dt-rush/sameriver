@@ -308,9 +308,9 @@ func TestWorldDumpStats(t *testing.T) {
 	}
 	// test whether individual runtime limiter DumpStats() corresponds to
 	// their entries in the overall DumpStats()
-	systemStats, _ := w.runtimeSharer.runnerMap["systems"].DumpStats()
-	worldStats, _ := w.runtimeSharer.runnerMap["world"].DumpStats()
-	entityStats, _ := w.runtimeSharer.runnerMap["entities"].DumpStats()
+	systemStats, _ := w.RuntimeSharer.runnerMap["systems"].DumpStats()
+	worldStats, _ := w.RuntimeSharer.runnerMap["world"].DumpStats()
+	entityStats, _ := w.RuntimeSharer.runnerMap["entities"].DumpStats()
 
 	if !reflect.DeepEqual(stats["systems"], systemStats) {
 		t.Fatal("system stats dump was not equal to systemsRunner stats dump")
