@@ -81,6 +81,7 @@ type RuntimeLimiter struct {
 	starvation float64
 	// keep track of the worst case loop overhead (time to iterate a logic unit
 	// minus time it takes to execute)
+	// after being set the first time, tracks a moving avg
 	loopOverhead_ms_worst float64
 }
 
@@ -120,6 +121,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 		Opportunistic
 	)
 	mode := RoundRobin
+	worstOverheadThisTime := 0.0
 	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
 	for remaining_ms > 0 {
 		if remaining_ms < 3*r.loopOverhead_ms_worst {
@@ -289,9 +291,15 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 		}
 
 		overhead := float64(time.Since(tLoop).Nanoseconds())/1e6 - func_ms
-		if overhead > r.loopOverhead_ms_worst {
-			r.loopOverhead_ms_worst = overhead
+		if overhead > worstOverheadThisTime {
+			worstOverheadThisTime = overhead
 		}
+	}
+	if worstOverheadThisTime > r.loopOverhead_ms_worst {
+		r.loopOverhead_ms_worst = worstOverheadThisTime
+	} else {
+		// else decay toward better worst overhead
+		r.loopOverhead_ms_worst = 0.9*r.loopOverhead_ms_worst + 0.1*worstOverheadThisTime
 	}
 	total_ms := float64(time.Since(tStart).Nanoseconds()) / 1.0e6
 	// maintain moving average of totalRuntime_ms
