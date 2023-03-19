@@ -54,7 +54,7 @@ func (e *Entity) RemoveLogic(name string) {
 	if _, ok := e.Logics[name]; !ok {
 		panic(fmt.Sprintf("Trying to remove logic %s - but entity doesn't have it!", name))
 	}
-	e.World.removeEntityLogic(e, name)
+	e.World.removeEntityLogic(e, e.Logics[name])
 	delete(e.Logics, name)
 }
 

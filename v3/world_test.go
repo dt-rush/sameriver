@@ -178,7 +178,9 @@ func TestWorldRemoveEntityLogic(t *testing.T) {
 	w := testingWorld()
 	x := 0
 	e := testingSpawnSimple(w)
+	Logger.Println("adding incrementer")
 	e.AddLogic("incrementer", func(e *Entity, dt_ms float64) { x += 1 })
+	Logger.Println("removing incrementer")
 	e.RemoveLogic("incrementer")
 	for i := 0; i < 32; i++ {
 		w.Update(FRAME_MS)

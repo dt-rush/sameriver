@@ -367,8 +367,10 @@ func (r *RuntimeLimiter) ProcessAddRemoveLogics() {
 		ev := <-r.addRemoveChannel
 		l := ev.l
 		if ev.addRemove {
+			Logger.Printf("adding %s", l.name)
 			r.addLogicImmediately(l)
 		} else {
+			Logger.Printf("removing %s", l.name)
 			r.removeLogicImmediately(l)
 		}
 	}

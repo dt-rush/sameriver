@@ -18,6 +18,7 @@ func TestRuntimeLimiterAdd(t *testing.T) {
 			active:      true,
 			runSchedule: nil}
 		r.Add(logic)
+		r.Run(FRAME_MS, false)
 		if !(len(r.logicUnits) > 0 &&
 			r.indexes[logic] == len(r.logicUnits)-1) {
 			t.Fatal("was not inserted properly")
@@ -40,6 +41,7 @@ func TestRuntimeLimiterAddDuplicate(t *testing.T) {
 		runSchedule: nil}
 	r.Add(logic)
 	r.Add(logic)
+	r.Run(FRAME_MS, false)
 	t.Fatal("should have panic'd")
 }
 
@@ -257,6 +259,7 @@ func TestRuntimeLimiterRemove(t *testing.T) {
 	// remove it
 	Logger.Printf("Removing logic: %s", logic.name)
 	r.Remove(logic)
+	r.Run(FRAME_MS, false)
 	// test if removed
 	if _, ok := r.runtimeEstimates[logic]; ok {
 		t.Fatal("did not delete runtimeEstimates data")
@@ -385,6 +388,7 @@ func TestRuntimeLimiterInsertAppending(t *testing.T) {
 			active:      true,
 			runSchedule: nil}
 		r.Add(logic)
+		r.Run(FRAME_MS, false)
 		if !(len(r.logicUnits) > 0 &&
 			r.indexes[logic] == len(r.logicUnits)-1) {
 			t.Fatal("was not inserted properly")

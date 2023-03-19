@@ -426,8 +426,7 @@ func (w *World) addEntityLogic(e *Entity, l *LogicUnit) *LogicUnit {
 	return l
 }
 
-func (w *World) removeEntityLogic(e *Entity, logicName string) {
-	l := w.RuntimeSharer.RunnerMap["entities"].logicUnitsMap[logicName]
+func (w *World) removeEntityLogic(e *Entity, l *LogicUnit) {
 	w.RuntimeSharer.RunnerMap["entities"].Remove(l)
 }
 
