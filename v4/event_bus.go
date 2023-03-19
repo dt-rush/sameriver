@@ -10,24 +10,18 @@ import (
 	"go.uber.org/atomic"
 )
 
-type SubscriberList struct {
-	// subscriberLists is a list of lists of EventChannels
-	// where the outer list is indexed by the EventType (type aliased
-	// to int). So you could have a list of queries on CollisionEvents, etc.
-	// Each EventFilter's Predicate will be tested against the events
-	// that are published for the matching type (and thus the predicates
-	// can safely assert the type of the Data member of the event)
-	channels map[string][]*EventChannel
-}
-
 type Event struct {
 	Type string
 	Data interface{}
 }
 
 type EventBus struct {
-	name           string
-	subscriberList SubscriberList
+	name string
+	// channels is a map of lists of EventChannels
+	// Each EventFilter's Predicate will be tested against the events
+	// that are published for the matching type (and thus the predicates
+	// can safely assert the type of the Data member of the event)
+	channels map[string][]*EventChannel
 	// number of goroutines spawned to publish events to subscriber channels
 	// that are full
 	nHanging atomic.Int32
@@ -35,7 +29,7 @@ type EventBus struct {
 
 func NewEventBus(name string) *EventBus {
 	b := &EventBus{name: name}
-	b.subscriberList.channels = make(map[string][]*EventChannel)
+	b.channels = make(map[string][]*EventChannel)
 	return b
 }
 
@@ -49,8 +43,8 @@ func (b *EventBus) Subscribe(q *EventFilter) *EventChannel {
 	// Create a channel to return to the user
 	c := NewEventChannel(q)
 	// Add the channel to the subscriber list for its type
-	b.subscriberList.channels[q.eventType] = append(
-		b.subscriberList.channels[q.eventType], c)
+	b.channels[q.eventType] = append(
+		b.channels[q.eventType], c)
 	// return the channel to the caller
 	return c
 }
@@ -58,10 +52,10 @@ func (b *EventBus) Subscribe(q *EventFilter) *EventChannel {
 // Remove a subscriber
 func (b *EventBus) Unsubscribe(c *EventChannel) {
 	eventType := c.filter.eventType
-	channels, ok := b.subscriberList.channels[eventType]
+	channels, ok := b.channels[eventType]
 	if ok {
 		channels = removeEventChannelFromSlice(channels, c)
-		b.subscriberList.channels[eventType] = channels
+		b.channels[eventType] = channels
 	}
 }
 
@@ -76,11 +70,11 @@ func (b *EventBus) notifySubscribers(e Event) {
 	}
 
 	var notifyExtraFull = func() {
-		logWarning("/!\\ /!\\ /!\\ number of goroutines waiting for event channel (of event type %s) to go below max capacity is now greater than capacity (%d); you're sending too many events", e.Type, EVENT_SUBSCRIBER_CHANNEL_CAPACITY)
+		logWarning("/!\\ /!\\ /!\\ number of goroutines waiting for an event channel (of event type %s) to go below max capacity is now greater than capacity (%d); you're sending too many events", e.Type, EVENT_SUBSCRIBER_CHANNEL_CAPACITY)
 	}
 
-	logEvents("len(b.subscriberList.channels[e.Type])=%d", len(b.subscriberList.channels[e.Type]))
-	for _, c := range b.subscriberList.channels[e.Type] {
+	logEvents("len(b.channels[e.Type])=%d", len(b.channels[e.Type]))
+	for _, c := range b.channels[e.Type] {
 		logEvents("| Channel: %p", c)
 		if !c.IsActive() {
 			continue
@@ -99,12 +93,12 @@ func (b *EventBus) notifySubscribers(e Event) {
 					if b.nHanging.Load() > EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
 						notifyExtraFull()
 					}
-					logEvents("---- event channel put <-")
+					logEvents("---- event channel put <- %s.%v", e.Type, e.Data)
 					c.C <- e
 					b.nHanging.Add(-1)
 				}()
 			} else {
-				logEvents("---- event channel put <-")
+				logEvents("---- event channel put <- %s.%v", e.Type, e.Data)
 				c.C <- e
 				logEvents("---- len(<%p>.C) = %d", c, len(c.C))
 			}

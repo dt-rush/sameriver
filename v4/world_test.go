@@ -395,5 +395,23 @@ func TestWorldSetTimeout(t *testing.T) {
 		w.Update(FRAME_MS)
 		time.Sleep(FRAME_DURATION)
 	}
-	Logger.Printf("x after 516 ms approx: %d", x)
+	if x != 1 {
+		t.Fatalf("Should've run settimeout func 1 time, ran %d times", x)
+	}
+}
+
+func TestWorldSetInterval(t *testing.T) {
+	w := testingWorld()
+	x := 0
+	w.SetInterval(func() {
+		Logger.Println("run")
+		x++
+	}, 100)
+	for i := 0; i < 516/FRAME_MS; i++ {
+		w.Update(FRAME_MS)
+		time.Sleep(FRAME_DURATION)
+	}
+	if x != 5 {
+		t.Fatalf("Should've run setinterval func 5 times, ran %d times", x)
+	}
 }

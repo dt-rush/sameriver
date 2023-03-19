@@ -34,6 +34,8 @@ type RuntimeLimiter struct {
 	logicUnits []*LogicUnit
 	// used to retrieve units by string
 	logicUnitsMap map[string]*LogicUnit
+	// track which logics have been removed even during a Run()
+	removed map[*LogicUnit]bool
 	// used to queue add/remove events so we don't change the slice while iterating
 	addRemoveChannel chan AddRemoveLogicEvent
 	// logicUnits sorted by hotness ascending, which is an int incremented every time
@@ -49,6 +51,8 @@ type RuntimeLimiter struct {
 	// used to provide an accurate dt_ms to each logic unit so it can integrate
 	// time smooth and proper
 	lastRun map[*LogicUnit]time.Time
+	// used to keep track of whether the schedule period has elapsed for each logic
+	lastScheduleTick map[*LogicUnit]time.Time
 	// we run a logic unit with a gap of at least x ms where it takes x ms
 	// to run. so a function taking 4ms will have at least 4 ms after it finishes
 	// til the next time it runs, so we need to keep track of when logicunits end.
@@ -89,10 +93,12 @@ func NewRuntimeLimiter() *RuntimeLimiter {
 	return &RuntimeLimiter{
 		logicUnits:       make([]*LogicUnit, 0),
 		logicUnitsMap:    make(map[string]*LogicUnit),
+		removed:          make(map[*LogicUnit]bool),
 		addRemoveChannel: make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
 		ascendingHotness: make([]*LogicUnit, 0),
 		runtimeEstimates: make(map[*LogicUnit]float64),
 		lastRun:          make(map[*LogicUnit]time.Time),
+		lastScheduleTick: make(map[*LogicUnit]time.Time),
 		lastEnd:          make(map[*LogicUnit]time.Time),
 		indexes:          make(map[*LogicUnit]int),
 	}
@@ -126,7 +132,8 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 	mode := RoundRobin
 	worstOverheadThisTime := 0.0
 	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
-	for remaining_ms > 0 {
+	iterated := 0
+	for remaining_ms > 0 && len(r.logicUnits) > 0 {
 		if remaining_ms < 3*r.loopOverhead_ms {
 			logRuntimeLimiter("XXX RUN() OVERHEAD BAIL XXX")
 			break
@@ -155,12 +162,12 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 		case Opportunistic:
 			logic = r.ascendingHotness[r.oppIx]
 		}
-
+		iterated++
+		logRuntimeLimiter(color.InWhiteOverBlack(logic.name))
+		_, removed := r.removed[logic]
+		logRuntimeLimiter("active: %t, removed: %t", logic.active, removed)
 		var func_ms float64
-		if logic.active {
-
-			logRuntimeLimiter("--- %s", logic.name)
-
+		if logic.active && !removed {
 			// check whether this logic has ever run
 			_, hasRunBefore := r.lastRun[logic]
 			// check its estimate
@@ -224,28 +231,22 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 			// every 1ms)
 			durationHasElapsed := r.tick(logic)
 
-			// obviously the logic must be active
-			isActive := logic.active
-
 			// get real time since last run
-			var dt_ms float64
-			if hasRunBefore {
-				dt_ms = float64(time.Since(r.lastRun[logic]).Nanoseconds()) / 1.0e6
-			} else {
-				dt_ms = 0
-			}
+			dt_ms := float64(time.Since(r.lastRun[logic]).Nanoseconds()) / 1e6
 
-			// finally, if it has a runschedule defined, we should also tick that
-			// amount of time
-			scheduled := logic.runSchedule == nil || logic.runSchedule.Tick(dt_ms)
+			// tick schedule
+			schedule_tick_ms := float64(time.Since(r.lastScheduleTick[logic]).Nanoseconds()) / 1e6
+			r.lastScheduleTick[logic] = time.Now()
+			hasSchedule := logic.runSchedule != nil
+			scheduled := hasSchedule && logic.runSchedule.Tick(schedule_tick_ms)
 
 			if DEBUG_RUNTIME_LIMITER {
 				logRuntimeLimiter("hasRunBefore: %t", hasRunBefore)
-				logRuntimeLimiter("isActive: %t", isActive)
 				logRuntimeLimiter("durationHasElapsed: %t", durationHasElapsed)
+				logRuntimeLimiter("hasSchedule: %t", hasSchedule)
 				logRuntimeLimiter("scheduled: %t", scheduled)
 			}
-			if !hasRunBefore ||
+			if (!hasRunBefore && !hasSchedule) ||
 				(durationHasElapsed && scheduled && !oppSkip) {
 
 				t0 := time.Now()
@@ -315,11 +316,12 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 		r.overrun = true
 	}
 	// calculate starved
-	if r.ranRobin == 0 {
+	// TODO: we use iterated, but maybe ranrobin/ranopp can be used?
+	if iterated == 0 {
 		r.starvation = 1.0
-	} else if r.ranRobin > 0 && r.ranRobin <= len(r.logicUnits) {
-		r.starvation = float64(len(r.logicUnits)-r.ranRobin) / float64(len(r.logicUnits))
-	} else if r.ranRobin > len(r.logicUnits) {
+	} else if iterated > 0 && iterated <= len(r.logicUnits) {
+		r.starvation = float64(len(r.logicUnits)-iterated) / float64(len(r.logicUnits))
+	} else if iterated > len(r.logicUnits) {
 		r.starvation = 0.0
 	}
 	return overunder_ms
@@ -382,6 +384,7 @@ func (r *RuntimeLimiter) addLogicImmediately(l *LogicUnit) {
 	}
 	r.logicUnits = append(r.logicUnits, l)
 	r.logicUnitsMap[l.name] = l
+	r.lastScheduleTick[l] = time.Now()
 	r.indexes[l] = len(r.logicUnits) - 1
 	r.insertAscendingHotness(l)
 }
@@ -397,6 +400,7 @@ func (r *RuntimeLimiter) removeLogicImmediately(l *LogicUnit) {
 		return
 	}
 	delete(r.logicUnitsMap, l.name)
+	delete(r.removed, l)
 	delete(r.runtimeEstimates, l)
 	delete(r.lastRun, l)
 	delete(r.lastEnd, l)
