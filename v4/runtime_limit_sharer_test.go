@@ -185,6 +185,9 @@ func TestRuntimeLimitSharerCapacity(t *testing.T) {
 		Logger.Printf("ratio: %f", realised/ideal)
 	}
 
+	// set true to observe that we worksleep longer than 1 ms
+	const observeSleep = false
+
 	for i := 0; i < N_EPSILON; i++ {
 		name := fmt.Sprintf("epsilon-%d", i)
 		share.RunnerMap["capacitytest"].addLogicImmediately(
@@ -192,9 +195,14 @@ func TestRuntimeLimitSharerCapacity(t *testing.T) {
 				name:    name,
 				worldID: i,
 				f: func(dt_ms float64) {
-					t0 := time.Now()
+					var t0 time.Time
+					if observeSleep {
+						t0 = time.Now()
+					}
 					time.Sleep(time.Duration(worksleep*1e6) * time.Nanosecond)
-					Logger.Printf("elapsed: %f ms", float64(time.Since(t0).Nanoseconds())/1e6)
+					if observeSleep {
+						Logger.Printf("elapsed: %f ms", float64(time.Since(t0).Nanoseconds())/1e6)
+					}
 					markRan(name)
 				},
 				active:      true,
