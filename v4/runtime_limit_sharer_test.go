@@ -130,18 +130,19 @@ func TestRuntimeLimitSharerLoad(t *testing.T) {
 /*
 output example:
 
-21:55:19.102272 allowance_ms: 1600.000000
-21:55:19.102334 N_EPSILON: 1048
-21:55:19.102337 worksleep: 1.000000
-21:55:19.102338 totalLoad: 0.655000
-21:55:19.103179 ------------------ frame 0 ----------------------
-21:55:20.703021 avg hotness: h1.386
+allowance_ms: 1600.000000
+N_EPSILON: 1048
+worksleep: 10.000000
+totalLoad: 6.550000
+------------------ frame 0 ----------------------
+no-overhead avg hotness expected: h0.153
+realised avg hotness: h0.150
+ratio: 0.981250
+elapsed: 1602.845728 ms
 
-note that the realised avg hotness 1.386 is not quite the theoretical
+note that the realised avg hotness 0.150 is not quite the theoretical
 1 / totalLoad. Because totalLoad is calculated based on gapless division
 by the worksleep amount. But Really, the worksleep is bracketed by overhead
-AND more numerically significant, we are sleeping worksleep 1.0 ms, which is
-never quite accurate, it's always a bit more than 1 ms (at least on this system)
 */
 func TestRuntimeLimitSharerCapacity(t *testing.T) {
 	share := NewRuntimeLimitSharer()
@@ -152,7 +153,7 @@ func TestRuntimeLimitSharerCapacity(t *testing.T) {
 	// to allow proper sleeping
 	allowance_ms := 1600.0
 	N_EPSILON := 1048
-	worksleep := 1.0
+	worksleep := 10.0
 
 	totalLoad := float64(N_EPSILON) * worksleep / allowance_ms
 
