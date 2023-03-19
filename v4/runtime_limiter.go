@@ -247,7 +247,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 				logRuntimeLimiter("scheduled: %t", scheduled)
 			}
 			if (!hasRunBefore && !hasSchedule) ||
-				(durationHasElapsed && scheduled && !oppSkip) {
+				(durationHasElapsed && (!hasSchedule || scheduled) && !oppSkip) {
 
 				t0 := time.Now()
 				// note that we start lastrun from the moment the function starts, since
