@@ -1,3 +1,34 @@
+/*
+RuntimeLimitSharer provides a mechanism to distribute available processing time
+across multiple RuntimeLimiters (each of which tries to run a set of LogicUnits)
+in a controlled and efficient manner.
+
+The RuntimeLimitSharer manages the registration, sharing of processing time,
+and monitoring of starvation for each RuntimeLimiter.
+
+The main components of the package are:
+
+In the Share() function, the available processing time (allowance_ms) is
+distributed across the registered RuntimeLimiters in a loop, and the method
+is allowed to a finite number of times (RUNTIME_LIMIT_SHARER_MAX_LOOPS).
+
+The partitioning of remaining_ms per loop in Share() can happen in two ways:
+
+Equal partitioning:
+
+|____|____|____|____|
+
+The remaining_ms is divided equally among all RuntimeLimiters.
+
+Starvation-proportional partitioning:
+
+|_||____|___________|
+
+When a RuntimeLimiter has experienced starvation, the remaining_ms is
+divided according to the proportion of the starvation experienced by
+each RuntimeLimiter.
+*/
+
 package sameriver
 
 import (
@@ -45,13 +76,12 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 	// and, to avoid spinning way too many times when load is light,
 	// we have MAX_LOOPS set to an arbitrary 8 (8 update cycles per
 	// frame is not bad! haha)
-	MAX_LOOPS := 8
 	loop := 0
 	remaining_ms := allowance_ms
 	starvedMode := false
 	var lastStarvation float64
 	logRuntimeLimiter("\n====================\nshare loop\n====================\n")
-	for remaining_ms >= 0 && loop < MAX_LOOPS {
+	for remaining_ms >= 0 && loop < RUNTIME_LIMIT_SHARER_MAX_LOOPS {
 		toShare_ms := remaining_ms
 		logRuntimeLimiter("\n===\nloop = %d, total share = %f ms\n===\n", loop, toShare_ms)
 		totalStarvation := 0.0
@@ -92,7 +122,7 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 		}
 		loop++
 	}
-	if DEBUG_RUNTIME_LIMITER && loop == MAX_LOOPS {
+	if DEBUG_RUNTIME_LIMITER && loop == RUNTIME_LIMIT_SHARER_MAX_LOOPS {
 		logRuntimeLimiter("Reached MAX_LOOPS in RuntimeSharer with %f percent time remaining", 100*remaining_ms/allowance_ms)
 	}
 	// above we were concerned with starvation of logics inside runners, now

@@ -142,7 +142,10 @@ elapsed: 1602.845728 ms
 
 note that the realised avg hotness 0.150 is not quite the theoretical
 1 / totalLoad. Because totalLoad is calculated based on gapless division
-by the worksleep amount. But Really, the worksleep is bracketed by overhead
+by the worksleep amount. But Really, the worksleep is bracketed by overhead.
+
+1 - 0.981250 = about 1.8% overhead, not a bad price for the exchange of
+getting (attempted, modulo roundrobin necessities) runtime limiting
 */
 func TestRuntimeLimitSharerCapacity(t *testing.T) {
 	share := NewRuntimeLimitSharer()

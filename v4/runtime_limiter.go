@@ -1,24 +1,30 @@
+/*
+RuntimeLimiter is used to store a set of logicUnits which want to be
+
+executed together and frequently, but which are tolerant of being
+partitioned in time in order to stay within a certain time constraint
+(for example, running all the world logic we can within 4 milliseconds,
+hopefully looping back around to wherever we started, but if not, picking
+up where we left off next Run()
+
+it traverses logics round-robin until it reaches the first one that can't fit
+in the time remaining, then switches into opportunistic mode: it uses
+logic.hotness to sort them in ascending frequency of invocation and execute
+any as it iterates that sorted list which it can, excluding those
+which can't run in the remaining_ms when we get to them
+*/
+
 package sameriver
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"time"
 
 	"github.com/TwiN/go-color"
 )
 
-// used to store a set of logicUnits which want to be executed together and
-// frequently, but which are tolerant of being partitioned in time in order to
-// stay within a certain time constraint (for example, running all the world
-// logic we can within 4 milliseconds, hopefully looping back around to wherever
-// we started, but if not, picking up where we left off next Run()
-//
-// it traverses logics round-robin until it reaches the first one that can't fit
-// in the time remaining, then switches into opportunistic mode: it uses
-// logic.hotness to sort them in ascending frequency of invocation and execute
-// any as it iterates that sorted list which it can, excluding those
-// which can't run in the remaining_ms when we get to them
 type RuntimeLimiter struct {
 	// used to degrade gracefully under time pressure, by picking up where we
 	// left off in the iteration of logicUnits to run in the case that we can't
@@ -30,14 +36,9 @@ type RuntimeLimiter struct {
 	// used for opportunistic time-fill of remaining once round-robin reaches
 	// the first func too heavy to run
 	oppIx int
+
 	// used so we can iterate the added logicUnits in order
 	logicUnits []*LogicUnit
-	// used to retrieve units by string
-	logicUnitsMap map[string]*LogicUnit
-	// track which logics have been removed even during a Run()
-	removed map[*LogicUnit]bool
-	// used to queue add/remove events so we don't change the slice while iterating
-	addRemoveChannel chan AddRemoveLogicEvent
 	// logicUnits sorted by hotness ascending, which is an int incremented every time
 	// the func gets run. this is used when, in round-robin scheduling according to
 	// runIx, we reach the first unit that can't run in the budget. then we look
@@ -45,6 +46,16 @@ type RuntimeLimiter struct {
 	// ascending by hotness (hence we try to maintain a uniform distribution of
 	// which funcs get called in opportunistic mode)
 	ascendingHotness []*LogicUnit
+	// parallel array to ascendingHotness which records how light is the lightest
+	// logicunit in ascendingHotness[i:]
+	ascendingHotnessLightestAfter []float64
+
+	// used to retrieve units by string
+	logicUnitsMap map[string]*LogicUnit
+	// track which logics have been removed even during a Run()
+	removed map[*LogicUnit]bool
+	// used to queue add/remove events so we don't change the slice while iterating
+	addRemoveChannel chan AddRemoveLogicEvent
 	// used to estimate the time cost in milliseconds of running a function,
 	// so that we can try to stay below the allowance_ms given to Run()
 	runtimeEstimates map[*LogicUnit]float64
@@ -59,6 +70,7 @@ type RuntimeLimiter struct {
 	lastEnd map[*LogicUnit]time.Time
 	// used to lookup the logicUnits slice index for access in the slice
 	indexes map[*LogicUnit]int
+
 	// used to keep a running average of the entire runtime
 	totalRuntime_ms *float64
 	// overrun flag gets set whenever we are exceeding the allowance_ms
@@ -91,21 +103,25 @@ type RuntimeLimiter struct {
 
 func NewRuntimeLimiter() *RuntimeLimiter {
 	return &RuntimeLimiter{
-		logicUnits:       make([]*LogicUnit, 0),
-		logicUnitsMap:    make(map[string]*LogicUnit),
-		removed:          make(map[*LogicUnit]bool),
-		addRemoveChannel: make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
-		ascendingHotness: make([]*LogicUnit, 0),
-		runtimeEstimates: make(map[*LogicUnit]float64),
-		lastRun:          make(map[*LogicUnit]time.Time),
-		lastScheduleTick: make(map[*LogicUnit]time.Time),
-		lastEnd:          make(map[*LogicUnit]time.Time),
-		indexes:          make(map[*LogicUnit]int),
+		logicUnits:                    make([]*LogicUnit, 0),
+		logicUnitsMap:                 make(map[string]*LogicUnit),
+		removed:                       make(map[*LogicUnit]bool),
+		addRemoveChannel:              make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
+		ascendingHotness:              make([]*LogicUnit, 0),
+		ascendingHotnessLightestAfter: make([]float64, 0),
+		runtimeEstimates:              make(map[*LogicUnit]float64),
+		lastRun:                       make(map[*LogicUnit]time.Time),
+		lastScheduleTick:              make(map[*LogicUnit]time.Time),
+		lastEnd:                       make(map[*LogicUnit]time.Time),
+		indexes:                       make(map[*LogicUnit]int),
 	}
 }
 
 func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms float64) {
 	tStart := time.Now()
+	poll_remaining_ms := func() float64 {
+		return float64(time.Since(tStart).Nanoseconds()) / 1e6
+	}
 	r.ProcessAddRemoveLogics()
 	if !bonsuTime {
 		// if we're at loop = 0, the initial share from the RuntimeLimitSharer
@@ -115,7 +131,6 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 		r.finished = false
 	}
 	r.overrun = false
-	remaining_ms = allowance_ms
 	if len(r.logicUnits) == 0 {
 		r.finished = true
 		return
@@ -133,7 +148,9 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 	worstOverheadThisTime := 0.0
 	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
 	iterated := 0
-	for remaining_ms > 0 && len(r.logicUnits) > 0 {
+	bailOpp := false
+	remaining_ms = poll_remaining_ms()
+	for remaining_ms > 0 && len(r.logicUnits) > 0 && !bailOpp {
 		if remaining_ms < 3*r.loopOverhead_ms {
 			logRuntimeLimiter("XXX RUN() OVERHEAD BAIL XXX")
 			break
@@ -161,6 +178,10 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 			logic = r.logicUnits[r.runIx]
 		case Opportunistic:
 			logic = r.ascendingHotness[r.oppIx]
+			if r.ascendingHotnessLightestAfter[r.oppIx] >= remaining_ms {
+				bailOpp = true
+				continue
+			}
 		}
 		iterated++
 		logRuntimeLimiter(color.InWhiteOverBlack(logic.name))
@@ -178,7 +199,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 			// painful function over with rather than stall here forever or wait
 			// to execute it when we get enough allowance (may never happen)
 			// (first update remaining_ms so it's as accurate as possible)
-			remaining_ms = allowance_ms - float64(time.Since(tStart).Nanoseconds())/1e6
+			remaining_ms = poll_remaining_ms()
 			estimateLooksGood := hasEstimate && estimate <= remaining_ms
 			logRuntimeLimiter("estimateLooksGood: %t", estimateLooksGood)
 			logRuntimeLimiter("estimate: %f", estimate)
@@ -214,9 +235,8 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 						// we sort the logics by hotness only when opportunistic
 						// needs it, so it always represents the state of
 						// things just when we popped into it initially.
-						sort.Slice(r.ascendingHotness, func(i, j int) bool {
-							return r.ascendingHotness[i].hotness < r.ascendingHotness[j].hotness
-						})
+						r.refreshAscendingHotness()
+
 						continue
 					}
 				}
@@ -254,13 +274,15 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 				// say it starts at t=0ms, takes 4 ms to run, then if it comes up to run
 				// again at t=8ms (r.tick()), it will get dt_ms of 8 ms, the proper
 				// intervening time since it last integrated a dt_ms increment.
-				r.lastRun[logic] = time.Now()
-				switch mode {
-				case RoundRobin:
-					logRuntimeLimiter("----------------------------------------- ROUND_ROBIN: %s", logic.name)
-				case Opportunistic:
-					logRuntimeLimiter("----------------------------------------- OPPORTUNISTIC: %s", logic.name)
+				if DEBUG_RUNTIME_LIMITER {
+					switch mode {
+					case RoundRobin:
+						logRuntimeLimiter("----------------------------------------- ROUND_ROBIN: %s", logic.name)
+					case Opportunistic:
+						logRuntimeLimiter("----------------------------------------- OPPORTUNISTIC: %s", logic.name)
+					}
 				}
+				r.lastRun[logic] = time.Now()
 				logic.f(dt_ms)
 				func_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 				logic.hotness++
@@ -399,23 +421,62 @@ func (r *RuntimeLimiter) removeLogicImmediately(l *LogicUnit) {
 	if !ok {
 		return
 	}
+
+	// delete from logicUnits by replacing the last element into its spot,
+	// updating the indexes entry for that element
+	removeFromLogicSlice := func(ls []*LogicUnit, i int) {
+		lastIndex := len(ls) - 1
+		if len(r.logicUnits) > 1 {
+			r.logicUnits[i] = r.logicUnits[lastIndex]
+		}
+		r.logicUnits = r.logicUnits[:lastIndex]
+	}
+	// remove from logicUnits
+	removeFromLogicSlice(r.logicUnits, index)
+	// update indexes for last-now-here element
+	nowAtIndex := r.logicUnits[index]
+	r.indexes[nowAtIndex] = index
+	// remove from ascending hotness slices
+	// (first find lowest index with common hotness w binary search)
+	left, right := 0, len(r.ascendingHotness)-1
+	lowestIx := -1
+	lucky := false
+	for left <= right {
+		mid := left + (right-left)/2
+		// special case if we happen to hit it during iteration, bail early;
+		// we don't need to iterate from lowest index with common hotness
+		// to find it now
+		if r.ascendingHotness[mid] == l {
+			removeFromLogicSlice(r.ascendingHotness, mid)
+			lucky = true
+			break
+		}
+		if r.ascendingHotness[mid].hotness == l.hotness {
+			lowestIx = mid
+			right = mid - 1 // Continue searching the left side for the lowest index
+		} else if r.ascendingHotness[mid].hotness < l.hotness {
+			left = mid + 1
+		} else {
+			right = mid - 1
+		}
+	}
+	if !lucky {
+		for i := lowestIx; i < len(r.ascendingHotness); i++ {
+			if r.ascendingHotness[i] == l {
+				removeFromLogicSlice(r.ascendingHotness, i)
+				break
+			}
+		}
+	}
+	r.refreshAscendingHotnessLightestAfter()
+
 	delete(r.logicUnitsMap, l.name)
 	delete(r.removed, l)
 	delete(r.runtimeEstimates, l)
 	delete(r.lastRun, l)
 	delete(r.lastEnd, l)
 	delete(r.indexes, l)
-	// delete from logicUnits by replacing the last element into its spot,
-	// updating the indexes entry for that element
-	lastIndex := len(r.logicUnits) - 1
-	if len(r.logicUnits) > 1 && index != lastIndex {
-		r.logicUnits[index] = r.logicUnits[lastIndex]
-		// update the indexes array for the elemnt we put into the
-		// place of the one we spliced out
-		nowAtIndex := r.logicUnits[index]
-		r.indexes[nowAtIndex] = index
-	}
-	r.logicUnits = r.logicUnits[:lastIndex]
+
 	// update runIx - if we removed an entity earlier in the list,
 	// we should subtract 1 to keep runIx at it's same position. If we
 	// removed one later in the list or equal to the current position,
@@ -486,10 +547,51 @@ func (r *RuntimeLimiter) DumpStats() (stats map[string]float64, total float64) {
 	return
 }
 
-func (r *RuntimeLimiter) insertAscendingHotness(logic *LogicUnit) {
-	i := sort.Search(len(r.ascendingHotness),
-		func(ix int) bool { return r.ascendingHotness[ix].hotness > logic.hotness })
-	r.ascendingHotness = append(r.ascendingHotness, nil)
-	copy(r.ascendingHotness[i+1:], r.ascendingHotness[i:])
-	r.ascendingHotness[i] = logic
+func (r *RuntimeLimiter) refreshAscendingHotness() {
+	sort.Slice(r.ascendingHotness, func(i, j int) bool {
+		return r.ascendingHotness[i].hotness < r.ascendingHotness[j].hotness
+	})
+	r.refreshAscendingHotnessLightestAfter()
+}
+
+func (r *RuntimeLimiter) refreshAscendingHotnessLightestAfter() {
+	if len(r.ascendingHotness) == 0 {
+		r.ascendingHotnessLightestAfter = make([]float64, 0)
+		return
+	}
+	// make sure the receiving array we will write to has the same length as
+	// the ascendinghotness array
+	if len(r.ascendingHotness) > len(r.ascendingHotnessLightestAfter) {
+		// receiver smaller
+		diff := len(r.ascendingHotness) - len(r.ascendingHotnessLightestAfter)
+		emptySpace := make([]float64, diff)
+		r.ascendingHotnessLightestAfter = append(r.ascendingHotnessLightestAfter, emptySpace...)
+	} else if len(r.ascendingHotness) < len(r.ascendingHotnessLightestAfter) {
+		// receiver bigger
+		diff := len(r.ascendingHotnessLightestAfter) - len(r.ascendingHotness)
+		endIx := len(r.ascendingHotnessLightestAfter) - diff
+		r.ascendingHotnessLightestAfter = r.ascendingHotnessLightestAfter[0:endIx]
+	}
+	// compute lightest after by walking ascendingHotness backward
+	lightest := math.Inf(1)
+	for i := len(r.ascendingHotnessLightestAfter) - 1; i >= 0; i-- {
+		weight := r.runtimeEstimates[r.ascendingHotness[i]]
+		if weight < lightest {
+			lightest = weight
+		}
+		r.ascendingHotnessLightestAfter[i] = lightest
+	}
+}
+
+func (r *RuntimeLimiter) insertAscendingHotness(l *LogicUnit) {
+	if len(r.ascendingHotness) == 0 {
+		l.hotness = 0
+		r.ascendingHotness = append(r.ascendingHotness, l)
+	} else {
+		// put it at [0] with the hotness of the old [0]
+		r.ascendingHotness = append(r.ascendingHotness, nil)
+		copy(r.ascendingHotness[1:], r.ascendingHotness[0:])
+		l.hotness = r.ascendingHotness[1].hotness
+		r.ascendingHotness[0] = l
+	}
 }
