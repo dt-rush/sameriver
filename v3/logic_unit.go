@@ -1,5 +1,11 @@
 package sameriver
 
+// used to add/remove logics from either runtimelimiters or runtimelimitsharers
+type AddRemoveLogicEvent struct {
+	addRemove bool
+	l         *LogicUnit
+}
+
 type LogicUnit struct {
 	// TODO: export name and active
 	name        string

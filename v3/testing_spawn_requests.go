@@ -69,6 +69,7 @@ func testingSpawnSteering(em EntityManagerInterface) *Entity {
 		"components": map[string]interface{}{
 			"Vec2D,Position":       Vec2D{0, 0},
 			"Vec2D,Velocity":       Vec2D{0, 0},
+			"Vec2D,Acceleration":   Vec2D{0, 0},
 			"Float64,MaxVelocity":  3.0,
 			"Vec2D,MovementTarget": Vec2D{1, 1},
 			"Vec2D,Steer":          Vec2D{0, 0},
@@ -79,9 +80,10 @@ func testingSpawnSteering(em EntityManagerInterface) *Entity {
 func testingSpawnPhysics(em EntityManagerInterface) *Entity {
 	return em.Spawn(map[string]any{
 		"components": map[string]interface{}{
-			"Vec2D,Position": Vec2D{10, 10},
-			"Vec2D,Velocity": Vec2D{0, 0},
-			"Vec2D,Box":      Vec2D{1, 1},
-			"Float64,Mass":   3.0,
+			"Vec2D,Position":     Vec2D{10, 10},
+			"Vec2D,Velocity":     Vec2D{0, 0},
+			"Vec2D,Acceleration": Vec2D{0, 0},
+			"Vec2D,Box":          Vec2D{1, 1},
+			"Float64,Mass":       3.0,
 		}})
 }

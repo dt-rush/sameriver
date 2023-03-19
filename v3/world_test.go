@@ -5,6 +5,7 @@ import (
 	"math"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestCanConstructWorld(t *testing.T) {
@@ -308,9 +309,9 @@ func TestWorldDumpStats(t *testing.T) {
 	}
 	// test whether individual runtime limiter DumpStats() corresponds to
 	// their entries in the overall DumpStats()
-	systemStats, _ := w.RuntimeSharer.runnerMap["systems"].DumpStats()
-	worldStats, _ := w.RuntimeSharer.runnerMap["world"].DumpStats()
-	entityStats, _ := w.RuntimeSharer.runnerMap["entities"].DumpStats()
+	systemStats, _ := w.RuntimeSharer.RunnerMap["systems"].DumpStats()
+	worldStats, _ := w.RuntimeSharer.RunnerMap["world"].DumpStats()
+	entityStats, _ := w.RuntimeSharer.RunnerMap["entities"].DumpStats()
 
 	if !reflect.DeepEqual(stats["systems"], systemStats) {
 		t.Fatal("system stats dump was not equal to systemsRunner stats dump")
@@ -380,4 +381,17 @@ func TestWorldPredicateEntities(t *testing.T) {
 	if len(allTrees) != 37 {
 		t.Fatal("Should have found 37 trees in the world (1 original, 18 radial x 2 layers")
 	}
+}
+
+func TestWorldSetTimeout(t *testing.T) {
+	w := testingWorld()
+	x := 0
+	w.SetTimeout(func() {
+		x++
+	}, 500)
+	for i := 0; i < 516/FRAME_MS; i++ {
+		w.Update(FRAME_MS)
+		time.Sleep(FRAME_DURATION)
+	}
+	Logger.Printf("x after 516 ms approx: %d", x)
 }

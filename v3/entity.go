@@ -54,13 +54,13 @@ func (e *Entity) RemoveLogic(name string) {
 	if _, ok := e.Logics[name]; !ok {
 		panic(fmt.Sprintf("Trying to remove logic %s - but entity doesn't have it!", name))
 	}
-	e.World.removeEntityLogic(e, e.Logics[name])
+	e.World.removeEntityLogic(e, name)
 	delete(e.Logics, name)
 }
 
 func (e *Entity) RemoveAllLogics() {
 	for _, l := range e.Logics {
-		e.World.removeEntityLogic(e, l)
+		e.World.RuntimeSharer.RunnerMap["entities"].Remove(l)
 	}
 }
 

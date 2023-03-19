@@ -11,7 +11,7 @@ func TestRuntimeLimitSharerLoad(t *testing.T) {
 	share := NewRuntimeLimitSharer()
 	share.RegisterRunner("other")
 	share.RegisterRunner("loadtest")
-	r := share.runnerMap["loadtest"]
+	r := share.RunnerMap["loadtest"]
 
 	// time.Sleep doesn't like amounts < 1ms, so we scale up the time axis
 	// to allow proper sleeping
@@ -50,7 +50,7 @@ func TestRuntimeLimitSharerLoad(t *testing.T) {
 
 	for i := 0; i < N_EPSILON; i++ {
 		name := fmt.Sprintf("epsilon-%d", i)
-		share.addLogicImmediately("loadtest",
+		share.RunnerMap["loadtest"].addLogicImmediately(
 			&LogicUnit{
 				name:    name,
 				worldID: i,
@@ -68,7 +68,7 @@ func TestRuntimeLimitSharerLoad(t *testing.T) {
 	x := 0
 	for i := 0; i < N_HEAVY; i++ {
 		name := fmt.Sprintf("heavy-%d", i)
-		share.addLogicImmediately("loadtest",
+		share.RunnerMap["loadtest"].addLogicImmediately(
 			&LogicUnit{
 				name:    name,
 				worldID: N_EPSILON + 1 + i,

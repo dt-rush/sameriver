@@ -19,7 +19,7 @@ func TestRuntimeLimiterAdd(t *testing.T) {
 			runSchedule: nil}
 		r.Add(logic)
 		if !(len(r.logicUnits) > 0 &&
-			r.indexes[logic.worldID] == len(r.logicUnits)-1) {
+			r.indexes[logic] == len(r.logicUnits)-1) {
 			t.Fatal("was not inserted properly")
 		}
 	}
@@ -241,10 +241,6 @@ func TestRuntimeLimiterLoad(t *testing.T) {
 
 func TestRuntimeLimiterRemove(t *testing.T) {
 	r := NewRuntimeLimiter()
-	// test that we can remove a logic which doens't exist idempotently
-	if r.Remove(nil) != false {
-		t.Fatal("somehow removed a logic which doesn't exist")
-	}
 	x := 0
 	name := "l1"
 	logic := &LogicUnit{
@@ -265,7 +261,7 @@ func TestRuntimeLimiterRemove(t *testing.T) {
 	if _, ok := r.runtimeEstimates[logic]; ok {
 		t.Fatal("did not delete runtimeEstimates data")
 	}
-	if _, ok := r.indexes[logic.worldID]; ok {
+	if _, ok := r.indexes[logic]; ok {
 		t.Fatal("did not delete runtimeEstimates data")
 	}
 	if len(r.logicUnits) != 0 {
@@ -287,30 +283,32 @@ func TestRuntimeLimitShare(t *testing.T) {
 	for i := 0; i < N; i++ {
 		func(i int) {
 			counters = append(counters, 0) // jet fuel can't melt steel beams
-			sharer.AddLogic("basic", &LogicUnit{
-				name:    fmt.Sprintf("basic-%d", i),
-				worldID: w.IdGen.Next(),
-				f: func(dt_ms float64) {
-					time.Sleep(SLEEP)
-					counters[i] += 1
-				},
-				active:      true,
-				runSchedule: nil})
+			sharer.RunnerMap["basic"].Add(
+				&LogicUnit{
+					name:    fmt.Sprintf("basic-%d", i),
+					worldID: w.IdGen.Next(),
+					f: func(dt_ms float64) {
+						time.Sleep(SLEEP)
+						counters[i] += 1
+					},
+					active:      true,
+					runSchedule: nil})
 		}(i)
 	}
 	sharer.RegisterRunner("extra")
 	for i := 0; i < M; i++ {
 		func(i int) {
 			counters = append(counters, 0) // jet fuel can't melt steel beams
-			sharer.AddLogic("extra", &LogicUnit{
-				name:    fmt.Sprintf("extra-%d", i),
-				worldID: w.IdGen.Next(),
-				f: func(dt_ms float64) {
-					time.Sleep(SLEEP)
-					counters[i] += 1
-				},
-				active:      true,
-				runSchedule: nil})
+			sharer.RunnerMap["extra"].Add(
+				&LogicUnit{
+					name:    fmt.Sprintf("extra-%d", i),
+					worldID: w.IdGen.Next(),
+					f: func(dt_ms float64) {
+						time.Sleep(SLEEP)
+						counters[i] += 1
+					},
+					active:      true,
+					runSchedule: nil})
 		}(i)
 	}
 	for i := 0; i < LOOPS; i++ {
@@ -323,10 +321,10 @@ func TestRuntimeLimitShare(t *testing.T) {
 		sum += counter
 
 	}
-	for _, l := range sharer.runnerMap["basic"].logicUnits {
+	for _, l := range sharer.RunnerMap["basic"].logicUnits {
 		Logger.Printf("basic.%s: h%d", l.name, l.hotness)
 	}
-	for _, l := range sharer.runnerMap["extra"].logicUnits {
+	for _, l := range sharer.RunnerMap["extra"].logicUnits {
 		Logger.Printf("extra.%s: h%d", l.name, l.hotness)
 	}
 	if sum < expected {
@@ -344,15 +342,16 @@ func TestRuntimeLimitShareInsertWhileRunning(t *testing.T) {
 		const SLEEP = 16
 		sharer.RegisterRunner("basic")
 		insert := func(i int) {
-			sharer.AddLogic("basic", &LogicUnit{
-				name:    fmt.Sprintf("basic-%d", i),
-				worldID: w.IdGen.Next(),
-				f: func(dt_ms float64) {
-					time.Sleep(SLEEP)
-					counter += 1
-				},
-				active:      true,
-				runSchedule: nil})
+			sharer.RunnerMap["basic"].Add(
+				&LogicUnit{
+					name:    fmt.Sprintf("basic-%d", i),
+					worldID: w.IdGen.Next(),
+					f: func(dt_ms float64) {
+						time.Sleep(SLEEP)
+						counter += 1
+					},
+					active:      true,
+					runSchedule: nil})
 		}
 		for i := 0; i < N; i++ {
 			insert(i)
@@ -387,7 +386,7 @@ func TestRuntimeLimiterInsertAppending(t *testing.T) {
 			runSchedule: nil}
 		r.Add(logic)
 		if !(len(r.logicUnits) > 0 &&
-			r.indexes[logic.worldID] == len(r.logicUnits)-1) {
+			r.indexes[logic] == len(r.logicUnits)-1) {
 			t.Fatal("was not inserted properly")
 		}
 	}

@@ -32,6 +32,10 @@ type RuntimeLimiter struct {
 	oppIx int
 	// used so we can iterate the added logicUnits in order
 	logicUnits []*LogicUnit
+	// used to retrieve units by string
+	logicUnitsMap map[string]*LogicUnit
+	// used to queue add/remove events so we don't change the slice while iterating
+	addRemoveChannel chan AddRemoveLogicEvent
 	// logicUnits sorted by hotness ascending, which is an int incremented every time
 	// the func gets run. this is used when, in round-robin scheduling according to
 	// runIx, we reach the first unit that can't run in the budget. then we look
@@ -49,14 +53,8 @@ type RuntimeLimiter struct {
 	// to run. so a function taking 4ms will have at least 4 ms after it finishes
 	// til the next time it runs, so we need to keep track of when logicunits end.
 	lastEnd map[*LogicUnit]time.Time
-	// used to lookup the logicUnits slice index given an object to which
-	// the LogicUnit is coupled, it's Parent (for System.Update() instances,
-	// this is the System, for world LogicUnits this is the LogicUnit itself
-	// This is needed to support efficient delete and activate/deactivate
-	//
-	// key: logicunit worldID
-	// value: index
-	indexes map[int]int
+	// used to lookup the logicUnits slice index for access in the slice
+	indexes map[*LogicUnit]int
 	// used to keep a running average of the entire runtime
 	totalRuntime_ms *float64
 	// overrun flag gets set whenever we are exceeding the allowance_ms
@@ -90,15 +88,19 @@ type RuntimeLimiter struct {
 func NewRuntimeLimiter() *RuntimeLimiter {
 	return &RuntimeLimiter{
 		logicUnits:       make([]*LogicUnit, 0),
+		logicUnitsMap:    make(map[string]*LogicUnit),
+		addRemoveChannel: make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
 		ascendingHotness: make([]*LogicUnit, 0),
 		runtimeEstimates: make(map[*LogicUnit]float64),
 		lastRun:          make(map[*LogicUnit]time.Time),
 		lastEnd:          make(map[*LogicUnit]time.Time),
-		indexes:          make(map[int]int),
+		indexes:          make(map[*LogicUnit]int),
 	}
 }
 
 func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms float64) {
+	tStart := time.Now()
+	r.ProcessAddRemoveLogics()
 	if !bonsuTime {
 		// if we're at loop = 0, the initial share from the RuntimeLimitSharer
 		// this runner is in, we set startIx
@@ -106,7 +108,6 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (remaining_ms
 		// else, startix remains where it was on last time loop = 0,
 		r.finished = false
 	}
-	tStart := time.Now()
 	r.overrun = false
 	remaining_ms = allowance_ms
 	if len(r.logicUnits) == 0 {
@@ -361,31 +362,45 @@ func (r *RuntimeLimiter) updateEstimate(logic *LogicUnit, elapsed_ms float64) {
 	}
 }
 
-func (r *RuntimeLimiter) Add(logic *LogicUnit) {
-	// panic if adding duplicate by WorldID
-	if _, ok := r.indexes[logic.worldID]; ok {
-		panic(fmt.Sprintf("Double-add of same logic unit to RuntimeLimiter "+
-			"(WorldID: %d; name: %s)", logic.worldID, logic.name))
+func (r *RuntimeLimiter) ProcessAddRemoveLogics() {
+	for len(r.addRemoveChannel) > 0 {
+		ev := <-r.addRemoveChannel
+		l := ev.l
+		if ev.addRemove {
+			r.addLogicImmediately(l)
+		} else {
+			r.removeLogicImmediately(l)
+		}
 	}
-	r.logicUnits = append(r.logicUnits, logic)
-	r.indexes[logic.worldID] = len(r.logicUnits) - 1
-	r.insertAscendingHotness(logic)
 }
 
-func (r *RuntimeLimiter) Remove(l *LogicUnit) bool {
+func (r *RuntimeLimiter) addLogicImmediately(l *LogicUnit) {
+	// panic if adding duplicate by WorldID
+	if _, ok := r.indexes[l]; ok {
+		panic(fmt.Sprintf("Double-add of same logic unit to RuntimeLimiter "+
+			"(name: %s)", l.name))
+	}
+	r.logicUnits = append(r.logicUnits, l)
+	r.logicUnitsMap[l.name] = l
+	r.indexes[l] = len(r.logicUnits) - 1
+	r.insertAscendingHotness(l)
+}
+
+func (r *RuntimeLimiter) removeLogicImmediately(l *LogicUnit) {
 	// return early if nil
 	if l == nil {
-		return false
+		return
 	}
 	// return early if not present
-	index, ok := r.indexes[l.worldID]
+	index, ok := r.indexes[l]
 	if !ok {
-		return false
+		return
 	}
-	// delete from runtimeEstimates
+	delete(r.logicUnitsMap, l.name)
 	delete(r.runtimeEstimates, l)
-	// delete from indexes
-	delete(r.indexes, l.worldID)
+	delete(r.lastRun, l)
+	delete(r.lastEnd, l)
+	delete(r.indexes, l)
 	// delete from logicUnits by replacing the last element into its spot,
 	// updating the indexes entry for that element
 	lastIndex := len(r.logicUnits) - 1
@@ -394,7 +409,7 @@ func (r *RuntimeLimiter) Remove(l *LogicUnit) bool {
 		// update the indexes array for the elemnt we put into the
 		// place of the one we spliced out
 		nowAtIndex := r.logicUnits[index]
-		r.indexes[nowAtIndex.worldID] = index
+		r.indexes[nowAtIndex] = index
 	}
 	r.logicUnits = r.logicUnits[:lastIndex]
 	// update runIx - if we removed an entity earlier in the list,
@@ -404,8 +419,30 @@ func (r *RuntimeLimiter) Remove(l *LogicUnit) bool {
 	if index < r.runIx {
 		r.runIx--
 	}
-	// success!
-	return true
+}
+
+func (r *RuntimeLimiter) Add(l *LogicUnit) {
+	do := func() {
+		r.addRemoveChannel <- AddRemoveLogicEvent{addRemove: true, l: l}
+	}
+	if len(r.addRemoveChannel) >= ADD_REMOVE_LOGIC_CHANNEL_CAPACITY {
+		logWarning("adding logic at such a rate the channel is at capacity. Spawning goroutines. If this continues to happen, the program might suffer.")
+		go do()
+	} else {
+		do()
+	}
+}
+
+func (r *RuntimeLimiter) Remove(l *LogicUnit) {
+	do := func() {
+		r.addRemoveChannel <- AddRemoveLogicEvent{addRemove: false, l: l}
+	}
+	if len(r.addRemoveChannel) >= ADD_REMOVE_LOGIC_CHANNEL_CAPACITY {
+		logWarning("removing logic at such a rate the channel is at capacity. Spawning goroutines. If this continues to happen, the program might suffer.")
+		go do()
+	} else {
+		do()
+	}
 }
 
 func (r *RuntimeLimiter) ActivateAll() {
@@ -418,6 +455,12 @@ func (r *RuntimeLimiter) DeactivateAll() {
 	for _, l := range r.logicUnits {
 		l.active = false
 	}
+}
+
+func (r *RuntimeLimiter) SetSchedule(logicName string, period_ms float64) {
+	logic := r.logicUnitsMap[logicName]
+	runSchedule := NewTimeAccumulator(period_ms)
+	logic.runSchedule = &runSchedule
 }
 
 func (r *RuntimeLimiter) Finished() bool {

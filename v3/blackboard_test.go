@@ -116,6 +116,7 @@ func TestBlackboardWorldEntities(t *testing.T) {
 	spawnVillager("baker")
 	setupVillageWorldLogic()
 
+	Logger.Println("Update loop beginning...")
 	w.Update(FRAME_MS / 2)
 	time.Sleep(550 * time.Millisecond)
 	w.Update(FRAME_MS / 2)

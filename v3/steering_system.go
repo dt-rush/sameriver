@@ -13,6 +13,7 @@ func (s *SteeringSystem) GetComponentDeps() []string {
 	return []string{
 		"Vec2D,Position",
 		"Vec2D,Velocity",
+		"Vec2D,Acceleration", // TODO: use acceleration in steering
 		"Float64,MaxVelocity",
 		"Vec2D,MovementTarget",
 		"Vec2D,Steer",
@@ -29,6 +30,7 @@ func (s *SteeringSystem) LinkWorld(w *World) {
 				[]string{
 					"Position",
 					"Velocity",
+					"Acceleration",
 					"MaxVelocity",
 					"MovementTarget",
 					"Steer",

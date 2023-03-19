@@ -50,11 +50,13 @@ type CollisionSystem struct {
 	rateLimiterArray   CollisionRateLimiterArray
 	delay              time.Duration
 	sh                 *SpatialHashSystem `sameriver-system-dependency:"-"`
+	filterChannels     []*EventChannel
 }
 
 func NewCollisionSystem(delay time.Duration) *CollisionSystem {
 	return &CollisionSystem{
-		delay: delay,
+		delay:          delay,
+		filterChannels: make([]*EventChannel, 0),
 	}
 }
 

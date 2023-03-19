@@ -7,16 +7,10 @@ import (
 	"github.com/TwiN/go-color"
 )
 
-type AddRemoveLogicEvent struct {
-	addRemove  bool
-	runnerName string
-	l          *LogicUnit
-}
-
 type RuntimeLimitSharer struct {
 	runIX            int
 	runners          []*RuntimeLimiter
-	runnerMap        map[string]*RuntimeLimiter
+	RunnerMap        map[string]*RuntimeLimiter
 	runnerNames      map[*RuntimeLimiter]string
 	addRemoveChannel chan AddRemoveLogicEvent
 
@@ -27,7 +21,7 @@ type RuntimeLimitSharer struct {
 func NewRuntimeLimitSharer() *RuntimeLimitSharer {
 	r := &RuntimeLimitSharer{
 		runners:          make([]*RuntimeLimiter, 0),
-		runnerMap:        make(map[string]*RuntimeLimiter),
+		RunnerMap:        make(map[string]*RuntimeLimiter),
 		runnerNames:      make(map[*RuntimeLimiter]string),
 		addRemoveChannel: make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
 	}
@@ -35,105 +29,18 @@ func NewRuntimeLimitSharer() *RuntimeLimitSharer {
 }
 
 func (r *RuntimeLimitSharer) RegisterRunner(name string) *RuntimeLimiter {
-	if _, ok := r.runnerMap[name]; ok {
+	if _, ok := r.RunnerMap[name]; ok {
 		panic(fmt.Sprintf("Trying to double-add RuntimeLimiter %s", name))
 	}
 	runner := NewRuntimeLimiter()
 	r.runners = append(r.runners, runner)
-	r.runnerMap[name] = runner
+	r.RunnerMap[name] = runner
 	r.runnerNames[runner] = name
 	return runner
 }
 
-func (r *RuntimeLimitSharer) ProcessAddRemoveLogics() {
-	for len(r.addRemoveChannel) > 0 {
-		ev := <-r.addRemoveChannel
-		l := ev.l
-		runnerName := ev.runnerName
-		if ev.addRemove {
-			r.addLogicImmediately(runnerName, l)
-		} else {
-			r.removeLogicImmediately(runnerName, l)
-		}
-	}
-}
-
-func (r *RuntimeLimitSharer) addLogicImmediately(runnerName string, l *LogicUnit) {
-	// add
-	if _, ok := r.runnerMap[runnerName]; !ok {
-		panic(fmt.Sprintf("Trying to add to runtimeLimiter with name %s - doesn't exist", runnerName))
-	}
-	r.runnerMap[runnerName].Add(l)
-}
-
-func (r *RuntimeLimitSharer) removeLogicImmediately(runnerName string, l *LogicUnit) {
-	// remove
-	if _, ok := r.runnerMap[runnerName]; !ok {
-		panic(fmt.Sprintf("Trying to remove from runtimeLimiter with name %s - doesn't exist", runnerName))
-	}
-	r.runnerMap[runnerName].Remove(l)
-}
-
-func (r *RuntimeLimitSharer) AddLogic(runnerName string, l *LogicUnit) {
-	do := func() {
-		r.addRemoveChannel <- AddRemoveLogicEvent{
-			addRemove:  true,
-			runnerName: runnerName,
-			l:          l,
-		}
-	}
-	if len(r.addRemoveChannel) >= ADD_REMOVE_LOGIC_CHANNEL_CAPACITY {
-		logWarning("adding logic at such a rate the channel is at capacity. Spawning goroutines. If this continues to happen, the program might suffer.")
-		go do()
-	} else {
-		do()
-	}
-}
-
-func (r *RuntimeLimitSharer) RemoveLogic(runnerName string, l *LogicUnit) {
-	do := func() {
-		r.addRemoveChannel <- AddRemoveLogicEvent{
-			addRemove:  false,
-			runnerName: runnerName,
-			l:          l,
-		}
-	}
-	if len(r.addRemoveChannel) >= ADD_REMOVE_LOGIC_CHANNEL_CAPACITY {
-		logWarning("removing logic at such a rate the channel is at capacity. Spawning goroutines. If this continues to happen, the program might suffer.")
-		go do()
-	} else {
-		do()
-	}
-}
-
-func (r *RuntimeLimitSharer) ActivateAll(runnerName string) {
-	if _, ok := r.runnerMap[runnerName]; !ok {
-		panic(fmt.Sprintf("Trying to activate all in runtimeLimiter with name %s - doesn't exist", runnerName))
-	}
-	r.runnerMap[runnerName].ActivateAll()
-}
-
-func (r *RuntimeLimitSharer) DeactivateAll(runnerName string) {
-	if _, ok := r.runnerMap[runnerName]; !ok {
-		panic(fmt.Sprintf("Trying to deactivate all in runtimeLimiter with name %s - doesn't exist", runnerName))
-	}
-	r.runnerMap[runnerName].DeactivateAll()
-}
-
-func (r *RuntimeLimitSharer) SetSchedule(runnerName string, logicWorldID int, period_ms float64) {
-	runner := r.runnerMap[runnerName]
-	logicIX := runner.indexes[logicWorldID]
-	logic := runner.logicUnits[logicIX]
-	runSchedule := NewTimeAccumulator(period_ms)
-	logic.runSchedule = &runSchedule
-}
-
 func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, starved int) {
 	tStart := time.Now()
-	// process addition and removal of logics (they get buffered in a channel
-	// so we aren't adding logics while iterating logics)
-	r.ProcessAddRemoveLogics()
-
 	overunder_ms = allowance_ms
 	// while we have allowance_ms, keep trying to run all runners
 	// note: everybody gets firsts before anyone gets seconds; this is controlled
@@ -239,7 +146,7 @@ func (r *RuntimeLimitSharer) updateOverhead(worstThisTime float64) {
 func (r *RuntimeLimitSharer) DumpStats() map[string](map[string]float64) {
 	stats := make(map[string](map[string]float64))
 	stats["totals"] = make(map[string]float64)
-	for name, r := range r.runnerMap {
+	for name, r := range r.RunnerMap {
 		runnerStats, totals := r.DumpStats()
 		stats[name] = runnerStats
 		stats["totals"][name] = totals

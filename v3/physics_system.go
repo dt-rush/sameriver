@@ -22,8 +22,8 @@ func NewPhysicsSystemWithGranularity(granularity int) *PhysicsSystem {
 
 func (p *PhysicsSystem) GetComponentDeps() []string {
 	// TODO: do something with mass
-	// TODO: impart velocity to collided objects?
-	return []string{"Vec2D,Position", "Vec2D,Velocity", "Vec2D,Box", "Float64,Mass"}
+	// TODO: impart momentum to collided objects?
+	return []string{"Vec2D,Position", "Vec2D,Velocity", "Vec2D,Acceleration", "Vec2D,Box", "Float64,Mass"}
 }
 
 func (p *PhysicsSystem) LinkWorld(w *World) {
@@ -31,7 +31,7 @@ func (p *PhysicsSystem) LinkWorld(w *World) {
 	p.physicsEntities = w.em.GetSortedUpdatedEntityList(
 		EntityFilterFromComponentBitArray(
 			"physical",
-			w.em.components.BitArrayFromNames([]string{"Position", "Velocity", "Box", "Mass"})))
+			w.em.components.BitArrayFromNames([]string{"Position", "Velocity", "Acceleration", "Box", "Mass"})))
 }
 
 func (p *PhysicsSystem) Update(dt_ms float64) {
@@ -70,7 +70,10 @@ func (p *PhysicsSystem) ParallelUpdate(dt_ms float64) {
 				defer pos.ShiftBottomLeftToCenter(*box)
 
 				// calculate velocity
+				acc := e.GetVec2D("Acceleration")
 				vel := e.GetVec2D("Velocity")
+				vel.X += acc.X * dt_ms
+				vel.Y += acc.Y * dt_ms
 				dx := vel.X * dt_ms
 				dy := vel.Y * dt_ms
 
