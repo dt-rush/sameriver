@@ -130,6 +130,9 @@ func (h *SpatialHasher) scanAndInsertEntitiesparallelC() {
 
 			for j := startIdx; j < endIdx; j++ {
 				e := h.SpatialEntities.entities[j]
+				if !e.Active {
+					continue
+				}
 				pos := e.GetVec2D("Position")
 				box := e.GetVec2D("Box")
 				cellX0, cellX1, cellY0, cellY1 := h.CellRangeOfRect(pos.ShiftedCenterToBottomLeft(*box), *box)
@@ -156,6 +159,9 @@ func (h *SpatialHasher) scanAndInsertEntitiesparallelC() {
 // somewhat suprisingly, better than some parallel versions
 func (h *SpatialHasher) scanAndInsertEntitiesSingleThread() {
 	for _, e := range h.SpatialEntities.entities {
+		if !e.Active {
+			continue
+		}
 		pos := e.GetVec2D("Position")
 		box := e.GetVec2D("Box")
 
@@ -278,11 +284,13 @@ func (h *SpatialHasher) EntitiesWithinDistanceApproxFilter(
 	return results
 }
 
+// NOTE: can return inactive entities
 func (h *SpatialHasher) EntitiesWithinDistance(pos, box Vec2D, d float64) []*Entity {
 	return h.EntitiesWithinDistanceFilter(pos, box, d,
 		func(e *Entity) bool { return true })
 }
 
+// NOTE: can return inactive entitites
 func (h *SpatialHasher) EntitiesWithinDistanceFilter(
 	pos, box Vec2D, d float64, predicate func(*Entity) bool) []*Entity {
 	candidates := h.EntitiesWithinDistanceApprox(pos, box, d)

@@ -10,6 +10,7 @@ type PhysicsSystem struct {
 	granularity     int
 	w               *World
 	physicsEntities *UpdatedEntityList
+	h               *SpatialHasher
 }
 
 func NewPhysicsSystem() *PhysicsSystem {
@@ -17,7 +18,9 @@ func NewPhysicsSystem() *PhysicsSystem {
 }
 
 func NewPhysicsSystemWithGranularity(granularity int) *PhysicsSystem {
-	return &PhysicsSystem{granularity: granularity}
+	return &PhysicsSystem{
+		granularity: granularity,
+	}
 }
 
 func (p *PhysicsSystem) GetComponentDeps() []string {
@@ -32,13 +35,80 @@ func (p *PhysicsSystem) LinkWorld(w *World) {
 		EntityFilterFromComponentBitArray(
 			"physical",
 			w.em.components.BitArrayFromNames([]string{"Position", "Velocity", "Acceleration", "Box", "Mass"})))
+	p.h = NewSpatialHasher(10, 10, w)
 }
 
 func (p *PhysicsSystem) Update(dt_ms float64) {
+	p.h.Update()
 	sum_dt := 0.0
 	for i := 0; i < p.granularity; i++ {
 		p.ParallelUpdate(dt_ms / float64(p.granularity))
 		sum_dt += dt_ms / float64(p.granularity)
+	}
+}
+
+func (p *PhysicsSystem) physics(e *Entity, dt_ms float64) {
+
+	// the logic is simpler to read that way
+	pos := e.GetVec2D("Position")
+	box := e.GetVec2D("Box")
+	pos.ShiftCenterToBottomLeft(*box)
+	defer pos.ShiftBottomLeftToCenter(*box)
+
+	// calculate velocity
+	acc := e.GetVec2D("Acceleration")
+	vel := e.GetVec2D("Velocity")
+	vel.X += acc.X * dt_ms
+	vel.Y += acc.Y * dt_ms
+	dx := vel.X * dt_ms
+	dy := vel.Y * dt_ms
+
+	// motion in x
+	// max out on world border in x
+	if pos.X+dx < 0 || pos.X+box.X+dx > float64(p.w.Width) {
+		dx = 0
+	} else {
+		// otherwise move in x freely
+		pos.X += dx
+	}
+
+	// motion in y
+	// max out on world border in y
+	if pos.Y+dy < 0 || pos.Y+box.Y+dy > float64(p.w.Height) {
+		dy = 0
+	} else {
+		// otherwise move in y freely
+		pos.Y += dy
+	}
+
+	// check collisions using spatial hasher
+	// TODO: really we should check / resolve all collisions after applying dx,dy
+	testCollision := func(i *Entity, j *Entity) bool {
+		iPos := i.GetVec2D("Position")
+		iBox := i.GetVec2D("Box")
+		jPos := j.GetVec2D("Position")
+		jBox := j.GetVec2D("Box")
+		return RectIntersectsRect(*iPos, *iBox, *jPos, *jBox)
+	}
+	cellX0, cellX1, cellY0, cellY1 := p.h.CellRangeOfRect(*pos, *box)
+	collided := false
+	for y := cellY0; y <= cellY1 && !collided; y++ {
+		for x := cellX0; x <= cellX1 && !collided; x++ {
+			if x < 0 || x >= p.h.GridX || y < 0 || y >= p.h.GridY {
+				continue
+			}
+			entities := p.h.Entities(x, y)
+			for i := 0; i < len(entities) && !collided; i++ {
+				other := entities[i]
+				if other != e && testCollision(e, other) {
+					// undo the action if a collision occurs
+					pos.X -= dx
+					pos.Y -= dy
+					collided = true
+					break
+				}
+			}
+		}
 	}
 }
 
@@ -62,43 +132,8 @@ func (p *PhysicsSystem) ParallelUpdate(dt_ms float64) {
 		go func(startIndex, endIndex int) {
 			for j := startIndex; j < endIndex; j++ {
 				e := p.physicsEntities.entities[j]
-
-				// the logic is simpler to read that way
-				pos := e.GetVec2D("Position")
-				box := e.GetVec2D("Box")
-				pos.ShiftCenterToBottomLeft(*box)
-				defer pos.ShiftBottomLeftToCenter(*box)
-
-				// calculate velocity
-				acc := e.GetVec2D("Acceleration")
-				vel := e.GetVec2D("Velocity")
-				vel.X += acc.X * dt_ms
-				vel.Y += acc.Y * dt_ms
-				dx := vel.X * dt_ms
-				dy := vel.Y * dt_ms
-
-				// motion in x
-				if pos.X+dx < 0 {
-					// max out on the left
-					pos.X = 0
-				} else if pos.X+box.X+dx > float64(p.w.Width) {
-					// max out on the right
-					pos.X = float64(p.w.Width) - box.X
-				} else {
-					// otherwise move in x freely
-					pos.X += dx
-				}
-
-				// motion in y
-				if pos.Y+dy < 0 {
-					// max out on the bottom
-					pos.Y = 0
-				} else if pos.Y+box.Y+dy > float64(p.w.Height) {
-					// max out on the top
-					pos.Y = float64(p.w.Height) - box.Y
-				} else {
-					// otherwise move in y freely
-					pos.Y += dy
+				if e.Active && !e.Despawned {
+					p.physics(e, dt_ms)
 				}
 			}
 			wg.Done()
@@ -111,37 +146,16 @@ func (p *PhysicsSystem) ParallelUpdate(dt_ms float64) {
 func (p *PhysicsSystem) SingleThreadUpdate(dt_ms float64) {
 	// note: there are no function calls in the below, so we won't
 	// be preempted while computing physics (this is very good, get it over with)
-	for _, e := range p.physicsEntities.entities {
-		// the logic is simpler to read that way
-		pos := e.GetVec2D("Position")
-		box := e.GetVec2D("Box")
-		pos.ShiftCenterToBottomLeft(*box)
-		defer pos.ShiftBottomLeftToCenter(*box)
-		// calculate velocity
-		vel := e.GetVec2D("Velocity")
-		dx := vel.X * dt_ms
-		dy := vel.Y * dt_ms
-		// motion in x
-		if pos.X+dx < 0 {
-			// max out on the left
-			pos.X = 0
-		} else if pos.X+box.X+dx > float64(p.w.Width) {
-			// max out on the right
-			pos.X = float64(p.w.Width) - box.X
-		} else {
-			// otherwise move in x freely
-			pos.X += dx
-		}
-		// motion in y
-		if pos.Y+dy < 0 {
-			// max out on the bottom
-			pos.Y = 0
-		} else if pos.Y+box.Y+dy > float64(p.w.Height) {
-			// max out on the top
-			pos.Y = float64(p.w.Height) - box.Y
-		} else {
-			// otherwise move in y freely
-			pos.Y += dy
+	for i := range p.physicsEntities.entities {
+		e := p.physicsEntities.entities[i]
+		// TODO: guards like these are necessary because UpdatedEntityLists
+		// can contain references to entities that were only just put
+		// into the despawn buffered channel of the entitymanager
+		// should we not just ditch the whole spawn despawn channel idea
+		// and have spawn / despawn always be immediate, updating all
+		// updatedentitylists?
+		if e.Active {
+			p.physics(e, dt_ms)
 		}
 	}
 }

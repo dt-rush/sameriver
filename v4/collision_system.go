@@ -69,12 +69,12 @@ func (s *CollisionSystem) checkEntities(entities []*Entity) {
 	// table).
 	for ix := 0; ix < len(entities); ix++ {
 		i := entities[ix]
-		if i.Despawned {
+		if !i.Active {
 			continue
 		}
 		for jx := ix + 1; jx < len(entities); jx++ {
 			j := entities[jx]
-			if j.Despawned {
+			if !j.Active {
 				continue
 			}
 			// required that i.ID < j.ID for the rate limiter array

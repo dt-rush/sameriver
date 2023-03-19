@@ -368,6 +368,28 @@ func (w *World) SetInterval(F func(), ms float64) (interval string) {
 	return name
 }
 
+// setinterval but it is guaranteed to run n times
+func (w *World) SetNInterval(F func(), ms float64, n int) (interval string) {
+	schedule := NewTimeAccumulator(ms)
+	name := fmt.Sprintf("interval-%d", w.IdGen.Next())
+	ran := 0
+	var l *LogicUnit
+	l = &LogicUnit{
+		name: name,
+		f: func(dt_ms float64) {
+			F()
+			ran++
+			if ran == n {
+				w.intervals.Remove(l)
+			}
+		},
+		active:      true,
+		runSchedule: &schedule,
+	}
+	w.intervals.Add(l)
+	return name
+}
+
 func (w *World) ClearInterval(interval string) {
 	w.intervals.Remove(w.intervals.logicUnitsMap[interval])
 }
