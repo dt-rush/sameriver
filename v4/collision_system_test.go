@@ -10,9 +10,11 @@ import (
 func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) {
 	w := testingWorld()
 	cs := NewCollisionSystem(FRAME_DURATION / 2)
+	ps := NewPhysicsSystem()
 	w.RegisterSystems(
 		NewSpatialHashSystem(1, 1),
 		cs,
+		ps,
 	)
 	// spawn the colliding entities
 	testingSpawnCollision(w)
