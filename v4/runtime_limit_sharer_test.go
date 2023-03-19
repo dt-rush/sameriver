@@ -126,3 +126,82 @@ func TestRuntimeLimitSharerLoad(t *testing.T) {
 		runFrame(1.0)
 	}
 }
+
+/*
+output example:
+
+21:55:19.102272 allowance_ms: 1600.000000
+21:55:19.102334 N_EPSILON: 1048
+21:55:19.102337 worksleep: 1.000000
+21:55:19.102338 totalLoad: 0.655000
+21:55:19.103179 ------------------ frame 0 ----------------------
+21:55:20.703021 avg hotness: h1.386
+
+note that the realised avg hotness 1.386 is not quite the theoretical
+1 / totalLoad. Because totalLoad is calculated based on gapless division
+by the worksleep amount. But Really, the worksleep is bracketed by overhead.
+*/
+func TestRuntimeLimitSharerCapacity(t *testing.T) {
+	share := NewRuntimeLimitSharer()
+	share.RegisterRunner("capacitytest")
+	r := share.RunnerMap["capacitytest"]
+
+	// time.Sleep doesn't like amounts < 1ms, so we scale up the time axis
+	// to allow proper sleeping
+	allowance_ms := 1600.0
+	N_EPSILON := 1048
+	worksleep := 1.0
+
+	totalLoad := float64(N_EPSILON) * worksleep / allowance_ms
+
+	Logger.Printf("allowance_ms: %f", allowance_ms)
+	Logger.Printf("N_EPSILON: %d", N_EPSILON)
+	Logger.Printf("worksleep: %f", worksleep)
+	Logger.Printf("totalLoad: %f", totalLoad)
+
+	frame := -1
+	seq := make([][]string, 0)
+	markRan := func(name string) {
+		seq[frame] = append(seq[frame], name)
+	}
+	pushFrame := func() {
+		frame++
+		seq = append(seq, make([]string, 0))
+		Logger.Printf("------------------ frame %d ----------------------", frame)
+	}
+	printFrame := func() {
+		// b, _ := json.MarshalIndent(seq[frame], "", "\t")
+		// Logger.Printf(string(b))
+		hotnessSum := 0.0
+		for _, l := range r.logicUnits {
+			hotnessSum += float64(l.hotness)
+		}
+		Logger.Printf("avg hotness: h%.3f", hotnessSum/float64(len(r.logicUnits)))
+	}
+
+	for i := 0; i < N_EPSILON; i++ {
+		name := fmt.Sprintf("epsilon-%d", i)
+		share.RunnerMap["capacitytest"].addLogicImmediately(
+			&LogicUnit{
+				name:    name,
+				worldID: i,
+				f: func(dt_ms float64) {
+					time.Sleep(time.Duration(worksleep*1e6) * time.Nanosecond)
+					markRan(name)
+				},
+				active:      true,
+				runSchedule: nil})
+	}
+
+	runFrame := func(allowanceScale float64) {
+		t0 := time.Now()
+		pushFrame()
+		share.Share(allowanceScale * allowance_ms)
+		elapsed := float64(time.Since(t0).Nanoseconds()) / 1.0e6
+		printFrame()
+		Logger.Printf("            elapsed: %f ms", elapsed)
+	}
+
+	// since it's never run before, running the logic will set its estimate
+	runFrame(1.0)
+}
