@@ -6,14 +6,14 @@ import (
 )
 
 func TestEventBusConstructEventBus(t *testing.T) {
-	ev := NewEventBus()
+	ev := NewEventBus("testing")
 	if ev == nil {
-		t.Fatal("Could not construct NewEventBus()")
+		t.Fatal("Could not construct NewEventBus")
 	}
 }
 
 func TestEventBusSimpleEventFilterMatching(t *testing.T) {
-	ev := NewEventBus()
+	ev := NewEventBus("testing")
 	ec := ev.Subscribe(SimpleEventFilter("collision"))
 	ev.Publish("collision", nil)
 	time.Sleep(FRAME_DURATION)
@@ -27,7 +27,7 @@ func TestEventBusSimpleEventFilterMatching(t *testing.T) {
 }
 
 func TestEventBusMaxCapacity(t *testing.T) {
-	ev := NewEventBus()
+	ev := NewEventBus("testing")
 	_ = ev.Subscribe(SimpleEventFilter("collision"))
 	for i := 0; i < EVENT_SUBSCRIBER_CHANNEL_CAPACITY+4; i++ {
 		ev.Publish("collision", nil)
@@ -35,7 +35,7 @@ func TestEventBusMaxCapacity(t *testing.T) {
 }
 
 func TestEventBusDeactivatedSubscriber(t *testing.T) {
-	ev := NewEventBus()
+	ev := NewEventBus("testing")
 	ec := ev.Subscribe(SimpleEventFilter("collision"))
 	ec.Deactivate()
 	ev.Publish("collision", nil)
@@ -48,7 +48,7 @@ func TestEventBusDeactivatedSubscriber(t *testing.T) {
 }
 
 func TestEventBusSimpleEventFilterNonMatching(t *testing.T) {
-	ev := NewEventBus()
+	ev := NewEventBus("testing")
 	ec := ev.Subscribe(SimpleEventFilter("collision"))
 	ev.Publish("spawn-request", nil)
 	time.Sleep(FRAME_DURATION)
@@ -61,7 +61,7 @@ func TestEventBusSimpleEventFilterNonMatching(t *testing.T) {
 }
 
 func TestEventBusDataEventFilterMatching(t *testing.T) {
-	ev := NewEventBus()
+	ev := NewEventBus("testing")
 	collision := CollisionData{
 		This:  &Entity{ID: 0},
 		Other: &Entity{ID: 1},
@@ -84,7 +84,7 @@ func TestEventBusDataEventFilterMatching(t *testing.T) {
 }
 
 func TestEventBusDataEventFilterNonMatching(t *testing.T) {
-	ev := NewEventBus()
+	ev := NewEventBus("testing")
 	collision := CollisionData{
 		This:  &Entity{ID: 0},
 		Other: &Entity{ID: 1},
@@ -111,7 +111,7 @@ func TestEventBusDataEventFilterNonMatching(t *testing.T) {
 }
 
 func TestEventBusUnsubscribe(t *testing.T) {
-	ev := NewEventBus()
+	ev := NewEventBus("testing")
 	ec := ev.Subscribe(SimpleEventFilter("collision"))
 	ev.Unsubscribe(ec)
 	ev.Publish("collision", nil)

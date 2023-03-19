@@ -26,49 +26,50 @@ type Event struct {
 }
 
 type EventBus struct {
+	name           string
 	subscriberList SubscriberList
 	// number of goroutines spawned to publish events to subscriber channels
 	// that are full
 	nHanging atomic.Int32
 }
 
-func NewEventBus() *EventBus {
-	b := &EventBus{}
+func NewEventBus(name string) *EventBus {
+	b := &EventBus{name: name}
 	b.subscriberList.channels = make(map[string][]*EventChannel)
 	return b
 }
 
-func (ev *EventBus) Publish(t string, data interface{}) {
-	ev.notifySubscribers(Event{t, data})
+func (b *EventBus) Publish(t string, data interface{}) {
+	b.notifySubscribers(Event{t, data})
 }
 
 // Subscribe to listen for game events defined by a Filter
-func (ev *EventBus) Subscribe(q *EventFilter) *EventChannel {
+func (b *EventBus) Subscribe(q *EventFilter) *EventChannel {
 
 	// Create a channel to return to the user
 	c := NewEventChannel(q)
 	// Add the channel to the subscriber list for its type
-	ev.subscriberList.channels[q.eventType] = append(
-		ev.subscriberList.channels[q.eventType], c)
+	b.subscriberList.channels[q.eventType] = append(
+		b.subscriberList.channels[q.eventType], c)
 	// return the channel to the caller
 	return c
 }
 
 // Remove a subscriber
-func (ev *EventBus) Unsubscribe(c *EventChannel) {
+func (b *EventBus) Unsubscribe(c *EventChannel) {
 	eventType := c.filter.eventType
-	channels, ok := ev.subscriberList.channels[eventType]
+	channels, ok := b.subscriberList.channels[eventType]
 	if ok {
 		channels = removeEventChannelFromSlice(channels, c)
-		ev.subscriberList.channels[eventType] = channels
+		b.subscriberList.channels[eventType] = channels
 	}
 }
 
 // notify subscribers to a certain event
-func (ev *EventBus) notifySubscribers(e Event) {
+func (b *EventBus) notifySubscribers(e Event) {
 	// TODO: create a special system which listens on *all* events,
 	// printing them if it's turned on
-	logEvent("⚹: %s\n", e.Type)
+	logEvents("⚹: %s", e.Type)
 
 	var notifyFull = func(c *EventChannel) {
 		logWarning("event subscriber channel for events of type %s is full; possibly sending too many events; consider throttling or increase capacity\n", e.Type)
@@ -78,10 +79,13 @@ func (ev *EventBus) notifySubscribers(e Event) {
 		logWarning("/!\\ /!\\ /!\\ number of goroutines waiting for event channel (of event type %s) to go below max capacity is now greater than capacity (%d); you're sending too many events", e.Type, EVENT_SUBSCRIBER_CHANNEL_CAPACITY)
 	}
 
-	for _, c := range ev.subscriberList.channels[e.Type] {
+	logEvents("len(b.subscriberList.channels[e.Type])=%d", len(b.subscriberList.channels[e.Type]))
+	for _, c := range b.subscriberList.channels[e.Type] {
+		logEvents("| Channel: %p", c)
 		if !c.IsActive() {
 			continue
 		}
+		logEvents("--> channel.filter.Test(e) = %t", c.filter.Test(e))
 		if c.filter.Test(e) {
 			if len(c.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
 				notifyFull(c)
@@ -91,16 +95,18 @@ func (ev *EventBus) notifySubscribers(e Event) {
 				// will add up and cause problems)
 				// TODO: count how many of these are waiting and warn if too high
 				go func() {
-					ev.nHanging.Add(1)
-					if ev.nHanging.Load() > EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
+					b.nHanging.Add(1)
+					if b.nHanging.Load() > EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
 						notifyExtraFull()
 					}
-					Logger.Printf("putting in channel: %v", e)
+					logEvents("---- event channel put <-")
 					c.C <- e
-					ev.nHanging.Add(-1)
+					b.nHanging.Add(-1)
 				}()
 			} else {
+				logEvents("---- event channel put <-")
 				c.C <- e
+				logEvents("---- len(<%p>.C) = %d", c, len(c.C))
 			}
 		}
 	}

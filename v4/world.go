@@ -108,7 +108,7 @@ func NewWorld(spec map[string]any) *World {
 		Seed:          seed,
 		Width:         float64(destructured.Width),
 		Height:        float64(destructured.Height),
-		Events:        NewEventBus(),
+		Events:        NewEventBus("world"),
 		IdGen:         NewIDGenerator(),
 		systems:       make(map[string]System),
 		systemLogics:  make(map[string]*LogicUnit),

@@ -20,12 +20,13 @@ func testingSetupCollision() (*World, *CollisionSystem, *EventChannel, *Entity) 
 	testingSpawnCollision(w)
 	e := testingSpawnCollision(w)
 	// subscribe to collision events
-	ec := w.Events.Subscribe(SimpleEventFilter("collision"))
+	ec := cs.Events.Subscribe(SimpleEventFilter("collision"))
 	return w, cs, ec, e
 }
 
 func TestCollisionSystem(t *testing.T) {
-	w, _, ec, e := testingSetupCollision()
+	w, cs, ec, e := testingSetupCollision()
+	Logger.Printf("| ec: %p", ec)
 	w.Update(FRAME_MS / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
@@ -37,12 +38,13 @@ func TestCollisionSystem(t *testing.T) {
 	}
 	// move the enitity so it no longer collides
 	*e.GetVec2D("Position") = Vec2D{100, 100}
-	time.Sleep(5 * FRAME_DURATION)
+	time.Sleep(cs.delay + 5*time.Millisecond)
 	Logger.Printf("----------------------- 2nd frame")
 	w.Update(FRAME_MS / 2)
 	// sleep long enough for the event to appear on the channel
 	time.Sleep(FRAME_DURATION)
-	if len(ec.C) != 1 {
+	Logger.Printf("len(ec.C)=%d", len(ec.C))
+	if len(ec.C) != 0 {
 		t.Fatal("collision event occurred but entities were not overlapping")
 	}
 }
@@ -97,7 +99,7 @@ func TestCollisionRateLimit(t *testing.T) {
 }
 
 func TestCollisionFilter(t *testing.T) {
-	w, _, _, e := testingSetupCollision()
+	w, cs, _, e := testingSetupCollision()
 	coin := w.Spawn(map[string]any{
 		"tags": []string{"coin"},
 		"components": map[string]any{
@@ -108,7 +110,7 @@ func TestCollisionFilter(t *testing.T) {
 		c := ev.Data.(CollisionData)
 		return c.This == e && c.Other == coin
 	}
-	ec := w.Events.Subscribe(PredicateEventFilter("collision", predicate))
+	ec := cs.Events.Subscribe(PredicateEventFilter("collision", predicate))
 	w.Update(1)
 	time.Sleep(100 * FRAME_DURATION)
 	select {

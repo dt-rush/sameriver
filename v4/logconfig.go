@@ -32,9 +32,9 @@ var logWarning = SubLogFunction(
 	"WARNING", true,
 	func(s string) string { return color.InYellow(color.InBold(s)) })
 
-var LOG_EVENTS = os.Getenv("LOG_EVENTS") == "true"
-var logEvent = SubLogFunction(
-	"Events", LOG_EVENTS,
+var DEBUG_EVENTS = os.Getenv("DEBUG_EVENTS") == "true"
+var logEvents = SubLogFunction(
+	"Events", DEBUG_EVENTS,
 	func(s string) string { return color.InWhiteOverPurple(s) })
 
 var DEBUG_GOAP = os.Getenv("DEBUG_GOAP") == "true"
