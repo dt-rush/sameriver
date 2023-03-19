@@ -139,7 +139,9 @@ output example:
 
 note that the realised avg hotness 1.386 is not quite the theoretical
 1 / totalLoad. Because totalLoad is calculated based on gapless division
-by the worksleep amount. But Really, the worksleep is bracketed by overhead.
+by the worksleep amount. But Really, the worksleep is bracketed by overhead
+AND more numerically significant, we are sleeping worksleep 1.0 ms, which is
+never quite accurate, it's always a bit more than 1 ms (at least on this system)
 */
 func TestRuntimeLimitSharerCapacity(t *testing.T) {
 	share := NewRuntimeLimitSharer()
@@ -176,7 +178,11 @@ func TestRuntimeLimitSharerCapacity(t *testing.T) {
 		for _, l := range r.logicUnits {
 			hotnessSum += float64(l.hotness)
 		}
-		Logger.Printf("avg hotness: h%.3f", hotnessSum/float64(len(r.logicUnits)))
+		ideal := 1 / totalLoad
+		realised := hotnessSum / float64(len(r.logicUnits))
+		Logger.Printf("no-overhead avg hotness expected: h%.3f", ideal)
+		Logger.Printf("realised avg hotness: h%.3f", realised)
+		Logger.Printf("ratio: %f", realised/ideal)
 	}
 
 	for i := 0; i < N_EPSILON; i++ {
@@ -186,7 +192,9 @@ func TestRuntimeLimitSharerCapacity(t *testing.T) {
 				name:    name,
 				worldID: i,
 				f: func(dt_ms float64) {
+					t0 := time.Now()
 					time.Sleep(time.Duration(worksleep*1e6) * time.Nanosecond)
+					Logger.Printf("elapsed: %f ms", float64(time.Since(t0).Nanoseconds())/1e6)
 					markRan(name)
 				},
 				active:      true,
