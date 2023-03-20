@@ -120,25 +120,16 @@ func NewWorld(spec map[string]any) *World {
 	}
 
 	// set up runtimesharer
-	w.RuntimeSharer.RegisterRunner("entity-manager")
-	w.RuntimeSharer.RegisterRunner("systems")
-	w.RuntimeSharer.RegisterRunner("world")
-	w.oneshots = w.RuntimeSharer.RegisterRunner("world-oneshot")
-	w.intervals = w.RuntimeSharer.RegisterRunner("world-interval")
-	w.RuntimeSharer.RegisterRunner("entities")
-	w.RuntimeSharer.RegisterRunner("distance-query-spatial-hasher")
+	w.RuntimeSharer.RegisterRunners(map[string]float64{
+		"systems":        1,
+		"world":          1,
+		"entities":       1,
+		"world-oneshot":  0.5,
+		"world-interval": 0.5,
+	})
+
 	// init entitymanager
 	w.em = NewEntityManager(w)
-	w.RuntimeSharer.RunnerMap["entity-manager"].Add(
-		&LogicUnit{
-			name:    "entity-manager",
-			worldID: w.IdGen.Next(),
-			f: func(dt_ms float64) {
-				w.em.Update(dt_ms)
-			},
-			active:      true,
-			runSchedule: nil,
-		})
 	// register basic components
 	w.RegisterComponents(
 		"TagList,GenericTags",
@@ -151,23 +142,17 @@ func NewWorld(spec map[string]any) *World {
 		destructured.DistanceHasherGridY,
 		w,
 	)
-	w.RuntimeSharer.RunnerMap["distance-query-spatial-hasher"].Add(
-		&LogicUnit{
-			name:    "distance-query-spatial-hasher",
-			worldID: w.IdGen.Next(),
-			f: func(dt_ms float64) {
-				w.SpatialHasher.Update()
-			},
-			active:      true,
-			runSchedule: nil,
-		})
 
 	return w
 }
 
 func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	t0 := time.Now()
-	overunder_ms, starved := w.RuntimeSharer.Share(allowance_ms)
+	// process entity manager and spatial hash before anything
+	w.em.Update(allowance_ms / 8)
+	w.SpatialHasher.Update()
+	remaining_ms := float64(time.Since(t0).Nanoseconds()) / 1e6
+	overunder_ms, starved := w.RuntimeSharer.Share(remaining_ms)
 	if starved > 0 {
 		logWarning("Starvation of RuntimeLimiters occuring in World.Update(); Logic Units will be getting run less frequently.")
 	}

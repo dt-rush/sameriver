@@ -39,24 +39,27 @@ import (
 )
 
 type RuntimeLimitSharer struct {
-	runIX            int
-	runners          []*RuntimeLimiter
-	RunnerMap        map[string]*RuntimeLimiter
-	runnerNames      map[*RuntimeLimiter]string
-	addRemoveChannel chan AddRemoveLogicEvent
+	runIX       int
+	runners     []*RuntimeLimiter
+	RunnerMap   map[string]*RuntimeLimiter
+	runnerNames map[*RuntimeLimiter]string
+	// normally we evenly divide, but this can be overridden
+	InitialShareScale map[string]float64
+	addRemoveChannel  chan AddRemoveLogicEvent
 }
 
 func NewRuntimeLimitSharer() *RuntimeLimitSharer {
 	r := &RuntimeLimitSharer{
-		runners:          make([]*RuntimeLimiter, 0),
-		RunnerMap:        make(map[string]*RuntimeLimiter),
-		runnerNames:      make(map[*RuntimeLimiter]string),
-		addRemoveChannel: make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
+		runners:           make([]*RuntimeLimiter, 0),
+		RunnerMap:         make(map[string]*RuntimeLimiter),
+		runnerNames:       make(map[*RuntimeLimiter]string),
+		InitialShareScale: make(map[string]float64),
+		addRemoveChannel:  make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
 	}
 	return r
 }
 
-func (r *RuntimeLimitSharer) RegisterRunner(name string) *RuntimeLimiter {
+func (r *RuntimeLimitSharer) registerRunner(name string, p float64) *RuntimeLimiter {
 	if _, ok := r.RunnerMap[name]; ok {
 		panic(fmt.Sprintf("Trying to double-add RuntimeLimiter %s", name))
 	}
@@ -64,7 +67,18 @@ func (r *RuntimeLimitSharer) RegisterRunner(name string) *RuntimeLimiter {
 	r.runners = append(r.runners, runner)
 	r.RunnerMap[name] = runner
 	r.runnerNames[runner] = name
+	r.InitialShareScale[name] = p
 	return runner
+}
+
+func (r *RuntimeLimitSharer) RegisterRunners(spec map[string]float64) {
+	sum := 0.0
+	for _, k := range spec {
+		sum += k
+	}
+	for name, k := range spec {
+		r.registerRunner(name, k/sum)
+	}
 }
 
 func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, starved int) {
@@ -91,12 +105,15 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 			considered++
 			runner := r.runners[r.runIX]
 			var runnerAllowance float64
+			// if not starved, divide according to initialsharescale
 			if !starvedMode {
-				runnerAllowance = toShare_ms / float64(len(r.runners))
+				p := r.InitialShareScale[r.runnerNames[runner]]
+				runnerAllowance = toShare_ms * p
 			} else {
 				logRuntimeLimiter("|||||| %f * (%f / %f)", toShare_ms, runner.starvation, lastStarvation)
 				runnerAllowance = toShare_ms * (runner.starvation / lastStarvation)
 			}
+
 			logRuntimeLimiter("%s.starvation = %f", r.runnerNames[runner], runner.starvation)
 			logRuntimeLimiter("Run()? starvedMode: %t, starvedMode: %t, runner.starvation: %f", starvedMode, starvedMode, runner.starvation)
 			if !starvedMode || (starvedMode && runner.starvation != 0) {
@@ -146,9 +163,11 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 func (r *RuntimeLimitSharer) DumpStats() map[string](map[string]float64) {
 	stats := make(map[string](map[string]float64))
 	stats["totals"] = make(map[string]float64)
+	stats["starvation"] = make(map[string]float64)
 	for name, r := range r.RunnerMap {
 		runnerStats, totals := r.DumpStats()
 		stats[name] = runnerStats
+		stats["starvation"][name] = r.starvation
 		stats["totals"][name] = totals
 	}
 	return stats

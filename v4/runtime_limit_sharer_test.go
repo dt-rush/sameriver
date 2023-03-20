@@ -7,10 +7,122 @@ import (
 	"time"
 )
 
+func TestRuntimeLimitShare(t *testing.T) {
+	w := testingWorld()
+	sharer := NewRuntimeLimitSharer()
+	counters := make([]int, 0)
+
+	const N = 3
+	const M = 3
+	const LOOPS = 5
+	const SLEEP = 16
+
+	sharer.RegisterRunners(map[string]float64{
+		"basic": 1,
+		"extra": 1,
+	})
+
+	for i := 0; i < N; i++ {
+		func(i int) {
+			counters = append(counters, 0) // jet fuel can't melt steel beams
+			sharer.RunnerMap["basic"].Add(
+				&LogicUnit{
+					name:    fmt.Sprintf("basic-%d", i),
+					worldID: w.IdGen.Next(),
+					f: func(dt_ms float64) {
+						time.Sleep(SLEEP)
+						counters[i] += 1
+					},
+					active:      true,
+					runSchedule: nil})
+		}(i)
+	}
+	for i := 0; i < M; i++ {
+		func(i int) {
+			counters = append(counters, 0) // jet fuel can't melt steel beams
+			sharer.RunnerMap["extra"].Add(
+				&LogicUnit{
+					name:    fmt.Sprintf("extra-%d", i),
+					worldID: w.IdGen.Next(),
+					f: func(dt_ms float64) {
+						time.Sleep(SLEEP)
+						counters[i] += 1
+					},
+					active:      true,
+					runSchedule: nil})
+		}(i)
+	}
+	for i := 0; i < LOOPS; i++ {
+		sharer.Share((N+M)*SLEEP + 100)
+		time.Sleep(FRAME_DURATION)
+	}
+	expected := N*LOOPS + M*LOOPS
+	sum := 0
+	for _, counter := range counters {
+		sum += counter
+
+	}
+	for _, l := range sharer.RunnerMap["basic"].logicUnits {
+		Logger.Printf("basic.%s: h%d", l.name, l.hotness)
+	}
+	for _, l := range sharer.RunnerMap["extra"].logicUnits {
+		Logger.Printf("extra.%s: h%d", l.name, l.hotness)
+	}
+	if sum < expected {
+		t.Fatalf("didn't share runtime properly; expected >= %d, got %d", expected, sum)
+	}
+}
+
+func TestRuntimeLimitShareInsertWhileRunning(t *testing.T) {
+	w := testingWorld()
+	getCount := func(doInsert bool) int {
+		sharer := NewRuntimeLimitSharer()
+		counter := 0
+		const N = 3
+		const LOOPS = 5
+		const SLEEP = 16
+		sharer.RegisterRunners(map[string]float64{
+			"basic": 1,
+		})
+		insert := func(i int) {
+			sharer.RunnerMap["basic"].Add(
+				&LogicUnit{
+					name:    fmt.Sprintf("basic-%d", i),
+					worldID: w.IdGen.Next(),
+					f: func(dt_ms float64) {
+						time.Sleep(SLEEP)
+						counter += 1
+					},
+					active:      true,
+					runSchedule: nil})
+		}
+		for i := 0; i < N; i++ {
+			insert(i)
+		}
+		for i := 0; i < LOOPS; i++ {
+			// insert with 3 loops left to go
+			if doInsert && i == LOOPS-3 {
+				insert(N + i)
+			}
+			// ensure there's always enough time to run every one
+			sharer.Share(5 * N * SLEEP)
+			time.Sleep(FRAME_DURATION)
+		}
+		return counter
+	}
+	plain := getCount(false)
+	inserted := getCount(true)
+	if inserted <= plain {
+		t.Fatalf("didn't share runtime properly, expected inserted run to have higher counter")
+	}
+}
+
 func TestRuntimeLimitSharerLoad(t *testing.T) {
 	share := NewRuntimeLimitSharer()
-	share.RegisterRunner("other")
-	share.RegisterRunner("loadtest")
+	share.RegisterRunners(map[string]float64{
+		"other":    1,
+		"loadtest": 1,
+	})
 	r := share.RunnerMap["loadtest"]
 
 	// time.Sleep doesn't like amounts < 1ms, so we scale up the time axis
@@ -149,7 +261,9 @@ getting (attempted, modulo roundrobin necessities) runtime limiting
 */
 func TestRuntimeLimitSharerCapacity(t *testing.T) {
 	share := NewRuntimeLimitSharer()
-	share.RegisterRunner("capacitytest")
+	share.RegisterRunners(map[string]float64{
+		"capacitytest": 1,
+	})
 	r := share.RunnerMap["capacitytest"]
 
 	// time.Sleep doesn't like amounts < 1ms, so we scale up the time axis
