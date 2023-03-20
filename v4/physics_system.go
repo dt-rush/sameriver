@@ -132,9 +132,7 @@ func (p *PhysicsSystem) ParallelUpdate(dt_ms float64) {
 		go func(startIndex, endIndex int) {
 			for j := startIndex; j < endIndex; j++ {
 				e := p.physicsEntities.entities[j]
-				if e.Active && !e.Despawned {
-					p.physics(e, dt_ms)
-				}
+				p.physics(e, dt_ms)
 			}
 			wg.Done()
 		}(startIndex, endIndex)
@@ -148,15 +146,7 @@ func (p *PhysicsSystem) SingleThreadUpdate(dt_ms float64) {
 	// be preempted while computing physics (this is very good, get it over with)
 	for i := range p.physicsEntities.entities {
 		e := p.physicsEntities.entities[i]
-		// TODO: guards like these are necessary because UpdatedEntityLists
-		// can contain references to entities that were only just put
-		// into the despawn buffered channel of the entitymanager
-		// should we not just ditch the whole spawn despawn channel idea
-		// and have spawn / despawn always be immediate, updating all
-		// updatedentitylists?
-		if e.Active {
-			p.physics(e, dt_ms)
-		}
+		p.physics(e, dt_ms)
 	}
 }
 

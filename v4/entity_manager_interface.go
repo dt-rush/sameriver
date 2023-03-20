@@ -9,7 +9,6 @@ type EntityManagerInterface interface {
 	Spawn(spec map[string]any) *Entity
 	QueueSpawn(spec map[string]any)
 	Despawn(e *Entity)
-	QueueDespawn(e *Entity)
 	DespawnAll()
 	Activate(e *Entity)
 	Deactivate(e *Entity)

@@ -1,19 +1,5 @@
 package sameriver
 
-// the EntityManager is requested to despawn an entity
-type DespawnRequestData struct {
-	Entity *Entity
-}
-
-// process the despawn requests in the channel buffer
-func (m *EntityManager) processDespawnChannel() {
-	n := len(m.despawnSubscription.C)
-	for i := 0; i < n; i++ {
-		e := <-m.despawnSubscription.C
-		m.Despawn(e.Data.(DespawnRequestData).Entity)
-	}
-}
-
 // User facing function which is used to drain the state of the
 // entity manager, and will also kill any pending spawn requests
 func (m *EntityManager) DespawnAll() {
@@ -35,16 +21,5 @@ func (m *EntityManager) Despawn(e *Entity) {
 		m.entityIDAllocator.deallocate(e)
 		e.RemoveAllLogics()
 		m.setActiveState(e, false)
-	}
-}
-
-func (m *EntityManager) QueueDespawn(e *Entity) {
-	req := DespawnRequestData{Entity: e}
-	if len(m.despawnSubscription.C) >= EVENT_SUBSCRIBER_CHANNEL_CAPACITY {
-		go func() {
-			m.despawnSubscription.C <- Event{"despawn-request", req}
-		}()
-	} else {
-		m.despawnSubscription.C <- Event{"despawn-request", req}
 	}
 }

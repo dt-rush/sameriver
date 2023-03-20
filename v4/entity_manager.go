@@ -54,7 +54,6 @@ func (m *EntityManager) Components() *ComponentTable {
 func (m *EntityManager) Update(allowance_ms float64) float64 {
 	t0 := time.Now()
 	// TODO: base spawning off allowance. Spawn enough and do no more.
-	m.processDespawnChannel()
 	m.processSpawnChannel()
 	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1e6
 	return allowance_ms - dt_ms

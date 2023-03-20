@@ -16,10 +16,6 @@ func (w *World) QueueSpawn(spec map[string]any) {
 	w.em.QueueSpawn(spec)
 }
 
-func (w *World) QueueDespawn(e *Entity) {
-	w.em.QueueDespawn(e)
-}
-
 func (w *World) Despawn(e *Entity) {
 	w.em.Despawn(e)
 	w.RemoveAllEntityLogics(e)

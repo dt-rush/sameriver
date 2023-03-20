@@ -96,21 +96,6 @@ func EntityManagerInterfaceTestDespawn(
 	}
 }
 
-func EntityManagerInterfaceTestQueueDespawn(
-	em EntityManagerInterface, t *testing.T) {
-
-	e := testingSpawnSimple(em)
-	em.QueueDespawn(e)
-	// sleep long enough for the event to appear on the channel
-	time.Sleep(FRAME_DURATION)
-	em.Update(FRAME_MS / 2)
-	total, _ := em.NumEntities()
-	if total != 0 {
-		t.Fatal("should have despawned an entity after processing despawn " +
-			"subscription")
-	}
-}
-
 func EntityManagerInterfaceTestDespawnAll(
 	em EntityManagerInterface, t *testing.T) {
 

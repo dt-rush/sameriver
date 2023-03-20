@@ -43,14 +43,6 @@ func TestWorldDespawn(t *testing.T) {
 	EntityManagerInterfaceTestDespawn(testingWorld(), t)
 }
 
-func TestEntityManagerQueueDespawn(t *testing.T) {
-	EntityManagerInterfaceTestQueueDespawn(testingWorld().em, t)
-}
-
-func TestWorldQueueDespawn(t *testing.T) {
-	EntityManagerInterfaceTestQueueDespawn(testingWorld(), t)
-}
-
 func TestEntityManagerDespawnAll(t *testing.T) {
 	EntityManagerInterfaceTestDespawnAll(testingWorld().em, t)
 }
