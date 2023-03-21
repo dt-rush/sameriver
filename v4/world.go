@@ -151,11 +151,9 @@ func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	// process entity manager and spatial hash before anything
 	w.em.Update(allowance_ms / 8)
 	w.SpatialHasher.Update()
-	remaining_ms := float64(time.Since(t0).Nanoseconds()) / 1e6
-	overunder_ms, starved := w.RuntimeSharer.Share(remaining_ms)
-	if starved > 0 {
-		logWarning("Starvation of RuntimeLimiters occuring in World.Update(); Logic Units will be getting run less frequently.")
-	}
+	remaining_ms := allowance_ms - float64(time.Since(t0).Nanoseconds())/1e6
+	w.RuntimeSharer.Share(remaining_ms)
+
 	// maintain total runtime moving average
 	total := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	if w.totalRuntimeAvg_ms == nil {
@@ -236,7 +234,7 @@ func (w *World) addSystem(s System) {
 	// immediately after RegisterSystems(), the LogicUnit will be in the runner
 	// to set the runSchedule on
 	l := &LogicUnit{
-		name:        name,
+		name:        fmt.Sprintf("%s.Update()", name),
 		f:           s.Update,
 		active:      true,
 		runSchedule: nil,
@@ -501,9 +499,9 @@ func (w *World) DumpStats() map[string](map[string]float64) {
 	stats := w.RuntimeSharer.DumpStats()
 	// add total Update() runtime avg
 	if w.totalRuntimeAvg_ms != nil {
-		stats["totals"]["total"] = *w.totalRuntimeAvg_ms
+		stats["totals"]["World.Update()"] = *w.totalRuntimeAvg_ms
 	} else {
-		stats["totals"]["total"] = 0.0
+		stats["totals"]["World.Update()"] = 0.0
 	}
 	return stats
 }

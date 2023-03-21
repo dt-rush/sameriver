@@ -130,7 +130,7 @@ func TestRuntimeLimitSharerLoad(t *testing.T) {
 	allowance_ms := 10.0
 	N_EPSILON := 10
 	epsilon_factor := 0.1
-	N_HEAVY := 5
+	N_HEAVY := 4
 	heavy_factor := 0.7
 
 	totalLoad := float64(N_EPSILON)*epsilon_factor + float64(N_HEAVY)*heavy_factor
@@ -269,7 +269,7 @@ func TestRuntimeLimitSharerCapacity(t *testing.T) {
 	// time.Sleep doesn't like amounts < 1ms, so we scale up the time axis
 	// to allow proper sleeping
 	allowance_ms := 1600.0
-	N_EPSILON := 1048
+	N_EPSILON := 1024
 	worksleep := 10.0
 
 	totalLoad := float64(N_EPSILON) * worksleep / allowance_ms

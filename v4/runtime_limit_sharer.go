@@ -32,11 +32,19 @@ each RuntimeLimiter.
 package sameriver
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/TwiN/go-color"
 )
+
+type RuntimeLimitShareStats struct {
+	overunder_ms   float64
+	count          int
+	starved        int
+	totallyStarved int
+}
 
 type RuntimeLimitSharer struct {
 	runIX       int
@@ -45,7 +53,13 @@ type RuntimeLimitSharer struct {
 	runnerNames map[*RuntimeLimiter]string
 	// normally we evenly divide, but this can be overridden
 	InitialShareScale map[string]float64
-	addRemoveChannel  chan AddRemoveLogicEvent
+
+	// buffered channel for queueing logic add removes
+	addRemoveChannel chan AddRemoveLogicEvent
+
+	// used for rate-limiting warning logs
+	logStarved        PrintfLike
+	logTotallyStarved PrintfLike
 }
 
 func NewRuntimeLimitSharer() *RuntimeLimitSharer {
@@ -54,7 +68,10 @@ func NewRuntimeLimitSharer() *RuntimeLimitSharer {
 		RunnerMap:         make(map[string]*RuntimeLimiter),
 		runnerNames:       make(map[*RuntimeLimiter]string),
 		InitialShareScale: make(map[string]float64),
+
 		addRemoveChannel:  make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
+		logStarved:        logWarningRateLimited(10000),
+		logTotallyStarved: logWarningRateLimited(10000),
 	}
 	return r
 }
@@ -81,9 +98,12 @@ func (r *RuntimeLimitSharer) RegisterRunners(spec map[string]float64) {
 	}
 }
 
-func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, starved int) {
+func (r *RuntimeLimitSharer) Share(allowance_ms float64) (stats RuntimeLimitShareStats) {
 	tStart := time.Now()
-	overunder_ms = allowance_ms
+	// set all starvation to 1.0
+	for _, r := range r.runners {
+		r.starvation = 1.0
+	}
 	// while we have allowance_ms, keep trying to run all runners
 	// note: everybody gets firsts before anyone gets seconds; this is controlled
 	// using starvedMode.
@@ -94,44 +114,48 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 	remaining_ms := allowance_ms
 	starvedMode := false
 	var lastStarvation float64
-	logRuntimeLimiter("\n====================\nshare loop\n====================\n")
+	logRuntimeLimiter("\n====================\nShare()\n====================\n")
 	for remaining_ms >= 0 && loop < RUNTIME_LIMIT_SHARER_MAX_LOOPS {
-		toShare_ms := remaining_ms
-		logRuntimeLimiter("\n===\nloop = %d, total share = %f ms\n===\n", loop, toShare_ms)
+		logRuntimeLimiter("\n===\nloop = %d, total share = %f ms\n===\n", loop, remaining_ms)
 		totalStarvation := 0.0
 		considered := 0
-		var ran int
-		for ran = 0; remaining_ms >= 0 && considered < len(r.runners); {
+		loopShare := remaining_ms
+		logicsRanThisLoop := 0
+		var runnersRan int
+		for runnersRan = 0; remaining_ms >= 0 && considered < len(r.runners); {
 			considered++
 			runner := r.runners[r.runIX]
 			var runnerAllowance float64
 			// if not starved, divide according to initialsharescale
 			if !starvedMode {
 				p := r.InitialShareScale[r.runnerNames[runner]]
-				runnerAllowance = toShare_ms * p
+				logRuntimeLimiter("|||||| %f * %f", remaining_ms, p)
+				runnerAllowance = loopShare * p
 			} else {
-				logRuntimeLimiter("|||||| %f * (%f / %f)", toShare_ms, runner.starvation, lastStarvation)
-				runnerAllowance = toShare_ms * (runner.starvation / lastStarvation)
+				logRuntimeLimiter("|||||| %f * (%f / %f)", remaining_ms, runner.starvation, lastStarvation)
+				runnerAllowance = loopShare * (runner.starvation / lastStarvation)
 			}
 
-			logRuntimeLimiter("%s.starvation = %f", r.runnerNames[runner], runner.starvation)
+			logRuntimeLimiter("%s.starvation before = %f", r.runnerNames[runner], runner.starvation)
 			logRuntimeLimiter("Run()? starvedMode: %t, starvedMode: %t, runner.starvation: %f", starvedMode, starvedMode, runner.starvation)
 			if !starvedMode || (starvedMode && runner.starvation != 0) {
 				logRuntimeLimiter(color.InWhiteOverBlue(fmt.Sprintf("|||||| sharing %f ms to %s", runnerAllowance, r.runnerNames[runner])))
 				// loop > 0 is the parameter of Run(), bonsuTime (AKA bonusTime)
-				runner.Run(runnerAllowance, loop > 0)
+				logicsRan, _ := runner.Run(runnerAllowance, loop > 0)
+				logicsRanThisLoop += logicsRan
 				totalStarvation += runner.starvation
 				if runner.starvation != 0 {
 					logRuntimeLimiter(color.InYellow(fmt.Sprintf("%s.starvation = %f", r.runnerNames[runner], runner.starvation)))
 				}
+				logRuntimeLimiter(color.InPurpleOverWhite(fmt.Sprintf("    %s.starvation after = %f", r.runnerNames[runner], runner.starvation)))
 				remaining_ms = allowance_ms - float64(time.Since(tStart).Nanoseconds())/1e6
 				logRuntimeLimiter(color.InWhiteOverBlue(fmt.Sprintf("[remaining_ms: %f]", remaining_ms)))
-				ran++
+				runnersRan++
 			}
 
 			r.runIX = (r.runIX + 1) % len(r.runners)
 		}
-		if ran == 0 {
+		if runnersRan == 0 || logicsRanThisLoop == 0 {
 			break
 		} else {
 			starvedMode = (totalStarvation > 0)
@@ -142,22 +166,31 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (overunder_ms float64, 
 	if DEBUG_RUNTIME_LIMITER && loop == RUNTIME_LIMIT_SHARER_MAX_LOOPS {
 		logRuntimeLimiter("Reached MAX_LOOPS in RuntimeSharer with %f percent time remaining", 100*remaining_ms/allowance_ms)
 	}
-	// above we were concerned with starvation of logics inside runners, now
-	// we are concerned with starvation of entire runners. This can happen
-	// when a runner that we encounter as we iterate the runners uses up, in
-	// one logic func, more than its own budget + another, so that we quit
-	// the runner iteration at remaining <= 0 before the later runner(s) got
-	// a chance to even run.
-	// starved 0 means they all ran once (even if they didn't complete*)
-	// starved < 0 means at least one ran more than once
-	// starved > 0 means at least one didn't run
-	starved = 0
+
+	// return Share() stats
+	// count runners with nonzero starvation
+	// and count how many runners have starvation 1 (if a prior runner overran
+	// by a lot, and remaining_ms went < 0, killing the loop)
+	stats = RuntimeLimitShareStats{count: len(r.runners)}
 	for i := 0; i < len(r.runners); i++ {
 		if r.runners[i].starvation > 0 {
-			starved++
+			stats.starved++
+		}
+		if r.runners[i].starvation == 1.0 {
+			stats.totallyStarved++
 		}
 	}
-	return remaining_ms, starved
+	stats.overunder_ms = allowance_ms - float64(time.Since(tStart).Nanoseconds())/1e6
+	// log warning on starvation every 10 seconds at most
+	if stats.starved > 0 {
+		str, _ := json.MarshalIndent(r.DumpStats(), "", "\t")
+		r.logStarved("Starvation of %d / %d RuntimeLimiters occuring in World.Update(); Logic Units will be getting run less frequently.; world.RuntimeSharer.DumpStats(): %s", stats.starved, stats.count, str)
+	}
+	if stats.totallyStarved > 0 {
+		r.logTotallyStarved("%d / %d are being totally starved; some RuntimeLimiter ran over allowance.", stats.totallyStarved, stats.count)
+	}
+
+	return stats
 }
 
 func (r *RuntimeLimitSharer) DumpStats() map[string](map[string]float64) {

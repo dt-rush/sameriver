@@ -3,9 +3,14 @@ package sameriver
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/TwiN/go-color"
+
+	"go.uber.org/atomic"
 )
+
+type PrintfLike func(format string, params ...any)
 
 // produce a function which will act like fmt.Sprintf but be silent or not
 // based on a supplied boolean value (below the function definition in this
@@ -31,6 +36,19 @@ func SubLogFunction(
 var logWarning = SubLogFunction(
 	"WARNING", true,
 	func(s string) string { return color.InYellow(color.InBold(s)) })
+
+var logWarningRateLimited = func(ms int) PrintfLike {
+	var flag atomic.Uint32
+	return func(format string, params ...any) {
+		if flag.CompareAndSwap(0, 1) {
+			logWarning(format, params...)
+			go func() {
+				time.Sleep(time.Duration(ms) * time.Millisecond)
+				flag.CompareAndSwap(1, 0)
+			}()
+		}
+	}
+}
 
 var DEBUG_EVENTS = os.Getenv("DEBUG_EVENTS") == "true"
 var logEvents = SubLogFunction(
