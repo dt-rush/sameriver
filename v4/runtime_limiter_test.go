@@ -77,12 +77,9 @@ func TestRuntimeLimiterOverrun(t *testing.T) {
 		f:           func(dt_ms float64) { time.Sleep(150 * time.Millisecond) },
 		active:      true,
 		runSchedule: nil})
-	_, remaining_ms := r.Run(100, false)
-	if remaining_ms > 0 {
+	r.Run(100, false)
+	if r.overunder_ms >= 0 {
 		t.Fatal("overrun time not calculated properly")
-	}
-	if !r.overrun {
-		t.Fatal("didn't set overrun flag")
 	}
 }
 
@@ -94,8 +91,8 @@ func TestRuntimeLimiterUnderrun(t *testing.T) {
 		f:           func(dt_ms float64) { time.Sleep(100 * time.Millisecond) },
 		active:      true,
 		runSchedule: nil})
-	_, remaining_ms := r.Run(300, false)
-	if !(remaining_ms > 0 && remaining_ms <= 200) {
+	r.Run(300, false)
+	if !(r.overunder_ms > 0 && r.overunder_ms <= 200) {
 		t.Fatal("underrun time not calculated properly")
 	}
 }

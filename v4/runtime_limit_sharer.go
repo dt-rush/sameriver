@@ -69,9 +69,13 @@ func NewRuntimeLimitSharer() *RuntimeLimitSharer {
 		runnerNames:       make(map[*RuntimeLimiter]string),
 		InitialShareScale: make(map[string]float64),
 
-		addRemoveChannel:  make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
-		logStarved:        logWarningRateLimited(10000),
-		logTotallyStarved: logWarningRateLimited(10000),
+		addRemoveChannel: make(chan (AddRemoveLogicEvent), ADD_REMOVE_LOGIC_CHANNEL_CAPACITY),
+		// warn starvation every 10 mins at most
+		// if you want to actually monitor this more accurately,
+		// don't use logs - instead programmatically monitor the stats
+		// object output of Share() and the output of DumpStats()
+		logStarved:        logWarningRateLimited(10 * 60 * 1000),
+		logTotallyStarved: logWarningRateLimited(10 * 60 * 1000),
 	}
 	return r
 }
@@ -141,8 +145,8 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (stats RuntimeLimitShar
 			if !starvedMode || (starvedMode && runner.starvation != 0) {
 				logRuntimeLimiter(color.InWhiteOverBlue(fmt.Sprintf("|||||| sharing %f ms to %s", runnerAllowance, r.runnerNames[runner])))
 				// loop > 0 is the parameter of Run(), bonsuTime (AKA bonusTime)
-				logicsRan, _ := runner.Run(runnerAllowance, loop > 0)
-				logicsRanThisLoop += logicsRan
+				runner.Run(runnerAllowance, loop > 0)
+				logicsRanThisLoop += runner.ran
 				totalStarvation += runner.starvation
 				if runner.starvation != 0 {
 					logRuntimeLimiter(color.InYellow(fmt.Sprintf("%s.starvation = %f", r.runnerNames[runner], runner.starvation)))

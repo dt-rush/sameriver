@@ -73,8 +73,8 @@ type RuntimeLimiter struct {
 
 	// used to keep a running average of the entire runtime
 	totalRuntime_ms *float64
-	// overrun flag gets set whenever we are exceeding the allowance_ms
-	overrun bool
+	// ran : number that ran by any means
+	ran int
 	// ranRobin : number that ran by round robin since last time bonsuTime = false
 	// (that is, when loop = 0 in Share())
 	ranRobin int
@@ -101,6 +101,9 @@ type RuntimeLimiter struct {
 	// minus time it takes to execute)
 	// after being set the first time, tracks a moving avg
 	loopOverhead_ms float64
+	// the amount of time we didn't use in the last Run() call (negative if
+	// we overran the allowance)
+	overunder_ms float64
 }
 
 func NewRuntimeLimiter() *RuntimeLimiter {
@@ -119,7 +122,7 @@ func NewRuntimeLimiter() *RuntimeLimiter {
 	}
 }
 
-func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (ran int, remaining_ms float64) {
+func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) {
 	tStart := time.Now()
 
 	poll_remaining_ms := func() float64 {
@@ -133,7 +136,6 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (ran int, rem
 		// else, startix remains where it was on last time loop = 0,
 		r.finished = false
 	}
-	r.overrun = false
 	if len(r.logicUnits) == 0 {
 		r.finished = true
 		r.starvation = 0
@@ -154,7 +156,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (ran int, rem
 	worstOverheadThisTime := 0.0
 	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
 	bailOpp := false
-	remaining_ms = poll_remaining_ms()
+	remaining_ms := poll_remaining_ms()
 	for remaining_ms > 0 && len(r.logicUnits) > 0 && !bailOpp {
 		logRuntimeLimiter("[\\] remaining_ms: %f", remaining_ms)
 		// don't overhead bail on loop = 0
@@ -295,7 +297,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (ran int, rem
 				r.normalizeHotness(logic.hotness)
 				r.lastEnd[logic] = time.Now()
 				r.updateEstimate(logic, func_ms)
-				ran++
+				r.ran++
 				switch mode {
 				case RoundRobin:
 					r.ranRobin++
@@ -337,29 +339,8 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) (ran int, rem
 			worstOverheadThisTime = overhead
 		}
 	}
-	r.updateOverhead(worstOverheadThisTime)
 	total_ms := float64(time.Since(tStart).Nanoseconds()) / 1.0e6
-	logRuntimeLimiter(color.InWhiteOverGreen(fmt.Sprintf("Run() total: %f ms", total_ms)))
-	// maintain moving average of totalRuntime_ms
-	if r.totalRuntime_ms == nil {
-		r.totalRuntime_ms = &total_ms
-	} else {
-		*r.totalRuntime_ms = (*r.totalRuntime_ms + total_ms) / 2.0
-	}
-	// calculate overunder
-	overunder_ms := allowance_ms - total_ms
-	if overunder_ms < 0 {
-		r.overrun = true
-	}
-	// calculate starved
-	if r.ranRobin == 0 {
-		r.starvation = 1
-	} else if r.ranRobin > 0 && r.ranRobin <= len(r.logicUnits) {
-		r.starvation = float64(len(r.logicUnits)-r.ranRobin-r.notYetScheduled) / float64(len(r.logicUnits))
-	} else if r.ranRobin > len(r.logicUnits) {
-		r.starvation = 0
-	}
-	return ran, overunder_ms
+	r.updateState(worstOverheadThisTime, allowance_ms, total_ms)
 }
 
 func (r *RuntimeLimiter) tick(logic *LogicUnit) bool {
@@ -376,6 +357,28 @@ func (r *RuntimeLimiter) updateOverhead(worstThisTime float64) {
 	} else {
 		// else decay toward better worst overhead
 		r.loopOverhead_ms = 0.9*r.loopOverhead_ms + 0.1*worstThisTime
+	}
+}
+
+func (r *RuntimeLimiter) updateState(worstOverheadThisTime, allowance_ms, total_ms float64) {
+	// update overhead
+	r.updateOverhead(worstOverheadThisTime)
+	// maintain moving average of totalRuntime_ms
+	logRuntimeLimiter(color.InWhiteOverGreen(fmt.Sprintf("Run() total: %f ms", total_ms)))
+	if r.totalRuntime_ms == nil {
+		r.totalRuntime_ms = &total_ms
+	} else {
+		*r.totalRuntime_ms = (*r.totalRuntime_ms + total_ms) / 2.0
+	}
+	// calculate overunder
+	r.overunder_ms = allowance_ms - total_ms
+	// calculate starved
+	if r.ranRobin == 0 {
+		r.starvation = 1
+	} else if r.ranRobin > 0 && r.ranRobin <= len(r.logicUnits) {
+		r.starvation = float64(len(r.logicUnits)-r.ranRobin-r.notYetScheduled) / float64(len(r.logicUnits))
+	} else if r.ranRobin > len(r.logicUnits) {
+		r.starvation = 0
 	}
 }
 
