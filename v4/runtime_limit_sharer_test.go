@@ -3,6 +3,7 @@ package sameriver
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 )
@@ -349,14 +350,14 @@ func TestRuntimeLimitSharerWeightVariance(t *testing.T) {
 
 	// time.Sleep doesn't like amounts < 1ms, so we scale up the time axis
 	// to allow proper sleeping
-	allowance_ms := 1600.0
-	N_LOGIC := 12
+	allowance_ms := 500.0
+	N_LOGIC := 24
 	minWorksleep := 10.0
-	maxWorksleep := 300.0
+	maxWorksleep := 100.0
 
 	totalLoad := 0.0
 	for i := 0; i < N_LOGIC; i++ {
-		totalLoad += minWorksleep + (maxWorksleep-minWorksleep)*(float64(i)/float64(N_LOGIC))
+		totalLoad += minWorksleep + (maxWorksleep-minWorksleep)*math.Pow((float64(i)/float64(N_LOGIC)), 2)
 	}
 	totalLoad /= allowance_ms
 
@@ -384,9 +385,9 @@ func TestRuntimeLimitSharerWeightVariance(t *testing.T) {
 			hotnessSum += float64(l.hotness)
 			Logger.Printf("%s: h%d", l.name, l.hotness)
 		}
-		ideal := 1 / totalLoad
+		ideal := float64(frame+1) * (1 / totalLoad)
 		realised := hotnessSum / float64(len(r.logicUnits))
-		Logger.Printf("no-overhead avg hotness expected: h%.3f", float64(frame+1)*ideal)
+		Logger.Printf("no-overhead avg hotness expected: h%.3f", ideal)
 		Logger.Printf("realised avg hotness: h%.3f", realised)
 		Logger.Printf("ratio: %f", realised/ideal)
 	}
@@ -406,7 +407,7 @@ func TestRuntimeLimitSharerWeightVariance(t *testing.T) {
 						if observeSleep {
 							t0 = time.Now()
 						}
-						worksleep := minWorksleep + (maxWorksleep-minWorksleep)*(float64(i)/float64(N_LOGIC))
+						worksleep := minWorksleep + (maxWorksleep-minWorksleep)*math.Pow((float64(i)/float64(N_LOGIC)), 2)
 						Logger.Printf("sleeping %f ms", worksleep)
 						time.Sleep(time.Duration(worksleep*1e6) * time.Nanosecond)
 						if observeSleep {
@@ -429,9 +430,7 @@ func TestRuntimeLimitSharerWeightVariance(t *testing.T) {
 	}
 
 	// since it's never run before, running the logic will set its estimate
-	runFrame(1.0)
-	runFrame(1.0)
-	runFrame(1.0)
-	runFrame(1.0)
-	runFrame(1.0)
+	for i := 0; i < 5; i++ {
+		runFrame(1.0)
+	}
 }
