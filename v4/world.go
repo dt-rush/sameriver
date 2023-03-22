@@ -218,7 +218,7 @@ func (w *World) RegisterSystems(systems ...System) {
 func (w *World) SetSystemSchedule(systemName string, period_ms float64) {
 	Logger.Printf("Setting %s period_ms %f", systemName, period_ms)
 	s := w.systems[systemName]
-	name := reflect.TypeOf(s).Elem().Name()
+	name := fmt.Sprintf("%s.Update()", reflect.TypeOf(s).Elem().Name())
 	w.RuntimeSharer.RunnerMap["systems"].SetSchedule(name, period_ms)
 }
 
