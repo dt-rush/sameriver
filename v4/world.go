@@ -501,9 +501,9 @@ func (w *World) DumpStats() map[string](map[string]float64) {
 	stats := w.RuntimeSharer.DumpStats()
 	// add total Update() runtime avg
 	if w.totalRuntimeAvg_ms != nil {
-		stats["totals"]["World.Update()"] = *w.totalRuntimeAvg_ms
+		stats["__totals"]["World.Update()"] = *w.totalRuntimeAvg_ms
 	} else {
-		stats["totals"]["World.Update()"] = 0.0
+		stats["__totals"]["World.Update()"] = 0.0
 	}
 	return stats
 }

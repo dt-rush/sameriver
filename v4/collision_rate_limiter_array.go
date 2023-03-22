@@ -104,6 +104,7 @@ func (a *CollisionRateLimiterArray) GetRateLimiter(i int, j int) *atomic.Uint32 
 func (a *CollisionRateLimiterArray) Do(i, j int, f func()) {
 	r := a.GetRateLimiter(i, j)
 	if r.CompareAndSwap(0, 1) {
+		Logger.Printf("Do()")
 		f()
 		go func() {
 			time.Sleep(a.delay)

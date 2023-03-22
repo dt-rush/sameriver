@@ -76,45 +76,58 @@ func TestRuntimeLimitShare(t *testing.T) {
 
 func TestRuntimeLimitShareInsertWhileRunning(t *testing.T) {
 	w := testingWorld()
-	getCount := func(doInsert bool) int {
+
+	const N = 3
+	const LOOPS = 5
+	const SLEEP = 16
+
+	getCount := func(doInsert bool) (int, int) {
 		sharer := NewRuntimeLimitSharer()
 		counter := 0
-		const N = 3
-		const LOOPS = 5
-		const SLEEP = 16
+		insertedCounter := 0
+
 		sharer.RegisterRunners(map[string]float64{
 			"basic": 1,
 		})
-		insert := func(i int) {
+		insert := func(i int, plain bool) {
 			sharer.RunnerMap["basic"].Add(
 				&LogicUnit{
 					name:    fmt.Sprintf("basic-%d", i),
 					worldID: w.IdGen.Next(),
 					f: func(dt_ms float64) {
-						time.Sleep(SLEEP)
-						counter += 1
+						time.Sleep(SLEEP * time.Millisecond)
+						if plain {
+							counter++
+						} else {
+							insertedCounter++
+						}
 					},
 					active:      true,
 					runSchedule: nil})
 		}
 		for i := 0; i < N; i++ {
-			insert(i)
+			insert(i, true)
 		}
 		for i := 0; i < LOOPS; i++ {
 			// insert with 3 loops left to go
 			if doInsert && i == LOOPS-3 {
-				insert(N + i)
+				Logger.Println("inserting")
+				insert(N+i, false)
 			}
 			// ensure there's always enough time to run every one
 			sharer.Share(5 * N * SLEEP)
 			time.Sleep(FRAME_DURATION)
 		}
-		return counter
+		return counter, insertedCounter
 	}
-	plain := getCount(false)
-	inserted := getCount(true)
-	if inserted <= plain {
-		t.Fatalf("didn't share runtime properly, expected inserted run to have higher counter")
+	plainPlain, plainInserted := getCount(false)
+	insertedPlain, insertedInserted := getCount(true)
+	Logger.Printf("plainPlain: %d", plainPlain)
+	Logger.Printf("plainInserted: %d", plainInserted)
+	Logger.Printf("insertedPlain: %d", insertedPlain)
+	Logger.Printf("insertedInserted: %d", insertedInserted)
+	if !(insertedPlain < plainPlain) || insertedInserted == 0 {
+		t.Fatal("Should have shared runtime with partway inserted logic")
 	}
 }
 

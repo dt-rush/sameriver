@@ -75,7 +75,7 @@ func TestCollisionRateLimit(t *testing.T) {
 	w.Update(1)
 	w.Update(FRAME_MS / 2)
 	time.Sleep(FRAME_DURATION)
-	if len(ec.C) == 4 {
+	if len(ec.C) != 1 {
 		t.Fatal("collision rate-limiter didn't prevent collision duplication")
 	}
 	for len(ec.C) > 0 {
@@ -86,14 +86,13 @@ func TestCollisionRateLimit(t *testing.T) {
 	// check if we can reset the rate lmiiter
 	w.Update(FRAME_MS / 2)
 	time.Sleep(5 * FRAME_DURATION)
-	Logger.Printf("Sleeping %f ms", float64(5*FRAME_DURATION/time.Millisecond))
+	Logger.Printf("Sleeping %f ms", float64(5*FRAME_MS))
 	cs.rateLimiterArray.Reset(e)
+	Logger.Printf("len(ec.C)=%d", len(ec.C))
 	Logger.Printf("---------------- frame 2")
 	w.Update(FRAME_MS / 2)
-	// sleep long enough for the event to appear on the channel
-	time.Sleep(FRAME_DURATION)
 	Logger.Printf("len(ec.C)=%d", len(ec.C))
-	if len(ec.C) != 4 {
+	if len(ec.C) != 2 {
 		t.Fatal("collision rate-limiter reset did not allow second collision")
 	}
 }

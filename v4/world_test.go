@@ -306,7 +306,7 @@ func TestWorldDumpStats(t *testing.T) {
 		t.Fatal("stats not populated properly - should have keys for each " +
 			"subsystem at least")
 	}
-	if _, ok := stats["totals"]["total"]; !ok {
+	if _, ok := stats["__totals"]["World.Update()"]; !ok {
 		t.Fatal("no total update runtime stat included")
 	}
 	// test whether individual runtime limiter DumpStats() corresponds to
