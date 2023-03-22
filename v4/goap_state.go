@@ -1,6 +1,6 @@
 package sameriver
 
-type IntOrFunc interface{}
+type IntOrFunc any
 
 // a state val which can *set* modal values in the worldstate as the
 // action chain runs forward, and which can *read* modal values when

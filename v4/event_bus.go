@@ -12,7 +12,7 @@ import (
 
 type Event struct {
 	Type string
-	Data interface{}
+	Data any
 }
 
 type EventBus struct {
@@ -33,7 +33,7 @@ func NewEventBus(name string) *EventBus {
 	return b
 }
 
-func (b *EventBus) Publish(t string, data interface{}) {
+func (b *EventBus) Publish(t string, data any) {
 	b.notifySubscribers(Event{t, data})
 }
 

@@ -50,7 +50,7 @@ func testingSpawnSpatial(
 
 func testingSpawnCollision(em EntityManagerInterface) *Entity {
 	return em.Spawn(map[string]any{
-		"components": map[string]interface{}{
+		"components": map[string]any{
 			"Vec2D,Position": Vec2D{10, 10},
 			"Vec2D,Box":      Vec2D{4, 4},
 		}})
@@ -58,7 +58,7 @@ func testingSpawnCollision(em EntityManagerInterface) *Entity {
 
 func testingSpawnCollisionRandom(em EntityManagerInterface) *Entity {
 	return em.Spawn(map[string]any{
-		"components": map[string]interface{}{
+		"components": map[string]any{
 			"Vec2D,Position": Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
 			"Vec2D,Box":      Vec2D{5, 5},
 		}})
@@ -66,7 +66,7 @@ func testingSpawnCollisionRandom(em EntityManagerInterface) *Entity {
 
 func testingSpawnSteering(em EntityManagerInterface) *Entity {
 	return em.Spawn(map[string]any{
-		"components": map[string]interface{}{
+		"components": map[string]any{
 			"Vec2D,Position":       Vec2D{0, 0},
 			"Vec2D,Velocity":       Vec2D{0, 0},
 			"Vec2D,Acceleration":   Vec2D{0, 0},
@@ -79,7 +79,7 @@ func testingSpawnSteering(em EntityManagerInterface) *Entity {
 
 func testingSpawnPhysics(em EntityManagerInterface) *Entity {
 	return em.Spawn(map[string]any{
-		"components": map[string]interface{}{
+		"components": map[string]any{
 			"Vec2D,Position":     Vec2D{10, 10},
 			"Vec2D,Velocity":     Vec2D{0, 0},
 			"Vec2D,Acceleration": Vec2D{0, 0},

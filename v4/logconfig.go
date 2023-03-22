@@ -18,10 +18,10 @@ type PrintfLike func(format string, params ...any)
 func SubLogFunction(
 	moduleName string,
 	flag bool,
-	wrapper func(s string) string) func(s string, params ...interface{}) {
+	wrapper func(s string) string) func(s string, params ...any) {
 
 	prefix := fmt.Sprintf("[%s] ", moduleName)
-	return func(format string, params ...interface{}) {
+	return func(format string, params ...any) {
 		switch {
 		case !flag:
 			return

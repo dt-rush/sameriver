@@ -2,7 +2,7 @@ package sameriver
 
 // used so that game code using the engine can define their own contiguous
 // arrays of complex struct types and take advantage of cache-line performance
-// rather than use the `Generic` component type which stores `interface{}`
+// rather than use the `Generic` component type which stores `any`
 // (thus involves dynamic allocation peppered through memory that won't have
 // nice contigous cache lines)
 //
@@ -22,6 +22,6 @@ type CustomContiguousComponent interface {
 	Name() string
 	AllocateTable(n int)
 	ExpandTable(n int)
-	Get(e *Entity) interface{}
-	Set(e *Entity, x interface{})
+	Get(e *Entity) any
+	Set(e *Entity, x any)
 }

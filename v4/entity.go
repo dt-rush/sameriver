@@ -16,7 +16,7 @@ type Entity struct {
 	Lists             []*UpdatedEntityList
 	Logics            map[string]*LogicUnit
 	funcs             *FuncSet
-	mind              map[string]interface{}
+	mind              map[string]any
 }
 
 func (e *Entity) LogicUnitName(name string) string {
@@ -102,14 +102,14 @@ func (e *Entity) HasFunc(name string) bool {
 	return e.funcs.Has(name)
 }
 
-func (e *Entity) GetMind(name string) interface{} {
+func (e *Entity) GetMind(name string) any {
 	if v, ok := e.mind[name]; ok {
 		return v
 	}
 	return nil
 }
 
-func (e *Entity) SetMind(name string, val interface{}) {
+func (e *Entity) SetMind(name string, val any) {
 	e.mind[name] = val
 }
 

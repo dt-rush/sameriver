@@ -25,10 +25,10 @@ func (xyz *XYZComponent) ExpandTable(n int) {
 	extraSpace := make([]XYZ, n)
 	xyz.data = append(xyz.data, extraSpace...)
 }
-func (xyz *XYZComponent) Get(e *Entity) interface{} {
+func (xyz *XYZComponent) Get(e *Entity) any {
 	return xyz.data[e.ID]
 }
-func (xyz *XYZComponent) Set(e *Entity, x interface{}) {
+func (xyz *XYZComponent) Set(e *Entity, x any) {
 	xyz.data[e.ID] = x.(XYZ)
 }
 

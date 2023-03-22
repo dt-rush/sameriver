@@ -48,7 +48,7 @@ func GOAPEffFunc(op string, val int) func(count int, x int) int {
 	}
 }
 
-func NewGOAPAction(spec map[string]interface{}) *GOAPAction {
+func NewGOAPAction(spec map[string]any) *GOAPAction {
 	name := spec["name"].(string)
 	cost := spec["cost"].(int)
 	pres := spec["pres"]

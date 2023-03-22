@@ -30,7 +30,7 @@ type ComponentTable struct {
 	tagListMap         map[string][]TagList
 	intMapMap          map[string][]IntMap
 	floatMapMap        map[string][]FloatMap
-	genericMap         map[string][]interface{}
+	genericMap         map[string][]any
 	cccMap             map[string]CustomContiguousComponent
 }
 
@@ -54,7 +54,7 @@ func NewComponentTable(capacity int) *ComponentTable {
 		tagListMap:         make(map[string][]TagList),
 		intMapMap:          make(map[string][]IntMap),
 		floatMapMap:        make(map[string][]FloatMap),
-		genericMap:         make(map[string][]interface{}),
+		genericMap:         make(map[string][]any),
 		cccMap:             make(map[string]CustomContiguousComponent),
 	}
 }
@@ -119,7 +119,7 @@ func (ct *ComponentTable) expand(n int) {
 	}
 	for name, slice := range ct.genericMap {
 		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], name)
-		extraSpace := make([]interface{}, n)
+		extraSpace := make([]any, n)
 		ct.genericMap[name] = append(slice, extraSpace...)
 	}
 	for name, ccc := range ct.cccMap {
@@ -175,7 +175,7 @@ func (ct *ComponentTable) addComponent(kind, name string) {
 	case "FloatMap":
 		ct.floatMapMap[name] = make([]FloatMap, ct.capacity, 2*ct.capacity)
 	case "Generic":
-		ct.genericMap[name] = make([]interface{}, ct.capacity, 2*ct.capacity)
+		ct.genericMap[name] = make([]any, ct.capacity, 2*ct.capacity)
 	default:
 		panic(fmt.Sprintf("added component of kind %s has no case in component_table.go", kind))
 	}
@@ -409,15 +409,15 @@ func (e *Entity) GetFloatMap(name string) *FloatMap {
 	e.World.em.components.guardInvalidComponentGet(e, name)
 	return &e.World.em.components.floatMapMap[name][e.ID]
 }
-func (e *Entity) GetGeneric(name string) interface{} {
+func (e *Entity) GetGeneric(name string) any {
 	e.World.em.components.guardInvalidComponentGet(e, name)
 	return e.World.em.components.genericMap[name][e.ID]
 }
-func (e *Entity) SetGeneric(name string, val interface{}) {
+func (e *Entity) SetGeneric(name string, val any) {
 	e.World.em.components.guardInvalidComponentGet(e, name)
 	e.World.em.components.genericMap[name][e.ID] = val
 }
-func (e *Entity) GetVal(name string) interface{} {
+func (e *Entity) GetVal(name string) any {
 	e.World.em.components.guardInvalidComponentGet(e, name)
 	kind := e.World.em.components.kinds[name]
 	switch kind {
@@ -450,12 +450,12 @@ func (e *Entity) GetVal(name string) interface{} {
 
 // GetCustom returns the custom component data for the entity
 // NOTE: we have to provide a get and set method since we can't
-// return a pointer to interface{}
-func (e *Entity) GetCustom(name string) interface{} {
+// return a pointer to any
+func (e *Entity) GetCustom(name string) any {
 	e.World.em.components.guardInvalidComponentGet(e, name)
 	return e.World.em.components.cccMap[name].Get(e)
 }
-func (e *Entity) SetCustom(name string, x interface{}) {
+func (e *Entity) SetCustom(name string, x any) {
 	e.World.em.components.guardInvalidComponentGet(e, name)
 	e.World.em.components.cccMap[name].Set(e, x)
 }

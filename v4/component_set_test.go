@@ -10,7 +10,7 @@ func TestInvalidComponentType(t *testing.T) {
 			t.Errorf("Should panic if given component type Vec7D")
 		}
 	}()
-	makeComponentSet(map[string]interface{}{
+	makeComponentSet(map[string]any{
 		"Vec7D,Position": Vec2D{0, 0},
 	})
 }

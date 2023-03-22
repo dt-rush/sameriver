@@ -22,7 +22,7 @@ func TestBlackboardWorldEntities(t *testing.T) {
 
 		var villageEvents *EventChannel
 
-		reactThreat := func(data map[string]interface{}) {
+		reactThreat := func(data map[string]any) {
 			// ( interrupt current plan if we were in GOAP )
 			// add ourselves to responders
 			if _, ok := bb.State["threatResponders"]; !ok {
@@ -69,7 +69,7 @@ func TestBlackboardWorldEntities(t *testing.T) {
 			// handle blackboard events
 			select {
 			case ev := <-villageEvents.C:
-				data := ev.Data.(map[string]interface{})
+				data := ev.Data.(map[string]any)
 				switch data["kind"].(string) {
 				case "threat":
 					reactThreat(data)
@@ -93,7 +93,7 @@ func TestBlackboardWorldEntities(t *testing.T) {
 				"crafts": true,
 			}
 			bb.State["todayRoles"] = make(map[*Entity]string)
-			bb.Events.Publish("village-events", map[string]interface{}{
+			bb.Events.Publish("village-events", map[string]any{
 				"kind": "morning",
 			})
 		}
