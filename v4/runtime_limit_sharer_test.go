@@ -115,7 +115,12 @@ func TestRuntimeLimitShareInsertWhileRunning(t *testing.T) {
 				insert(N+i, false)
 			}
 			// ensure there's always enough time to run every one
-			sharer.Share(5 * N * SLEEP)
+			allowance_ms := float64(5 * N * SLEEP)
+			Logger.Printf("Share allowance_ms: %f", allowance_ms)
+			t0 := time.Now()
+			sharer.Share(allowance_ms)
+			elapsed := float64(time.Since(t0).Nanoseconds()) / 1e6
+			Logger.Printf("Share elapsed ms: %f", elapsed)
 			time.Sleep(FRAME_DURATION)
 		}
 		return counter, insertedCounter

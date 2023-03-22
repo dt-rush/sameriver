@@ -133,28 +133,31 @@ func TestItemSystemSpawnItemEntitySprite(t *testing.T) {
 		Fullscreen: false}
 	// in a real game, the scene Init() gets a Game object and creates a new
 	// sprite system by passing game.Renderer
-	_, renderer := SDLCreateWindowAndRenderer(windowSpec)
-	sprites := NewSpriteSystem(renderer)
+	SDLMainMediaThread(func() {
+		window, renderer := SDLCreateWindowAndRenderer(windowSpec)
+		sprites := NewSpriteSystem(renderer)
 
-	w.RegisterSystems(i, inventories, sprites)
-	i.LoadArchetypesFile("test_data/basic_archetypes.json")
-	coin := i.CreateItemSimple("coin_copper")
-	coinEntity := i.SpawnItemEntity(Vec2D{10, 10}, coin)
-	Logger.Println(coinEntity)
-	// draw the entity
-	coinPos := coinEntity.GetVec2D("Position")
-	coinBox := coinEntity.GetVec2D("Box")
-	srcRect := sdl.Rect{0, 0, int32(coinBox.X), int32(coinBox.Y)}
-	destRect := sdl.Rect{
-		int32(coinPos.X),
-		int32(coinPos.Y),
-		int32(coinPos.X + coinBox.X),
-		int32(coinPos.Y + coinBox.Y),
-	}
-	coinSprite := coinEntity.GetSprite("Sprite")
-	renderer.Copy(coinSprite.Texture, &srcRect, &destRect)
-	renderer.Present()
-	time.Sleep(200 * time.Millisecond)
+		w.RegisterSystems(i, inventories, sprites)
+		i.LoadArchetypesFile("test_data/basic_archetypes.json")
+		coin := i.CreateItemSimple("coin_copper")
+		coinEntity := i.SpawnItemEntity(Vec2D{10, 10}, coin)
+		Logger.Println(coinEntity)
+		// draw the entity
+		coinPos := coinEntity.GetVec2D("Position")
+		coinBox := coinEntity.GetVec2D("Box")
+		srcRect := sdl.Rect{0, 0, int32(coinBox.X), int32(coinBox.Y)}
+		destRect := sdl.Rect{
+			int32(coinPos.X),
+			int32(coinPos.Y),
+			int32(coinPos.X + coinBox.X),
+			int32(coinPos.Y + coinBox.Y),
+		}
+		coinSprite := coinEntity.GetSprite("Sprite")
+		renderer.Copy(coinSprite.Texture, &srcRect, &destRect)
+		renderer.Present()
+		time.Sleep(200 * time.Millisecond)
+		window.Destroy()
+	})
 }
 
 func TestItemSystemDespawnItemEntity(t *testing.T) {
