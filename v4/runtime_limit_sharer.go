@@ -118,7 +118,7 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (stats RuntimeLimitShar
 	remaining_ms := allowance_ms
 	starvedMode := false
 	var lastStarvation float64
-	logRuntimeLimiter("\n====================\nShare()\n====================\n")
+	logRuntimeLimiter("====================\nShare()\n====================\n")
 	for remaining_ms >= 0 && loop < RUNTIME_LIMIT_SHARER_MAX_LOOPS {
 		logRuntimeLimiter("\n===\nloop = %d, total share = %f ms\n===\n", loop, remaining_ms)
 		totalStarvation := 0.0
@@ -156,7 +156,6 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (stats RuntimeLimitShar
 				logRuntimeLimiter(color.InWhiteOverBlue(fmt.Sprintf("[remaining_ms: %f]", remaining_ms)))
 				runnersRan++
 			}
-
 			r.runIX = (r.runIX + 1) % len(r.runners)
 		}
 		if runnersRan == 0 || logicsRanThisLoop == 0 {
@@ -199,13 +198,13 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (stats RuntimeLimitShar
 
 func (r *RuntimeLimitSharer) DumpStats() map[string](map[string]float64) {
 	stats := make(map[string](map[string]float64))
-	stats["totals"] = make(map[string]float64)
-	stats["starvation"] = make(map[string]float64)
+	stats["__totals"] = make(map[string]float64)
+	stats["__starvation"] = make(map[string]float64)
 	for name, r := range r.RunnerMap {
 		runnerStats, totals := r.DumpStats()
 		stats[name] = runnerStats
-		stats["starvation"][name] = r.starvation
-		stats["totals"][name] = totals
+		stats["__starvation"][name] = r.starvation
+		stats["__totals"][name] = totals
 	}
 	return stats
 }

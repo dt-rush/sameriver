@@ -127,6 +127,8 @@ func NewWorld(spec map[string]any) *World {
 		"world-oneshot":  0.5,
 		"world-interval": 0.5,
 	})
+	w.oneshots = w.RuntimeSharer.RunnerMap["world-oneshot"]
+	w.intervals = w.RuntimeSharer.RunnerMap["world-interval"]
 
 	// init entitymanager
 	w.em = NewEntityManager(w)

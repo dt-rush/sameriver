@@ -407,11 +407,35 @@ func TestWorldSetInterval(t *testing.T) {
 		Logger.Println("run")
 		x++
 	}, 100)
+	t0 := time.Now()
+	// iterate for however many frames fit in 516 ms
+	for i := 0; i < 516/FRAME_MS; i++ {
+		t1 := time.Now()
+		w.Update(FRAME_MS)
+		frame_ms := float64(time.Since(t1).Nanoseconds()) / 1e6
+		Logger.Printf("%f ms frame", frame_ms)
+		time.Sleep(time.Duration(math.Max(0, float64(FRAME_MS)-frame_ms)*1e6) * time.Nanosecond)
+	}
+	elapsed := float64(time.Since(t0).Nanoseconds()) / 1e6
+	Logger.Printf("elapsed: %f ms", elapsed)
+	timesRun := int(elapsed / 100)
+	if x != timesRun {
+		t.Fatalf("Should've run setinterval func %d times, ran %d times", timesRun, x)
+	}
+}
+
+func TestWorldSetNInterval(t *testing.T) {
+	w := testingWorld()
+	x := 0
+	w.SetNInterval(func() {
+		Logger.Println("run")
+		x++
+	}, 100, 3)
 	for i := 0; i < 516/FRAME_MS; i++ {
 		w.Update(FRAME_MS)
 		time.Sleep(FRAME_DURATION)
 	}
-	if x != 5 {
-		t.Fatalf("Should've run setinterval func 5 times, ran %d times", x)
+	if x != 3 {
+		t.Fatalf("Should've run setninterval func 3 times, ran %d times", x)
 	}
 }
