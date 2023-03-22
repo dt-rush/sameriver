@@ -130,49 +130,49 @@ const (
 	Opportunistic
 )
 
-func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) {
-	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
-	if len(r.logicUnits) == 0 {
-		r.finished = true
-		r.starvation = 0
-		return
-	}
-
+func (r *RuntimeLimiter) Run(allowance_ms float64, shareLoop int) {
 	tStart := time.Now()
-
+	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
 	poll_remaining_ms := func() float64 {
 		return allowance_ms - float64(time.Since(tStart).Nanoseconds())/1e6
 	}
 
 	r.ProcessAddRemoveLogics()
 
-	if !bonsuTime {
+	if len(r.logicUnits) == 0 {
+		logRuntimeLimiter("no logic units to run")
+		r.finished = true
+		r.starvation = 0
+		return
+	}
+
+	if shareLoop == 0 {
 		r.loopZero()
 	}
 
 	mode := RoundRobin
 	worstOverheadThisTime := 0.0
 	remaining_ms := poll_remaining_ms()
-	for remaining_ms > 0 {
+	for remaining_ms > 0 && (shareLoop > 0 || !r.finished) {
 		logRuntimeLimiter("[\\] remaining_ms: %f", remaining_ms)
 		tLoop := time.Now()
 
 		// select logic according to mode
-		logic, bail, skip := r.iter(mode, remaining_ms, bonsuTime)
+		logic, bail, skip := r.iter(mode, remaining_ms, shareLoop > 0)
 		if bail {
 			break
 		}
 
 		// run function (if it should run)
 		var func_ms float64
-		if !skip && r.shouldRunOrSwitchMode(logic, &mode, poll_remaining_ms(), bonsuTime) {
+		if !skip && r.shouldRunOrSwitchMode(logic, &mode, poll_remaining_ms(), shareLoop > 0) {
 			func_ms = r.run(logic, mode)
-			remaining_ms = poll_remaining_ms()
 			logRuntimeLimiter("remaining after %s: %f", logic.name, remaining_ms)
 		}
+		remaining_ms = poll_remaining_ms()
 
 		// step our iteration index according to mode
-		r.advanceIter(mode, bonsuTime)
+		r.advanceIter(mode, shareLoop > 0)
 
 		// track worst overhead
 		overhead := float64(time.Since(tLoop).Nanoseconds())/1e6 - func_ms
@@ -267,7 +267,7 @@ func (r *RuntimeLimiter) shouldRunOrSwitchMode(logic *LogicUnit, mode *IterMode,
 	// painful function over with rather than stall here forever or wait
 	// to execute it when we get enough allowance (may never happen)
 	// (first update remaining_ms so it's as accurate as possible)
-	estimateLooksGood := hasEstimate && estimate <= remaining_ms
+	estimateLooksGood := estimate <= remaining_ms
 	logRuntimeLimiter("estimateLooksGood: %t", estimateLooksGood)
 	logRuntimeLimiter("estimate: %f", estimate)
 	switch *mode {
@@ -306,6 +306,7 @@ func (r *RuntimeLimiter) shouldRunOrSwitchMode(logic *LogicUnit, mode *IterMode,
 		}
 	case Opportunistic:
 		if hasEstimate && !estimateLooksGood {
+			logRuntimeLimiter("opportunistic skipping bad estimate logic")
 			return false
 		}
 	}
@@ -344,10 +345,10 @@ func (r *RuntimeLimiter) run(logic *LogicUnit, mode IterMode) (func_ms float64) 
 			logRuntimeLimiter("----------------------------------------- " + color.InCyan(fmt.Sprintf("OPPORTUNISTIC: %s", logic.name)))
 		}
 	}
-	r.lastRun[logic] = time.Now()
 	t0 := time.Now()
 	// get real time since last run
 	dt_ms := float64(time.Since(r.lastRun[logic]).Nanoseconds()) / 1e6
+	r.lastRun[logic] = time.Now()
 	logic.f(dt_ms)
 	func_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	logic.ran = true

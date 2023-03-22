@@ -18,7 +18,7 @@ func TestRuntimeLimiterAdd(t *testing.T) {
 			active:      true,
 			runSchedule: nil}
 		r.Add(logic)
-		r.Run(FRAME_MS, false)
+		r.Run(FRAME_MS, 0)
 		if !(len(r.logicUnits) > 0 &&
 			r.indexes[logic] == len(r.logicUnits)-1) {
 			t.Fatal("was not inserted properly")
@@ -41,7 +41,7 @@ func TestRuntimeLimiterAddDuplicate(t *testing.T) {
 		runSchedule: nil}
 	r.Add(logic)
 	r.Add(logic)
-	r.Run(FRAME_MS, false)
+	r.Run(FRAME_MS, 0)
 	t.Fatal("should have panic'd")
 }
 
@@ -56,7 +56,7 @@ func TestRuntimeLimiterRun(t *testing.T) {
 		active:      true,
 		runSchedule: nil})
 	for i := 0; i < 32; i++ {
-		r.Run(FRAME_MS, false)
+		r.Run(FRAME_MS, 0)
 		time.Sleep(FRAME_DURATION)
 	}
 	Logger.Println(x)
@@ -77,7 +77,7 @@ func TestRuntimeLimiterOverrun(t *testing.T) {
 		f:           func(dt_ms float64) { time.Sleep(150 * time.Millisecond) },
 		active:      true,
 		runSchedule: nil})
-	r.Run(100, false)
+	r.Run(100, 0)
 	if r.overunder_ms >= 0 {
 		t.Fatal("overrun time not calculated properly")
 	}
@@ -91,7 +91,7 @@ func TestRuntimeLimiterUnderrun(t *testing.T) {
 		f:           func(dt_ms float64) { time.Sleep(100 * time.Millisecond) },
 		active:      true,
 		runSchedule: nil})
-	r.Run(300, false)
+	r.Run(300, 0)
 	if !(r.overunder_ms > 0 && r.overunder_ms <= 200) {
 		t.Fatal("underrun time not calculated properly")
 	}
@@ -112,7 +112,7 @@ func TestRuntimeLimiterLimiting(t *testing.T) {
 		f:           func(dt_ms float64) { fastRan = true },
 		active:      true,
 		runSchedule: nil})
-	r.Run(2, false)
+	r.Run(2, 0)
 	if fastRan {
 		t.Fatal("continued running logic despite using up allowed milliseconds")
 	}
@@ -194,7 +194,7 @@ func TestRuntimeLimiterLoad(t *testing.T) {
 			Logger.Printf("<CONSTRICTED FRAME>")
 		}
 		pushFrame()
-		r.Run(allowanceScale*allowance_ms, false)
+		r.Run(allowanceScale*allowance_ms, 0)
 		elapsed := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 		printFrame()
 		Logger.Printf("            elapsed: %f ms", elapsed)
@@ -251,12 +251,12 @@ func TestRuntimeLimiterRemove(t *testing.T) {
 	r.Add(logic)
 	// run logic a few times so that it has runtimeEstimate data
 	for i := 0; i < 32; i++ {
-		r.Run(FRAME_MS, false)
+		r.Run(FRAME_MS, 0)
 	}
 	// remove it
 	Logger.Printf("Removing logic: %s", logic.name)
 	r.Remove(logic)
-	r.Run(FRAME_MS, false)
+	r.Run(FRAME_MS, 0)
 	// test if removed
 	if _, ok := r.runtimeEstimates[logic]; ok {
 		t.Fatal("did not delete runtimeEstimates data")
@@ -280,7 +280,7 @@ func TestRuntimeLimiterInsertAppending(t *testing.T) {
 			active:      true,
 			runSchedule: nil}
 		r.Add(logic)
-		r.Run(FRAME_MS, false)
+		r.Run(FRAME_MS, 0)
 		if !(len(r.logicUnits) > 0 &&
 			r.indexes[logic] == len(r.logicUnits)-1) {
 			t.Fatal("was not inserted properly")

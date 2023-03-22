@@ -129,6 +129,8 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (stats RuntimeLimitShar
 		for runnersRan = 0; remaining_ms >= 0 && considered < len(r.runners); {
 			considered++
 			runner := r.runners[r.runIX]
+			logRuntimeLimiter("")
+			logRuntimeLimiter(color.InCyan(color.InBold(fmt.Sprintf(">>> %s", r.runnerNames[runner]))))
 			var runnerAllowance float64
 			// if not starved, divide according to initialsharescale
 			if !starvedMode {
@@ -144,8 +146,7 @@ func (r *RuntimeLimitSharer) Share(allowance_ms float64) (stats RuntimeLimitShar
 			logRuntimeLimiter("Run()? starvedMode: %t, starvedMode: %t, runner.starvation: %f", starvedMode, starvedMode, runner.starvation)
 			if !starvedMode || (starvedMode && runner.starvation != 0) {
 				logRuntimeLimiter(color.InWhiteOverBlue(fmt.Sprintf("|||||| sharing %f ms to %s", runnerAllowance, r.runnerNames[runner])))
-				// loop > 0 is the parameter of Run(), bonsuTime (AKA bonusTime)
-				runner.Run(runnerAllowance, loop > 0)
+				runner.Run(runnerAllowance, loop)
 				logicsRanThisLoop += runner.ran
 				totalStarvation += runner.starvation
 				if runner.starvation != 0 {
