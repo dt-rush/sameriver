@@ -339,3 +339,98 @@ func TestRuntimeLimitSharerCapacity(t *testing.T) {
 	// since it's never run before, running the logic will set its estimate
 	runFrame(1.0)
 }
+
+func TestRuntimeLimitSharerWeightVariance(t *testing.T) {
+	share := NewRuntimeLimitSharer()
+	share.RegisterRunners(map[string]float64{
+		"variancetest": 1,
+	})
+	r := share.RunnerMap["variancetest"]
+
+	// time.Sleep doesn't like amounts < 1ms, so we scale up the time axis
+	// to allow proper sleeping
+	allowance_ms := 1600.0
+	N_LOGIC := 12
+	minWorksleep := 10.0
+	maxWorksleep := 300.0
+
+	totalLoad := 0.0
+	for i := 0; i < N_LOGIC; i++ {
+		totalLoad += minWorksleep + (maxWorksleep-minWorksleep)*(float64(i)/float64(N_LOGIC))
+	}
+	totalLoad /= allowance_ms
+
+	Logger.Printf("allowance_ms: %f", allowance_ms)
+	Logger.Printf("N_LOGIC: %d", N_LOGIC)
+	Logger.Printf("minWorksleep: %f", minWorksleep)
+	Logger.Printf("maxWorksleep: %f", maxWorksleep)
+	Logger.Printf("totalLoad: %f", totalLoad)
+
+	frame := -1
+	seq := make([][]string, 0)
+	markRan := func(name string) {
+		seq[frame] = append(seq[frame], name)
+	}
+	pushFrame := func() {
+		frame++
+		seq = append(seq, make([]string, 0))
+		Logger.Printf("------------------ frame %d ----------------------", frame)
+	}
+	printFrame := func() {
+		// b, _ := json.MarshalIndent(seq[frame], "", "\t")
+		// Logger.Printf(string(b))
+		hotnessSum := 0.0
+		for _, l := range r.logicUnits {
+			hotnessSum += float64(l.hotness)
+		}
+		ideal := 1 / totalLoad
+		realised := hotnessSum / float64(len(r.logicUnits))
+		Logger.Printf("no-overhead avg hotness expected: h%.3f", float64(frame+1)*ideal)
+		Logger.Printf("realised avg hotness: h%.3f", realised)
+		Logger.Printf("ratio: %f", realised/ideal)
+	}
+
+	// set true to observe that we worksleep longer than 1 ms
+	const observeSleep = false
+
+	for i := 0; i < N_LOGIC; i++ {
+		func(i int) {
+			name := fmt.Sprintf("logic-%d", i)
+			share.RunnerMap["variancetest"].addLogicImmediately(
+				&LogicUnit{
+					name:    name,
+					worldID: i,
+					f: func(dt_ms float64) {
+						var t0 time.Time
+						if observeSleep {
+							t0 = time.Now()
+						}
+						worksleep := minWorksleep + (maxWorksleep-minWorksleep)*(float64(i)/float64(N_LOGIC))
+						Logger.Printf("sleeping %f ms", worksleep)
+						time.Sleep(time.Duration(worksleep*1e6) * time.Nanosecond)
+						if observeSleep {
+							Logger.Printf("elapsed: %f ms", float64(time.Since(t0).Nanoseconds())/1e6)
+						}
+						markRan(name)
+					},
+					active:      true,
+					runSchedule: nil})
+		}(i)
+	}
+
+	runFrame := func(allowanceScale float64) {
+		t0 := time.Now()
+		pushFrame()
+		share.Share(allowanceScale * allowance_ms)
+		elapsed := float64(time.Since(t0).Nanoseconds()) / 1.0e6
+		printFrame()
+		Logger.Printf("            elapsed: %f ms", elapsed)
+	}
+
+	// since it's never run before, running the logic will set its estimate
+	runFrame(1.0)
+	runFrame(1.0)
+	runFrame(1.0)
+	runFrame(1.0)
+	runFrame(1.0)
+}
