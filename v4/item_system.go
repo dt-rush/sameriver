@@ -438,18 +438,18 @@ func (i *ItemSystem) UpdateDegradations(dt_ms float64) {
 
 // System funcs
 
-func (i *ItemSystem) GetComponentDeps() []string {
+func (i *ItemSystem) GetComponentDeps() map[ComponentID]ComponentKind {
 	deps := []string{}
 	if i.spawn {
-		deps = append(deps, "Generic,Item")
-		deps = append(deps, "Vec2D,Position")
-		deps = append(deps, "Vec2D,Box")
+		deps[ITEM] = GENERIC
+		deps[POSITION] = VEC2D
+		deps[BOX] = VEC2D
 	}
 	if i.sprite {
-		deps = append(deps, "Sprite,Sprite")
+		deps[BASESPRITE] = SPRITE
 	}
 	if i.despawn_ms != nil {
-		deps = append(deps, "TimeAccumulator,DespawnTimer")
+		deps[DESPAWNTIMER] = TIMEACCUMULATOR
 	}
 	return deps
 }
