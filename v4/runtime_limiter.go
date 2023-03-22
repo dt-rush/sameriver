@@ -25,6 +25,7 @@ import (
 	"github.com/TwiN/go-color"
 )
 
+// TODO: export fields so you can just poll the stats directly
 type RuntimeLimiter struct {
 	// used to degrade gracefully under time pressure, by picking up where we
 	// left off in the iteration of logicUnits to run in the case that we can't
@@ -80,8 +81,6 @@ type RuntimeLimiter struct {
 	ranRobin int
 	// ranOpp : number that ran by opportunistic since last time bonsuTime = false
 	ranOpp int
-	// scheduleSkipped : number that didn't run due to their ticks not having elapsed
-	scheduleSkipped int
 	// iterated : total number of logicunits considered
 	iterated int
 	// starvation : coefficient 0.0 to 1.0, percentage of runners in the last Run() cycle
@@ -124,248 +123,246 @@ func NewRuntimeLimiter() *RuntimeLimiter {
 	}
 }
 
-func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) {
-	tStart := time.Now()
+type IterMode int
 
-	poll_remaining_ms := func() float64 {
-		return allowance_ms - float64(time.Since(tStart).Nanoseconds())/1e6
-	}
-	r.ProcessAddRemoveLogics()
-	if !bonsuTime {
-		// if we're at loop = 0, the initial share from the RuntimeLimitSharer
-		// this runner is in, we set startIx
-		r.startIx = r.runIx
-		// else, startix remains where it was on last time loop = 0,
-		r.finished = false
-	}
+const (
+	RoundRobin IterMode = iota
+	Opportunistic
+)
+
+func (r *RuntimeLimiter) Run(allowance_ms float64, bonsuTime bool) {
+	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
 	if len(r.logicUnits) == 0 {
 		r.finished = true
 		r.starvation = 0
 		return
 	}
-	// at loop == 0 in Share()
-	if !bonsuTime {
-		r.ranRobin = 0
-		r.ranOpp = 0
-		r.scheduleSkipped = 0
-		r.iterated = 0
-		r.starvation = 1
-		for _, l := range r.logicUnits {
-			durationHasElapsed := r.tick(l)
-			// copy the schedule so we can Tick it without it being damaged for
-			// when we want to check it in the loop again and again
-			hasSchedule := l.runSchedule != nil
-			var scheduled bool
-			if hasSchedule {
-				scheduleAccum := *l.runSchedule
-				schedule_tick_ms := float64(time.Since(r.lastScheduleTick[l]).Nanoseconds()) / 1e6
-				scheduled = hasSchedule && scheduleAccum.Tick(schedule_tick_ms)
-			} else {
-				scheduled = true
-			}
-			_, removed := r.removed[l]
-			l.shouldRun = l.active && !removed && durationHasElapsed && (!hasSchedule || scheduled)
-			if l.shouldRun {
-				logRuntimeLimiter("%s should run", l.name)
-			}
-			l.ran = false
-		}
+
+	tStart := time.Now()
+
+	poll_remaining_ms := func() float64 {
+		return allowance_ms - float64(time.Since(tStart).Nanoseconds())/1e6
 	}
-	const (
-		RoundRobin int = iota
-		Opportunistic
-	)
+
+	r.ProcessAddRemoveLogics()
+
+	if !bonsuTime {
+		r.loopZero()
+	}
+
 	mode := RoundRobin
 	worstOverheadThisTime := 0.0
-	logRuntimeLimiter("Run(); allowance: %f ms", allowance_ms)
-	bailOpp := false
 	remaining_ms := poll_remaining_ms()
-	for remaining_ms > 0 && len(r.logicUnits) > 0 && !bailOpp {
+	for remaining_ms > 0 {
 		logRuntimeLimiter("[\\] remaining_ms: %f", remaining_ms)
-		// don't overhead bail on loop = 0
-		if remaining_ms < r.loopOverhead_ms && bonsuTime {
-			logRuntimeLimiter("XXX RUN() OVERHEAD BAIL - overhead is %.5f XXX", r.loopOverhead_ms)
-			break
-		}
 		tLoop := time.Now()
 
-		if DEBUG_RUNTIME_LIMITER {
-			modeStr := ""
-			if bonsuTime {
-				modeStr += "BonsuTime "
-			}
-			switch mode {
-			case RoundRobin:
-				modeStr += "RoundRobin"
-			case Opportunistic:
-				modeStr += "Opportunistic"
-			}
-			logRuntimeLimiter(">>>iter: %s", modeStr)
-		}
-
 		// select logic according to mode
-		var logic *LogicUnit
-		switch mode {
-		case RoundRobin:
-			logic = r.logicUnits[r.runIx]
-		case Opportunistic:
-			logic = r.ascendingHotness[r.oppIx]
-			if r.ascendingHotnessLightestAfter[r.oppIx] >= remaining_ms {
-				logRuntimeLimiter("XXX bailing opportunistic, nothing light ahead XXX")
-				bailOpp = true
-				continue
-			}
+		logic, bail, skip := r.iter(mode, remaining_ms, bonsuTime)
+		if bail {
+			break
 		}
-		r.iterated++
-		logRuntimeLimiter(color.InWhiteOverBlack(logic.name))
-		_, removed := r.removed[logic]
-		logRuntimeLimiter("active: %t, removed: %t", logic.active, removed)
+
+		// run function (if it should run)
 		var func_ms float64
-		if logic.active && !removed {
-			// check whether this logic has ever run
-			_, hasRunBefore := r.lastRun[logic]
-			// check its estimate
-			estimate, hasEstimate := r.runtimeEstimates[logic]
-
-			// estimate looks good if it's below allowance OR the estimate is above
-			// allowance but we left off at this index last time; so we should get the
-			// painful function over with rather than stall here forever or wait
-			// to execute it when we get enough allowance (may never happen)
-			// (first update remaining_ms so it's as accurate as possible)
+		if !skip && r.shouldRunOrSwitchMode(logic, &mode, poll_remaining_ms(), bonsuTime) {
+			func_ms = r.run(logic, mode)
 			remaining_ms = poll_remaining_ms()
-			estimateLooksGood := hasEstimate && estimate <= remaining_ms
-			logRuntimeLimiter("estimateLooksGood: %t", estimateLooksGood)
-			logRuntimeLimiter("estimate: %f", estimate)
-			// used to skip past iteration of this element in opportunistic mode
-			oppSkip := false
-			switch mode {
-			case RoundRobin:
-				// pop into opportunistic at first bad estimate of roundrobin
-				// running the first roundrobin element regardless of time
-				// estimate if Share() loop == 0 (bonsuTime is true)
-				//
-				// if the estimate is bad and we've run at least one func
-				// then pop into opportunistic. Note that the behaviour such that
-				// if the estimate is bad in round robin and we're at the first
-				// func of the Run(), then run it regardless. We can never expect
-				// to get more allowance than we have right now, so we might as well
-				// get the heavy func out of the way.
-				// r.runIx != r.startIx
-				if hasEstimate && !estimateLooksGood {
-					// only drop into opportunistic when runIx > startIx or bonsuTime
-					//
-					// in other words, since Run() defaults to roundrobin to
-					// begin with, we will - when bonsuTime is false
-					// (Share() loop == 0) - run the func regardless of
-					// hasEstimate && !estimateLooksGood.
-					// conversely,
-					// when bonsuTime is true, we will immediately drop
-					// into opportunistic if the first roundrobin element is
-					// too heavy, and not run it
-					if r.runIx != r.startIx || bonsuTime {
-						logRuntimeLimiter("Dropping into opportunistic")
-						mode = Opportunistic
-						r.oppIx = 0
-						// we sort the logics by hotness only when opportunistic
-						// needs it, so it always represents the state of
-						// things just when we popped into it initially.
-						r.refreshAscendingHotness()
-
-						continue
-					}
-				}
-			case Opportunistic:
-				if hasEstimate && !estimateLooksGood {
-					oppSkip = true
-				}
-			}
-
-			// if the time since the last run of this logic is > the runtime estimate
-			// (that is, a function taking 1ms to run on avg should run at most
-			// every 1ms)
-			durationHasElapsed := r.tick(logic)
-
-			// get real time since last run
-			dt_ms := float64(time.Since(r.lastRun[logic]).Nanoseconds()) / 1e6
-
-			// tick schedule
-			schedule_tick_ms := float64(time.Since(r.lastScheduleTick[logic]).Nanoseconds()) / 1e6
-			r.lastScheduleTick[logic] = time.Now()
-			hasSchedule := logic.runSchedule != nil
-			scheduled := hasSchedule && logic.runSchedule.Tick(schedule_tick_ms)
-
-			if DEBUG_RUNTIME_LIMITER {
-				logRuntimeLimiter("hasRunBefore: %t", hasRunBefore)
-				logRuntimeLimiter("durationHasElapsed: %t", durationHasElapsed)
-				logRuntimeLimiter("hasSchedule: %t", hasSchedule)
-				logRuntimeLimiter("scheduled: %t", scheduled)
-			}
-			if !oppSkip && ((!hasRunBefore && !hasSchedule) || (durationHasElapsed && (!hasSchedule || scheduled))) {
-				// note that we start lastrun from the moment the function starts, since
-				// say it starts at t=0ms, takes 4 ms to run, then if it comes up to run
-				// again at t=8ms (r.tick()), it will get dt_ms of 8 ms, the proper
-				// intervening time since it last integrated a dt_ms increment.
-				if DEBUG_RUNTIME_LIMITER {
-					switch mode {
-					case RoundRobin:
-						logRuntimeLimiter("----------------------------------------- " + color.InGreen(fmt.Sprintf("ROUND_ROBIN: %s", logic.name)))
-					case Opportunistic:
-						logRuntimeLimiter("----------------------------------------- " + color.InCyan(fmt.Sprintf("OPPORTUNISTIC: %s", logic.name)))
-					}
-				}
-				r.lastRun[logic] = time.Now()
-				t0 := time.Now()
-				logic.f(dt_ms)
-				func_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
-				logic.ran = true
-				logic.hotness++
-				r.normalizeHotness(logic.hotness)
-				r.lastEnd[logic] = time.Now()
-				r.updateEstimate(logic, func_ms)
-				r.ran++
-				switch mode {
-				case RoundRobin:
-					r.ranRobin++
-				case Opportunistic:
-					r.ranOpp++
-				}
-				remaining_ms = allowance_ms - float64(time.Since(tStart).Nanoseconds())/1e6
-				logRuntimeLimiter("remaining after %s: %f", logic.name, remaining_ms)
-			}
+			logRuntimeLimiter("remaining after %s: %f", logic.name, remaining_ms)
 		}
 
-		// end round-robin iteration if we reached back to where we started
-		if mode == RoundRobin {
-			r.runIx = (r.runIx + 1) % len(r.logicUnits)
-			// on loop = 0, the initial share, we just try to run everything once.
-			// but thereafter, we will loop in roundrobin as long as we can, not
-			// breaking at runix = startix
-			if r.runIx == r.startIx && !bonsuTime {
-				r.finished = true
-				break
-			}
-			if r.runIx == r.startIx && bonsuTime {
-				// TODO: how do we handle notyetscheduled when we wrap around?
-				r.scheduleSkipped = 0
-			}
-		}
-		// end opportunistic iteration if we've looked at all the funcs there are
-		// to run
-		if mode == Opportunistic {
-			r.oppIx = (r.oppIx + 1) % len(r.logicUnits)
-			if r.oppIx == 0 {
-				r.finished = true
-				break
-			}
-		}
+		// step our iteration index according to mode
+		r.advanceIter(mode, bonsuTime)
 
+		// track worst overhead
 		overhead := float64(time.Since(tLoop).Nanoseconds())/1e6 - func_ms
 		if overhead > worstOverheadThisTime {
 			worstOverheadThisTime = overhead
 		}
 	}
+
+	// update run stats
 	total_ms := float64(time.Since(tStart).Nanoseconds()) / 1.0e6
 	r.updateState(worstOverheadThisTime, allowance_ms, total_ms)
+}
+
+func (r *RuntimeLimiter) loopZero() {
+	r.startIx = r.runIx
+	r.finished = false
+	r.ranRobin = 0
+	r.ranOpp = 0
+	r.oppIx = 0
+	r.iterated = 0
+	r.starvation = 1
+	r.initShouldRun()
+}
+
+func (r *RuntimeLimiter) initShouldRun() {
+	for _, l := range r.logicUnits {
+		durationHasElapsed := r.tick(l)
+		// copy the schedule so we can Tick it without it being damaged for
+		// when we want to check it in the loop again and again
+		hasSchedule := l.runSchedule != nil
+		var scheduled bool
+		if hasSchedule {
+			scheduleAccum := *l.runSchedule
+			schedule_tick_ms := float64(time.Since(r.lastScheduleTick[l]).Nanoseconds()) / 1e6
+			scheduled = hasSchedule && scheduleAccum.Tick(schedule_tick_ms)
+		} else {
+			scheduled = true
+		}
+		_, removed := r.removed[l]
+		l.shouldRun = l.active && !removed && durationHasElapsed && (!hasSchedule || scheduled)
+		if l.shouldRun {
+			logRuntimeLimiter("%s should run", l.name)
+		}
+		l.ran = false
+	}
+}
+
+func (r *RuntimeLimiter) iter(mode IterMode, remaining_ms float64, bonsuTime bool) (logic *LogicUnit, bail bool, skip bool) {
+	if remaining_ms < r.loopOverhead_ms {
+		logRuntimeLimiter("XXX RUN() OVERHEAD BAIL - overhead is %.5f XXX", r.loopOverhead_ms)
+		return nil, true, true
+	}
+	switch mode {
+	case RoundRobin:
+		logic = r.logicUnits[r.runIx]
+	case Opportunistic:
+		logic = r.ascendingHotness[r.oppIx]
+		if r.ascendingHotnessLightestAfter[r.oppIx] >= remaining_ms {
+			logRuntimeLimiter("XXX OPPORTUNISTIC RUN() BAIL, nothing light ahead XXX")
+			return nil, true, true
+		}
+	}
+	if DEBUG_RUNTIME_LIMITER {
+		modeStr := ""
+		if bonsuTime {
+			modeStr += "BonsuTime "
+		}
+		switch mode {
+		case RoundRobin:
+			modeStr += "RoundRobin"
+		case Opportunistic:
+			modeStr += "Opportunistic"
+		}
+		logRuntimeLimiter(">>>iter: %s", modeStr)
+	}
+	r.iterated++
+	logRuntimeLimiter(color.InWhiteOverBlack(logic.name))
+	_, removed := r.removed[logic]
+	logRuntimeLimiter("active: %t, removed: %t", logic.active, removed)
+	skip = !logic.active || removed
+	return logic, false, skip
+}
+
+func (r *RuntimeLimiter) shouldRunOrSwitchMode(logic *LogicUnit, mode *IterMode, remaining_ms float64, bonsuTime bool) bool {
+	// check whether this logic has ever run
+	_, hasRunBefore := r.lastRun[logic]
+	// check its estimate
+	estimate, hasEstimate := r.runtimeEstimates[logic]
+
+	// estimate looks good if it's below allowance OR the estimate is above
+	// allowance but we left off at this index last time; so we should get the
+	// painful function over with rather than stall here forever or wait
+	// to execute it when we get enough allowance (may never happen)
+	// (first update remaining_ms so it's as accurate as possible)
+	estimateLooksGood := hasEstimate && estimate <= remaining_ms
+	logRuntimeLimiter("estimateLooksGood: %t", estimateLooksGood)
+	logRuntimeLimiter("estimate: %f", estimate)
+	switch *mode {
+	case RoundRobin:
+		// pop into opportunistic at first bad estimate of roundrobin
+		// running the first roundrobin element regardless of time
+		// estimate if Share() loop == 0 (bonsuTime is true)
+		//
+		// if the estimate is bad and we've run at least one func
+		// then pop into opportunistic. Note that the behaviour such that
+		// if the estimate is bad in round robin and we're at the first
+		// func of the Run(), then run it regardless. We can never expect
+		// to get more allowance than we have right now, so we might as well
+		// get the heavy func out of the way.
+		// r.runIx != r.startIx
+		if hasEstimate && !estimateLooksGood {
+			// only drop into opportunistic when runIx > startIx or bonsuTime
+			//
+			// in other words, since Run() defaults to roundrobin to
+			// begin with, we will - when bonsuTime is false
+			// (Share() loop == 0) - run the func regardless of
+			// hasEstimate && !estimateLooksGood.
+			// conversely,
+			// when bonsuTime is true, we will immediately drop
+			// into opportunistic if the first roundrobin element is
+			// too heavy, and not run it
+			if r.runIx != r.startIx || bonsuTime {
+				logRuntimeLimiter("Dropping into opportunistic")
+				*mode = Opportunistic
+				// we sort the logics by hotness only when opportunistic
+				// needs it, so it always represents the state of
+				// things just when we popped into it initially.
+				r.refreshAscendingHotness()
+				return false
+			}
+		}
+	case Opportunistic:
+		if hasEstimate && !estimateLooksGood {
+			return false
+		}
+	}
+
+	// if the time since the last run of this logic is > the runtime estimate
+	// (that is, a function taking 1ms to run on avg should run at most
+	// every 1ms)
+	durationHasElapsed := r.tick(logic)
+
+	// tick schedule
+	schedule_tick_ms := float64(time.Since(r.lastScheduleTick[logic]).Nanoseconds()) / 1e6
+	r.lastScheduleTick[logic] = time.Now()
+	hasSchedule := logic.runSchedule != nil
+	scheduled := hasSchedule && logic.runSchedule.Tick(schedule_tick_ms)
+
+	if DEBUG_RUNTIME_LIMITER {
+		logRuntimeLimiter("hasRunBefore: %t", hasRunBefore)
+		logRuntimeLimiter("durationHasElapsed: %t", durationHasElapsed)
+		logRuntimeLimiter("hasSchedule: %t", hasSchedule)
+		logRuntimeLimiter("scheduled: %t", scheduled)
+	}
+
+	return (!hasRunBefore && !hasSchedule) || (durationHasElapsed && (!hasSchedule || scheduled))
+}
+
+func (r *RuntimeLimiter) run(logic *LogicUnit, mode IterMode) (func_ms float64) {
+	// note that we start lastrun from the moment the function starts, since
+	// say it starts at t=0ms, takes 4 ms to run, then if it comes up to run
+	// again at t=8ms (r.tick()), it will get dt_ms of 8 ms, the proper
+	// intervening time since it last integrated a dt_ms increment.
+	if DEBUG_RUNTIME_LIMITER {
+		switch mode {
+		case RoundRobin:
+			logRuntimeLimiter("----------------------------------------- " + color.InGreen(fmt.Sprintf("ROUND_ROBIN: %s", logic.name)))
+		case Opportunistic:
+			logRuntimeLimiter("----------------------------------------- " + color.InCyan(fmt.Sprintf("OPPORTUNISTIC: %s", logic.name)))
+		}
+	}
+	r.lastRun[logic] = time.Now()
+	t0 := time.Now()
+	// get real time since last run
+	dt_ms := float64(time.Since(r.lastRun[logic]).Nanoseconds()) / 1e6
+	logic.f(dt_ms)
+	func_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	logic.ran = true
+	logic.hotness++
+	r.normalizeHotness(logic.hotness)
+	r.lastEnd[logic] = time.Now()
+	r.updateEstimate(logic, func_ms)
+	r.ran++
+	switch mode {
+	case RoundRobin:
+		r.ranRobin++
+	case Opportunistic:
+		r.ranOpp++
+	}
+	return func_ms
 }
 
 func (r *RuntimeLimiter) tick(logic *LogicUnit) bool {
@@ -373,6 +370,25 @@ func (r *RuntimeLimiter) tick(logic *LogicUnit) bool {
 		return float64(time.Since(t).Nanoseconds())/1.0e6 > r.runtimeEstimates[logic]
 	} else {
 		return true
+	}
+}
+
+func (r *RuntimeLimiter) advanceIter(mode IterMode, bonsuTime bool) {
+	// end round-robin iteration if we reached back to where we started
+	if mode == RoundRobin {
+		r.runIx = (r.runIx + 1) % len(r.logicUnits)
+		// on loop = 0, the initial share, we just try to run everything once.
+		// but thereafter, we will loop in roundrobin as long as we can, not
+		// breaking at runix = startix
+		if r.runIx == r.startIx && !bonsuTime {
+			r.finished = true
+			return
+		}
+	}
+	// just plain loop opportunistic, we will bail according to the result of
+	// r.iter() if needed
+	if mode == Opportunistic {
+		r.oppIx = (r.oppIx + 1) % len(r.logicUnits)
 	}
 }
 
@@ -385,6 +401,7 @@ func (r *RuntimeLimiter) updateOverhead(worstThisTime float64) {
 	}
 }
 
+// update various online calculations that can be read by someone using the RuntimeLimiter
 func (r *RuntimeLimiter) updateState(worstOverheadThisTime, allowance_ms, total_ms float64) {
 	// update overhead
 	r.updateOverhead(worstOverheadThisTime)

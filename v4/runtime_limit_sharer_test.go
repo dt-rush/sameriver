@@ -423,7 +423,9 @@ func TestRuntimeLimitSharerWeightVariance(t *testing.T) {
 	runFrame := func(allowanceScale float64) {
 		t0 := time.Now()
 		pushFrame()
+		Logger.Printf("Share():")
 		share.Share(allowanceScale * allowance_ms)
+		Logger.Printf("/Share")
 		elapsed := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 		printFrame()
 		Logger.Printf("            elapsed: %f ms", elapsed)
