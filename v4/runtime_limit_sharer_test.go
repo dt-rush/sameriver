@@ -382,6 +382,7 @@ func TestRuntimeLimitSharerWeightVariance(t *testing.T) {
 		hotnessSum := 0.0
 		for _, l := range r.logicUnits {
 			hotnessSum += float64(l.hotness)
+			Logger.Printf("%s: h%d", l.name, l.hotness)
 		}
 		ideal := 1 / totalLoad
 		realised := hotnessSum / float64(len(r.logicUnits))
