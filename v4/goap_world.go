@@ -6,6 +6,7 @@ import (
 )
 
 type GOAPWorldState struct {
+	w *World
 	// TODO: export vals
 	vals map[string]int
 	// TODO: change this to a map[int](map[string]any) [ID][component]
@@ -22,6 +23,7 @@ func (ws *GOAPWorldState) CopyOf() *GOAPWorldState {
 		copyModal[k] = v
 	}
 	copyWS := &GOAPWorldState{
+		ws.w,
 		copyvals,
 		copyModal,
 	}
@@ -39,11 +41,12 @@ func NewGOAPWorldState(vals map[string]int) *GOAPWorldState {
 	return ws
 }
 
-func (ws *GOAPWorldState) ecKey(e *Entity, name string) string {
-	return fmt.Sprintf("%d-%s", e.ID, name)
+func (ws *GOAPWorldState) ecKey(e *Entity, name ComponentID) string {
+	// TODO: uh oh, we don't have access to the componettable strings map here
+	return fmt.Sprintf("%d-%s", e.ID, ws.w.em.components.strings[name])
 }
 
-func (ws *GOAPWorldState) GetModal(e *Entity, name string) any {
+func (ws *GOAPWorldState) GetModal(e *Entity, name ComponentID) any {
 	if val, ok := ws.modal[ws.ecKey(e, name)]; ok {
 		return val
 	} else {
@@ -51,6 +54,6 @@ func (ws *GOAPWorldState) GetModal(e *Entity, name string) any {
 	}
 }
 
-func (ws *GOAPWorldState) SetModal(e *Entity, name string, val any) {
+func (ws *GOAPWorldState) SetModal(e *Entity, name ComponentID, val any) {
 	ws.modal[ws.ecKey(e, name)] = val
 }

@@ -48,8 +48,8 @@ func (w *World) GetUpdatedEntityListByName(name string) *UpdatedEntityList {
 	return w.em.GetUpdatedEntityListByName(name)
 }
 
-func (w *World) GetUpdatedEntityListByComponentNames(names []string) *UpdatedEntityList {
-	return w.em.GetUpdatedEntityListByComponentNames(names)
+func (w *World) GetUpdatedEntityListByComponents(names []ComponentID) *UpdatedEntityList {
+	return w.em.GetUpdatedEntityListByComponents(names)
 }
 
 func (w *World) UniqueTaggedEntity(tag string) (*Entity, error) {
@@ -60,7 +60,7 @@ func (w *World) UpdatedEntitiesWithTag(tag string) *UpdatedEntityList {
 	return w.em.UpdatedEntitiesWithTag(tag)
 }
 
-func (w *World) EntityHasComponent(e *Entity, name string) bool {
+func (w *World) EntityHasComponent(e *Entity, name ComponentID) bool {
 	return w.em.EntityHasComponent(e, name)
 }
 

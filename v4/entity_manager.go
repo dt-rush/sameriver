@@ -115,24 +115,19 @@ func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 	}
 }
 
-func (m *EntityManager) EntityHasComponent(e *Entity, name string) bool {
+func (m *EntityManager) EntityHasComponent(e *Entity, name ComponentID) bool {
 	b, _ := e.ComponentBitArray.GetBit(uint64(m.components.ixs[name]))
 	return b
 }
 
 func (m *EntityManager) EntityHasTag(e *Entity, tag string) bool {
-	return m.EntityHasComponent(e, "GenericTags") &&
-		e.GetTagList("GenericTags").Has(tag)
+	return e.GetTagList(GENERICTAGS).Has(tag)
 }
 
 // apply the given tags to the given entity
 func (m *EntityManager) TagEntity(e *Entity, tags ...string) {
-	if !m.EntityHasComponent(e, "GenericTags") {
-		e.ComponentBitArray.SetBit(uint64(m.components.ixs["GenericTags"]))
-		*e.GetTagList("GenericTags") = NewTagList()
-	}
 	for _, tag := range tags {
-		e.GetTagList("GenericTags").Add(tag)
+		e.GetTagList(GENERICTAGS).Add(tag)
 		if e.Active {
 			m.createEntitiesWithTagListIfNeeded(tag)
 		}
@@ -151,7 +146,7 @@ func (m *EntityManager) TagEntities(entities []*Entity, tag string) {
 
 // Remove a tag from an entity
 func (m *EntityManager) UntagEntity(e *Entity, tag string) {
-	e.GetTagList("GenericTags").Remove(tag)
+	e.GetTagList(GENERICTAGS).Remove(tag)
 	m.checkActiveEntity(e)
 }
 
@@ -207,7 +202,7 @@ func (m *EntityManager) DumpEntities() string {
 		if e == nil {
 			continue
 		}
-		tags := e.GetTagList("GenericTags")
+		tags := e.GetTagList(GENERICTAGS)
 		entityRepresentation := fmt.Sprintf("{id: %d, tags: %v}",
 			e.ID, tags)
 		buffer.WriteString(entityRepresentation)

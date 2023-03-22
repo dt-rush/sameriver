@@ -145,6 +145,7 @@ func (p *GOAPPlanner) Plan(
 	// we may be writing to this with modal vals as we explore and don't want
 	// to pollute the caller's state object
 	start = start.CopyOf()
+	start.w = p.e.World
 
 	logGOAPDebug("Planning...")
 

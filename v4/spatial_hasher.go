@@ -43,7 +43,7 @@ func NewSpatialHasher(gridX, gridY int, w *World) *SpatialHasher {
 	// get spatial entities from world
 	h.SpatialEntities = w.em.GetSortedUpdatedEntityList(
 		EntityFilterFromComponentBitArray("spatial",
-			w.em.components.BitArrayFromNames([]string{"Position", "Box"})))
+			w.em.components.BitArrayFromIDs([]ComponentID{POSITION, BOX})))
 
 	return h
 }
@@ -130,8 +130,8 @@ func (h *SpatialHasher) scanAndInsertEntitiesparallelC() {
 
 			for j := startIdx; j < endIdx; j++ {
 				e := h.SpatialEntities.entities[j]
-				pos := e.GetVec2D("Position")
-				box := e.GetVec2D("Box")
+				pos := e.GetVec2D(POSITION)
+				box := e.GetVec2D(BOX)
 				cellX0, cellX1, cellY0, cellY1 := h.CellRangeOfRect(pos.ShiftedCenterToBottomLeft(*box), *box)
 
 				for y := cellY0; y <= cellY1; y++ {
@@ -156,8 +156,8 @@ func (h *SpatialHasher) scanAndInsertEntitiesparallelC() {
 // somewhat suprisingly, better than some parallel versions
 func (h *SpatialHasher) scanAndInsertEntitiesSingleThread() {
 	for _, e := range h.SpatialEntities.entities {
-		pos := e.GetVec2D("Position")
-		box := e.GetVec2D("Box")
+		pos := e.GetVec2D(POSITION)
+		box := e.GetVec2D(BOX)
 
 		// walk through each cell the entity touches by
 		// starting in the bottom-left and walking cell by cell
@@ -290,8 +290,8 @@ func (h *SpatialHasher) EntitiesWithinDistanceFilter(
 	candidates := h.EntitiesWithinDistanceApprox(pos, box, d)
 	results := make([]*Entity, 0)
 	for _, e := range candidates {
-		ePos := *e.GetVec2D("Position")
-		eBox := *e.GetVec2D("Box")
+		ePos := *e.GetVec2D(POSITION)
+		eBox := *e.GetVec2D(BOX)
 		if predicate(e) && RectWithinDistanceOfRect(
 			pos.ShiftedCenterToBottomLeft(box), box,
 			ePos.ShiftedCenterToBottomLeft(eBox), eBox,

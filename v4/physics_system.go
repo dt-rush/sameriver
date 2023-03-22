@@ -23,10 +23,16 @@ func NewPhysicsSystemWithGranularity(granularity int) *PhysicsSystem {
 	}
 }
 
-func (p *PhysicsSystem) GetComponentDeps() []string {
+func (p *PhysicsSystem) GetComponentDeps() map[ComponentID]ComponentKind {
 	// TODO: do something with mass
 	// TODO: impart momentum to collided objects?
-	return []string{"Vec2D,Position", "Vec2D,Velocity", "Vec2D,Acceleration", "Vec2D,Box", "Float64,Mass"}
+	return map[ComponentID]ComponentKind{
+		POSITION:     VEC2D,
+		VELOCITY:     VEC2D,
+		ACCELERATION: VEC2D,
+		BOX:          VEC2D,
+		MASS:         FLOAT64,
+	}
 }
 
 func (p *PhysicsSystem) LinkWorld(w *World) {
@@ -34,7 +40,7 @@ func (p *PhysicsSystem) LinkWorld(w *World) {
 	p.physicsEntities = w.em.GetSortedUpdatedEntityList(
 		EntityFilterFromComponentBitArray(
 			"physical",
-			w.em.components.BitArrayFromNames([]string{"Position", "Velocity", "Acceleration", "Box", "Mass"})))
+			w.em.components.BitArrayFromIDs([]ComponentID{POSITION, VELOCITY, ACCELERATION, BOX, MASS})))
 	p.h = NewSpatialHasher(10, 10, w)
 }
 
@@ -50,14 +56,14 @@ func (p *PhysicsSystem) Update(dt_ms float64) {
 func (p *PhysicsSystem) physics(e *Entity, dt_ms float64) {
 
 	// the logic is simpler to read that way
-	pos := e.GetVec2D("Position")
-	box := e.GetVec2D("Box")
+	pos := e.GetVec2D(POSITION)
+	box := e.GetVec2D(BOX)
 	pos.ShiftCenterToBottomLeft(*box)
 	defer pos.ShiftBottomLeftToCenter(*box)
 
 	// calculate velocity
-	acc := e.GetVec2D("Acceleration")
-	vel := e.GetVec2D("Velocity")
+	acc := e.GetVec2D(ACCELERATION)
+	vel := e.GetVec2D(VELOCITY)
 	vel.X += acc.X * dt_ms
 	vel.Y += acc.Y * dt_ms
 	dx := vel.X * dt_ms
@@ -84,10 +90,10 @@ func (p *PhysicsSystem) physics(e *Entity, dt_ms float64) {
 	// check collisions using spatial hasher
 	// TODO: really we should check / resolve all collisions after applying dx,dy
 	testCollision := func(i *Entity, j *Entity) bool {
-		iPos := i.GetVec2D("Position")
-		iBox := i.GetVec2D("Box")
-		jPos := j.GetVec2D("Position")
-		jBox := j.GetVec2D("Box")
+		iPos := i.GetVec2D(POSITION)
+		iBox := i.GetVec2D(BOX)
+		jPos := j.GetVec2D(POSITION)
+		jBox := j.GetVec2D(BOX)
 		return RectIntersectsRect(*iPos, *iBox, *jPos, *jBox)
 	}
 	cellX0, cellX1, cellY0, cellY1 := p.h.CellRangeOfRect(*pos, *box)

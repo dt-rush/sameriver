@@ -14,8 +14,11 @@ func NewSpatialHashSystem(gridX, gridY int) *SpatialHashSystem {
 	}
 }
 
-func (s *SpatialHashSystem) GetComponentDeps() []string {
-	return []string{"Vec2D,Position", "Vec2D,Box"}
+func (s *SpatialHashSystem) GetComponentDeps() map[ComponentID]ComponentKind {
+	return map[ComponentID]ComponentKind{
+		POSITION: VEC2D,
+		BOX:      VEC2D,
+	}
 }
 
 func (s *SpatialHashSystem) LinkWorld(w *World) {

@@ -22,7 +22,7 @@ func EntityFilterFromTag(tag string) EntityFilter {
 	return EntityFilter{
 		Name: tag,
 		Predicate: func(e *Entity) bool {
-			return e.GetTagList("GenericTags").Has(tag)
+			return e.GetTagList(GENERICTAGS).Has(tag)
 		}}
 }
 

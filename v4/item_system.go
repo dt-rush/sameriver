@@ -392,7 +392,7 @@ func (i *ItemSystem) LoadArchetypesJSON(jsonStr []byte) {
 
 func (i *ItemSystem) UpdateDegradations(dt_ms float64) {
 	for _, e := range i.inventorySystem.InventoryEntities.entities {
-		inv := e.GetGeneric("Inventory").(*Inventory)
+		inv := e.GetGeneric(INVENTORY).(*Inventory)
 		newRotStacks := make([]*Item, 0)
 		for _, s := range inv.Stacks {
 			if s.Tags.Has("perishable") {
@@ -439,7 +439,7 @@ func (i *ItemSystem) UpdateDegradations(dt_ms float64) {
 // System funcs
 
 func (i *ItemSystem) GetComponentDeps() map[ComponentID]ComponentKind {
-	deps := []string{}
+	deps := map[ComponentID]ComponentKind{}
 	if i.spawn {
 		deps[ITEM] = GENERIC
 		deps[POSITION] = VEC2D
@@ -465,7 +465,7 @@ func (i *ItemSystem) Update(dt_ms float64) {
 	// despawn any expired entities
 	if i.despawn_ms != nil {
 		for _, e := range i.ItemEntities.entities {
-			accum := e.GetTimeAccumulator("DespawnTimer")
+			accum := e.GetTimeAccumulator(DESPAWNTIMER)
 			if accum.Tick(dt_ms) {
 				i.w.Despawn(e)
 			}

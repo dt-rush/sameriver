@@ -5,23 +5,25 @@ import (
 )
 
 func TestInvalidComponentType(t *testing.T) {
+	w := testingWorld()
 	defer func() {
 		if r := recover(); r == nil {
-			t.Errorf("Should panic if given component type Vec7D")
+			t.Errorf("Should panic if given unregistered component id")
 		}
 	}()
-	makeComponentSet(map[string]any{
-		"Vec7D,Position": Vec2D{0, 0},
+	var UNREGISTEREDCOMPONENT ComponentID = 1337
+	w.em.components.makeComponentSet(map[ComponentID]any{
+		UNREGISTEREDCOMPONENT: Vec2D{0, 0},
 	})
 }
 
 func TestComponentSetToBitArray(t *testing.T) {
 	w := testingWorld()
-	l := NewTagList()
-	cs := map[string]any{
-		"TagList,GenericTags": l,
-	}
-	w.em.components.BitArrayFromComponentSet(cs)
+	b := w.em.components.BitArrayFromComponentSet(map[ComponentID]any{
+		POSITION: Vec2D{0, 0},
+	})
+	// TODO: convert to proper string and actually test
+	Logger.Println(b)
 }
 
 func TestComponentSetApply(t *testing.T) {

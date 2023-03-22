@@ -100,7 +100,7 @@ func (s *SpriteSystem) GetComponentDeps() []string {
 func (s *SpriteSystem) LinkWorld(w *World) {
 	s.w = w
 
-	s.SpriteEntities = w.GetUpdatedEntityListByComponentNames([]string{"Sprite"})
+	s.SpriteEntities = w.GetUpdatedEntityListByComponents([]ComponentID{BASESPRITE})
 }
 
 func (s *SpriteSystem) Update(dt_ms float64) {

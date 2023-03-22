@@ -116,7 +116,7 @@ func (e *Entity) SetMind(name string, val any) {
 func (e *Entity) String() string {
 	return fmt.Sprintf("{id:%d, tags:%s, components:%s}",
 		e.ID,
-		e.GetTagList("GenericTags").AsSlice(),
+		e.GetTagList(GENERICTAGS).AsSlice(),
 		e.World.em.components.BitArrayToString(e.ComponentBitArray),
 	)
 }

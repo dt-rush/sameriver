@@ -96,18 +96,21 @@ func (s *CollisionSystem) DoCollide(i *Entity, j *Entity) {
 
 // Test collision between two entities
 func (s *CollisionSystem) TestCollision(i *Entity, j *Entity) bool {
-	iPos := i.GetVec2D("Position")
-	iBox := i.GetVec2D("Box")
-	jPos := j.GetVec2D("Position")
-	jBox := j.GetVec2D("Box")
+	iPos := i.GetVec2D(POSITION)
+	iBox := i.GetVec2D(BOX)
+	jPos := j.GetVec2D(POSITION)
+	jBox := j.GetVec2D(BOX)
 	intersects := RectIntersectsRect(*iPos, *iBox, *jPos, *jBox)
 	return intersects
 }
 
 // system funcs
 
-func (s *CollisionSystem) GetComponentDeps() []string {
-	return []string{"Vec2D,Position", "Vec2D,Box"}
+func (s *CollisionSystem) GetComponentDeps() map[ComponentID]ComponentKind {
+	return map[ComponentID]ComponentKind{
+		POSITION: VEC2D,
+		BOX:      VEC2D,
+	}
 }
 
 func (s *CollisionSystem) LinkWorld(w *World) {

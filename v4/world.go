@@ -133,11 +133,11 @@ func NewWorld(spec map[string]any) *World {
 	// init entitymanager
 	w.em = NewEntityManager(w)
 	// register basic components
-	w.RegisterComponents(
-		"TagList,GenericTags",
-		"Vec2D,Position",
-		"Vec2D,Box",
-	)
+	w.RegisterComponents(map[ComponentID]ComponentKind{
+		GENERICTAGS: TAGLIST,
+		POSITION:    VEC2D,
+		BOX:         VEC2D,
+	})
 	// set up distance spatial hasher
 	w.SpatialHasher = NewSpatialHasher(
 		destructured.DistanceHasherGridX,
@@ -166,13 +166,9 @@ func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	return overunder_ms
 }
 
-func (w *World) RegisterComponents(specs ...string) {
+func (w *World) RegisterComponents(specs map[ComponentID]ComponentKind) {
 	// register given specs
-	for _, spec := range specs {
-		// guard against double insertion (many say it's a great time, but not here)
-		split := strings.Split(spec, ",")
-		kind := split[0]
-		name := split[1]
+	for name, kind := range specs {
 		if w.em.components.ComponentExists(name) {
 			Logger.Printf("[component %s already exists. Skipping...]", name)
 			continue
@@ -197,15 +193,15 @@ func (w *World) RegisterSystems(systems ...System) {
 		if !strings.HasSuffix(systemName, "System") {
 			panic(fmt.Sprintf("System names must end with System; got %s", systemName))
 		}
-		for _, spec := range s.GetComponentDeps() {
-			split := strings.Split(spec, ",")
-			name := split[1]
+		for name, kind := range s.GetComponentDeps() {
 			if w.em.components.ComponentExists(name) {
 				Logger.Printf("System %s depends on component %s, which is already registered.", systemName, name)
 				continue
 			}
-			Logger.Printf("Creating component %s wanted by system %s", spec, systemName)
-			w.RegisterComponents(spec)
+			Logger.Printf("Creating component %d of kind %s wanted by system %s", name, componentKindStrings[kind], systemName)
+			w.RegisterComponents(map[ComponentID]ComponentKind{
+				name: kind,
+			})
 		}
 		w.addSystem(s)
 	}

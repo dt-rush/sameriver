@@ -27,9 +27,9 @@ func (m *EntityManager) Spawn(spec map[string]any) *Entity {
 	var active bool
 	var uniqueTag string
 	var tags []string
-	var componentSpecs map[string]any
-	var customComponentSpecs map[string]any
-	var customComponentsImpl map[string]CustomContiguousComponent
+	var componentSpecs map[ComponentID]any
+	var customComponentSpecs map[ComponentID]any
+	var customComponentsImpl map[ComponentID]CustomContiguousComponent
 	var logics map[string](func(e *Entity, dt_ms float64))
 	var funcs map[string](func(e *Entity, params any) any)
 	var mind map[string]any
@@ -55,11 +55,11 @@ func (m *EntityManager) Spawn(spec map[string]any) *Entity {
 	}
 
 	if _, ok := spec["components"]; ok {
-		componentSpecs = spec["components"].(map[string]any)
+		componentSpecs = spec["components"].(map[ComponentID]any)
 	}
 	if _, ok := spec["customComponents"]; ok {
-		customComponentsImpl = spec["customComponentsImpl"].(map[string]CustomContiguousComponent)
-		customComponentSpecs = spec["customComponents"].(map[string]any)
+		customComponentsImpl = spec["customComponentsImpl"].(map[ComponentID]CustomContiguousComponent)
+		customComponentSpecs = spec["customComponents"].(map[ComponentID]any)
 	}
 
 	if _, ok := spec["logics"]; ok {
@@ -84,7 +84,7 @@ func (m *EntityManager) Spawn(spec map[string]any) *Entity {
 		active,
 		uniqueTag,
 		tags,
-		makeCustomComponentSet(componentSpecs, customComponentSpecs, customComponentsImpl),
+		m.components.makeCustomComponentSet(componentSpecs, customComponentSpecs, customComponentsImpl),
 		logics,
 		funcs,
 		mind,
@@ -130,6 +130,7 @@ func (m *EntityManager) doSpawn(
 	// copy the data inNto the component storage for each component
 	m.components.applyComponentSet(e, components)
 	// create (if doesn't exist) entitiesWithTag lists for each tag
+	*e.GetTagList(GENERICTAGS) = NewTagList()
 	m.TagEntity(e, tags...)
 	// apply the unique tag if provided
 	if uniqueTag != "" {

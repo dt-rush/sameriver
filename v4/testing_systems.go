@@ -17,8 +17,8 @@ func (s *testSystem) Update(dt_ms float64) {
 	time.Sleep(1 * time.Millisecond)
 	s.updates += 1
 }
-func (s *testSystem) GetComponentDeps() []string {
-	return []string{}
+func (s *testSystem) GetComponentDeps() map[ComponentID]ComponentKind {
+	return map[ComponentID]ComponentKind{}
 }
 func (s *testSystem) Expand(n int) {}
 
@@ -32,8 +32,8 @@ func newTestDependentSystem() *testDependentSystem {
 }
 func (s *testDependentSystem) LinkWorld(w *World)   {}
 func (s *testDependentSystem) Update(dt_ms float64) {}
-func (s *testDependentSystem) GetComponentDeps() []string {
-	return []string{}
+func (s *testDependentSystem) GetComponentDeps() map[ComponentID]ComponentKind {
+	return map[ComponentID]ComponentKind{}
 }
 func (s *testDependentSystem) Expand(n int) {}
 
@@ -46,8 +46,8 @@ func newTestNonPointerReceiverSystem() testNonPointerReceiverSystem {
 }
 func (s testNonPointerReceiverSystem) LinkWorld(w *World)   {}
 func (s testNonPointerReceiverSystem) Update(dt_ms float64) {}
-func (s testNonPointerReceiverSystem) GetComponentDeps() []string {
-	return []string{}
+func (s *testNonPointerReceiverSystem) GetComponentDeps() map[ComponentID]ComponentKind {
+	return map[ComponentID]ComponentKind{}
 }
 func (s testNonPointerReceiverSystem) Expand(n int) {}
 
@@ -60,8 +60,8 @@ func newTestSystemThatIsMisnamed() *testSystemThatIsMisnamed {
 }
 func (s *testSystemThatIsMisnamed) LinkWorld(w *World)   {}
 func (s *testSystemThatIsMisnamed) Update(dt_ms float64) {}
-func (s *testSystemThatIsMisnamed) GetComponentDeps() []string {
-	return []string{}
+func (s *testSystemThatIsMisnamed) GetComponentDeps() map[ComponentID]ComponentKind {
+	return map[ComponentID]ComponentKind{}
 }
 func (s *testSystemThatIsMisnamed) Expand(n int) {}
 
@@ -75,9 +75,10 @@ func newTestDependentNonPointerSystem() *testDependentNonPointerSystem {
 }
 func (s *testDependentNonPointerSystem) LinkWorld(w *World)   {}
 func (s *testDependentNonPointerSystem) Update(dt_ms float64) {}
-func (s *testDependentNonPointerSystem) GetComponentDeps() []string {
-	return []string{}
+func (s *testDependentNonPointerSystem) GetComponentDeps() map[ComponentID]ComponentKind {
+	return map[ComponentID]ComponentKind{}
 }
+
 func (s *testDependentNonPointerSystem) Expand(n int) {}
 
 // a system (misconfig) which is dependent on a non-System
@@ -90,7 +91,7 @@ func newTestDependentNonSystemSystem() *testDependentNonSystemSystem {
 }
 func (s *testDependentNonSystemSystem) LinkWorld(w *World)   {}
 func (s *testDependentNonSystemSystem) Update(dt_ms float64) {}
-func (s *testDependentNonSystemSystem) GetComponentDeps() []string {
-	return []string{}
+func (s *testDependentNonSystemSystem) GetComponentDeps() map[ComponentID]ComponentKind {
+	return map[ComponentID]ComponentKind{}
 }
 func (s *testDependentNonSystemSystem) Expand(n int) {}

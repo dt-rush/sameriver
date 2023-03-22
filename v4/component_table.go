@@ -27,7 +27,7 @@ const (
 	CUSTOM
 )
 
-var kindStrings = map[ComponentKind]string{
+var componentKindStrings = map[ComponentKind]string{
 	VEC2D:           "VEC2D",
 	BOOL:            "BOOL",
 	INT:             "INT",
@@ -217,7 +217,7 @@ func (ct *ComponentTable) addComponent(kind ComponentKind, name ComponentID) {
 	case GENERIC:
 		ct.genericMap[name] = make([]any, ct.capacity, 2*ct.capacity)
 	default:
-		panic(fmt.Sprintf("added component of kind %s has no case in component_table.go", kindStrings[kind]))
+		panic(fmt.Sprintf("added component of kind %s has no case in component_table.go", componentKindStrings[kind]))
 	}
 
 	// note name and kind

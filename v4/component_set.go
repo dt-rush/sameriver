@@ -36,7 +36,7 @@ func (ct *ComponentTable) makeCustomComponentSet(
 	for name, value := range customComponentSpecs {
 		kind := ct.kinds[name]
 		if kind != CUSTOM {
-			panic(fmt.Sprintf("custom component spec should have type Custom, it appears to be: %s", kindStrings[kind]))
+			panic(fmt.Sprintf("custom component spec should have type Custom, it appears to be: %s", componentKindStrings[kind]))
 		}
 		// take note in names map that this component name occurs
 		baseCS.names[name] = true
