@@ -183,10 +183,10 @@ func (w *World) RegisterComponents(specs ...string) {
 	}
 }
 
-func (w *World) RegisterCCCs(customs []CustomContiguousComponent) {
+func (w *World) RegisterCCCs(customs map[ComponentID]CustomContiguousComponent) {
 	// register custom contiguous components
-	for _, custom := range customs {
-		w.em.components.AddCCC(custom)
+	for id, custom := range customs {
+		w.em.components.addCCC(id, custom)
 	}
 }
 

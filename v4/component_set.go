@@ -2,45 +2,41 @@ package sameriver
 
 import (
 	"fmt"
-	"strings"
 	"time"
 )
 
 type ComponentSet struct {
-	// names of all components given values in this set
-	names map[string]bool
+	// names (ComponentID) of all components given values in this set
+	names map[ComponentID]bool
 	// data storage
-	vec2DMap             map[string]Vec2D
-	boolMap              map[string]bool
-	intMap               map[string]int
-	float64Map           map[string]float64
-	timeMap              map[string]time.Time
-	timeAccumulatorMap   map[string]TimeAccumulator
-	stringMap            map[string]string
-	spriteMap            map[string]Sprite
-	tagListMap           map[string]TagList
-	intMapMap            map[string]IntMap
-	floatMapMap          map[string]FloatMap
-	genericMap           map[string]any
-	customComponentsMap  map[string]any
-	customComponentsImpl map[string]CustomContiguousComponent
+	vec2DMap             map[ComponentID]Vec2D
+	boolMap              map[ComponentID]bool
+	intMap               map[ComponentID]int
+	float64Map           map[ComponentID]float64
+	timeMap              map[ComponentID]time.Time
+	timeAccumulatorMap   map[ComponentID]TimeAccumulator
+	stringMap            map[ComponentID]string
+	spriteMap            map[ComponentID]Sprite
+	tagListMap           map[ComponentID]TagList
+	intMapMap            map[ComponentID]IntMap
+	floatMapMap          map[ComponentID]FloatMap
+	genericMap           map[ComponentID]any
+	customComponentsMap  map[ComponentID]any
+	customComponentsImpl map[ComponentID]CustomContiguousComponent
 }
 
-func makeCustomComponentSet(
-	componentSpecs map[string]any,
-	customComponentSpecs map[string]any,
-	customComponentsImpl map[string]CustomContiguousComponent) ComponentSet {
+func (ct *ComponentTable) makeCustomComponentSet(
+	componentSpecs map[ComponentID]any,
+	customComponentSpecs map[ComponentID]any,
+	customComponentsImpl map[ComponentID]CustomContiguousComponent) ComponentSet {
 
-	baseCS := makeComponentSet(componentSpecs)
-	baseCS.customComponentsMap = make(map[string]any)
-	baseCS.customComponentsImpl = make(map[string]CustomContiguousComponent)
-	for spec, value := range customComponentSpecs {
-		// decode spec string
-		split := strings.Split(spec, ",")
-		kind := split[0]
-		name := split[1]
-		if kind != "Custom" {
-			panic(fmt.Sprintf("custom component spec should have type Custom, got: %s", kind))
+	baseCS := ct.makeComponentSet(componentSpecs)
+	baseCS.customComponentsMap = make(map[ComponentID]any)
+	baseCS.customComponentsImpl = make(map[ComponentID]CustomContiguousComponent)
+	for name, value := range customComponentSpecs {
+		kind := ct.kinds[name]
+		if kind != CUSTOM {
+			panic(fmt.Sprintf("custom component spec should have type Custom, it appears to be: %s", kindStrings[kind]))
 		}
 		// take note in names map that this component name occurs
 		baseCS.names[name] = true
@@ -55,99 +51,96 @@ func makeCustomComponentSet(
 
 // takes as componentSpecs a map whose keys are components specified by {kind},{name}
 // and whose values are any for the value
-func makeComponentSet(componentSpecs map[string]any) ComponentSet {
+func (ct *ComponentTable) makeComponentSet(componentSpecs map[ComponentID]any) ComponentSet {
 	cs := ComponentSet{
-		names: make(map[string]bool),
+		names: make(map[ComponentID]bool),
 	}
-	for spec, value := range componentSpecs {
-		// decode spec string
-		split := strings.Split(spec, ",")
-		kind := split[0]
-		name := split[1]
+	for name, value := range componentSpecs {
+		kind := ct.kinds[name]
 		// take note in names map that this component name occurs
 		cs.names[name] = true
 		// assign values into appropriate maps
 		switch kind {
-		case "Vec2D":
+		case VEC2D:
 			if v, ok := value.(Vec2D); ok {
 				if cs.vec2DMap == nil {
-					cs.vec2DMap = make(map[string]Vec2D)
+					cs.vec2DMap = make(map[ComponentID]Vec2D)
 				}
 				cs.vec2DMap[name] = v
 			}
-		case "Bool":
+		case BOOL:
 			if b, ok := value.(bool); ok {
 				if cs.boolMap == nil {
-					cs.boolMap = make(map[string]bool)
+					cs.boolMap = make(map[ComponentID]bool)
 				}
 				cs.boolMap[name] = b
 			}
-		case "Int":
+		case INT:
 			if i, ok := value.(int); ok {
 				if cs.intMap == nil {
-					cs.intMap = make(map[string]int)
+					cs.intMap = make(map[ComponentID]int)
 				}
 				cs.intMap[name] = i
 			}
-		case "Float64":
+		case FLOAT64:
 			if f, ok := value.(float64); ok {
 				if cs.float64Map == nil {
-					cs.float64Map = make(map[string]float64)
+					cs.float64Map = make(map[ComponentID]float64)
 				}
 				cs.float64Map[name] = f
 			}
-		case "Time":
+		case TIME:
 			if t, ok := value.(time.Time); ok {
 				if cs.timeMap == nil {
-					cs.timeMap = make(map[string]time.Time)
+					cs.timeMap = make(map[ComponentID]time.Time)
 				}
 				cs.timeMap[name] = t
 			}
-		case "TimeAccumulator":
+		case TIMEACCUMULATOR:
 			if t, ok := value.(TimeAccumulator); ok {
 				if cs.timeAccumulatorMap == nil {
-					cs.timeAccumulatorMap = make(map[string]TimeAccumulator)
+					cs.timeAccumulatorMap = make(map[ComponentID]TimeAccumulator)
 				}
 				cs.timeAccumulatorMap[name] = t
 			}
-		case "String":
+		case STRING:
 			if s, ok := value.(string); ok {
 				if cs.stringMap == nil {
-					cs.stringMap = make(map[string]string)
+					cs.stringMap = make(map[ComponentID]string)
 				}
 				cs.stringMap[name] = s
 			}
-		case "Sprite":
+		case SPRITE:
 			if s, ok := value.(Sprite); ok {
 				if cs.spriteMap == nil {
-					cs.spriteMap = make(map[string]Sprite)
+					cs.spriteMap = make(map[ComponentID]Sprite)
 				}
 				cs.spriteMap[name] = s
 			}
-		case "TagList":
+		case TAGLIST:
 			if t, ok := value.(TagList); ok {
 				if cs.tagListMap == nil {
-					cs.tagListMap = make(map[string]TagList)
+					cs.tagListMap = make(map[ComponentID]TagList)
 				}
 				cs.tagListMap[name] = t
 			}
-		case "IntMap":
+		case INTMAP:
 			if m, ok := value.(map[string]int); ok {
 				if cs.intMapMap == nil {
-					cs.intMapMap = make(map[string]IntMap)
+					cs.intMapMap = make(map[ComponentID]IntMap)
 				}
 				cs.intMapMap[name] = NewIntMap(m)
 			}
-		case "FloatMap":
+		case FLOATMAP:
 			if m, ok := value.(map[string]float64); ok {
 				if cs.floatMapMap == nil {
-					cs.floatMapMap = make(map[string]FloatMap)
+					cs.floatMapMap = make(map[ComponentID]FloatMap)
 				}
 				cs.floatMapMap[name] = NewFloatMap(m)
 			}
-		case "Generic":
+		case GENERIC:
 			if cs.genericMap == nil {
-				cs.genericMap = make(map[string]any)
+				cs.genericMap = make(map[ComponentID]any)
 			}
 			cs.genericMap[name] = value
 		default:

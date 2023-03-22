@@ -45,7 +45,9 @@ type CollisionData struct {
 }
 
 type CollisionSystem struct {
-	w                  *World
+	w *World
+	// TODO: currentl unused since we only actually look at the entities in
+	// the spatial hash cells
 	collidableEntities *UpdatedEntityList
 	rateLimiterArray   CollisionRateLimiterArray
 	delay              time.Duration
@@ -119,7 +121,7 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 	s.collidableEntities = w.em.GetSortedUpdatedEntityList(
 		EntityFilterFromComponentBitArray(
 			"collidable",
-			w.em.components.BitArrayFromNames([]string{"Position", "Box"})))
+			w.em.components.BitArrayFromIDs([]ComponentID{POSITION, BOX})))
 	// add a callback to the UpdatedEntityList of collidable entities
 	// so that whenever an entity is removed, we will reset its rate limiters
 	// in the collision rate limiter array (to guard against an entity
