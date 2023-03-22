@@ -49,7 +49,7 @@ type CollisionSystem struct {
 	collidableEntities *UpdatedEntityList
 	rateLimiterArray   CollisionRateLimiterArray
 	delay              time.Duration
-	sh                 *SpatialHashSystem `sameriver-system-dependency:"-"`
+	sh                 *SpatialHasher
 	Events             *EventBus
 }
 
@@ -131,6 +131,9 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 				s.rateLimiterArray.Reset(signal.Entity)
 			}
 		})
+
+	// TODO: parametrize grid
+	s.sh = NewSpatialHasher(10, 10, w)
 }
 
 // Iterates through the entities in the UpdatedEntityList using a handshake
@@ -145,13 +148,14 @@ func (s *CollisionSystem) LinkWorld(w *World) {
 // events for each possible collision [i][j] using the rate limiter at [i][j]
 // in rateLimiters, so if we already sent one within the timeout, we just move on.
 func (s *CollisionSystem) Update(dt_ms float64) {
+	s.sh.Update()
 	// NOTE: The ID's in collidableEntities are in sorted order,
 	// so the rateLimiterArray access condition that i < j is respected
 	// check each possible collison between entities in the list by doing a
 	// handshake pattern
-	for x := 0; x < s.sh.Hasher.GridX; x++ {
-		for y := 0; y < s.sh.Hasher.GridY; y++ {
-			entities := s.sh.Hasher.Entities(x, y)
+	for x := 0; x < s.sh.GridX; x++ {
+		for y := 0; y < s.sh.GridY; y++ {
+			entities := s.sh.Entities(x, y)
 			s.checkEntities(entities)
 		}
 	}
@@ -159,8 +163,10 @@ func (s *CollisionSystem) Update(dt_ms float64) {
 
 // performs worse than regular single-threaded Update
 func (s *CollisionSystem) UpdateParallel(dt_ms float64) {
+	s.sh.Update()
+
 	numWorkers := runtime.NumCPU()
-	stripeSize := s.sh.Hasher.GridY / numWorkers
+	stripeSize := s.sh.GridY / numWorkers
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
 
@@ -168,14 +174,14 @@ func (s *CollisionSystem) UpdateParallel(dt_ms float64) {
 		startIndex := i * stripeSize
 		endIndex := (i + 1) * stripeSize
 		if i == numWorkers-1 {
-			endIndex = s.sh.Hasher.GridY
+			endIndex = s.sh.GridY
 		}
 
 		go func(start, end int) {
 			defer wg.Done()
-			for x := 0; x < s.sh.Hasher.GridX; x++ {
+			for x := 0; x < s.sh.GridX; x++ {
 				for y := start; y < end; y++ {
-					entities := s.sh.Hasher.Entities(x, y)
+					entities := s.sh.Entities(x, y)
 					s.checkEntities(entities)
 				}
 			}
