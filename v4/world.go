@@ -463,13 +463,13 @@ func (w *World) DeactivateEntityLogics(e *Entity) {
 	}
 }
 
-func (w *World) AddFuncs(funcs map[string](func(interface{}) interface{})) {
+func (w *World) AddFuncs(funcs map[string](func(any) any)) {
 	for name, f := range funcs {
 		w.funcs.Add(name, f)
 	}
 }
 
-func (w *World) AddFunc(name string, f func(interface{}) interface{}) {
+func (w *World) AddFunc(name string, f func(any) any) {
 	w.funcs.Add(name, f)
 }
 
@@ -477,7 +477,7 @@ func (w *World) RemoveFunc(name string) {
 	w.funcs.Remove(name)
 }
 
-func (w *World) GetFunc(name string) func(interface{}) interface{} {
+func (w *World) GetFunc(name string) func(any) any {
 	return w.funcs.funcs[name]
 }
 

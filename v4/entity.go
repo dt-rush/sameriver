@@ -94,6 +94,10 @@ func (e *Entity) RemoveFunc(name string) {
 	e.funcs.Remove(name)
 }
 
+func (e *Entity) GetFunc(name string) func(any) any {
+	return e.funcs.funcs[name]
+}
+
 func (e *Entity) HasFunc(name string) bool {
 	return e.funcs.Has(name)
 }
