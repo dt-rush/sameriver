@@ -13,5 +13,6 @@ const (
 	MOVEMENTTARGET
 	ITEM
 	INVENTORY
-	GENERICTAGS
+	GENERICTAGS // NOTE: this should always be the last one, so clients can start
+	// their consts at GENERICTAGS + 1 + iota
 )
