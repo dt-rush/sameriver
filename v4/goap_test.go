@@ -145,7 +145,7 @@ func TestGOAPGoalRemaining(t *testing.T) {
 func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	w := testingWorld()
 	const (
-		BOOZEAMOUNT = GENERICTAGS + iota
+		BOOZEAMOUNT = GENERICTAGS + 1 + iota
 	)
 	w.RegisterComponents([]any{
 		BOOZEAMOUNT, INT, "BOOZEAMOUNT",
@@ -190,6 +190,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	p.eval.AddActions(drink)
 
 	start := NewGOAPWorldState(nil)
+	start.w = w // this would be done automatically in Plan()
 	p.eval.checkModalInto("hasBooze", start)
 
 	goal := map[string]int{
@@ -332,7 +333,10 @@ func TestGOAPActionModalVal(t *testing.T) {
 	w.RegisterSystems(ps)
 	e := testingSpawnPhysics(w)
 
-	ws := NewGOAPWorldState(nil)
+	nilWS := NewGOAPWorldState(nil)
+	nilWS.w = w // this would be done automatically in Plan()
+
+	ws := nilWS.CopyOf()
 	treePos := &Vec2D{11, 11}
 
 	eval := NewGOAPEvaluator()
@@ -429,6 +433,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	badWS := NewGOAPWorldState(map[string]int{
 		"atTree": 0,
 	})
+	badWS.w = w
 
 	*e.GetVec2D(POSITION) = *treePos
 
@@ -439,6 +444,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	axeWS := NewGOAPWorldState(map[string]int{
 		"hasAxe": 1,
 	})
+	axeWS.w = w
 	if !eval.presFulfilled(chopTree, axeWS) {
 		t.Fatal("mix of modal and basic world state vals should fulfill pre")
 	}
@@ -450,7 +456,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	g := newGOAPGoal(map[string]int{
 		"atTree,=": 1,
 	})
-	appliedState := eval.applyActionBasic(goToTree, NewGOAPWorldState(nil), true)
+	appliedState := eval.applyActionBasic(goToTree, nilWS, true)
 	remaining := g.remaining(appliedState)
 	Logger.Println("goal:")
 	printGoal(g)
@@ -481,7 +487,8 @@ func TestGOAPActionModalVal(t *testing.T) {
 	//
 
 	*e.GetVec2D(POSITION) = Vec2D{-100, -100}
-	atTreeApplied := eval.applyActionModal(goToTree, NewGOAPWorldState(nil))
+
+	atTreeApplied := eval.applyActionModal(goToTree, nilWS)
 	Logger.Println("state after applying modal action eff of atTree:")
 	printWorldState(atTreeApplied)
 	if val, ok := atTreeApplied.vals["atTree"]; !ok || val != 1 {
@@ -496,7 +503,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	//
 
 	*e.GetVec2D(POSITION) = Vec2D{-100, -100}
-	atOceanApplied := eval.applyActionModal(goToOcean, NewGOAPWorldState(nil))
+	atOceanApplied := eval.applyActionModal(goToOcean, nilWS)
 	Logger.Println("state after applying modal action eff of atOcean:")
 	printWorldState(atOceanApplied)
 
@@ -571,7 +578,7 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 	w.RegisterSystems(ps)
 
 	const (
-		STATE = GENERICTAGS + iota
+		STATE = GENERICTAGS + 1 + iota
 	)
 
 	w.RegisterComponents([]any{
@@ -579,8 +586,8 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 	})
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"IntMap,State": map[string]int{
+		"components": map[ComponentID]any{
+			STATE: map[string]int{
 				"drunk": 0,
 			},
 		},
@@ -634,7 +641,7 @@ func TestGOAPPlanSimpleEnough(t *testing.T) {
 	w.RegisterSystems(ps)
 
 	const (
-		STATE = GENERICTAGS + iota
+		STATE = GENERICTAGS + 1 + iota
 	)
 
 	w.RegisterComponents([]any{
@@ -642,8 +649,8 @@ func TestGOAPPlanSimpleEnough(t *testing.T) {
 	})
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"IntMap,State": map[string]int{
+		"components": map[ComponentID]any{
+			STATE: map[string]int{
 				"drunk": 0,
 			},
 		},
@@ -702,7 +709,7 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 	w.RegisterSystems(ps, items, inventories)
 
 	const (
-		STATE = GENERICTAGS + iota
+		STATE = GENERICTAGS + 1 + iota
 	)
 
 	w.RegisterComponents([]any{
@@ -721,12 +728,12 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 	})
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"Vec2D,Position": Vec2D{0, 0},
-			"IntMap,State": map[string]int{
+		"components": map[ComponentID]any{
+			POSITION: Vec2D{0, 0},
+			STATE: map[string]int{
 				"drunk": 0,
 			},
-			"Generic,Inventory": inventories.Create(nil),
+			INVENTORY: inventories.Create(nil),
 		},
 	})
 
@@ -938,9 +945,9 @@ func TestGOAPPlanClassic(t *testing.T) {
 	})
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"Vec2D,Position":    Vec2D{0, 0},
-			"Generic,Inventory": inventories.Create(nil),
+		"components": map[ComponentID]any{
+			POSITION:  Vec2D{0, 0},
+			INVENTORY: inventories.Create(nil),
 		},
 	})
 

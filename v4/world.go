@@ -171,7 +171,7 @@ func (w *World) RegisterComponents(components []any) {
 		panic("malformed components specification given to RegisterComponents()")
 	}
 	// register given specs
-	for i := 0; i < len(components)/3; i += 3 {
+	for i := 0; i < len(components); i += 3 {
 		name := components[i].(ComponentID)
 		kind := components[i+1].(ComponentKind)
 		str := components[i+2].(string)
@@ -499,6 +499,10 @@ func (w *World) Blackboard(name string) *Blackboard {
 		w.blackboards[name] = NewBlackboard(name)
 	}
 	return w.blackboards[name]
+}
+
+func (w *World) ApplyComponentSet(e *Entity, spec map[ComponentID]any) {
+	w.em.components.ApplyComponentSet(e, spec)
 }
 
 func (w *World) String() string {

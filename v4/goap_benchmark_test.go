@@ -58,9 +58,9 @@ func BenchmarkGOAPClassic(b *testing.B) {
 	})
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"Vec2D,Position":    Vec2D{0, 0},
-			"Generic,Inventory": inventories.Create(nil),
+		"components": map[ComponentID]any{
+			POSITION:  Vec2D{0, 0},
+			INVENTORY: inventories.Create(nil),
 		},
 	})
 
@@ -234,15 +234,15 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 	})
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"IntMap,State": map[string]int{
+		"components": map[ComponentID]any{
+			STATE: map[string]int{
 				"drunk": 0,
 			},
-			"Generic,Inventory": inventories.Create(nil),
-			"Vec2D,Position":    Vec2D{10, 10},
-			"Vec2D,Velocity":    Vec2D{0, 0},
-			"Vec2D,Box":         Vec2D{1, 1},
-			"Float64,Mass":      3.0,
+			INVENTORY: inventories.Create(nil),
+			POSITION:  Vec2D{10, 10},
+			VELOCITY:  Vec2D{0, 0},
+			BOX:       Vec2D{1, 1},
+			MASS:      3.0,
 		},
 	})
 
@@ -433,9 +433,9 @@ func BenchmarkGOAPSimple(b *testing.B) {
 	w.RegisterSystems(ps, items, inventories)
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"Vec2D,Position":    Vec2D{0, 0},
-			"Generic,Inventory": inventories.Create(nil),
+		"components": map[ComponentID]any{
+			POSITION:  Vec2D{0, 0},
+			INVENTORY: inventories.Create(nil),
 		},
 	})
 

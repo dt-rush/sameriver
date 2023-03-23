@@ -301,19 +301,19 @@ func (i *ItemSystem) SpawnItemEntity(pos Vec2D, item *Item) *Entity {
 	// (and any unstacked rotting items)
 	inventory := NewInventory()
 	inventory.Credit(item)
-	components := map[string]any{
-		"Vec2D,Position":    pos,
-		"Vec2D,Box":         entityBox,
-		"Generic,Inventory": inventory,
+	components := map[ComponentID]any{
+		POSITION:  pos,
+		BOX:       entityBox,
+		INVENTORY: inventory,
 	}
 	if i.sprite {
 		if i.spriteSystem == nil {
 			panic("Trying to create entity with sprite=true while spriteSystem was not registered")
 		}
-		components["Sprite,Sprite"] = i.spriteSystem.GetSprite(arch.Entity["sprite"].(string))
+		components[BASESPRITE] = i.spriteSystem.GetSprite(arch.Entity["sprite"].(string))
 	}
 	if i.despawn_ms != nil {
-		components["TimeAccumulator,DespawnTimer"] = NewTimeAccumulator(*i.despawn_ms)
+		components[DESPAWNTIMER] = NewTimeAccumulator(*i.despawn_ms)
 	}
 
 	return i.w.Spawn(map[string]any{

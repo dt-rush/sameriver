@@ -349,6 +349,19 @@ func (ct *ComponentTable) applyComponentSet(e *Entity, cs ComponentSet) {
 	for name, x := range cs.customComponentsMap {
 		cs.customComponentsImpl[name].Set(e, x)
 	}
+	ct.orBitArrayInto(e, ct.bitArrayFromComponentSet(cs))
+}
+
+func (ct *ComponentTable) orBitArrayInto(e *Entity, b bitarray.BitArray) {
+	if e.ComponentBitArray == nil {
+		e.ComponentBitArray = bitarray.NewBitArray(uint64(len(ct.ixs)))
+	}
+	for _, i := range ct.ixs {
+		bit, _ := b.GetBit(uint64(i))
+		if bit {
+			e.ComponentBitArray.SetBit(uint64(i))
+		}
+	}
 }
 
 func (ct *ComponentTable) BitArrayFromIDs(IDs []ComponentID) bitarray.BitArray {

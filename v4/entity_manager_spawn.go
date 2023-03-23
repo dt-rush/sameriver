@@ -56,11 +56,10 @@ func (m *EntityManager) Spawn(spec map[string]any) *Entity {
 
 	if _, ok := spec["components"]; ok {
 		componentSpecs = spec["components"].(map[ComponentID]any)
-		// add empty generictags if not present
-		if _, ok := componentSpecs[GENERICTAGS]; !ok {
-			componentSpecs[GENERICTAGS] = NewTagList()
-		}
+	} else {
+		componentSpecs = make(map[ComponentID]any)
 	}
+
 	if _, ok := spec["customComponents"]; ok {
 		customComponentsImpl = spec["customComponentsImpl"].(map[ComponentID]CustomContiguousComponent)
 		customComponentSpecs = spec["customComponents"].(map[ComponentID]any)
@@ -83,6 +82,10 @@ func (m *EntityManager) Spawn(spec map[string]any) *Entity {
 	} else {
 		mind = make(map[string]any)
 	}
+
+	// add empty generictags (overwriting the spec? boo hoo,
+	// shouldn't be specifying tags this way anyway)
+	componentSpecs[GENERICTAGS] = NewTagList()
 
 	return m.doSpawn(
 		active,
@@ -129,9 +132,7 @@ func (m *EntityManager) doSpawn(
 	e := m.entityIDAllocator.allocateID()
 
 	e.World = m.w
-	// set the bitarray for this entity
-	e.ComponentBitArray = m.components.bitArrayFromComponentSet(components)
-	// copy the data inNto the component storage for each component
+	// copy the data into the component storage for each component
 	m.components.applyComponentSet(e, components)
 	// create (if doesn't exist) entitiesWithTag lists for each tag
 	m.TagEntity(e, tags...)

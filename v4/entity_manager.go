@@ -189,6 +189,10 @@ func (m *EntityManager) GetCurrentEntitiesSetCopy() map[*Entity]bool {
 	return setCopy
 }
 
+func (m *EntityManager) ApplyComponentSet(e *Entity, spec map[ComponentID]any) {
+	m.components.ApplyComponentSet(e, spec)
+}
+
 func (m *EntityManager) String() string {
 	return fmt.Sprintf("EntityManager[ %d / %d active ]\n",
 		len(m.entityIDAllocator.currentEntities), m.entityIDAllocator.active)

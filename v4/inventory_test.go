@@ -157,8 +157,8 @@ func TestInventoryFromListing(t *testing.T) {
 	})
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"Generic,Inventory": inventories.Create(map[string]int{
+		"components": map[ComponentID]any{
+			INVENTORY: inventories.Create(map[string]int{
 				"sword_iron":  1,
 				"coin_copper": 100,
 				"heart_sutra": 1,
@@ -182,8 +182,8 @@ func TestInventoryStacksForDisplay(t *testing.T) {
 	items.LoadArchetypesFile("test_data/basic_archetypes.json")
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"Generic,Inventory": inventories.Create(map[string]int{
+		"components": map[ComponentID]any{
+			INVENTORY: inventories.Create(map[string]int{
 				"sword_iron":  1,
 				"coin_copper": 100,
 				"heart_sutra": 1,
@@ -210,8 +210,8 @@ func TestInventoryDebitNByFilter(t *testing.T) {
 	items.LoadArchetypesFile("test_data/basic_archetypes.json")
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"Generic,Inventory": inventories.Create(map[string]int{
+		"components": map[ComponentID]any{
+			INVENTORY: inventories.Create(map[string]int{
 				"sword_iron":  1,
 				"coin_copper": 100,
 			}),
@@ -243,15 +243,15 @@ func TestInventoryGetCountContains(t *testing.T) {
 	items.LoadArchetypesFile("test_data/basic_archetypes.json")
 
 	i := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"Generic,Inventory": inventories.Create(map[string]int{
+		"components": map[ComponentID]any{
+			INVENTORY: inventories.Create(map[string]int{
 				"coin_copper": 100,
 			}),
 		},
 	})
 	j := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"Generic,Inventory": inventories.Create(map[string]int{
+		"components": map[ComponentID]any{
+			INVENTORY: inventories.Create(map[string]int{
 				"sword_iron": 1,
 			}),
 		},

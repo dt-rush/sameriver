@@ -34,7 +34,11 @@ func TestComponentSetApply(t *testing.T) {
 		GENERICTAGS: l,
 	}
 	w.em.components.ApplyComponentSet(e, cs)
-	if !e.ComponentBitArray.Equals(w.em.components.BitArrayFromComponentSet(cs)) {
+	eb := e.ComponentBitArray
+	csb := w.em.components.BitArrayFromComponentSet(cs)
+	Logger.Println(eb)
+	Logger.Println(csb)
+	if !eb.Equals(csb) {
 		t.Fatal("failed to apply componentset according to bitarray")
 	}
 }

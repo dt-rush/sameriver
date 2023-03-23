@@ -56,6 +56,9 @@ func (ct *ComponentTable) makeComponentSet(componentSpecs map[ComponentID]any) C
 		names: make(map[ComponentID]bool),
 	}
 	for name, value := range componentSpecs {
+		if _, ok := ct.ixs[name]; !ok {
+			panic(fmt.Sprintf("unknown component id %d", name))
+		}
 		kind := ct.kinds[name]
 		// take note in names map that this component name occurs
 		cs.names[name] = true
@@ -143,8 +146,6 @@ func (ct *ComponentTable) makeComponentSet(componentSpecs map[ComponentID]any) C
 				cs.genericMap = make(map[ComponentID]any)
 			}
 			cs.genericMap[name] = value
-		default:
-			panic(fmt.Sprintf("unknown component kind %d", kind))
 		}
 	}
 	return cs

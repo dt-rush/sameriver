@@ -42,7 +42,6 @@ func NewGOAPWorldState(vals map[string]int) *GOAPWorldState {
 }
 
 func (ws *GOAPWorldState) ecKey(e *Entity, name ComponentID) string {
-	// TODO: uh oh, we don't have access to the componettable strings map here
 	return fmt.Sprintf("%d-%s", e.ID, ws.w.em.components.strings[name])
 }
 

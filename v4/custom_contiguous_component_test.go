@@ -36,18 +36,18 @@ func TestCCCGetSet(t *testing.T) {
 	w := testingWorld()
 	xyz := &XYZComponent{}
 	const (
-		XYZC = iota + GENERICTAGS
+		XYZC = iota + GENERICTAGS + 1
 	)
 	w.RegisterCCCs(map[ComponentID]CustomContiguousComponent{
 		XYZC: xyz,
 	})
 	// spawn entity with empty base CS, XYZ custom CS
 	e := w.em.Spawn(map[string]any{
-		"customComponents": map[string]any{
-			"Custom,XYZ": XYZ{x: 1, y: 0, z: 8},
+		"customComponents": map[ComponentID]any{
+			XYZC: XYZ{x: 1, y: 0, z: 8},
 		},
-		"customComponentsImpl": map[string]CustomContiguousComponent{
-			"XYZ": xyz,
+		"customComponentsImpl": map[ComponentID]CustomContiguousComponent{
+			XYZC: xyz,
 		},
 	})
 
@@ -74,18 +74,18 @@ func TestCCCBitArray(t *testing.T) {
 	w := testingWorld()
 	xyz := &XYZComponent{}
 	const (
-		XYZC = iota + GENERICTAGS
+		XYZC = iota + GENERICTAGS + 1
 	)
 	w.RegisterCCCs(map[ComponentID]CustomContiguousComponent{
 		XYZC: xyz,
 	})
 	// spawn entity with empty base CS, XYZ custom CS
 	e := w.em.Spawn(map[string]any{
-		"customComponents": map[string]any{
-			"Custom,XYZ": XYZ{x: 1, y: 0, z: 8},
+		"customComponents": map[ComponentID]any{
+			XYZC: XYZ{x: 1, y: 0, z: 8},
 		},
-		"customComponentsImpl": map[string]CustomContiguousComponent{
-			"XYZ": xyz,
+		"customComponentsImpl": map[ComponentID]CustomContiguousComponent{
+			XYZC: xyz,
 		},
 	})
 

@@ -33,6 +33,8 @@ type EntityManagerInterface interface {
 	GetUpdatedEntityListByName(name string) *UpdatedEntityList
 	GetUpdatedEntityListByComponents(names []ComponentID) *UpdatedEntityList
 
+	ApplyComponentSet(e *Entity, spec map[ComponentID]any)
+
 	String() string
 	DumpEntities() string
 }
