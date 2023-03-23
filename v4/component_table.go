@@ -404,6 +404,7 @@ func (ct *ComponentTable) guardInvalidComponentGet(e *Entity, name ComponentID) 
 	}
 	bit, _ := e.ComponentBitArray.GetBit(uint64(ix))
 	if !bit {
+		Logger.Printf("%s", ct.strings[name])
 		msg := fmt.Sprintf("Tried to get %s component of entity without: %s", ct.strings[name], e)
 		panic(msg)
 	}

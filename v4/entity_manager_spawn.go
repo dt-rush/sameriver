@@ -56,6 +56,10 @@ func (m *EntityManager) Spawn(spec map[string]any) *Entity {
 
 	if _, ok := spec["components"]; ok {
 		componentSpecs = spec["components"].(map[ComponentID]any)
+		// add empty generictags if not present
+		if _, ok := componentSpecs[GENERICTAGS]; !ok {
+			componentSpecs[GENERICTAGS] = NewTagList()
+		}
 	}
 	if _, ok := spec["customComponents"]; ok {
 		customComponentsImpl = spec["customComponentsImpl"].(map[ComponentID]CustomContiguousComponent)
@@ -130,7 +134,6 @@ func (m *EntityManager) doSpawn(
 	// copy the data inNto the component storage for each component
 	m.components.applyComponentSet(e, components)
 	// create (if doesn't exist) entitiesWithTag lists for each tag
-	*e.GetTagList(GENERICTAGS) = NewTagList()
 	m.TagEntity(e, tags...)
 	// apply the unique tag if provided
 	if uniqueTag != "" {

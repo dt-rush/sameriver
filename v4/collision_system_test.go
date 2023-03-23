@@ -101,9 +101,9 @@ func TestCollisionFilter(t *testing.T) {
 	w, cs, _, e := testingSetupCollision()
 	coin := w.Spawn(map[string]any{
 		"tags": []string{"coin"},
-		"components": map[string]any{
-			"Vec2D,Position": *e.GetVec2D(POSITION),
-			"Vec2D,Box":      *e.GetVec2D(BOX),
+		"components": map[ComponentID]any{
+			POSITION: *e.GetVec2D(POSITION),
+			BOX:      *e.GetVec2D(BOX),
 		}})
 	predicate := func(ev Event) bool {
 		c := ev.Data.(CollisionData)
