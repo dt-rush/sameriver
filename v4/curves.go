@@ -17,10 +17,11 @@ type CurveFunc func(x float64) float64
 // CLIMB
 //
 
-func (c *curves) Sigmoid(s float64) CurveFunc {
+func (c *curves) Sigmoid(u float64, s float64) CurveFunc {
 	return func(x float64) float64 {
-		denominator := 1.0 + math.Exp(-x/(0.05*s))
-		return math.Pow(1.0/denominator, math.Abs(x-1))
+		x = c.Clamped(x)
+		denominator := 1.0 + math.Exp(-(x-u)/(0.05*s))
+		return math.Pow(1.0/denominator, math.Abs((x-u)-1))
 	}
 }
 
@@ -31,6 +32,7 @@ func (c *curves) Shelf(u float64, s float64) CurveFunc {
 		return numerator / denominator
 	}
 	return func(x float64) float64 {
+		x = c.Clamped(x)
 		if x == 1 {
 			return 1
 		}
@@ -40,6 +42,7 @@ func (c *curves) Shelf(u float64, s float64) CurveFunc {
 
 func (c *curves) Arc(u float64, s float64) CurveFunc {
 	return func(x float64) float64 {
+		x = c.Clamped(x)
 		if x == 1 {
 			return 1
 		}
@@ -53,9 +56,9 @@ func (c *curves) Arc(u float64, s float64) CurveFunc {
 	}
 }
 
-func (c *curves) Bell(spread float64) CurveFunc {
+func (c *curves) Bell(s float64) CurveFunc {
 	return func(x float64) float64 {
-		return 1.0 / ((x*x)/(spread*spread) + 1)
+		return 1.0 / ((x*x)/(s*s) + 1)
 	}
 }
 
