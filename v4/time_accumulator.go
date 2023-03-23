@@ -26,3 +26,7 @@ func (t *TimeAccumulator) Tick(dt_ms float64) bool {
 func (t *TimeAccumulator) Completion() float64 {
 	return t.accum_ms / t.period_ms
 }
+
+func (t *TimeAccumulator) CompletionAfterDT(dt_ms float64) float64 {
+	return (t.accum_ms + dt_ms) / t.period_ms
+}

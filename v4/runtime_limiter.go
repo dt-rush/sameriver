@@ -166,7 +166,7 @@ func (r *RuntimeLimiter) Run(allowance_ms float64, shareLoop int) {
 		// run function (if it should run)
 		var func_ms float64
 		if !skip && r.shouldRunOrSwitchMode(logic, &mode, poll_remaining_ms(), shareLoop > 0) {
-			func_ms = r.run(logic, mode)
+			func_ms = r.runLogic(logic, mode)
 			logRuntimeLimiter("remaining after %s: %f", logic.name, remaining_ms)
 		}
 		remaining_ms = poll_remaining_ms()
@@ -200,14 +200,11 @@ func (r *RuntimeLimiter) loopZero() {
 func (r *RuntimeLimiter) initShouldRun() {
 	for _, l := range r.logicUnits {
 		durationHasElapsed := r.tick(l)
-		// copy the schedule so we can Tick it without it being damaged for
-		// when we want to check it in the loop again and again
 		hasSchedule := l.runSchedule != nil
 		var scheduled bool
 		if hasSchedule {
-			scheduleAccum := *l.runSchedule
 			schedule_tick_ms := float64(time.Since(r.lastScheduleTick[l]).Nanoseconds()) / 1e6
-			scheduled = hasSchedule && scheduleAccum.Tick(schedule_tick_ms)
+			scheduled = hasSchedule && l.runSchedule.CompletionAfterDT(schedule_tick_ms) >= 1
 		} else {
 			scheduled = true
 		}
@@ -256,6 +253,7 @@ func (r *RuntimeLimiter) iter(mode IterMode, remaining_ms float64, bonsuTime boo
 	return logic, false, skip
 }
 
+// returns true if should run, else switches mode and returns false
 func (r *RuntimeLimiter) shouldRunOrSwitchMode(logic *LogicUnit, mode *IterMode, remaining_ms float64, bonsuTime bool) bool {
 	// check whether this logic has ever run
 	_, hasRunBefore := r.lastRun[logic]
@@ -332,7 +330,7 @@ func (r *RuntimeLimiter) shouldRunOrSwitchMode(logic *LogicUnit, mode *IterMode,
 	return (!hasRunBefore && !hasSchedule) || (durationHasElapsed && (!hasSchedule || scheduled))
 }
 
-func (r *RuntimeLimiter) run(logic *LogicUnit, mode IterMode) (func_ms float64) {
+func (r *RuntimeLimiter) runLogic(logic *LogicUnit, mode IterMode) (func_ms float64) {
 	// note that we start lastrun from the moment the function starts, since
 	// say it starts at t=0ms, takes 4 ms to run, then if it comes up to run
 	// again at t=8ms (r.tick()), it will get dt_ms of 8 ms, the proper
