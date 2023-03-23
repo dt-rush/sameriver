@@ -12,7 +12,7 @@ func TestEntityFilter(t *testing.T) {
 	q := EntityFilter{
 		"positionFilter",
 		func(e *Entity) bool {
-			return *e.GetVec2D("Position") == pos
+			return *e.GetVec2D(POSITION) == pos
 		},
 	}
 	if !q.Test(e) {

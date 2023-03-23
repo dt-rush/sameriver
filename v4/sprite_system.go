@@ -93,8 +93,10 @@ func (s *SpriteSystem) LoadFiles(renderer *sdl.Renderer) {
 
 // System funcs
 
-func (s *SpriteSystem) GetComponentDeps() []string {
-	return []string{"Sprite,Sprite"}
+func (s *SpriteSystem) GetComponentDeps() []any {
+	return []any{
+		BASESPRITE, SPRITE, "BASESPRITE",
+	}
 }
 
 func (s *SpriteSystem) LinkWorld(w *World) {

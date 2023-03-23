@@ -22,8 +22,10 @@ func (i *InventorySystem) Create(listing map[string]int) *Inventory {
 
 // System funcs
 
-func (i *InventorySystem) GetComponentDeps() []string {
-	return []string{"Generic,Inventory"}
+func (i *InventorySystem) GetComponentDeps() []any {
+	return []any{
+		INVENTORY, GENERIC, "INVENTORY",
+	}
 }
 
 func (i *InventorySystem) LinkWorld(w *World) {

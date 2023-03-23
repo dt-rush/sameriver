@@ -37,8 +37,6 @@ func BenchmarkGOAPClassic(b *testing.B) {
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
 
-	w.RegisterComponents("IntMap,State", "Generic,Inventory")
-
 	items.CreateArchetype(map[string]any{
 		"name":        "axe",
 		"displayName": "axe",
@@ -70,11 +68,11 @@ func BenchmarkGOAPClassic(b *testing.B) {
 		return GOAPModalVal{
 			name: fmt.Sprintf("has%s", name),
 			check: func(ws *GOAPWorldState) int {
-				inv := ws.GetModal(e, "Inventory").(*Inventory)
+				inv := ws.GetModal(e, INVENTORY).(*Inventory)
 				return inv.CountName(archetype)
 			},
 			effModalSet: func(ws *GOAPWorldState, op string, x int) {
-				inv := ws.GetModal(e, "Inventory").(*Inventory).CopyOf()
+				inv := ws.GetModal(e, INVENTORY).(*Inventory).CopyOf()
 				if op == "-" {
 					inv.DebitNTags(x, archetype)
 				}
@@ -94,7 +92,7 @@ func BenchmarkGOAPClassic(b *testing.B) {
 						inv.SetCountName(count+x, archetype)
 					}
 				}
-				ws.SetModal(e, "Inventory", inv)
+				ws.SetModal(e, INVENTORY, inv)
 			},
 		}
 	}
@@ -126,7 +124,7 @@ func BenchmarkGOAPClassic(b *testing.B) {
 		return GOAPModalVal{
 			name: fmt.Sprintf("at%s", name),
 			check: func(ws *GOAPWorldState) int {
-				ourPos := ws.GetModal(e, "Position").(*Vec2D)
+				ourPos := ws.GetModal(e, POSITION).(*Vec2D)
 				_, _, d := ourPos.Distance(pos)
 				if d < 2 {
 					return 1
@@ -136,7 +134,7 @@ func BenchmarkGOAPClassic(b *testing.B) {
 			},
 			effModalSet: func(ws *GOAPWorldState, op string, x int) {
 				near := pos.Add(Vec2D{1, 0})
-				ws.SetModal(e, "Position", &near)
+				ws.SetModal(e, POSITION, &near)
 			},
 		}
 	}
@@ -217,7 +215,12 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 	items := NewItemSystem(nil)
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
-	w.RegisterComponents("IntMap,State", "Generic,Inventory")
+	const (
+		STATE = GENERICTAGS + iota
+	)
+	w.RegisterComponents([]any{
+		STATE, INTMAP, "STATE",
+	})
 
 	items.CreateArchetype(map[string]any{
 		"name":        "bottle_booze",
@@ -249,7 +252,7 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 	inTempleModal := GOAPModalVal{
 		name: "inTemple",
 		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			ourPos := ws.GetModal(e, POSITION).(*Vec2D)
 			_, _, d := ourPos.Distance(*templePos)
 			if d < 2 {
 				return 1
@@ -259,13 +262,13 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			nearTemple := templePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", &nearTemple)
+			ws.SetModal(e, POSITION, &nearTemple)
 		},
 	}
 	atBoozeModal := GOAPModalVal{
 		name: "atBooze",
 		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			ourPos := ws.GetModal(e, POSITION).(*Vec2D)
 			_, _, d := ourPos.Distance(*boozePos)
 			if d < 2 {
 				return 1
@@ -275,32 +278,32 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			nearBooze := boozePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", &nearBooze)
+			ws.SetModal(e, POSITION, &nearBooze)
 		},
 	}
 	drunkModal := GOAPModalVal{
 		name: "drunk",
 		check: func(ws *GOAPWorldState) int {
-			state := ws.GetModal(e, "State").(*IntMap)
+			state := ws.GetModal(e, STATE).(*IntMap)
 			return state.m["drunk"]
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			state := ws.GetModal(e, "State").(*IntMap).CopyOf()
+			state := ws.GetModal(e, STATE).(*IntMap).CopyOf()
 			if op == "+" {
 				state.m["drunk"] += x
 			}
-			ws.SetModal(e, "State", &state)
+			ws.SetModal(e, STATE, &state)
 		},
 	}
 	hasBoozeModal := GOAPModalVal{
 		name: "hasBooze",
 		check: func(ws *GOAPWorldState) int {
-			inv := ws.GetModal(e, "Inventory").(*Inventory)
+			inv := ws.GetModal(e, INVENTORY).(*Inventory)
 			count := inv.CountTags("booze")
 			return count
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			inv := ws.GetModal(e, "Inventory").(*Inventory).CopyOf()
+			inv := ws.GetModal(e, INVENTORY).(*Inventory).CopyOf()
 			if op == "-" {
 				inv.DebitNTags(x, "booze")
 			}
@@ -322,7 +325,7 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 					inv.SetCountTags(count+x, "booze")
 				}
 			}
-			ws.SetModal(e, "Inventory", inv)
+			ws.SetModal(e, INVENTORY, inv)
 		},
 	}
 	goToBooze := NewGOAPAction(map[string]any{
@@ -428,8 +431,6 @@ func BenchmarkGOAPSimple(b *testing.B) {
 	items := NewItemSystem(nil)
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
-
-	w.RegisterComponents("IntMap,State", "Generic,Inventory")
 
 	e := w.Spawn(map[string]any{
 		"components": map[string]any{

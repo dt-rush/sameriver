@@ -143,8 +143,8 @@ func TestItemSystemSpawnItemEntitySprite(t *testing.T) {
 		coinEntity := i.SpawnItemEntity(Vec2D{10, 10}, coin)
 		Logger.Println(coinEntity)
 		// draw the entity
-		coinPos := coinEntity.GetVec2D("Position")
-		coinBox := coinEntity.GetVec2D("Box")
+		coinPos := coinEntity.GetVec2D(POSITION)
+		coinBox := coinEntity.GetVec2D(BOX)
 		srcRect := sdl.Rect{0, 0, int32(coinBox.X), int32(coinBox.Y)}
 		destRect := sdl.Rect{
 			int32(coinPos.X),
@@ -152,7 +152,7 @@ func TestItemSystemSpawnItemEntitySprite(t *testing.T) {
 			int32(coinPos.X + coinBox.X),
 			int32(coinPos.Y + coinBox.Y),
 		}
-		coinSprite := coinEntity.GetSprite("Sprite")
+		coinSprite := coinEntity.GetSprite(BASESPRITE)
 		renderer.Copy(coinSprite.Texture, &srcRect, &destRect)
 		renderer.Present()
 		time.Sleep(200 * time.Millisecond)
@@ -201,11 +201,11 @@ func TestItemSystemRotting(t *testing.T) {
 	Logger.Println(book)
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"Generic,Inventory": NewInventory(),
+		"components": map[ComponentID]any{
+			INVENTORY: NewInventory(),
 		},
 	})
-	inv := e.GetGeneric("Inventory").(*Inventory)
+	inv := e.GetGeneric(INVENTORY).(*Inventory)
 	inv.Credit(book)
 
 	Logger.Println(inv)
@@ -235,7 +235,7 @@ func TestItemSystemRotting(t *testing.T) {
 	Logger.Println(inv)
 
 	droppedBook := i.SpawnItemEntity(Vec2D{0, 0}, i.CreateItem(perishableSutraSpec))
-	droppedBookInv := droppedBook.GetGeneric("Inventory").(*Inventory)
+	droppedBookInv := droppedBook.GetGeneric(INVENTORY).(*Inventory)
 	i.Update(timeToRot / 2)
 	Logger.Println(droppedBookInv)
 }

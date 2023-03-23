@@ -11,16 +11,16 @@ func TestPhysicsSystemWithGranularity(t *testing.T) {
 	p := NewPhysicsSystem()
 	w.RegisterSystems(p)
 	e := testingSpawnPhysics(w)
-	*e.GetVec2D("Velocity") = Vec2D{1, 1}
-	pos := e.GetVec2D("Position")
+	*e.GetVec2D(VELOCITY) = Vec2D{1, 1}
+	pos := e.GetVec2D(POSITION)
 	pos0 := *pos
 	// granular setup
 	wg := testingWorld()
 	pg := NewPhysicsSystemWithGranularity(4)
 	wg.RegisterSystems(pg)
 	eg := testingSpawnPhysics(wg)
-	*eg.GetVec2D("Velocity") = Vec2D{1, 1}
-	posg := eg.GetVec2D("Position")
+	*eg.GetVec2D(VELOCITY) = Vec2D{1, 1}
+	posg := eg.GetVec2D(POSITION)
 	posg0 := *posg
 
 	// simulate constant load of other logics with a ratio
@@ -92,13 +92,13 @@ func TestPhysicsSystemMotion(t *testing.T) {
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
 	e := testingSpawnPhysics(w)
-	*e.GetVec2D("Velocity") = Vec2D{1, 1}
-	pos := *e.GetVec2D("Position")
+	*e.GetVec2D(VELOCITY) = Vec2D{1, 1}
+	pos := *e.GetVec2D(POSITION)
 	// Update twice since physics system won't run the first time(needs a dt)
 	w.Update(FRAME_MS / 2)
 	time.Sleep(FRAME_DURATION)
 	w.Update(FRAME_MS / 2)
-	if *e.GetVec2D("Position") == pos {
+	if *e.GetVec2D(POSITION) == pos {
 		t.Fatal("failed to update position")
 	}
 }
@@ -129,9 +129,9 @@ func TestPhysicsSystemBounds(t *testing.T) {
 	}
 	worldCenter := Vec2D{w.Width / 2, w.Height / 2}
 	worldTopRight := Vec2D{w.Width, w.Height}
-	pos := e.GetVec2D("Position")
-	box := e.GetVec2D("Box")
-	vel := e.GetVec2D("Velocity")
+	pos := e.GetVec2D(POSITION)
+	box := e.GetVec2D(BOX)
+	vel := e.GetVec2D(VELOCITY)
 	for _, d := range directions {
 		*pos = Vec2D{512, 512}
 		*vel = d

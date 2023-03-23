@@ -9,15 +9,15 @@ func NewSteeringSystem() *SteeringSystem {
 	return &SteeringSystem{}
 }
 
-func (s *SteeringSystem) GetComponentDeps() []string {
-	return []string{
-		"Vec2D,Position",
-		"Vec2D,Velocity",
-		"Vec2D,Acceleration", // TODO: use acceleration in steering
-		"Float64,MaxVelocity",
-		"Vec2D,MovementTarget",
-		"Vec2D,Steer",
-		"Float64,Mass",
+func (s *SteeringSystem) GetComponentDeps() []any {
+	return []any{
+		POSITION, VEC2D, "POSITION",
+		VELOCITY, VEC2D, "VELOCITY",
+		ACCELERATION, VEC2D, "ACCELERATION",
+		MAXVELOCITY, FLOAT64, "MAXVELOCITY",
+		MOVEMENTTARGET, VEC2D, "MOVEMENTTARGET",
+		STEER, VEC2D, "STEER",
+		MASS, FLOAT64, "MASS",
 	}
 }
 

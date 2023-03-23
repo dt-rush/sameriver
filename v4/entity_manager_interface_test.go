@@ -11,7 +11,7 @@ func EntityManagerInterfaceTestSpawn(
 
 	pos := Vec2D{11, 11}
 	e := testingSpawnPosition(em, pos)
-	if *e.GetVec2D("Position") != pos {
+	if *e.GetVec2D(POSITION) != pos {
 		t.Fatal("failed to apply component data")
 	}
 	total, _ := em.NumEntities()
@@ -42,7 +42,7 @@ func EntityManagerInterfaceTestSpawnFail(
 		testingSpawnSimple(em)
 	}
 	testingSpawnSimple(em)
-	if len(em.Components().vec2DMap["Position"]) == MAX_ENTITIES {
+	if len(em.Components().vec2DMap[POSITION]) == MAX_ENTITIES {
 		t.Fatal("Did not resize component data tables")
 	}
 }
@@ -122,7 +122,7 @@ func EntityManagerInterfaceTestEntityHasComponent(
 
 	pos := Vec2D{11, 11}
 	e := testingSpawnPosition(em, pos)
-	if !em.EntityHasComponent(e, "Position") {
+	if !em.EntityHasComponent(e, POSITION) {
 		t.Fatal("failed to set or get entity component bit array")
 	}
 }
@@ -197,7 +197,7 @@ func EntityManagerInterfaceTestTagEntities(
 	}
 	em.TagEntities(entities, tag)
 	for _, e := range entities {
-		if !e.GetTagList("GenericTags").Has(tag) {
+		if !e.GetTagList(GENERICTAGS).Has(tag) {
 			t.Fatal("entity's taglist was not modified by TagEntities")
 		}
 	}
@@ -214,7 +214,7 @@ func EntityManagerInterfaceTestUntagEntities(
 	}
 	em.UntagEntities(entities, tag)
 	for _, e := range entities {
-		if e.GetTagList("GenericTags").Has(tag) {
+		if e.GetTagList(GENERICTAGS).Has(tag) {
 			t.Fatal("entity's taglist was not modified by UntagEntities")
 		}
 	}

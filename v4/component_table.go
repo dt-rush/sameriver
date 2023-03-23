@@ -98,67 +98,67 @@ func NewComponentTable(capacity int) *ComponentTable {
 func (ct *ComponentTable) expand(n int) {
 	Logger.Printf("Expanding component tables from %d to %d", ct.capacity, ct.capacity+n)
 	for name, slice := range ct.vec2DMap {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]Vec2D, n)
 		ct.vec2DMap[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.boolMap {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]bool, n)
 		ct.boolMap[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.intMap {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]int, n)
 		ct.intMap[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.float64Map {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]float64, n)
 		ct.float64Map[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.timeMap {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]time.Time, n)
 		ct.timeMap[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.timeAccumulatorMap {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]TimeAccumulator, n)
 		ct.timeAccumulatorMap[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.stringMap {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]string, n)
 		ct.stringMap[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.spriteMap {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]Sprite, n)
 		ct.spriteMap[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.tagListMap {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]TagList, n)
 		ct.tagListMap[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.intMapMap {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]IntMap, n)
 		ct.intMapMap[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.floatMapMap {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]FloatMap, n)
 		ct.floatMapMap[name] = append(slice, extraSpace...)
 	}
 	for name, slice := range ct.genericMap {
-		Logger.Printf("Expanding table of component %s,%s", ct.kinds[name], ct.strings[name])
+		Logger.Printf("Expanding table of component %s,%s", componentKindStrings[ct.kinds[name]], ct.strings[name])
 		extraSpace := make([]any, n)
 		ct.genericMap[name] = append(slice, extraSpace...)
 	}
 	for name, ccc := range ct.cccMap {
-		Logger.Printf("Requesting expanding of internal storage of CustomContiguousComponent,%s", name)
+		Logger.Printf("Requesting expanding of internal storage of CustomContiguousComponent,%s", ct.strings[name])
 		ccc.ExpandTable(n)
 	}
 	ct.capacity += n
@@ -184,7 +184,7 @@ func (ct *ComponentTable) ComponentExists(name ComponentID) bool {
 	return false
 }
 
-func (ct *ComponentTable) addComponent(kind ComponentKind, name ComponentID) {
+func (ct *ComponentTable) addComponent(kind ComponentKind, name ComponentID, str string) {
 	// create table in appropriate map
 	// (note we allocate with capacity 2* so that if we reach max entities the
 	// first time expanding the tables won't necessarily be expensive; but
@@ -223,6 +223,9 @@ func (ct *ComponentTable) addComponent(kind ComponentKind, name ComponentID) {
 	// note name and kind
 	ct.index(name)
 	ct.kinds[name] = kind
+
+	// note string
+	ct.strings[name] = str
 }
 
 func (ct *ComponentTable) addCCC(name ComponentID, custom CustomContiguousComponent) {
@@ -234,68 +237,69 @@ func (ct *ComponentTable) addCCC(name ComponentID, custom CustomContiguousCompon
 	ct.cccMap[name] = custom
 	ct.kinds[name] = CUSTOM
 	ct.index(name)
+	ct.strings[name] = custom.Name()
 	custom.AllocateTable(MAX_ENTITIES)
 }
 
 func (ct *ComponentTable) AssertValidComponentSet(cs ComponentSet) {
 	for name := range cs.vec2DMap {
 		if _, ok := ct.vec2DMap[name]; !ok {
-			panic(fmt.Sprintf("%s not found in vec2DMap", name))
+			panic(fmt.Sprintf("%s not found in vec2DMap - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 	for name := range cs.boolMap {
 		if _, ok := ct.boolMap[name]; !ok {
-			panic(fmt.Sprintf("%s not found in boolMap", name))
+			panic(fmt.Sprintf("%s not found in boolMap - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 	for name := range cs.intMap {
 		if _, ok := ct.intMap[name]; !ok {
-			panic(fmt.Sprintf("%s not found in intMap", name))
+			panic(fmt.Sprintf("%s not found in intMap - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 	for name := range cs.float64Map {
 		if _, ok := ct.float64Map[name]; !ok {
-			panic(fmt.Sprintf("%s not found in float64Map", name))
+			panic(fmt.Sprintf("%s not found in float64Map - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 	for name := range cs.timeMap {
 		if _, ok := ct.timeMap[name]; !ok {
-			panic(fmt.Sprintf("%s not found in timeMap", name))
+			panic(fmt.Sprintf("%s not found in timeMap - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 	for name := range cs.stringMap {
 		if _, ok := ct.stringMap[name]; !ok {
-			panic(fmt.Sprintf("%s not found in stringMap", name))
+			panic(fmt.Sprintf("%s not found in stringMap - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 	for name := range cs.spriteMap {
 		if _, ok := ct.spriteMap[name]; !ok {
-			panic(fmt.Sprintf("%s not found in spriteMap", name))
+			panic(fmt.Sprintf("%s not found in spriteMap - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 	for name := range cs.tagListMap {
 		if _, ok := ct.tagListMap[name]; !ok {
-			panic(fmt.Sprintf("%s not found in tagListMap", name))
+			panic(fmt.Sprintf("%s not found in tagListMap - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 	for name := range cs.intMapMap {
 		if _, ok := ct.intMapMap[name]; !ok {
-			panic(fmt.Sprintf("%s not found in intMapMap", name))
+			panic(fmt.Sprintf("%s not found in intMapMap - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 	for name := range cs.floatMapMap {
 		if _, ok := ct.floatMapMap[name]; !ok {
-			panic(fmt.Sprintf("%s not found in floatMapMap", name))
+			panic(fmt.Sprintf("%s not found in floatMapMap - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 	for name := range cs.genericMap {
 		if _, ok := ct.genericMap[name]; !ok {
-			panic(fmt.Sprintf("%s not found in genericMap", name))
+			panic(fmt.Sprintf("%s not found in genericMap - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 	for name := range cs.customComponentsMap {
 		if _, ok := ct.cccMap[name]; !ok {
-			panic(fmt.Sprintf("%s not found in cccMap", name))
+			panic(fmt.Sprintf("%s not found in cccMap - maybe not registered yet?", ct.strings[name]))
 		}
 	}
 }
@@ -395,12 +399,12 @@ func (ct *ComponentTable) guardInvalidComponentGet(e *Entity, name ComponentID) 
 	var ix int
 	var ok bool
 	if ix, ok = ct.ixs[name]; !ok {
-		msg := fmt.Sprintf("Tried to access %s component; but there is no component with that name", name)
+		msg := fmt.Sprintf("Tried to access %s component; but there is no component with that name", ct.strings[name])
 		panic(msg)
 	}
 	bit, _ := e.ComponentBitArray.GetBit(uint64(ix))
 	if !bit {
-		msg := fmt.Sprintf("Tried to get %s component of entity without: %s", name, e)
+		msg := fmt.Sprintf("Tried to get %s component of entity without: %s", ct.strings[name], e)
 		panic(msg)
 	}
 }

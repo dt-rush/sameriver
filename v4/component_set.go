@@ -144,7 +144,7 @@ func (ct *ComponentTable) makeComponentSet(componentSpecs map[ComponentID]any) C
 			}
 			cs.genericMap[name] = value
 		default:
-			panic(fmt.Sprintf("unknown component kind %s", kind))
+			panic(fmt.Sprintf("unknown component kind %d", kind))
 		}
 	}
 	return cs

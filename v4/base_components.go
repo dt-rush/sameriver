@@ -15,35 +15,3 @@ const (
 	INVENTORY
 	GENERICTAGS
 )
-
-var baseComponentKinds = map[ComponentID]ComponentKind{
-	POSITION:       VEC2D,
-	VELOCITY:       VEC2D,
-	ACCELERATION:   VEC2D,
-	BOX:            VEC2D,
-	MASS:           FLOAT64,
-	MAXVELOCITY:    FLOAT64,
-	BASESPRITE:     SPRITE,
-	DESPAWNTIMER:   TIMEACCUMULATOR,
-	STEER:          VEC2D,
-	MOVEMENTTARGET: VEC2D,
-	ITEM:           GENERIC,
-	INVENTORY:      GENERIC,
-	GENERICTAGS:    TAGLIST,
-}
-
-var baseComponentStrings = map[ComponentID]string{
-	POSITION:       "POSITION",
-	VELOCITY:       "VELOCITY",
-	ACCELERATION:   "ACCELERATION",
-	BOX:            "BOX",
-	MASS:           "MASS",
-	MAXVELOCITY:    "MAXVELOCITY",
-	BASESPRITE:     "BASESPRITE",
-	DESPAWNTIMER:   "DESPAWNTIMER",
-	STEER:          "STEER",
-	MOVEMENTTARGET: "MOVEMENTTARGET",
-	ITEM:           "ITEM",
-	INVENTORY:      "INVENTORY",
-	GENERICTAGS:    "GENERICTAGS",
-}

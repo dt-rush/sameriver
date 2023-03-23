@@ -30,8 +30,8 @@ func TestComponentSetApply(t *testing.T) {
 	w := testingWorld()
 	e := testingSpawnSimple(w)
 	l := NewTagList()
-	cs := map[string]any{
-		"TagList,GenericTags": l,
+	cs := map[ComponentID]any{
+		GENERICTAGS: l,
 	}
 	w.em.components.ApplyComponentSet(e, cs)
 	if !e.ComponentBitArray.Equals(w.em.components.BitArrayFromComponentSet(cs)) {

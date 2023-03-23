@@ -106,11 +106,12 @@ func (s *CollisionSystem) TestCollision(i *Entity, j *Entity) bool {
 
 // system funcs
 
-func (s *CollisionSystem) GetComponentDeps() map[ComponentID]ComponentKind {
-	return map[ComponentID]ComponentKind{
-		POSITION: VEC2D,
-		BOX:      VEC2D,
+func (s *CollisionSystem) GetComponentDeps() []any {
+	return []any{
+		POSITION, VEC2D, "POSITION",
+		BOX, VEC2D, "BOX",
 	}
+
 }
 
 func (s *CollisionSystem) LinkWorld(w *World) {

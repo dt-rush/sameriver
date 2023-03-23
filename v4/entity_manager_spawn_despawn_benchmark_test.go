@@ -12,13 +12,16 @@ func BenchmarkEntityManagerSpawnDespawn(b *testing.B) {
 			"width":  100,
 			"height": 100,
 		})
-		w.RegisterComponents("Vec2D,Velocity")
+		w.RegisterComponents([]any{
+			VELOCITY, VEC2D, "VELOCITY",
+		})
 		for i := 0; i < MAX_ENTITIES; i++ {
 			w.Spawn(map[string]any{
-				"Vec2D,Position": Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
-				"Vec2D,Box":      Vec2D{5, 5},
-				"Vec2D,Velocity": Vec2D{rand.Float64(), rand.Float64()},
-			})
+				"components": map[ComponentID]any{
+					POSITION: Vec2D{100 * rand.Float64(), 100 * rand.Float64()},
+					BOX:      Vec2D{5, 5},
+					VELOCITY: Vec2D{rand.Float64(), rand.Float64()},
+				}})
 		}
 	}
 }

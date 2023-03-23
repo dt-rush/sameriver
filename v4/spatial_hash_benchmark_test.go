@@ -84,15 +84,15 @@ func BenchmarkSpatialHashEntitiesWithinDistance(b *testing.B) {
 				spawnRadius * math.Sin(theta),
 			}
 			testingSpawnSpatial(w,
-				e.GetVec2D("Position").Add(offset),
+				e.GetVec2D(POSITION).Add(offset),
 				Vec2D{5, 5})
 		}
 	}
 	w.SpatialHasher.Update()
 	for i := 0; i < b.N; i++ {
 		w.EntitiesWithinDistance(
-			*e.GetVec2D("Position"),
-			*e.GetVec2D("Box"),
+			*e.GetVec2D(POSITION),
+			*e.GetVec2D(BOX),
 			30.0)
 	}
 }

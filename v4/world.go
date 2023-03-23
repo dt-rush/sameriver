@@ -133,10 +133,10 @@ func NewWorld(spec map[string]any) *World {
 	// init entitymanager
 	w.em = NewEntityManager(w)
 	// register basic components
-	w.RegisterComponents(map[ComponentID]ComponentKind{
-		GENERICTAGS: TAGLIST,
-		POSITION:    VEC2D,
-		BOX:         VEC2D,
+	w.RegisterComponents([]any{
+		GENERICTAGS, TAGLIST, "GENERICTAGS",
+		POSITION, VEC2D, "POSITION",
+		BOX, VEC2D, "BOX",
 	})
 	// set up distance spatial hasher
 	w.SpatialHasher = NewSpatialHasher(
@@ -166,15 +166,21 @@ func (w *World) Update(allowance_ms float64) (overunder_ms float64) {
 	return overunder_ms
 }
 
-func (w *World) RegisterComponents(specs map[ComponentID]ComponentKind) {
+func (w *World) RegisterComponents(components []any) {
+	if len(components)%3 != 0 {
+		panic("malformed components specification given to RegisterComponents()")
+	}
 	// register given specs
-	for name, kind := range specs {
+	for i := 0; i < len(components)/3; i += 3 {
+		name := components[i].(ComponentID)
+		kind := components[i+1].(ComponentKind)
+		str := components[i+2].(string)
 		if w.em.components.ComponentExists(name) {
-			Logger.Printf("[component %s already exists. Skipping...]", name)
+			Logger.Printf("[component %s already exists. Skipping...]", str)
 			continue
 		} else {
-			Logger.Printf("%s%s%s", color.InGreen("[registering component: "), fmt.Sprintf("%s,%s", color.InBlue(kind), name), color.InGreen("]"))
-			w.em.components.addComponent(kind, name)
+			Logger.Printf("%s%s%s", color.InGreen("[registering component: "), fmt.Sprintf("%s,%s", str, componentKindStrings[kind]), color.InGreen("]"))
+			w.em.components.addComponent(kind, name, str)
 		}
 	}
 }
@@ -193,14 +199,21 @@ func (w *World) RegisterSystems(systems ...System) {
 		if !strings.HasSuffix(systemName, "System") {
 			panic(fmt.Sprintf("System names must end with System; got %s", systemName))
 		}
-		for name, kind := range s.GetComponentDeps() {
+		componentDeps := s.GetComponentDeps()
+		if len(componentDeps)%3 != 0 {
+			panic("malformed GetComponentDeps()")
+		}
+		for i := 0; i < len(componentDeps); i += 3 {
+			name := componentDeps[i].(ComponentID)
+			kind := componentDeps[i+1].(ComponentKind)
+			str := componentDeps[i+2].(string)
 			if w.em.components.ComponentExists(name) {
-				Logger.Printf("System %s depends on component %s, which is already registered.", systemName, name)
+				Logger.Printf("System %s depends on component %s, which is already registered.", systemName, str)
 				continue
 			}
 			Logger.Printf("Creating component %d of kind %s wanted by system %s", name, componentKindStrings[kind], systemName)
-			w.RegisterComponents(map[ComponentID]ComponentKind{
-				name: kind,
+			w.RegisterComponents([]any{
+				name, kind, str,
 			})
 		}
 		w.addSystem(s)

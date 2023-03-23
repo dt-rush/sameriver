@@ -144,11 +144,16 @@ func TestGOAPGoalRemaining(t *testing.T) {
 
 func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	w := testingWorld()
-	w.RegisterComponents("Int,BoozeAmount")
+	const (
+		BOOZEAMOUNT = GENERICTAGS + iota
+	)
+	w.RegisterComponents([]any{
+		BOOZEAMOUNT, INT, "BOOZEAMOUNT",
+	})
 
 	e := w.Spawn(map[string]any{
-		"components": map[string]any{
-			"Int,BoozeAmount": 0,
+		"components": map[ComponentID]any{
+			BOOZEAMOUNT: 0,
 		},
 	})
 	Logger.Println(e)
@@ -158,14 +163,14 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	hasBoozeModal := GOAPModalVal{
 		name: "hasBooze",
 		check: func(ws *GOAPWorldState) int {
-			amount := ws.GetModal(e, "BoozeAmount").(*int)
+			amount := ws.GetModal(e, BOOZEAMOUNT).(*int)
 			return *amount
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			amount := ws.GetModal(e, "BoozeAmount").(*int)
+			amount := ws.GetModal(e, BOOZEAMOUNT).(*int)
 			if op == "-" {
 				newVal := *amount - x
-				ws.SetModal(e, "BoozeAmount", &newVal)
+				ws.SetModal(e, BOOZEAMOUNT, &newVal)
 			}
 		},
 	}
@@ -219,7 +224,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 
 	Logger.Printf("-------------------------------------------- 3")
 
-	booze := e.GetInt("BoozeAmount")
+	booze := e.GetInt(BOOZEAMOUNT)
 	*booze = 3
 
 	p.eval.checkModalInto("hasBooze", start)
@@ -335,7 +340,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	atTreeModal := GOAPModalVal{
 		name: "atTree",
 		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			ourPos := ws.GetModal(e, POSITION).(*Vec2D)
 			_, _, d := ourPos.Distance(*treePos)
 			if d < 2 {
 				return 1
@@ -345,14 +350,14 @@ func TestGOAPActionModalVal(t *testing.T) {
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			nearTree := treePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", &nearTree)
+			ws.SetModal(e, POSITION, &nearTree)
 		},
 	}
 	oceanPos := &Vec2D{500, 0}
 	atOceanModal := GOAPModalVal{
 		name: "atOcean",
 		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			ourPos := ws.GetModal(e, POSITION).(*Vec2D)
 			_, _, d := ourPos.Distance(*oceanPos)
 			if d < 2 {
 				return 1
@@ -362,7 +367,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			nearOcean := oceanPos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", &nearOcean)
+			ws.SetModal(e, POSITION, &nearOcean)
 		},
 	}
 	goToTree := NewGOAPAction(map[string]any{
@@ -409,13 +414,13 @@ func TestGOAPActionModalVal(t *testing.T) {
 	//
 	// test presfulfilled
 	//
-	*e.GetVec2D("Position") = *treePos
+	*e.GetVec2D(POSITION) = *treePos
 
 	if !eval.presFulfilled(hugTree, ws) {
 		t.Fatal("check result of atTreeModal should have returned 1, satisfying atTree,=: 1")
 	}
 
-	*e.GetVec2D("Position") = Vec2D{-100, -100}
+	*e.GetVec2D(POSITION) = Vec2D{-100, -100}
 
 	if eval.presFulfilled(hugTree, ws) {
 		t.Fatal("check result of atTreeModal should have returned 0, failing to satisfy atTree,=: 1")
@@ -425,7 +430,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 		"atTree": 0,
 	})
 
-	*e.GetVec2D("Position") = *treePos
+	*e.GetVec2D(POSITION) = *treePos
 
 	if !eval.presFulfilled(hugTree, badWS) {
 		t.Fatal("regardless of what worldstate says, modal pre should decide and should've been true based on entity position = tree position")
@@ -475,7 +480,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	// test modal effect of applyAction
 	//
 
-	*e.GetVec2D("Position") = Vec2D{-100, -100}
+	*e.GetVec2D(POSITION) = Vec2D{-100, -100}
 	atTreeApplied := eval.applyActionModal(goToTree, NewGOAPWorldState(nil))
 	Logger.Println("state after applying modal action eff of atTree:")
 	printWorldState(atTreeApplied)
@@ -483,14 +488,14 @@ func TestGOAPActionModalVal(t *testing.T) {
 		t.Fatal("Modal action eff should've set atTree=1")
 	}
 	Logger.Println("modal position of entity after modal action eff of atTree:")
-	posAfter := atTreeApplied.GetModal(e, "Position").(*Vec2D)
+	posAfter := atTreeApplied.GetModal(e, POSITION).(*Vec2D)
 	Logger.Printf("[%f, %f]", posAfter.X, posAfter.Y)
 
 	//
 	// test modal pre after modal set
 	//
 
-	*e.GetVec2D("Position") = Vec2D{-100, -100}
+	*e.GetVec2D(POSITION) = Vec2D{-100, -100}
 	atOceanApplied := eval.applyActionModal(goToOcean, NewGOAPWorldState(nil))
 	Logger.Println("state after applying modal action eff of atOcean:")
 	printWorldState(atOceanApplied)
@@ -522,7 +527,7 @@ func TestGOAPPlanSimple(t *testing.T) {
 	atTreeModal := GOAPModalVal{
 		name: "atTree",
 		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			ourPos := ws.GetModal(e, POSITION).(*Vec2D)
 			_, _, d := ourPos.Distance(*treePos)
 			if d < 2 {
 				return 1
@@ -532,7 +537,7 @@ func TestGOAPPlanSimple(t *testing.T) {
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			nearTree := treePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", &nearTree)
+			ws.SetModal(e, POSITION, &nearTree)
 		},
 	}
 	goToTree := NewGOAPAction(map[string]any{
@@ -548,7 +553,7 @@ func TestGOAPPlanSimple(t *testing.T) {
 		"atTree,=": 1,
 	}
 
-	Logger.Println(*e.GetVec2D("Position"))
+	Logger.Println(*e.GetVec2D(POSITION))
 
 	ws := NewGOAPWorldState(nil)
 
@@ -565,7 +570,13 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
 
-	w.RegisterComponents("IntMap,State")
+	const (
+		STATE = GENERICTAGS + iota
+	)
+
+	w.RegisterComponents([]any{
+		STATE, INTMAP, "STATE",
+	})
 
 	e := w.Spawn(map[string]any{
 		"components": map[string]any{
@@ -578,15 +589,15 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 	drunkModal := GOAPModalVal{
 		name: "drunk",
 		check: func(ws *GOAPWorldState) int {
-			state := ws.GetModal(e, "State").(*IntMap)
+			state := ws.GetModal(e, STATE).(*IntMap)
 			return state.m["drunk"]
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			state := ws.GetModal(e, "State").(*IntMap).CopyOf()
+			state := ws.GetModal(e, STATE).(*IntMap).CopyOf()
 			if op == "+" {
 				state.m["drunk"] += x
 			}
-			ws.SetModal(e, "State", &state)
+			ws.SetModal(e, STATE, &state)
 		},
 	}
 	drink := NewGOAPAction(map[string]any{
@@ -622,7 +633,13 @@ func TestGOAPPlanSimpleEnough(t *testing.T) {
 	ps := NewPhysicsSystem()
 	w.RegisterSystems(ps)
 
-	w.RegisterComponents("IntMap,State")
+	const (
+		STATE = GENERICTAGS + iota
+	)
+
+	w.RegisterComponents([]any{
+		STATE, INTMAP, "STATE",
+	})
 
 	e := w.Spawn(map[string]any{
 		"components": map[string]any{
@@ -635,15 +652,15 @@ func TestGOAPPlanSimpleEnough(t *testing.T) {
 	drunkModal := GOAPModalVal{
 		name: "drunk",
 		check: func(ws *GOAPWorldState) int {
-			state := ws.GetModal(e, "State").(*IntMap)
+			state := ws.GetModal(e, STATE).(*IntMap)
 			return state.m["drunk"]
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			state := ws.GetModal(e, "State").(*IntMap).CopyOf()
+			state := ws.GetModal(e, STATE).(*IntMap).CopyOf()
 			if op == "+" {
 				state.m["drunk"] += x
 			}
-			ws.SetModal(e, "State", &state)
+			ws.SetModal(e, STATE, &state)
 		},
 	}
 	drink := NewGOAPAction(map[string]any{
@@ -684,7 +701,13 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
 
-	w.RegisterComponents("IntMap,State", "Generic,Inventory")
+	const (
+		STATE = GENERICTAGS + iota
+	)
+
+	w.RegisterComponents([]any{
+		STATE, INTMAP, "STATE",
+	})
 
 	items.CreateArchetype(map[string]any{
 		"name":        "bottle_booze",
@@ -713,7 +736,7 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 	inTempleModal := GOAPModalVal{
 		name: "inTemple",
 		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			ourPos := ws.GetModal(e, POSITION).(*Vec2D)
 			_, _, d := ourPos.Distance(*templePos)
 			if d < 2 {
 				return 1
@@ -723,13 +746,13 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			nearTemple := templePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", &nearTemple)
+			ws.SetModal(e, POSITION, &nearTemple)
 		},
 	}
 	atBoozeModal := GOAPModalVal{
 		name: "atBooze",
 		check: func(ws *GOAPWorldState) int {
-			ourPos := ws.GetModal(e, "Position").(*Vec2D)
+			ourPos := ws.GetModal(e, POSITION).(*Vec2D)
 			_, _, d := ourPos.Distance(*boozePos)
 			if d < 2 {
 				return 1
@@ -739,32 +762,32 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			nearBooze := boozePos.Add(Vec2D{1, 0})
-			ws.SetModal(e, "Position", &nearBooze)
+			ws.SetModal(e, POSITION, &nearBooze)
 		},
 	}
 	drunkModal := GOAPModalVal{
 		name: "drunk",
 		check: func(ws *GOAPWorldState) int {
-			state := ws.GetModal(e, "State").(*IntMap)
+			state := ws.GetModal(e, STATE).(*IntMap)
 			return state.m["drunk"]
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			state := ws.GetModal(e, "State").(*IntMap).CopyOf()
+			state := ws.GetModal(e, STATE).(*IntMap).CopyOf()
 			if op == "+" {
 				state.m["drunk"] += x
 			}
-			ws.SetModal(e, "State", &state)
+			ws.SetModal(e, STATE, &state)
 		},
 	}
 	hasBoozeModal := GOAPModalVal{
 		name: "hasBooze",
 		check: func(ws *GOAPWorldState) int {
-			inv := ws.GetModal(e, "Inventory").(*Inventory)
+			inv := ws.GetModal(e, INVENTORY).(*Inventory)
 			count := inv.CountTags("booze")
 			return count
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			inv := ws.GetModal(e, "Inventory").(*Inventory).CopyOf()
+			inv := ws.GetModal(e, INVENTORY).(*Inventory).CopyOf()
 			if op == "-" {
 				inv.DebitNTags(x, "booze")
 			}
@@ -786,7 +809,7 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 					inv.SetCountTags(count+x, "booze")
 				}
 			}
-			ws.SetModal(e, "Inventory", inv)
+			ws.SetModal(e, INVENTORY, inv)
 		},
 	}
 	goToBooze := NewGOAPAction(map[string]any{
@@ -873,7 +896,7 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 
-	e.SetGeneric("Inventory", inventories.Create(map[string]int{
+	e.SetGeneric(INVENTORY, inventories.Create(map[string]int{
 		"bottle_booze": 10,
 	}))
 	t0 = time.Now()
@@ -893,8 +916,6 @@ func TestGOAPPlanClassic(t *testing.T) {
 	items := NewItemSystem(nil)
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
-
-	w.RegisterComponents("IntMap,State", "Generic,Inventory")
 
 	items.CreateArchetype(map[string]any{
 		"name":        "axe",
@@ -927,11 +948,11 @@ func TestGOAPPlanClassic(t *testing.T) {
 		return GOAPModalVal{
 			name: fmt.Sprintf("has%s", name),
 			check: func(ws *GOAPWorldState) int {
-				inv := ws.GetModal(e, "Inventory").(*Inventory)
+				inv := ws.GetModal(e, INVENTORY).(*Inventory)
 				return inv.CountName(archetype)
 			},
 			effModalSet: func(ws *GOAPWorldState, op string, x int) {
-				inv := ws.GetModal(e, "Inventory").(*Inventory).CopyOf()
+				inv := ws.GetModal(e, INVENTORY).(*Inventory).CopyOf()
 				if op == "-" {
 					inv.DebitNTags(x, archetype)
 				}
@@ -951,7 +972,7 @@ func TestGOAPPlanClassic(t *testing.T) {
 						inv.SetCountName(count+x, archetype)
 					}
 				}
-				ws.SetModal(e, "Inventory", inv)
+				ws.SetModal(e, INVENTORY, inv)
 			},
 		}
 	}
@@ -983,7 +1004,7 @@ func TestGOAPPlanClassic(t *testing.T) {
 		return GOAPModalVal{
 			name: fmt.Sprintf("at%s", name),
 			check: func(ws *GOAPWorldState) int {
-				ourPos := ws.GetModal(e, "Position").(*Vec2D)
+				ourPos := ws.GetModal(e, POSITION).(*Vec2D)
 				_, _, d := ourPos.Distance(pos)
 				if d < 2 {
 					return 1
@@ -993,7 +1014,7 @@ func TestGOAPPlanClassic(t *testing.T) {
 			},
 			effModalSet: func(ws *GOAPWorldState, op string, x int) {
 				near := pos.Add(Vec2D{1, 0})
-				ws.SetModal(e, "Position", &near)
+				ws.SetModal(e, POSITION, &near)
 			},
 		}
 	}

@@ -35,8 +35,11 @@ func (xyz *XYZComponent) Set(e *Entity, x any) {
 func TestCCCGetSet(t *testing.T) {
 	w := testingWorld()
 	xyz := &XYZComponent{}
-	w.RegisterCCCs([]CustomContiguousComponent{
-		xyz,
+	const (
+		XYZC = iota + GENERICTAGS
+	)
+	w.RegisterCCCs(map[ComponentID]CustomContiguousComponent{
+		XYZC: xyz,
 	})
 	// spawn entity with empty base CS, XYZ custom CS
 	e := w.em.Spawn(map[string]any{
@@ -49,7 +52,7 @@ func TestCCCGetSet(t *testing.T) {
 	})
 
 	// get value and check
-	firstGet := e.GetCustom("XYZ").(XYZ)
+	firstGet := e.GetCustom(XYZC).(XYZ)
 	expected := XYZ{x: 1, y: 0, z: 8}
 	if firstGet != expected {
 		t.Errorf("Didn't Get() properly")
@@ -59,8 +62,8 @@ func TestCCCGetSet(t *testing.T) {
 	firstGet.y = 3
 	firstGet.z = 3
 	// set and check
-	e.SetCustom("XYZ", firstGet)
-	secondGet := e.GetCustom("XYZ").(XYZ)
+	e.SetCustom(XYZC, firstGet)
+	secondGet := e.GetCustom(XYZC).(XYZ)
 	expected = XYZ{x: 3, y: 3, z: 3}
 	if secondGet != expected {
 		t.Errorf("Didn't Set() properly")
@@ -70,8 +73,11 @@ func TestCCCGetSet(t *testing.T) {
 func TestCCCBitArray(t *testing.T) {
 	w := testingWorld()
 	xyz := &XYZComponent{}
-	w.RegisterCCCs([]CustomContiguousComponent{
-		xyz,
+	const (
+		XYZC = iota + GENERICTAGS
+	)
+	w.RegisterCCCs(map[ComponentID]CustomContiguousComponent{
+		XYZC: xyz,
 	})
 	// spawn entity with empty base CS, XYZ custom CS
 	e := w.em.Spawn(map[string]any{

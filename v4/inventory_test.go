@@ -9,12 +9,13 @@ func TestInventoryDebitCredit(t *testing.T) {
 	inventories := NewInventorySystem()
 	items := NewItemSystem(nil)
 	w.RegisterSystems(items, inventories)
-	w.RegisterComponents("Generic,Inventory")
-	e := w.Spawn(map[string]any{
-		"components": map[string]any{"Generic,Inventory": NewInventory()},
-	})
 
-	inv := e.GetGeneric("Inventory").(*Inventory)
+	e := w.Spawn(map[string]any{
+		"components": map[ComponentID]any{
+			INVENTORY: NewInventory(),
+		}})
+
+	inv := e.GetGeneric(INVENTORY).(*Inventory)
 
 	items.CreateArchetype(map[string]any{
 		"name":        "sword_iron",
@@ -165,7 +166,7 @@ func TestInventoryFromListing(t *testing.T) {
 		},
 	})
 
-	inv := e.GetGeneric("Inventory").(*Inventory)
+	inv := e.GetGeneric(INVENTORY).(*Inventory)
 
 	coin := inv.FilterName("coin_copper")[0]
 	Logger.Println(coin)
@@ -190,7 +191,7 @@ func TestInventoryStacksForDisplay(t *testing.T) {
 		},
 	})
 
-	eInv := e.GetGeneric("Inventory").(*Inventory)
+	eInv := e.GetGeneric(INVENTORY).(*Inventory)
 	Logger.Println(eInv.StacksForDisplay())
 	for _, str := range eInv.StacksForDisplay() {
 		if str.DisplayStr == "copper coin x 100" {
@@ -217,7 +218,7 @@ func TestInventoryDebitNByFilter(t *testing.T) {
 		},
 	})
 
-	eInv := e.GetGeneric("Inventory").(*Inventory)
+	eInv := e.GetGeneric(INVENTORY).(*Inventory)
 	perishableSutraSpec := map[string]any{
 		"archetype":       "heart_sutra",
 		"tags":            []string{"perishable"},
@@ -255,8 +256,8 @@ func TestInventoryGetCountContains(t *testing.T) {
 			}),
 		},
 	})
-	iInv := i.GetGeneric("Inventory").(*Inventory)
-	jInv := j.GetGeneric("Inventory").(*Inventory)
+	iInv := i.GetGeneric(INVENTORY).(*Inventory)
+	jInv := j.GetGeneric(INVENTORY).(*Inventory)
 	// i purchases a sword
 	jInv.GetNByName(iInv, 50, "coin_copper")
 	iInv.GetNByName(jInv, 1, "sword_iron")

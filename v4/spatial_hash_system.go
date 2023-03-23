@@ -14,10 +14,10 @@ func NewSpatialHashSystem(gridX, gridY int) *SpatialHashSystem {
 	}
 }
 
-func (s *SpatialHashSystem) GetComponentDeps() map[ComponentID]ComponentKind {
-	return map[ComponentID]ComponentKind{
-		POSITION: VEC2D,
-		BOX:      VEC2D,
+func (s *SpatialHashSystem) GetComponentDeps() []any {
+	return []any{
+		POSITION, VEC2D, "POSITION",
+		BOX, VEC2D, "BOX",
 	}
 }
 

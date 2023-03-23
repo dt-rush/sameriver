@@ -23,15 +23,15 @@ func NewPhysicsSystemWithGranularity(granularity int) *PhysicsSystem {
 	}
 }
 
-func (p *PhysicsSystem) GetComponentDeps() map[ComponentID]ComponentKind {
+func (p *PhysicsSystem) GetComponentDeps() []any {
 	// TODO: do something with mass
 	// TODO: impart momentum to collided objects?
-	return map[ComponentID]ComponentKind{
-		POSITION:     VEC2D,
-		VELOCITY:     VEC2D,
-		ACCELERATION: VEC2D,
-		BOX:          VEC2D,
-		MASS:         FLOAT64,
+	return []any{
+		POSITION, VEC2D, "POSITION",
+		VELOCITY, VEC2D, "VELOCITY",
+		ACCELERATION, VEC2D, "ACCELERATION",
+		BOX, VEC2D, "BOX",
+		MASS, FLOAT64, "MASS",
 	}
 }
 

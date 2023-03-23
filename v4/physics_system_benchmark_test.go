@@ -12,7 +12,7 @@ func BenchmarkPhysicsSystemManySingleThreadUpdate(b *testing.B) {
 	w.RegisterSystems(ps)
 	for i := 0; i < 1000; i++ {
 		e := testingSpawnPhysics(w)
-		*e.GetVec2D("Velocity") = Vec2D{rand.Float64(), rand.Float64()}
+		*e.GetVec2D(VELOCITY) = Vec2D{rand.Float64(), rand.Float64()}
 	}
 	// Update twice since physics system won't run the first time(needs a dt)
 	for i := 0; i < b.N; i++ {
@@ -26,7 +26,7 @@ func BenchmarkPhysicsSystemManyParallelUpdate(b *testing.B) {
 	w.RegisterSystems(ps)
 	for i := 0; i < 1000; i++ {
 		e := testingSpawnPhysics(w)
-		*e.GetVec2D("Velocity") = Vec2D{rand.Float64(), rand.Float64()}
+		*e.GetVec2D(VELOCITY) = Vec2D{rand.Float64(), rand.Float64()}
 	}
 	// Update twice since physics system won't run the first time(needs a dt)
 	for i := 0; i < b.N; i++ {

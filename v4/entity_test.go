@@ -21,5 +21,5 @@ func TestEntityInvalidComponentAccess(t *testing.T) {
 	}()
 	w := testingWorld()
 	e := w.Spawn(nil)
-	e.GetVec2D("Doesntexist")
+	e.GetVec2D(1337)
 }
