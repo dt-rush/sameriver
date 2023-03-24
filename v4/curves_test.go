@@ -70,6 +70,18 @@ func TestCurvesPeaks(t *testing.T) {
 		Curves.Bell(0.5, 1)(0.5), 1,
 		Curves.Bell(0.5, 1)(1), 0.058,
 		Curves.Bell(0.5, 1)(2), 0.058,
+
+		Curves.BellPinned(0.5)(-1), 0,
+		Curves.BellPinned(0.5)(0), 0,
+		Curves.BellPinned(0.5)(0.5), 1,
+		Curves.BellPinned(0.5)(1), 0,
+		Curves.BellPinned(0.5)(2), 0,
+
+		Curves.Plateau(4)(-1), 0,
+		Curves.Plateau(4)(0), 0,
+		Curves.Plateau(4)(0.5), 1,
+		Curves.Plateau(4)(1), 0,
+		Curves.Plateau(4)(2), 0,
 	}
 	Logger.Println(Curves.Lin(0.5))
 	for i := 0; i < len(expect); i += 2 {

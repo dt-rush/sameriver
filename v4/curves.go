@@ -156,6 +156,13 @@ func (c *curves) BellPinned(u float64) CurveFunc {
 	}
 }
 
+func (c *curves) Plateau(k float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		return math.Max(0, 1-math.Pow(2*(x-0.5), 2*(k+1)))
+	}
+}
+
 func (c *curves) Clamped(x float64) float64 {
 	return math.Min(1, math.Max(0, x))
 }
