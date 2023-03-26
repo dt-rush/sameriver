@@ -163,6 +163,62 @@ func (c *curves) Plateau(k float64) CurveFunc {
 	}
 }
 
+func (c *curves) Peak(u float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		num := math.Abs(x - c.Gt(u)(x))
+		denom := c.Gt(u)(x) - u
+		return 1 - math.Sqrt(1-math.Pow(num/denom, 2))
+	}
+}
+
+func (c *curves) Bump(w float64, s float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		return c.Sigmoid((1-w)/2, s/5)(x) - c.Sigmoid((1+w)/2, s/5)(x)
+	}
+}
+
+func (c *curves) Circ(x float64) float64 {
+	x = c.Clamped(x)
+	return math.Sqrt(-(2*x-1)*(2*x-1) + 1)
+}
+
+//
+// PYRAMIDS
+//
+
+func (c *curves) Steps(n int, s float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		sum := 0.0
+		for i := 1; i < n; i++ {
+			sum += c.Sigmoid(0.5, s/5)(x + 0.5 - float64(i)/float64(n))
+			Logger.Printf("x=%f, i=%d, sum = %f", x, i, sum)
+			Logger.Printf("S(x=%f,u=%d,s=%f", (x - float64(i)/float64(n)), 0, s/5)
+		}
+		return sum / (float64(n) - 1)
+	}
+}
+
+func (c *curves) StepsB(n int, s float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		sum := 0.0
+		for i := 1; i < n; i++ {
+			sum += c.Sigmoid(0.5, s/5)((1-1/float64(n))*x + 0.5 + 1/(2*float64(n)) - float64(i)/float64(n))
+		}
+		return sum / (float64(n) - 1)
+	}
+}
+
+func (c *curves) T(u float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		return x
+	}
+}
+
 func (c *curves) Clamped(x float64) float64 {
 	return math.Min(1, math.Max(0, x))
 }

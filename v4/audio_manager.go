@@ -2,6 +2,27 @@
   *
   * Manages the loading and playback of Audio resources
   *
+as any true audiophile can tell you it has not been easy in this journey
+for perfect sound quality and 100% signal to noise ratio, but it has been
+fun. I remember when I first heard a himalayan salt transducer yoked up to a
+triple-coil gold-plated phase modulator, and it was as though the conductor
+himself was, standing on top of my head, or, was *inside* my head, while the...
+orchestra was, also around or possibly even inside my head. the feeling of having
+a transparent empty head in which sound reverberates with perfect acoustics
+is why i have remained addicted to being an audiophile for over 45 years, 3 wives,
+and tens of thousands of dollars.
+
+you're crazy, and probably one of the most delusional people in the audiophile
+community, if you think a tube of solid elephant horn is gonna deliver the
+same ADC signal properties as a tube - or even a cube - of cambodian pennies,
+melted down, and that's even if the elephant was fed 100% coconut oil
+FROM BIRTH which is practically impossible; i remember at the AAAIA expo in
+2018 I saw a booth where they had a tube of elephant horn coated in shelac that
+they hooked up to a 3000 volt battery and when they played dark side of the moon
+on it it sounded like the wall
+
+
+
   *
 **/
 
