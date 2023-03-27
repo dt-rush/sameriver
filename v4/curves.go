@@ -89,10 +89,12 @@ func (c *curves) Lin(x float64) float64 {
 	return x
 }
 
-func (c *curves) Lint(u float64, w float64) CurveFunc {
+func (c *curves) Lint(a float64, b float64) CurveFunc {
 	return func(x float64) float64 {
 		x = c.Clamped(x)
-		return math.Min(1, math.Max(0, (x-u+w)/(2*w)))
+		frac := (a - x) / (a - b)
+		correction := c.Eq(1)(b)*c.Ge(b)(a) + c.Eq(0)(a)*c.Ge(b)(a)
+		return math.Min(1, math.Max(0, frac)) - correction
 	}
 }
 
@@ -130,6 +132,16 @@ func (c *curves) Lt(b float64) CurveFunc {
 func (c *curves) Le(b float64) CurveFunc {
 	return func(x float64) float64 {
 		return 1 - c.Gt(b)(x)
+	}
+}
+
+func (c *curves) Eq(b float64) CurveFunc {
+	return func(x float64) float64 {
+		if x != b {
+			return 0
+		} else {
+			return 1
+		}
 	}
 }
 
