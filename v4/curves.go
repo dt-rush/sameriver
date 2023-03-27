@@ -229,6 +229,14 @@ func (c *curves) Mayan(n int, s float64) CurveFunc {
 	}
 }
 
+func (c *curves) SkewMayan(n int, u float64, s float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		d := (c.Lint(0, u)(x) + c.Lint(u, 1)(x)) / 2
+		return c.Mayan(n, s)(d)
+	}
+}
+
 func (c *curves) T(u float64) CurveFunc {
 	return func(x float64) float64 {
 		x = c.Clamped(x)

@@ -136,6 +136,20 @@ func TestCurvesPyramids(t *testing.T) {
 		Curves.Mayan(5, 0.2)(0.85), 0.25,
 		Curves.Mayan(5, 0.2)(1), 0,
 		Curves.Mayan(5, 0.2)(2), 0,
+
+		Curves.SkewMayan(5, 0.2, 0.2)(-1), 0,
+		Curves.SkewMayan(5, 0.2, 0.2)(0), 0,
+		Curves.SkewMayan(5, 0.2, 0.2)(0.048), 0.25,
+		Curves.SkewMayan(5, 0.2, 0.2)(0.1), 0.5,
+		Curves.SkewMayan(5, 0.2, 0.2)(0.15), 0.75,
+		Curves.SkewMayan(5, 0.2, 0.2)(0.193), 1,
+		Curves.SkewMayan(5, 0.2, 0.2)(0.275), 1,
+		Curves.SkewMayan(5, 0.2, 0.2)(0.3777), 0.75,
+		Curves.SkewMayan(5, 0.2, 0.2)(0.5413), 0.5,
+		Curves.SkewMayan(5, 0.2, 0.2)(0.757), 0.25,
+		Curves.SkewMayan(5, 0.2, 0.2)(0.94), 0,
+		Curves.SkewMayan(5, 0.2, 0.2)(1), 0,
+		Curves.SkewMayan(5, 0.2, 0.2)(2), 0,
 	}
 	for i := 0; i < len(expect); i += 2 {
 		// "close enough" since for example sigmoid(0.5, 1)(1) isn't exactly 1
