@@ -295,6 +295,14 @@ func (c *curves) LillyWave(x float64) float64 {
 	return (a - b + 1) / 2
 }
 
+func (c *curves) Comb(n int) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		param := float64(n) * math.Mod(x, 1/float64(n))
+		return 0.5 * c.Circ(param)
+	}
+}
+
 func (c *curves) T(u float64) CurveFunc {
 	return func(x float64) float64 {
 		x = c.Clamped(x)

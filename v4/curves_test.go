@@ -216,6 +216,18 @@ func TestCurvesAudio(t *testing.T) {
 		Curves.LillyWave(0.75), 0,
 		Curves.LillyWave(1), 0.5,
 		Curves.LillyWave(2), 0.5,
+
+		Curves.Comb(4)(-1), 0,
+		Curves.Comb(4)(0), 0,
+		Curves.Comb(4)(0.125), 0.5,
+		Curves.Comb(4)(0.25), 0,
+		Curves.Comb(4)(0.375), 0.5,
+		Curves.Comb(4)(0.5), 0,
+		Curves.Comb(4)(0.625), 0.5,
+		Curves.Comb(4)(0.75), 0,
+		Curves.Comb(4)(0.875), 0.5,
+		Curves.Comb(4)(1), 0,
+		Curves.Comb(4)(2), 0,
 	}
 	for i := 0; i < len(expect); i += 2 {
 		// "close enough" since for example sigmoid(0.5, 1)(1) isn't exactly 1
