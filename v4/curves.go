@@ -194,8 +194,6 @@ func (c *curves) Steps(n int, s float64) CurveFunc {
 		sum := 0.0
 		for i := 1; i < n; i++ {
 			sum += c.Sigmoid(0.5, s/5)(x + 0.5 - float64(i)/float64(n))
-			Logger.Printf("x=%f, i=%d, sum = %f", x, i, sum)
-			Logger.Printf("S(x=%f,u=%d,s=%f", (x - float64(i)/float64(n)), 0, s/5)
 		}
 		return sum / (float64(n) - 1)
 	}
@@ -209,6 +207,13 @@ func (c *curves) StepsB(n int, s float64) CurveFunc {
 			sum += c.Sigmoid(0.5, s/5)((1-1/float64(n))*x + 0.5 + 1/(2*float64(n)) - float64(i)/float64(n))
 		}
 		return sum / (float64(n) - 1)
+	}
+}
+
+func (c *curves) Mayan(n int, s float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		return c.StepsB(n, s)(2*x) - c.StepsB(n, s)(2*x-1)
 	}
 }
 

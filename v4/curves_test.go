@@ -120,15 +120,18 @@ func TestCurvesPyramids(t *testing.T) {
 		Curves.Steps(5, 0.2)(1), 1,
 		Curves.Steps(5, 0.2)(2), 1,
 
-		Curves.StepsB(5, 0.2)(-1), 0,
-		Curves.StepsB(5, 0.2)(0), 0,
-		Curves.StepsB(5, 0.2)(0.175), 0.25,
-		Curves.StepsB(5, 0.2)(0.3), 0.25,
-		Curves.StepsB(5, 0.2)(0.5), 0.5,
-		Curves.StepsB(5, 0.2)(0.824), 0.75,
-		Curves.StepsB(5, 0.2)(0.92), 1,
-		Curves.StepsB(5, 0.2)(1), 1,
-		Curves.StepsB(5, 0.2)(2), 1,
+		Curves.Mayan(5, 0.2)(-1), 0,
+		Curves.Mayan(5, 0.2)(0), 0,
+		Curves.Mayan(5, 0.2)(0.1), 0.25,
+		Curves.Mayan(5, 0.2)(0.25), 0.5,
+		Curves.Mayan(5, 0.2)(0.4), 0.75,
+		Curves.Mayan(5, 0.2)(0.47), 1,
+		Curves.Mayan(5, 0.2)(0.53), 1,
+		Curves.Mayan(5, 0.2)(0.6), 0.75,
+		Curves.Mayan(5, 0.2)(0.75), 0.5,
+		Curves.Mayan(5, 0.2)(0.85), 0.25,
+		Curves.Mayan(5, 0.2)(1), 0,
+		Curves.Mayan(5, 0.2)(2), 0,
 	}
 	for i := 0; i < len(expect); i += 2 {
 		// "close enough" since for example sigmoid(0.5, 1)(1) isn't exactly 1
