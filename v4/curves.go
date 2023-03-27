@@ -237,6 +237,64 @@ func (c *curves) SkewMayan(n int, u float64, s float64) CurveFunc {
 	}
 }
 
+func (c *curves) Pyramid(x float64) float64 {
+	x = c.Clamped(x)
+	return math.Max(0, 1-math.Abs(2*x-1))
+}
+
+func (c *curves) SkewPyramid(u float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		d := (c.Lint(0, u)(x) + c.Lint(u, 1)(x)) / 2
+		return math.Max(0, 2*c.Tri(d/2)-1)
+	}
+}
+
+//
+// AUDIO
+//
+
+func (c *curves) Decay(k float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		return math.Min(1, math.Pow(math.Abs(x-1), k)) * c.Le(1)(x)
+	}
+}
+
+func (c *curves) Tri(x float64) float64 {
+	x = c.Clamped(x)
+	a := math.Max(0, (-math.Abs(4*x-1) + 1))
+	b := math.Max(0, (-math.Abs(4*x-3) + 1))
+	return (a - b + 1) / 2
+}
+
+func (c *curves) SqDuty(p float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		return c.Lt(p)(math.Mod(x, 1))
+	}
+}
+
+func (c *curves) Square(x float64) float64 {
+	x = c.Clamped(x)
+	return c.SqDuty(0.5)(x)
+}
+
+func (c *curves) Sin(x float64) float64 {
+	x = c.Clamped(x)
+	return (math.Sin(2*math.Pi*x) + 1) / 2
+}
+
+func (c *curves) LillyWave(x float64) float64 {
+	x = c.Clamped(x)
+	ratio := 34.0 / 28.0
+	x1 := 2 * x
+	a := math.Pow(c.Bell(0.5, 0.25)(x1), 2)
+	x2 := ratio*x + 0.5 - ratio*0.75
+	b := math.Pow(c.Bell(0.5, 0.25)(x2), 2)
+	return (a - b + 1) / 2
+}
+
 func (c *curves) T(u float64) CurveFunc {
 	return func(x float64) float64 {
 		x = c.Clamped(x)
