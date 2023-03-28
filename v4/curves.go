@@ -21,7 +21,7 @@ func (c *curves) Sigmoid(u float64, s float64) CurveFunc {
 	return func(x float64) float64 {
 		x = c.Clamped(x)
 		denom := 1.0 + math.Exp(-(x-u)/(0.05*s))
-		return math.Pow(1.0/denom, math.Abs((x-u)-1))
+		return 1.0 / denom
 	}
 }
 
