@@ -346,6 +346,17 @@ func (c *curves) Bounce(cor float64, tscale float64) CurveFunc {
 	}
 }
 
+func (c *curves) NBounce(cor float64, n int) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		rb0 := math.Sqrt(2*9.81) / 9.81
+		root := func(k float64) float64 {
+			return rb0 + 2*rb0*(cor*(1-math.Pow(cor, k))/(1-cor))
+		}
+		return c.Bounce(cor, 1.0)(root(float64(n-1)) * x)
+	}
+}
+
 func (c *curves) T(u float64) CurveFunc {
 	return func(x float64) float64 {
 		x = c.Clamped(x)

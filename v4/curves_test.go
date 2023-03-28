@@ -253,12 +253,22 @@ func TestCurvesAudio(t *testing.T) {
 }
 
 func TestCurvesBounce(t *testing.T) {
+	c := 0.377902785645
 	expect := []float64{
-		Curves.Bounce(0.377902785645, 1.0)(-1), 1,
-		Curves.Bounce(0.377902785645, 1.0)(0), 1,
-		Curves.Bounce(0.377902785645, 1.0)(0.622), 0.3779,
-		Curves.Bounce(0.377902785645, 1.0)(1), 0,
-		Curves.Bounce(0.377902785645, 1.0)(2), 0,
+		Curves.Bounce(c, 1.0)(-1), 1,
+		Curves.Bounce(c, 1.0)(0), 1,
+		Curves.Bounce(c, 1.0)(0.622), 0.3779,
+		Curves.Bounce(c, 1.0)(1), 0,
+		Curves.Bounce(c, 1.0)(2), 0,
+
+		Curves.NBounce(c, 3)(-1), 1,
+		Curves.NBounce(c, 3)(0), 1,
+		Curves.NBounce(c, 3)(0.4899), 0,
+		Curves.NBounce(c, 3)(0.675), 0.3779,
+		Curves.NBounce(c, 3)(0.8601), 0,
+		Curves.NBounce(c, 3)(0.93), 0.1428,
+		Curves.NBounce(c, 3)(1), 0,
+		Curves.NBounce(c, 3)(2), 0,
 	}
 	for i := 0; i < len(expect); i += 2 {
 		// "close enough" since for example sigmoid(0.5, 1)(1) isn't exactly 1
