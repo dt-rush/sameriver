@@ -200,7 +200,22 @@ func (c *curves) Circ(x float64) float64 {
 // PYRAMIDS
 //
 
-func (c *curves) Steps(n int, s float64) CurveFunc {
+func (c *curves) Steps(n int) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		return c.Clamped(math.Floor(x*float64(n)) / float64(n-1))
+	}
+}
+
+func (c *curves) StepsB(n int) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		n_ := float64(n)
+		return c.Clamped(c.Steps(n)(1/(1+1/n_)*x + 1/(2*n_)))
+	}
+}
+
+func (c *curves) StepsCont(n int, s float64) CurveFunc {
 	return func(x float64) float64 {
 		x = c.Clamped(x)
 		sum := 0.0
@@ -211,7 +226,7 @@ func (c *curves) Steps(n int, s float64) CurveFunc {
 	}
 }
 
-func (c *curves) StepsB(n int, s float64) CurveFunc {
+func (c *curves) StepsBCont(n int, s float64) CurveFunc {
 	return func(x float64) float64 {
 		x = c.Clamped(x)
 		sum := 0.0
@@ -225,7 +240,7 @@ func (c *curves) StepsB(n int, s float64) CurveFunc {
 func (c *curves) Mayan(n int, s float64) CurveFunc {
 	return func(x float64) float64 {
 		x = c.Clamped(x)
-		return c.StepsB(n, s)(2*x) - c.StepsB(n, s)(2*x-1)
+		return c.StepsBCont(n, s)(2*x) - c.StepsBCont(n, s)(2*x-1)
 	}
 }
 
@@ -354,6 +369,25 @@ func (c *curves) NBounce(cor float64, n int) CurveFunc {
 			return rb0 + 2*rb0*(cor*(1-math.Pow(cor, k))/(1-cor))
 		}
 		return c.Bounce(cor, 1.0)(root(float64(n-1)) * x)
+	}
+}
+
+//
+// QUANTIZE
+//
+
+func (c *curves) QuantY(n int, f CurveFunc) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		return c.StepsB(n)(f(x))
+	}
+}
+
+func (c *curves) QuantX(n int, f CurveFunc) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		return f(c.Steps(n)(x))
+		return c.StepsB(n)(f(x))
 	}
 }
 

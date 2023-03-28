@@ -114,15 +114,49 @@ func TestCurvesPeaks(t *testing.T) {
 
 func TestCurvesPyramids(t *testing.T) {
 	expect := []float64{
-		Curves.Steps(5, 0.2)(-1), 0,
-		Curves.Steps(5, 0.2)(0), 0,
-		Curves.Steps(5, 0.2)(0.1), 0,
-		Curves.Steps(5, 0.2)(0.3), 0.25,
-		Curves.Steps(5, 0.2)(0.5), 0.5,
-		Curves.Steps(5, 0.2)(0.7), 0.75,
-		Curves.Steps(5, 0.2)(0.9), 1,
-		Curves.Steps(5, 0.2)(1), 1,
-		Curves.Steps(5, 0.2)(2), 1,
+		Curves.Steps(5)(-1), 0,
+		Curves.Steps(5)(0), 0,
+		Curves.Steps(5)(0.1), 0,
+		Curves.Steps(5)(0.3), 0.25,
+		Curves.Steps(5)(0.5), 0.5,
+		Curves.Steps(5)(0.7), 0.75,
+		Curves.Steps(5)(0.9), 1,
+		Curves.Steps(5)(1), 1,
+		Curves.Steps(5)(2), 1,
+
+		Curves.StepsB(5)(-1), 0,
+		Curves.StepsB(5)(0), 0,
+		Curves.StepsB(5)(0.1), 0,
+		Curves.StepsB(5)(0.14), 0.25,
+		Curves.StepsB(5)(0.4), 0.5,
+		Curves.StepsB(5)(0.644), 0.75,
+		Curves.StepsB(5)(0.7), 0.75,
+		Curves.StepsB(5)(0.85), 1,
+		Curves.StepsB(5)(0.9), 1,
+		Curves.StepsB(5)(1), 1,
+		Curves.StepsB(5)(2), 1,
+
+		Curves.StepsCont(5, 0.2)(-1), 0,
+		Curves.StepsCont(5, 0.2)(0), 0,
+		Curves.StepsCont(5, 0.2)(0.1), 0,
+		Curves.StepsCont(5, 0.2)(0.3), 0.25,
+		Curves.StepsCont(5, 0.2)(0.5), 0.5,
+		Curves.StepsCont(5, 0.2)(0.7), 0.75,
+		Curves.StepsCont(5, 0.2)(0.9), 1,
+		Curves.StepsCont(5, 0.2)(1), 1,
+		Curves.StepsCont(5, 0.2)(2), 1,
+
+		Curves.StepsBCont(5, 0.1)(-1), 0,
+		Curves.StepsBCont(5, 0.1)(0), 0,
+		Curves.StepsBCont(5, 0.1)(0.1), 0,
+		Curves.StepsBCont(5, 0.1)(0.14), 0.25,
+		Curves.StepsBCont(5, 0.1)(0.4), 0.5,
+		Curves.StepsBCont(5, 0.1)(0.6), 0.5,
+		Curves.StepsBCont(5, 0.1)(0.7), 0.75,
+		Curves.StepsBCont(5, 0.1)(0.85), 0.75,
+		Curves.StepsBCont(5, 0.1)(0.9), 1,
+		Curves.StepsBCont(5, 0.1)(1), 1,
+		Curves.StepsBCont(5, 0.1)(2), 1,
 
 		Curves.Mayan(5, 0.2)(-1), 0,
 		Curves.Mayan(5, 0.2)(0), 0,
@@ -269,6 +303,35 @@ func TestCurvesBounce(t *testing.T) {
 		Curves.NBounce(c, 3)(0.93), 0.1428,
 		Curves.NBounce(c, 3)(1), 0,
 		Curves.NBounce(c, 3)(2), 0,
+	}
+	for i := 0; i < len(expect); i += 2 {
+		// "close enough" since for example sigmoid(0.5, 1)(1) isn't exactly 1
+		if math.Abs(expect[i]-expect[i+1]) > 0.001 {
+			t.Fatalf("condition %d resulted in %f, not %f", i/2, expect[i], expect[i+1])
+		}
+	}
+}
+
+func TestCurvesQuantize(t *testing.T) {
+	expect := []float64{
+		Curves.QuantY(8, Curves.Sigmoid(0.5, 2))(-1), 0,
+		Curves.QuantY(8, Curves.Sigmoid(0.5, 2))(0), 0,
+		Curves.QuantY(8, Curves.Sigmoid(0.5, 2))(0.24), 0,
+		Curves.QuantY(8, Curves.Sigmoid(0.5, 2))(0.3), 0.1429,
+		Curves.QuantY(8, Curves.Sigmoid(0.5, 2))(0.5), 0.5714,
+		Curves.QuantY(8, Curves.Sigmoid(0.5, 2))(0.76), 1,
+		Curves.QuantY(8, Curves.Sigmoid(0.5, 2))(1), 1,
+		Curves.QuantY(8, Curves.Sigmoid(0.5, 2))(2), 1,
+
+		Curves.QuantX(16, Curves.Circ)(-1), 0,
+		Curves.QuantX(16, Curves.Circ)(0), 0,
+		Curves.QuantX(16, Curves.Circ)(0.07), 0.4989,
+		Curves.QuantX(16, Curves.Circ)(0.245), 0.8,
+		Curves.QuantX(16, Curves.Circ)(0.5), 0.9978,
+		Curves.QuantX(16, Curves.Circ)(0.78), 0.8,
+		Curves.QuantX(16, Curves.Circ)(0.9), 0.4989,
+		Curves.QuantX(16, Curves.Circ)(1), 0,
+		Curves.QuantX(16, Curves.Circ)(2), 0,
 	}
 	for i := 0; i < len(expect); i += 2 {
 		// "close enough" since for example sigmoid(0.5, 1)(1) isn't exactly 1
