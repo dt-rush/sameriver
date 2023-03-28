@@ -145,7 +145,7 @@ func (c *curves) Eq(b float64) CurveFunc {
 	}
 }
 
-// = 1 between a, b inclusive
+// = 1 between [a,b)
 // = 0 elsewhere
 func (c *curves) Span(a, b float64) CurveFunc {
 	return func(x float64) float64 {
@@ -300,6 +300,49 @@ func (c *curves) Comb(n int) CurveFunc {
 		x = c.Clamped(x)
 		param := float64(n) * math.Mod(x, 1/float64(n))
 		return 0.5 * c.Circ(param)
+	}
+}
+
+func (c *curves) Spring(freq float64, damp float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		base := func(x float64) float64 {
+			return math.Exp(-damp*x) * math.Sin(2*math.Pi*freq*x)
+		}
+		norm := 1 / (base(math.Atan(2*math.Pi*freq/damp) / (2 * math.Pi * freq)))
+		return (base(x)*norm + 1) / 2
+	}
+}
+
+func (c *curves) SpringFlat(freq float64, damp float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		base := func(x float64) float64 {
+			return math.Exp(-damp*x) * (math.Cos(2*math.Pi*freq*x) + 1) / 2
+		}
+		scale := (2*(freq-1) + 1) / (2 * freq)
+		return base(scale * x)
+	}
+}
+
+// BOUNCE
+func (c *curves) Bounce(cor float64, tscale float64) CurveFunc {
+	return func(x float64) float64 {
+		x = c.Clamped(x)
+		B0 := func(x float64) float64 {
+			return 1 - 0.5*9.81*tscale*x*tscale*x
+		}
+		rb0 := math.Sqrt(2*9.81*tscale*tscale) / (9.81 * tscale * tscale)
+		root := func(k float64) float64 {
+			return rb0 + 2*rb0*(cor*(1-math.Pow(cor, k))/(1-cor))
+		}
+		bounceNumber := func(x float64) float64 {
+			return math.Ceil(math.Log(1-(1-cor)*(x/rb0-1)/(2*cor)) / math.Log(cor))
+		}
+		bn := bounceNumber(x)
+		ex := math.Pow(cor, bn)
+		arg := (x-c.Gt(0)(bn)*root(bn-1))/ex - c.Gt(0)(bn)*rb0
+		return ex * B0(arg)
 	}
 }
 

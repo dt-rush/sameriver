@@ -228,6 +228,37 @@ func TestCurvesAudio(t *testing.T) {
 		Curves.Comb(4)(0.875), 0.5,
 		Curves.Comb(4)(1), 0,
 		Curves.Comb(4)(2), 0,
+
+		Curves.Spring(19, 13.7)(-1), 0.5,
+		Curves.Spring(19, 13.7)(0), 0.5,
+		Curves.Spring(19, 13.7)(0.0648), 0.7431,
+		Curves.Spring(19, 13.7)(0.2227), 0.5279,
+		Curves.Spring(19, 13.7)(0.2227), 0.5279,
+		Curves.Spring(19, 13.7)(1), 0.5,
+		Curves.Spring(19, 13.7)(2), 0.5,
+
+		Curves.SpringFlat(19, 13.7)(-1), 1,
+		Curves.SpringFlat(19, 13.7)(0), 1,
+		Curves.SpringFlat(19, 13.7)(0.0521), 0.4927,
+		Curves.SpringFlat(19, 13.7)(0.3224), 0.0134,
+		Curves.SpringFlat(19, 13.7)(1), 0,
+		Curves.SpringFlat(19, 13.7)(2), 0,
+	}
+	for i := 0; i < len(expect); i += 2 {
+		// "close enough" since for example sigmoid(0.5, 1)(1) isn't exactly 1
+		if math.Abs(expect[i]-expect[i+1]) > 0.001 {
+			t.Fatalf("condition %d resulted in %f, not %f", i/2, expect[i], expect[i+1])
+		}
+	}
+}
+
+func TestCurvesBounce(t *testing.T) {
+	expect := []float64{
+		Curves.Bounce(0.377902785645, 1.0)(-1), 1,
+		Curves.Bounce(0.377902785645, 1.0)(0), 1,
+		Curves.Bounce(0.377902785645, 1.0)(0.622), 0.3779,
+		Curves.Bounce(0.377902785645, 1.0)(1), 0,
+		Curves.Bounce(0.377902785645, 1.0)(2), 0,
 	}
 	for i := 0; i < len(expect); i += 2 {
 		// "close enough" since for example sigmoid(0.5, 1)(1) isn't exactly 1
