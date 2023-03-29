@@ -5,13 +5,18 @@ import (
 )
 
 // visual aid:
-// https://www.desmos.com/calculator/kw8fhm0qox
+// https://www.desmos.com/calculator/ur8qbfjen5
 
 type curves struct{}
 
 var Curves = curves{}
 
 type CurveFunc func(x float64) float64
+
+// used to limit x input to curve funcs
+func (c *curves) Clamped(x float64) float64 {
+	return math.Min(1, math.Max(0, x))
+}
 
 //
 // CLIMB
@@ -389,15 +394,4 @@ func (c *curves) QuantX(n int, f CurveFunc) CurveFunc {
 		return f(c.Steps(n)(x))
 		return c.StepsB(n)(f(x))
 	}
-}
-
-func (c *curves) T(u float64) CurveFunc {
-	return func(x float64) float64 {
-		x = c.Clamped(x)
-		return x
-	}
-}
-
-func (c *curves) Clamped(x float64) float64 {
-	return math.Min(1, math.Max(0, x))
 }
