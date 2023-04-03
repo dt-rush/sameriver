@@ -207,16 +207,6 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 				logGOAPDebug("      [_] eff for %s doesn't affect var %s", effVarName, varName)
 			} else {
 				logGOAPDebug("      [ ] eff affects var: %s; is it satisfactory/closer?", effVarName)
-				// special handler for =
-				if eff.op == "=" {
-					if interval.Diff(float64(eff.f(action.Count, start.vals[varName]))) == 0 {
-						logGOAPDebug("      [x] eff satisfactory")
-						return 1, true
-					} else {
-						logGOAPDebug("      [_] eff not satisfactory")
-						return -1, false
-					}
-				}
 				// all other cases
 				stateAtPoint := path.statesAlong[insertionIx].vals[varName]
 				needToBeat := interval.Diff(float64(stateAtPoint))

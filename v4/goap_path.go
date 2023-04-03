@@ -49,7 +49,7 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 	for i := 0; i < insertionIx; i++ {
 		newSlice[i] = p.path[i].CopyOf()
 	}
-	newSlice[insertionIx] = a
+	newSlice[insertionIx] = a.CopyOf()
 	for i := insertionIx + 1; i < len(newSlice); i++ {
 		newSlice[i] = p.path[i-1].CopyOf()
 	}

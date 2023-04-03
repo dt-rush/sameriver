@@ -57,6 +57,8 @@ func NewGOAPTemporalGoal(spec any) *GOAPTemporalGoal {
 			specmapi := specarr[i].(map[string]int)
 			tg.temporalGoals = append(tg.temporalGoals, newGOAPGoal(specmapi))
 		}
+	} else {
+		tg.temporalGoals = []*GOAPGoal{}
 	}
 	return tg
 }

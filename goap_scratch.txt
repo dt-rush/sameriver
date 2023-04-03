@@ -1,0 +1,125 @@
+IDEA A: when found a solution, wiggle through all permunations of the unordered goals in the tree (yes this will use regionoffsets and some trickery), and run them modally, comparing for least distance and possibly other criteria (energy cost? money cost?)
+
+SKETCH A:
+
+   0   1     2    3   4   5   6
+[ [0] [0] [-1 0] [0] [0] [0] [0] ]
+[  A   B     C    Y   X   Cb  *  ]
+[ [q] [r] [s  t] [m] [w] [v] [u] ]
+
+where C->u, Cb->u
+      A->s
+      B->t  Y,X->v
+
+which unordered goals have more than 1 children?
+[u].nChildren == 2 (C,Cb)
+[v].nChildren == 2 (Y,X)
+
+so our wiggle points are [u] and [v]
+
+  *
+ / \
+C   Cb
+|\   |\
+A B  Y X
+
+wiggle u
+[A B C]  [Y X Cb]
+[Y X Cb] [A B C]
+
+    for each, wiggle v
+    [A B C]  [X Y Cb]
+    [X Y Cb] [A B C]
+
+the question becomes, can our heuristic help us avoid the need to check all these permutations?
+
+in theory since we try to satisfy each goal with each action on insert, the alternative orderings of C Cb vs Cb C will arise at the same time. the one that has a shorter distance will get picked up for iteration earlier.
+
+so say we iterate the Cb C wiggle branch since it's better. and we prepend something.
+
+now depending on what we added, the worse wiggle may iterate before this path with the prepend. but at any rate, once we prepend something to this worse wiggle, now we're going to pick up the good wiggle first since it's likely ahead.
+
+
+
+
+
+
+
+
+
+
+
+IDEA B: "deterministic" mode where unordered temporal ([0]) insertion will not be hashtable random according to which one came up during the search but instead will be sorted alpha
+
+SKETCH B:
+
+   0   1     2    3
+[ [0] [0] [-1 0] [0] ]
+[  A   B     C    *  ]
+[ [q] [r] [s  t] [u] ]
+
+
+
+insert Ca for [u] ? unordered... should be after C
+
+ix = i = 3
+
+minix = i - remainings[i].nChildren = 3 - 1
+maxix = i
+
+insertionix is: $(binary search [minix,maxix] the insertion point according to string ordering)
+here will be 3
+
+
+
+
+
+
+
+   0   1     2    3   4   5   6
+[ [0] [0] [-1 0] [0] [0] [0] [0] ]
+[  A   B     C    Y   X   Cb  *  ]
+[ [q] [r] [s  t] [m] [w] [v] [u] ]
+
+where C->u, Cb->u
+      A->s
+      B->t  Y,X->v
+
+so [u].nChildren == 2 (C,Cb)
+
+insert Ca for [u]?
+
+our possible insertion ixs are 0, 2, 6
+
+so we don't binary search indexes in the raw array, but we binary search the *children of [u]*,
+and then simply lookup*** the ix of where we land (actions store their ixs i think)
+
+
+
+
+
+
+
+
+
+
+
+
+
+IDEA C: heuristic change
+
+sumOfCosts(path) + nUnfulfilled(path.remainings)
+
+has the defect that they are on different (ultimately un)normalized ranges
+
+so what if we multiply them?
+
+sumOfCosts(path) * nUnfulfilled(path.remainings)
+
+that way:
+
+- when we have same costs but less unfulfilled, go for that one
+- when we have same unfulfilled but less cost, go for that one
+
+
+

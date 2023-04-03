@@ -41,7 +41,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 	// path: [A, C]
 	// A.pre = [q], A fulfills s
 	// C.pre = [s t], C fulfills u
-	// remainings surface: [[q] [s t] [u]]
+	// remainings.surface: [[q] [s t] [u]]
 
 	// iterate path with index i
 	// and iterate temporal goal of surface (ex iterate inside [s t]) with index regionIx
@@ -64,6 +64,10 @@ func (p *GOAPPlanner) traverseFulfillers(
 			logGOAPDebug("        |")
 			for varName := range tg.goalLeft {
 				for action := range p.eval.varActions[varName] {
+					// can't self-append
+					if len(here.path.path) > 0 && here.path.path[i].Name == action.Name {
+						continue
+					}
 					logGOAPDebug("       ...")
 					logGOAPDebug("        |")
 					logGOAPDebug("        └>varName: %s", varName)
@@ -104,6 +108,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 						// guard against visit to already-seen path
 						pathStr := newPath.String()
 						if _, ok := pathsSeen[pathStr]; ok {
+							logGOAPDebug(color.InBold(color.InWhiteOverCyan("path seen already")))
 							continue
 						} else {
 							pathsSeen[pathStr] = true
@@ -186,7 +191,9 @@ func (p *GOAPPlanner) Plan(
 	// TODO: should we just pop out the *very first result*?
 	// why wait for 2 or exhausting the pq?
 	t0 := time.Now()
-	for iter < maxIter && pq.Len() > 0 && resultPq.Len() < 2 {
+	// remove resultPq.Len() < 2 to exhaust space/max iter
+	for iter < maxIter && pq.Len() > 0 {
+
 		logGOAPDebug("=== iter ===")
 		here := heap.Pop(pq).(*GOAPPQueueItem)
 		if DEBUG_GOAP {

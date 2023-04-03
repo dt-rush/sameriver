@@ -216,7 +216,7 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
 	const (
-		STATE = GENERICTAGS + iota
+		STATE = GENERICTAGS + 1 + iota
 	)
 	w.RegisterComponents([]any{
 		STATE, INTMAP, "STATE",

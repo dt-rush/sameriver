@@ -1136,3 +1136,121 @@ func TestGOAPPlanResponsibleFridgeUsage(t *testing.T) {
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 
 }
+
+func TestGOAPPlanFarmer2000(t *testing.T) {
+
+	w := testingWorld()
+	ps := NewPhysicsSystem()
+	w.RegisterSystems(ps)
+	e := testingSpawnPhysics(w)
+
+	oxPos := &Vec2D{11, 19}
+	yokePos := &Vec2D{40, 0}
+	fieldPos := &Vec2D{100, -100}
+
+	atModal := func(pos *Vec2D, name string) GOAPModalVal {
+		return GOAPModalVal{
+			name: name,
+			check: func(ws *GOAPWorldState) int {
+				ourPos := ws.GetModal(e, POSITION).(*Vec2D)
+				_, _, d := ourPos.Distance(*pos)
+				if d < 2 {
+					return 1
+				} else {
+					return 0
+				}
+			},
+			effModalSet: func(ws *GOAPWorldState, op string, x int) {
+				if op == "=" && x == 1 {
+					near := pos.Add(Vec2D{1, 0})
+					ws.SetModal(e, POSITION, &near)
+				}
+			},
+		}
+	}
+
+	atOxModal := atModal(oxPos, "atOx")
+	atYokeModal := atModal(yokePos, "atYoke")
+	atFieldModal := atModal(fieldPos, "atField")
+
+	goToOx := NewGOAPAction(map[string]any{
+		"name": "goToOx",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"atOx,=": 1,
+		},
+	})
+	leadOxToField := NewGOAPAction(map[string]any{
+		"name": "leadOxToField",
+		"cost": 1,
+		"pres": map[string]int{
+			"atOx,=": 1,
+		},
+		"effs": map[string]int{
+			"oxInField,=": 1,
+		},
+	})
+	getYoke := NewGOAPAction(map[string]any{
+		"name": "getYoke",
+		"cost": 1,
+		"pres": nil,
+		"effs": map[string]int{
+			"hasYoke,=": 1,
+			"atYoke,=":  1,
+		},
+	})
+	yokeOxplow := NewGOAPAction(map[string]any{
+		"name": "yokeOxplow",
+		"cost": 1,
+		"pres": []any{
+			map[string]int{
+				"hasYoke,=": 1,
+			},
+			map[string]int{
+				"atOx,=": 1,
+			},
+		},
+		"effs": map[string]int{
+			"oxYoked,=": 1,
+		},
+	})
+	oxplow := NewGOAPAction(map[string]any{
+		"name": "oxplow",
+		"cost": 1,
+		"pres": []any{
+			map[string]int{
+				"oxInField,=": 1,
+			},
+			map[string]int{
+				"oxYoked,=": 1,
+				"atOx,=":    1,
+			},
+		},
+		"effs": map[string]int{
+			"fieldTilled,=": 1,
+		},
+	})
+
+	p := NewGOAPPlanner(e)
+
+	p.eval.AddModalVals(atOxModal, atYokeModal, atFieldModal)
+	p.eval.AddActions(goToOx, leadOxToField, getYoke, yokeOxplow, oxplow)
+
+	ws := NewGOAPWorldState(map[string]int{
+		"fieldTilled,=": 0,
+	})
+
+	goal := map[string]int{
+		"fieldTilled,=": 1,
+	}
+	t0 := time.Now()
+	plan, ok := p.Plan(ws, goal, 500)
+	if !ok {
+		t.Fatal("Should've found a solution")
+	}
+	Logger.Println(color.InGreenOverWhite(GOAPPathToString(plan)))
+	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	Logger.Printf("Took %f ms to find solution", dt_ms)
+
+}
