@@ -1357,6 +1357,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	}
 
 	// first run with no oxen
+	Logger.Println("No oxen")
 	t0 := time.Now()
 	mockMakeTillPlan() // include the blackboard context setting in the time
 	_, ok := p.Plan(ws, goal, 500)
@@ -1366,10 +1367,11 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	Logger.Printf("Took %f ms to fail", dt_ms)
 
-	// spawn them
+	// spawn them (note: one is in the field already)
 	spawnOxen([]Vec2D{Vec2D{0, 100}, Vec2D{0, 20}, Vec2D{0, -100}})
 
 	// second run with oxen
+	Logger.Println("All oxen, one in field")
 	t0 = time.Now()
 	mockMakeTillPlan() // include the blackboard context setting in the time
 	plan, ok := p.Plan(ws, goal, 500)
@@ -1380,4 +1382,17 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	dt_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 
+	// third run with oxen all out of the field
+	Logger.Println("All oxen are outside field")
+	t0 = time.Now()
+	mockMakeTillPlan() // get the ox in the field
+	w.Despawn(e.GetMind("plan.ox").(*Entity))
+	mockMakeTillPlan() // remake plan this time with the remaining 2 ox
+	plan, ok = p.Plan(ws, goal, 500)
+	if !ok {
+		t.Fatal("Should've found a solution")
+	}
+	Logger.Println(color.InGreenOverWhite(GOAPPathToString(plan)))
+	dt_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	Logger.Printf("Took %f ms to find solution", dt_ms)
 }
