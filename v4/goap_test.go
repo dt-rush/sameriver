@@ -1147,6 +1147,14 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
 
+	const (
+		STATE = GENERICTAGS + 1 + iota
+	)
+
+	w.RegisterComponents([]any{
+		STATE, INTMAP, "STATE",
+	})
+
 	items.CreateArchetype(map[string]any{
 		"name":        "yoke",
 		"displayName": "a yoke for cattle",
@@ -1191,6 +1199,9 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		"components": map[ComponentID]any{
 			POSITION: Vec2D{0, 100},
 			BOX:      Vec2D{100, 100},
+			STATE: map[string]int{
+				"tilled": 0,
+			},
 		},
 		"tags": []string{"field"},
 	})
@@ -1258,6 +1269,22 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 				}
 			}
 			ws.SetModal(e, INVENTORY, inv)
+		},
+	}
+	fieldTilledModal := GOAPModalVal{
+		name:  "fieldTilled",
+		nodes: []string{"field"},
+		check: func(ws *GOAPWorldState) int {
+			field := ws.ModalEntities["field"]
+			return ws.GetModal(field, STATE).(*IntMap).m["tilled"]
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			if op == "=" {
+				field := ws.ModalEntities["field"]
+				state := field.GetIntMap(STATE).CopyOf()
+				state.m["tilled"] = x
+				ws.SetModal(field, STATE, &state)
+			}
 		},
 	}
 
@@ -1338,7 +1365,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			return candidate.GetTagList(GENERICTAGS).Has("field")
 		},
 	})
-	p.AddModalVals(oxInFieldModal, hasYokeModal)
+	p.AddModalVals(oxInFieldModal, hasYokeModal, fieldTilledModal)
 	p.AddActions(leadOxToField, getYoke, yokeOxplow, oxplow)
 
 	//
