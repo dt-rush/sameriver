@@ -1192,6 +1192,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			POSITION: Vec2D{0, 100},
 			BOX:      Vec2D{100, 100},
 		},
+		"tags": []string{"field"},
 	})
 
 	oxInFieldModal := GOAPModalVal{
@@ -1312,27 +1313,10 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 
 	p := NewGOAPPlanner(e)
 
-	p.AddModalVals(oxInFieldModal, hasYokeModal)
-	p.AddActions(leadOxToField, getYoke, yokeOxplow, oxplow)
-
-	mockMakeTillPlan := func() {
-		e.SetMind("plan.field", field)
-		planField := e.GetMind("plan.field").(*Entity)
-
-		// this would really be a filtering not of all entities but of perception
-		closestOxToField := e.World.ClosestEntityFilter(
-			*planField.GetVec2D(POSITION),
-			*planField.GetVec2D(BOX),
-			func(e *Entity) bool {
-				return e.GetTagList(GENERICTAGS).Has("ox")
-			})
-		e.SetMind("plan.ox", closestOxToField)
-	}
-
-	p.BindEntitySelectors(map[string]func(*Entity) bool{
-		// ox from blackboard plan - the closest to the field
+	p.RegisterGenericEntitySelectors(map[string]func(*Entity) bool{
+		// any ox
 		"ox": func(candidate *Entity) bool {
-			return candidate == e.GetMind("plan.ox")
+			return candidate.GetTagList(GENERICTAGS).Has("ox")
 		},
 		// any yoke
 		"yoke": func(candidate *Entity) bool {
@@ -1342,11 +1326,44 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			}
 			return false
 		},
-		// the field from the blackboard plan
+		// any field
 		"field": func(candidate *Entity) bool {
-			return candidate == e.GetMind("plan.field")
+			return candidate.GetTagList(GENERICTAGS).Has("field")
 		},
 	})
+
+	p.AddModalVals(oxInFieldModal, hasYokeModal)
+	p.AddActions(leadOxToField, getYoke, yokeOxplow, oxplow)
+
+	tillPlanBB := func() {
+		e.SetMind("plan.field", field)
+		planField := e.GetMind("plan.field").(*Entity)
+		// this would really be a filtering not of all entities but of perception
+		closestOxToField := e.World.ClosestEntityFilter(
+			*planField.GetVec2D(POSITION),
+			*planField.GetVec2D(BOX),
+			func(e *Entity) bool {
+				return e.GetTagList(GENERICTAGS).Has("ox")
+			})
+		e.SetMind("plan.ox", closestOxToField)
+	}
+	tillPlanBindEntities := func() {
+		p.BindEntitySelectors(map[string]func(*Entity) bool{
+			// ox from blackboard plan - the closest to the field
+			"ox": func(candidate *Entity) bool {
+				return candidate == e.GetMind("plan.ox")
+			},
+			// the field from the blackboard plan
+			"field": func(candidate *Entity) bool {
+				return candidate == e.GetMind("plan.field")
+			},
+		})
+	}
+
+	mockMakeTillPlan := func() {
+		tillPlanBB()
+		tillPlanBindEntities()
+	}
 
 	ws := NewGOAPWorldState(map[string]int{
 		"fieldTilled": 0,

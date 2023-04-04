@@ -16,10 +16,15 @@ var ErrGOAPNoValidBindEntity = errors.New("no entity matched selector")
 type GOAPPlanner struct {
 	e *Entity
 
-	// the functions selecting an entity
+	// the functions selecting an entity for binding
+	genericSelectors map[string]func(*Entity) bool
+	// bound selectors overwrite the genericselectors for the next Plan() call.
 	boundSelectors map[string]func(*Entity) bool
-	modalVals      map[string]GOAPModalVal
-	actions        *GOAPActionSet
+	// flipflop is needed for the bind once logic
+	boundSelectorsFlipflop bool
+
+	modalVals map[string]GOAPModalVal
+	actions   *GOAPActionSet
 	// map of [varName](Set (in the sense of a map->bool) of actions that affect that var)
 	varActions map[string](map[*GOAPAction]bool)
 }
@@ -53,7 +58,15 @@ func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start boo
 				logGOAPDebug(color.InPurple("|"))
 				logGOAPDebug(color.InPurple(fmt.Sprintf("--->>> binding modal entity %s...", node)))
 			}
-			ws.ModalEntities[node] = world.ClosestEntityFilter(*pos, *box, p.boundSelectors[node])
+			var selector func(*Entity) bool
+			if _, ok := p.boundSelectors[node]; ok {
+				selector = p.boundSelectors[node]
+			} else if _, ok := p.genericSelectors[node]; ok {
+				selector = p.genericSelectors[node]
+			} else {
+				panic(fmt.Sprintf("No selector for GOAP bind-entity %s", node))
+			}
+			ws.ModalEntities[node] = world.ClosestEntityFilter(*pos, *box, selector)
 
 		} else if DEBUG_GOAP {
 			logGOAPDebug(color.InPurple("|"))
@@ -78,7 +91,15 @@ func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start boo
 	return nil
 }
 
+func (p *GOAPPlanner) RegisterGenericEntitySelectors(selectors map[string]func(*Entity) bool) {
+	p.genericSelectors = make(map[string]func(*Entity) bool)
+	for k, v := range selectors {
+		p.genericSelectors[k] = v
+	}
+}
+
 func (p *GOAPPlanner) BindEntitySelectors(selectors map[string]func(*Entity) bool) {
+	p.boundSelectorsFlipflop = true
 	p.boundSelectors = make(map[string]func(*Entity) bool)
 	for k, v := range selectors {
 		p.boundSelectors[k] = v
@@ -554,6 +575,10 @@ func (p *GOAPPlanner) Plan(
 	start *GOAPWorldState,
 	goalSpec any,
 	maxIter int) (solution *GOAPPath, ok bool) {
+
+	defer func() {
+		p.boundSelectorsFlipflop = false
+	}()
 
 	// we may be writing to this with modal vals as we explore and don't want
 	// to pollute the caller's state object
