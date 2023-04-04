@@ -134,6 +134,10 @@ func (p *GOAPPlanner) applyActionModal(a *GOAPAction, ws *GOAPWorldState) (newWS
 	node := ws.ModalEntities[a.Node]
 	nodePos := ws.GetModal(node, POSITION).(*Vec2D)
 	distToGetHere := nodePos.Sub(*beforePos).Magnitude()
+	// now we are at it
+	nowPos := *nodePos
+	ws.SetModal(p.e, POSITION, &nowPos)
+	logGOAPDebug("        distance to get to node for action %s: %f", a.Name, distToGetHere)
 	cost = distToGetHere
 	switch a.cost.(type) {
 	case int:
@@ -167,6 +171,17 @@ func (p *GOAPPlanner) applyActionModal(a *GOAPAction, ws *GOAPWorldState) (newWS
 			newWS.vals[varName] = modalVal.check(newWS)
 		}
 	}
+
+	// we are still at the node after the action is done
+	if a.travelWithNode {
+		nowPos := *(newWS.GetModal(node, POSITION).(*Vec2D))
+		newWS.SetModal(p.e, POSITION, &nowPos)
+	}
+
+	afterPos := newWS.GetModal(p.e, POSITION).(*Vec2D)
+	distTravelled := nowPos.Sub(*afterPos).Magnitude()
+	logGOAPDebug("        distance travelled during action %s: %f", a.Name, distTravelled)
+	cost += distTravelled
 
 	if DEBUG_GOAP {
 		logGOAPDebug(color.InPurpleOverWhite(fmt.Sprintf("            ws after re-checking modal vals: %v", newWS.vals)))

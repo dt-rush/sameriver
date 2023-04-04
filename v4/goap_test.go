@@ -1171,11 +1171,11 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	})
 	// yoke
 	yoke := items.CreateItemSimple("yoke")
-	items.SpawnItemEntity(Vec2D{-5, 0}, yoke)
+	items.SpawnItemEntity(Vec2D{0, 5}, yoke)
 	// ox
 	w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
-			POSITION: Vec2D{-19, -19},
+			POSITION: Vec2D{0, 20},
 			BOX:      Vec2D{3, 2},
 		},
 		"tags": []string{"ox"},
@@ -1183,7 +1183,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	// field
 	field := w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
-			POSITION: Vec2D{50, 50},
+			POSITION: Vec2D{0, 100},
 			BOX:      Vec2D{100, 100},
 		},
 	})
@@ -1257,10 +1257,11 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	}
 
 	leadOxToField := NewGOAPAction(map[string]any{
-		"name": "leadOxToField",
-		"node": "ox",
-		"cost": 1,
-		"pres": nil,
+		"name":           "leadOxToField",
+		"node":           "ox",
+		"travelWithNode": true,
+		"cost":           1,
+		"pres":           nil,
 		"effs": map[string]int{
 			"oxInField,=": 1,
 		},

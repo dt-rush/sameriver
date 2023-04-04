@@ -26,6 +26,9 @@ type GOAPAction struct {
 	// considerations
 	Node string
 
+	// whether, during the action, we move with the node
+	travelWithNode bool
+
 	// other nodes we want to look at modally - named by string a la BindEntitySelectors()
 	otherNodes []string
 
@@ -73,6 +76,10 @@ func GOAPEffFunc(op string, val int) func(count int, x int) int {
 func NewGOAPAction(spec map[string]any) *GOAPAction {
 	name := spec["name"].(string)
 	node := spec["node"].(string)
+	travelWithNode, ok := spec["travelWithNode"].(bool)
+	if !ok {
+		travelWithNode = false
+	}
 	otherNodes, ok := spec["otherNodes"].([]string)
 	if !ok {
 		otherNodes = []string{}
@@ -85,6 +92,7 @@ func NewGOAPAction(spec map[string]any) *GOAPAction {
 		spec:            spec,
 		Name:            name,
 		Node:            node,
+		travelWithNode:  travelWithNode,
 		otherNodes:      otherNodes,
 		Count:           1,
 		cost:            cost,
