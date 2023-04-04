@@ -1311,8 +1311,15 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		},
 	})
 
-	p := NewGOAPPlanner(e)
+	// PLANNER INIT
 
+	// in this test, only the yoke selector gets used as a generic fallback since
+	// we don't bind any more specific selector for "yoke" before any Plan() call.
+	// *all* of these would be used for more general planning than this specific constrained
+	// example where we have a field in mind allowing us to choose a closer ox.
+	// so really, this would happen not before the planning as the BindEntitySelectors() call below,
+	// but this RegisterGenericEntitySelectors() call would happen on setup of the planner itself
+	p := NewGOAPPlanner(e)
 	p.RegisterGenericEntitySelectors(map[string]func(*Entity) bool{
 		// any ox
 		"ox": func(candidate *Entity) bool {
@@ -1331,10 +1338,15 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			return candidate.GetTagList(GENERICTAGS).Has("field")
 		},
 	})
-
 	p.AddModalVals(oxInFieldModal, hasYokeModal)
 	p.AddActions(leadOxToField, getYoke, yokeOxplow, oxplow)
 
+	//
+	// bb workplan
+	//
+
+	// NOTE: we'd *get* the currently active bb work plan for the field rather than
+	// generate it if someone was already doing plant
 	tillPlanBB := func() {
 		e.SetMind("plan.field", field)
 		planField := e.GetMind("plan.field").(*Entity)
