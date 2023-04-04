@@ -1,3 +1,23 @@
+summary of the below, feedback by chatGPT:
+
+IDEA GAMMA: Introducing a gather action that symbolically represents gathering of materials is an interesting approach. It can simplify the initial planning process and make it more efficient. However, it may introduce complexities when implementing the actual gathering logic as a prelude to the subsequent actions like building or crafting.
+
+IDEA GEMATRIA: Considering only the actions whose nodes resolve could help improve the efficiency of the GOAP solver by eliminating irrelevant or invalid actions from the search space. This should help in reducing the overall computation time.
+
+IDEA GEM3000: Introducing a dot notation for binding modal values from the blackboard can make it easier to access and manipulate entity-specific data. This notation can enable more complex interactions and queries about entities in the environment, like checking inventory or aggro status.
+
+IDEA GAMMA PRIME: This idea presents a more detailed approach for generating GOAP plans, considering various scenarios and alternative ways to achieve the goals (like crafting, trading, or withdrawal). It demonstrates how a more sophisticated planning system can handle different situations and contingencies.
+
+
+
+
+
+
+
+
+
+
+
 [ ] IDEA GAMMA: gather is a single action; anything that needs materials can put gather to get symbolically, materials. this way, gather itself
  is offlaoded as a separate GOAP.
 
