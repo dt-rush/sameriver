@@ -1161,6 +1161,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		},
 	})
 
+	// NOTE: all spawns are on x = 0
 	// villager
 	e := w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
@@ -1172,6 +1173,26 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	// yoke
 	yoke := items.CreateItemSimple("yoke")
 	items.SpawnItemEntity(Vec2D{0, 5}, yoke)
+	// decoy ox (too far back)
+	w.Spawn(map[string]any{
+		"components": map[ComponentID]any{
+			POSITION: Vec2D{0, -100},
+			BOX:      Vec2D{3, 2},
+		},
+		"tags": []string{"ox"},
+	})
+	// TODO
+	// ox in the field (really we should just go to this one with the yoke)
+	// but as it is, we'll select the nearest to the start
+	// when we have [oxplow] as the path, we will see oxInField on surface[0]
+	// even though the modal start state of oxinfield should be in the field, we should select the field one at that point... hmmm
+	w.Spawn(map[string]any{
+		"components": map[ComponentID]any{
+			POSITION: Vec2D{0, 100},
+			BOX:      Vec2D{3, 2},
+		},
+		"tags": []string{"ox"},
+	})
 	// ox
 	w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
