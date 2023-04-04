@@ -1,4 +1,125 @@
-IDEA ZETA: don't put any gotos in the plan. just actions. and whenever you perform an action, you're at the node that uses it. so dynamically during runtime, you auto-goto the node of the next part of the action.
+[ ] IDEA GAMMA: gather is a single action; anything that needs materials can put gather to get symbolically, materials. this way, gather itself
+ is offlaoded as a separate GOAP.
+
+ this is so that a plan that goes far back enough into gathering for crafting/building is quick to terminate as a solution in the initial solver without having to do all the tree walking etc... and then the success
+ of that plan can be made (should be made) dependent on the success of planning the gathering as a prelude (it will be the first action of such chains, like, [gather, buildHouse] or [gather, craftBow])
+
+ and then the gather will look at what materials are needed in bb and plan out something like, 
+
+let's say the crafting and building mechanic is a bit magical, 
+to lay the materials by the fire and go do the build wherever it is, or craft right at the fire, if that's the case.
+
+
+
+[ ] IDEA GAMMA PRIME
+
+
+uh oh the below gets hairy, way easier to do this for the individual
+
+
+in
+the utility / some consideration / decorator, there is a write to blackboard that one bow is wanted to be added
+to the village stores.
+(in the generic case, addedToVillageStore($item, $village), but let's use bow)
+
+so
+the corresponding goal is addedToVillageStore(bow, village)
+
+main planning goal: addedToVillageStore(bow, village)
+
+// the legal action of possession of the product: village.appropProduct($item)
+addedToVillageStore(bow, village) is satisfied by village.appropProduct(bow)
+village.appropProduct(bow) has pre produced(bow)
+
+// the productive act craft($item)
+produced(bow) is satisfied by craft(bow)
+craft(bow) has pre ingredients(bow)
+
+// the gathering labour of the raw materials, gather($item)
+ingredients(bow) is satisfied by gather(bow)
+gather(bow) has nil pre
+
+thus: 
+
+[gather(bow), craft(bow), village.appropProduct(bow)] is a solution
+
+
+
+
+OR (a trader has it!)
+
+addedToVillageStore(bow, village) is satisfied by village.tradeGet(bow)
+village.tradeGet(bow) has nil pre
+
+(if no trader nearby, the modal entity bind for the trader will fail, if the trader exists, this pathway becomes valid)
+
+thus:
+
+[village.trade(bow)]
+
+
+
+if something we want to do, like hunt, has pre: has(bow), what do we do?
+
+planning goal (pre of hunt): has(bow)
+
+if has(bow) modally is 0, we don't have it. it wants val 1, the ws will have val 0.
+so,
+
+has(bow) is satisfied by village.withdraw(bow)      // there are other ways to get a bow
+village.withdraw(bow) has pre village.has(bow)
+
+so, in the case that village.has(bow) is 1, village.withdraw()'s pre is satisfied,
+and the has(bow) goal is satisfied by the action village.withdraw(bow),
+
+thus
+
+[village.withdraw(bow), hunt]
+
+which is just a parametrised goto+get 
+        (which decays to almost a no-op when the bow is
+        in the entitiy's inventory, it's just the withdraw() ticketpunch 
+        happens for this entity using this tool in the bb)
+
+but if village.has(bow) is modally 0, the pre is not satisfied,
+and this means there is not a single bow.
+so
+
+what makes village.has(bow) = 1?
+
+village.has(bow) is satisfied by village.appropProduct(bow)
+... pre satisfied by craft(bow)
+... pre satisfied by gather(bow)
+
+thus:
+
+[gather(bow), craft(bow), village.appropProduct(bow), village.withdraw(bow)]
+
+NOTE the whole time the entity would have the bow in their inventory, just
+we were trying to satisfy 
+
+
+
+
+the gather action in the [gather(bow), craft(bow)] case would expand to a GOAP like
+
+  [getBowstring, getStick, layRecipe(bow)]
+  or
+  [getStick, getBowstring, layRecipe(bow)]
+
+  where layRecipe(bow) is an action answering "canCraft(bow)" as the goal
+
+or the gather action in [gather, buildHouse] 
+
+   [getStone(3), chopTree(3), chopLog(3), layLog(3)]
+   or
+   [chopTree(3), chopLog(3), carryWoodToFire]
+   where buildHouse is itself probably a sequence of animations gated by whehter you have the resources (btree)
+
+  for 
+
+
+[x] IDEA ZETA: don't put any gotos in the plan. just actions. and whenever you perform an action, you're at the node that uses it. so dynamically during runtime, you auto-goto the node of the next part of the action.
 similarly, with each action being identified with a spaital node, we can do - during post-processing of possible logical-symbol-and-modal-valid paths, a distance calculation and sort by that
 
 
