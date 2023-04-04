@@ -43,7 +43,18 @@ func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start boo
 	// in the chain that they are set)
 	for _, node := range nodes {
 		if _, ok := ws.ModalEntities[node]; !ok {
+			if DEBUG_GOAP {
+				logGOAPDebug(color.InPurple(fmt.Sprintf(">>> binding modal entity %s...", node)))
+			}
 			ws.ModalEntities[node] = world.ClosestEntityFilter(*pos, *box, p.boundSelectors[node])
+			if DEBUG_GOAP {
+				var boundMsg string
+				boundMsg += fmt.Sprintf(">>> bound entity: %v ", ws.ModalEntities[node])
+				if ws.ModalEntities[node].HasComponent(POSITION) {
+					boundMsg += fmt.Sprintf(" @ position %v", *(ws.ModalEntities[node].GetVec2D(POSITION)))
+				}
+				logGOAPDebug(color.InPurple(boundMsg))
+			}
 		}
 	}
 }
