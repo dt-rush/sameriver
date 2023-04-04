@@ -2,6 +2,7 @@ package sameriver
 
 import (
 	"bytes"
+	"fmt"
 )
 
 type GOAPPath struct {
@@ -123,7 +124,7 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 
 func (p *GOAPPath) String() string {
 	var buf bytes.Buffer
-	buf.WriteString("    [")
+	buf.WriteString(fmt.Sprintf("    (cost: %.2f)[", p.cost))
 	for i, action := range p.path {
 		buf.WriteString(action.DisplayName())
 		if i != len(p.path)-1 {

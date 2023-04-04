@@ -1378,7 +1378,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	if !ok {
 		t.Fatal("Should've found a solution")
 	}
-	Logger.Println(color.InGreenOverWhite(GOAPPathToString(plan)))
+	Logger.Println(color.InGreenOverWhite(plan.String()))
 	dt_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 
@@ -1392,7 +1392,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	if !ok {
 		t.Fatal("Should've found a solution")
 	}
-	Logger.Println(color.InGreenOverWhite(GOAPPathToString(plan)))
+	Logger.Println(color.InGreenOverWhite(plan.String()))
 	dt_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 }
