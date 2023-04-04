@@ -1,3 +1,33 @@
+IDEA ZETA: don't put any gotos in the plan. just actions. and whenever you perform an action, you're at the node that uses it. so dynamically during runtime, you auto-goto the node of the next part of the action.
+similarly, with each action being identified with a spaital node, we can do - during post-processing of possible logical-symbol-and-modal-valid paths, a distance calculation and sort by that
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 IDEA A: when found a solution, wiggle through all permunations of the unordered goals in the tree (yes this will use regionoffsets and some trickery), and run them modally, comparing for least distance and possibly other criteria (energy cost? money cost?)
 
 SKETCH A:

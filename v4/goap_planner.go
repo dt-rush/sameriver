@@ -64,8 +64,8 @@ func (p *GOAPPlanner) traverseFulfillers(
 			logGOAPDebug("        |")
 			for varName := range tg.goalLeft {
 				for action := range p.eval.varActions[varName] {
-					// can't self-append
-					if len(here.path.path) > 0 && here.path.path[i].Name == action.Name {
+					// can't self-append (guard against considering i == len(path) (that's the main goal)
+					if i < len(here.path.path) && here.path.path[i].Name == action.Name {
 						continue
 					}
 					logGOAPDebug("       ...")
@@ -119,9 +119,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 						// in the start state
 						for _, tg := range toInsert.pres.temporalGoals {
 							for varName := range tg.vars {
-								if _, already := start.vals[varName]; !already {
-									p.eval.checkModalInto(varName, start)
-								}
+								p.eval.setVarInStartIfNotDefined(start, varName)
 							}
 						}
 						if DEBUG_GOAP {
@@ -160,9 +158,7 @@ func (p *GOAPPlanner) Plan(
 	// populate start state with any modal vals at start
 	for _, tg := range goal.temporalGoals {
 		for varName := range tg.vars {
-			if _, already := start.vals[varName]; !already {
-				p.eval.checkModalInto(varName, start)
-			}
+			p.eval.setVarInStartIfNotDefined(start, varName)
 		}
 	}
 

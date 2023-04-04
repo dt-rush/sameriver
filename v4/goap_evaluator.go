@@ -263,3 +263,16 @@ func (e *GOAPEvaluator) actionHelpsToInsert(
 
 	return helpsGoal(goalToHelp.goalLeft)
 }
+
+func (e *GOAPEvaluator) setVarInStartIfNotDefined(start *GOAPWorldState, varName string) {
+	if _, already := start.vals[varName]; !already {
+		if _, isModal := e.modalVals[varName]; isModal {
+			e.checkModalInto(varName, start)
+			logGOAPDebug(color.InPurple(fmt.Sprintf("[ ] start.modal[%s] %d", varName, start.vals[varName])))
+		} else {
+			// NOTE: vars that don't have modal check default to 0
+			logGOAPDebug(color.InYellow(fmt.Sprintf("[ ] %s not defined in GOAP start state, and no modal check exists. Defaulting to 0.", varName)))
+			start.vals[varName] = 0
+		}
+	}
+}

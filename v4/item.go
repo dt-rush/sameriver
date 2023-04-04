@@ -250,6 +250,15 @@ func (i *Item) HasProperty(k string) bool {
 	return ok
 }
 
+func (i *Item) HasTags(tags ...string) bool {
+	for _, t := range tags {
+		if !i.Tags.Has(t) {
+			return false
+		}
+	}
+	return true
+}
+
 func (i *Item) DisplayName() string {
 	return i.sys.Archetypes[i.Archetype].DisplayName
 }

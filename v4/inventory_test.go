@@ -226,7 +226,7 @@ func TestInventoryDebitNByFilter(t *testing.T) {
 	}
 	book := items.CreateItem(perishableSutraSpec)
 	eInv.Credit(book)
-	debited := eInv.DebitNByFilter(2, func(s *Item) bool {
+	debited := eInv.DebitNFilter(2, func(s *Item) bool {
 		return s.Tags.Has("degrades")
 	})
 	Logger.Println(debited)

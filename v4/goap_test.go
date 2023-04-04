@@ -1141,52 +1141,96 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 
 	w := testingWorld()
 	ps := NewPhysicsSystem()
-	w.RegisterSystems(ps)
-	e := testingSpawnPhysics(w)
+	items := NewItemSystem(nil)
+	inventories := NewInventorySystem()
+	w.RegisterSystems(ps, items, inventories)
 
-	oxPos := &Vec2D{11, 19}
-	yokePos := &Vec2D{40, 0}
-	fieldPos := &Vec2D{100, -100}
+	items.CreateArchetype(map[string]any{
+		"name":        "yoke",
+		"displayName": "a yoke for cattle",
+		"flavourText": "one of mankind's greatest inventions... an ancestral gift!",
+		"properties": map[string]int{
+			"value": 25,
+		},
+		"tags": []string{"item.agricultural"},
+	})
 
-	atModal := func(pos *Vec2D, name string) GOAPModalVal {
-		return GOAPModalVal{
-			name: name,
-			check: func(ws *GOAPWorldState) int {
-				ourPos := ws.GetModal(e, POSITION).(*Vec2D)
-				_, _, d := ourPos.Distance(*pos)
-				if d < 2 {
-					return 1
-				} else {
-					return 0
-				}
-			},
-			effModalSet: func(ws *GOAPWorldState, op string, x int) {
-				if op == "=" && x == 1 {
-					near := pos.Add(Vec2D{1, 0})
-					ws.SetModal(e, POSITION, &near)
-				}
-			},
-		}
-	}
-
-	atOxModal := atModal(oxPos, "atOx")
-	atYokeModal := atModal(yokePos, "atYoke")
-	atFieldModal := atModal(fieldPos, "atField")
-
-	goToOx := NewGOAPAction(map[string]any{
-		"name": "goToOx",
-		"cost": 1,
-		"pres": nil,
-		"effs": map[string]int{
-			"atOx,=": 1,
+	e := w.Spawn(map[string]any{
+		"components": map[ComponentID]any{
+			POSITION:  Vec2D{0, 0},
+			BOX:       Vec2D{1, 1},
+			INVENTORY: inventories.Create(nil),
 		},
 	})
+
+	ox := w.Spawn(map[string]any{
+		"components": map[ComponentID]any{
+			POSITION: Vec2D{-19, -19},
+			BOX:      Vec2D{3, 2},
+		},
+	})
+	field := w.Spawn(map[string]any{
+		"components": map[ComponentID]any{
+			POSITION: Vec2D{50, 50},
+			BOX:      Vec2D{100, 100},
+		},
+	})
+
+	oxInFieldModal := GOAPModalVal{
+		name: "oxInField",
+		check: func(ws *GOAPWorldState) int {
+			oxPos := ws.GetModal(ox, POSITION).(*Vec2D)
+			if RectIntersectsRect(
+				*oxPos, *ox.GetVec2D(BOX),
+				*field.GetVec2D(POSITION), *field.GetVec2D(BOX)) {
+				return 1
+			} else {
+				return 0
+			}
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			fieldCenter := field.GetVec2D(POSITION).Add(field.GetVec2D(BOX).Scale(0.5))
+			ws.SetModal(ox, POSITION, &fieldCenter)
+		},
+	}
+	hasYokeModal := GOAPModalVal{
+		name: "hasYoke",
+		check: func(ws *GOAPWorldState) int {
+			inv := ws.GetModal(e, INVENTORY).(*Inventory)
+			count := inv.CountName("yoke")
+			return count
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			inv := ws.GetModal(e, INVENTORY).(*Inventory).CopyOf()
+			if op == "-" {
+				inv.DebitNName(x, "yoke")
+			}
+			if op == "=" {
+				if x == 0 {
+					inv.DebitAllName("yoke")
+				}
+				count := inv.CountName("yoke")
+				if count == 0 {
+					inv.Credit(items.CreateStackSimple(1, "yoke"))
+				}
+				inv.SetCountName(x, "yoke")
+			}
+			if op == "+" {
+				count := inv.CountName("yoke")
+				if count == 0 {
+					inv.Credit(items.CreateStackSimple(x, "yoke"))
+				} else {
+					inv.SetCountName(count+x, "yoke")
+				}
+			}
+			ws.SetModal(e, INVENTORY, inv)
+		},
+	}
+
 	leadOxToField := NewGOAPAction(map[string]any{
 		"name": "leadOxToField",
 		"cost": 1,
-		"pres": map[string]int{
-			"atOx,=": 1,
-		},
+		"pres": nil,
 		"effs": map[string]int{
 			"oxInField,=": 1,
 		},
@@ -1197,7 +1241,6 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		"pres": nil,
 		"effs": map[string]int{
 			"hasYoke,=": 1,
-			"atYoke,=":  1,
 		},
 	})
 	yokeOxplow := NewGOAPAction(map[string]any{
@@ -1206,9 +1249,6 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		"pres": []any{
 			map[string]int{
 				"hasYoke,=": 1,
-			},
-			map[string]int{
-				"atOx,=": 1,
 			},
 		},
 		"effs": map[string]int{
@@ -1224,7 +1264,6 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			},
 			map[string]int{
 				"oxYoked,=": 1,
-				"atOx,=":    1,
 			},
 		},
 		"effs": map[string]int{
@@ -1234,11 +1273,11 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 
 	p := NewGOAPPlanner(e)
 
-	p.eval.AddModalVals(atOxModal, atYokeModal, atFieldModal)
-	p.eval.AddActions(goToOx, leadOxToField, getYoke, yokeOxplow, oxplow)
+	p.eval.AddModalVals(oxInFieldModal, hasYokeModal)
+	p.eval.AddActions(leadOxToField, getYoke, yokeOxplow, oxplow)
 
 	ws := NewGOAPWorldState(map[string]int{
-		"fieldTilled,=": 0,
+		"fieldTilled": 0,
 	})
 
 	goal := map[string]int{

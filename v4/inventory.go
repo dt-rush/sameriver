@@ -79,7 +79,13 @@ func (i *Inventory) DebitAll(stack *Item) *Item {
 	return stack
 }
 
-func (i *Inventory) DebitByFilter(predicate func(*Item) bool) []*Item {
+func (i *Inventory) DebitNName(n int, name string) []*Item {
+	return i.DebitNFilter(n, func(it *Item) bool {
+		return it.GetArchetype().Name == name
+	})
+}
+
+func (i *Inventory) DebitFilter(predicate func(*Item) bool) []*Item {
 	items := i.Filter(predicate)
 	for _, it := range items {
 		i.DebitAll(it)
@@ -87,7 +93,7 @@ func (i *Inventory) DebitByFilter(predicate func(*Item) bool) []*Item {
 	return items
 }
 
-func (i *Inventory) DebitNByFilter(n int, predicate func(*Item) bool) []*Item {
+func (i *Inventory) DebitNFilter(n int, predicate func(*Item) bool) []*Item {
 	count := i.Count(predicate)
 	if count < n {
 		panic(fmt.Sprintf("Tried to Debit %d items from inv, but only has %d", n, count))
@@ -117,24 +123,22 @@ func (i *Inventory) DebitTags(tags ...string) *Item {
 }
 
 func (i *Inventory) DebitNTags(n int, tags ...string) []*Item {
-	if i.CountTags(tags...) < n {
-		panic(fmt.Sprintf("Cannot debit when inv has less than %d items of tags %s", n, tags))
-	}
-	stacks := make([]*Item, 0)
-	remaining := n
-	for _, it := range i.FilterTags(tags...) {
-		if it.Count > remaining {
-			stacks = append(stacks, i.DebitN(n, it))
-		} else {
-			stacks = append(stacks, i.DebitAll(it))
-		}
-	}
-	return stacks
+	return i.DebitNFilter(n, func(it *Item) bool {
+		return it.HasTags(tags...)
+	})
 }
 
 func (i *Inventory) DebitAllTags(tags ...string) []*Item {
 	stacks := make([]*Item, 0)
 	for _, it := range i.FilterTags(tags...) {
+		stacks = append(stacks, i.DebitAll(it))
+	}
+	return stacks
+}
+
+func (i *Inventory) DebitAllName(name string) []*Item {
+	stacks := make([]*Item, 0)
+	for _, it := range i.FilterName(name) {
 		stacks = append(stacks, i.DebitAll(it))
 	}
 	return stacks
@@ -160,7 +164,7 @@ func (i *Inventory) Credit(stack *Item) {
 }
 
 func (i *Inventory) GetNByName(inv *Inventory, n int, name string) {
-	debited := inv.DebitNByFilter(n,
+	debited := inv.DebitNFilter(n,
 		func(s *Item) bool { return s.GetArchetype().Name == name })
 	for _, it := range debited {
 		i.Credit(it)
@@ -168,7 +172,7 @@ func (i *Inventory) GetNByName(inv *Inventory, n int, name string) {
 }
 
 func (i *Inventory) GetNByFilter(inv *Inventory, n int, predicate func(*Item) bool) {
-	for _, it := range inv.DebitNByFilter(n, predicate) {
+	for _, it := range inv.DebitNFilter(n, predicate) {
 		i.Credit(it)
 	}
 }
@@ -240,18 +244,20 @@ func (i *Inventory) SetCountTags(n int, tags ...string) {
 	i.setCount(n, filtered)
 }
 
-func (i *Inventory) CountName(name string) int {
-	n := 0
-	for _, stack := range i.FilterName(name) {
-		n += stack.Count
-	}
-	return n
-}
-
 func (i *Inventory) Count(predicate func(*Item) bool) int {
 	n := 0
 	for _, stack := range i.Stacks {
 		if predicate(stack) {
+			n += stack.Count
+		}
+	}
+	return n
+}
+
+func (i *Inventory) CountName(name string) int {
+	n := 0
+	for _, stack := range i.Stacks {
+		if stack.GetArchetype().Name == name {
 			n += stack.Count
 		}
 	}
@@ -310,8 +316,8 @@ func (i *Inventory) Contains(predicate func(*Item) bool) bool {
 }
 
 func (i *Inventory) FilterName(name string) []*Item {
-	predicate := func(i *Item) bool {
-		return i.GetArchetype().Name == name
+	predicate := func(it *Item) bool {
+		return it.GetArchetype().Name == name
 	}
 	return i.Filter(predicate)
 }
