@@ -1141,20 +1141,24 @@ func TestGOAPPlanResponsibleFridgeUsage(t *testing.T) {
 
 func TestGOAPPlanFarmer2000(t *testing.T) {
 
+	//
+	// world init
+	//
 	w := testingWorld()
 	ps := NewPhysicsSystem()
 	items := NewItemSystem(nil)
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
-
 	const (
 		STATE = GENERICTAGS + 1 + iota
 	)
-
 	w.RegisterComponents([]any{
 		STATE, INTMAP, "STATE",
 	})
 
+	//
+	// item system init
+	//
 	items.CreateArchetype(map[string]any{
 		"name":        "yoke",
 		"displayName": "a yoke for cattle",
@@ -1168,6 +1172,10 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			"box":    [2]float64{0.2, 0.2},
 		},
 	})
+
+	//
+	// spawn entities
+	//
 
 	// NOTE: all spawns are on x = 0
 	// villager
@@ -1206,6 +1214,9 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		"tags": []string{"field"},
 	})
 
+	//
+	// modal world state vars
+	//
 	oxInFieldModal := GOAPModalVal{
 		name:  "oxInField",
 		nodes: []string{"ox", "field"},
@@ -1288,6 +1299,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		},
 	}
 
+	// GOAP actions
 	leadOxToField := NewGOAPAction(map[string]any{
 		"name":           "leadOxToField",
 		"node":           "ox",
@@ -1338,7 +1350,9 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		},
 	})
 
+	//
 	// PLANNER INIT
+	//
 
 	// in this test, only the yoke selector gets used as a generic fallback since
 	// we don't bind any more specific selector for "yoke" before any Plan() call.
@@ -1398,57 +1412,52 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			},
 		})
 	}
-
 	mockMakeTillPlan := func() {
 		tillPlanBB()
 		tillPlanBindEntities()
 	}
 
+	//
+	// initial world state
+	//
+	// TODO: this would be a perception system thing
 	ws := NewGOAPWorldState(map[string]int{
 		"fieldTilled": 0,
 	})
 
+	// TODO: this would derive from a utility, not be hardcoded
 	goal := map[string]int{
 		"fieldTilled,=": 1,
 	}
 
+	runAPlan := func(expect bool) (dt_ms float64) {
+		mockMakeTillPlan()
+		t0 := time.Now()
+		plan, ok := p.Plan(ws, goal, 500)
+		if ok != expect {
+			t.Fatalf("should have had ok: %t", expect)
+		}
+		if ok {
+			Logger.Println(color.InGreen(plan.String()))
+		}
+		return float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	}
+
 	// first run with no oxen
 	Logger.Println("No oxen")
-	t0 := time.Now()
-	mockMakeTillPlan() // include the blackboard context setting in the time
-	_, ok := p.Plan(ws, goal, 500)
-	if ok {
-		t.Fatal("No oxen spawned, how did you find a solution?")
-	}
-	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	dt_ms := runAPlan(false)
 	Logger.Printf("Took %f ms to fail", dt_ms)
 
+	// second run with oxen
 	// spawn them (note: one is in the field already)
 	spawnOxen([]Vec2D{Vec2D{0, 100}, Vec2D{0, 20}, Vec2D{0, -100}})
-
-	// second run with oxen
-	Logger.Println("All oxen, one in field")
-	t0 = time.Now()
-	mockMakeTillPlan() // include the blackboard context setting in the time
-	plan, ok := p.Plan(ws, goal, 500)
-	if !ok {
-		t.Fatal("Should've found a solution")
-	}
-	Logger.Println(color.InGreenOverWhite(plan.String()))
-	dt_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	dt_ms = runAPlan(true)
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 
 	// third run with oxen all out of the field
-	Logger.Println("All oxen are outside field")
-	t0 = time.Now()
-	mockMakeTillPlan() // get the ox in the field
 	w.Despawn(e.GetMind("plan.ox").(*Entity))
-	mockMakeTillPlan() // remake plan this time with the remaining 2 ox
-	plan, ok = p.Plan(ws, goal, 500)
-	if !ok {
-		t.Fatal("Should've found a solution")
-	}
-	Logger.Println(color.InGreenOverWhite(plan.String()))
-	dt_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	Logger.Println("All oxen are outside field")
+	dt_ms = runAPlan(true)
 	Logger.Printf("Took %f ms to find solution", dt_ms)
+
 }
