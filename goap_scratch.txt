@@ -11,6 +11,12 @@ to lay the materials by the fire and go do the build wherever it is, or craft ri
 
 
 
+
+[ ] IDEA GEMATRIA
+only consider actions whose nodes resolve aka would succeed in binding.
+
+
+
 [ ] IDEA GAMMA PRIME (this is the next gen of GOAP testing functions:)
 
 
