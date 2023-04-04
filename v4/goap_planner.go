@@ -39,8 +39,12 @@ func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start boo
 	}
 	box := p.e.GetVec2D(BOX)
 	world := p.e.World
+	// don't overwrite one that we already have (inherit bindings from the earliest point
+	// in the chain that they are set)
 	for _, node := range nodes {
-		ws.ModalEntities[node] = world.ClosestEntityFilter(*pos, *box, p.boundSelectors[node])
+		if _, ok := ws.ModalEntities[node]; !ok {
+			ws.ModalEntities[node] = world.ClosestEntityFilter(*pos, *box, p.boundSelectors[node])
+		}
 	}
 }
 
@@ -451,7 +455,6 @@ func (p *GOAPPlanner) traverseFulfillers(
 						// in the start state
 						for _, tg := range toInsert.pres.temporalGoals {
 							for varName := range tg.vars {
-								p.bindEntities(append(toInsert.otherNodes, toInsert.Node), newPath.statesAlong[toInsert.insertionIx], false)
 								p.setVarInStartIfNotDefined(start, varName)
 							}
 						}

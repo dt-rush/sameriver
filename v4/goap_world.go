@@ -10,8 +10,7 @@ type GOAPWorldState struct {
 	// TODO: export vals
 	vals map[string]int
 	// TODO: change this to a map[int](map[string]any) [ID][component]
-	modal map[string]any
-	//
+	modal         map[string]any
 	ModalEntities map[string]*Entity
 }
 
