@@ -11,7 +11,7 @@ to lay the materials by the fire and go do the build wherever it is, or craft ri
 
 
 
-[ ] IDEA GAMMA PRIME
+[ ] IDEA GAMMA PRIME (this is the next gen of GOAP testing functions:)
 
 
 uh oh the below gets hairy, way easier to do this for the individual
@@ -116,7 +116,35 @@ or the gather action in [gather, buildHouse]
    [chopTree(3), chopLog(3), carryWoodToFire]
    where buildHouse is itself probably a sequence of animations gated by whehter you have the resources (btree)
 
-  for 
+
+
+
+
+
+
+what if we formed the intention of wanting to play chess?
+
+we'd push the chess into the pqueue for village production?
+we'd produce it then and there ourself if we cant withdraw, like the bow example?
+
+i think to keep track of the fact it might take a long time, this should be
+a kind of intention that gets stored on blackboard, that we return to depending
+on leisure hours available to devote to it - or maybe if there's enough roles assigned to others that morning, our work curves are zeroed and we have all day leisure to craft the board
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 [x] IDEA ZETA: don't put any gotos in the plan. just actions. and whenever you perform an action, you're at the node that uses it. so dynamically during runtime, you auto-goto the node of the next part of the action.
