@@ -1173,34 +1173,19 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	// yoke
 	yoke := items.CreateItemSimple("yoke")
 	items.SpawnItemEntity(Vec2D{0, 5}, yoke)
-	// decoy ox (too far back)
-	w.Spawn(map[string]any{
-		"components": map[ComponentID]any{
-			POSITION: Vec2D{0, -100},
-			BOX:      Vec2D{3, 2},
-		},
-		"tags": []string{"ox"},
-	})
-	// TODO
-	// ox in the field (really we should just go to this one with the yoke)
-	// but as it is, we'll select the nearest to the start
-	// when we have [oxplow] as the path, we will see oxInField on surface[0]
-	// even though the modal start state of oxinfield should be in the field, we should select the field one at that point... hmmm
-	w.Spawn(map[string]any{
-		"components": map[ComponentID]any{
-			POSITION: Vec2D{0, 100},
-			BOX:      Vec2D{3, 2},
-		},
-		"tags": []string{"ox"},
-	})
-	// ox
-	w.Spawn(map[string]any{
-		"components": map[ComponentID]any{
-			POSITION: Vec2D{0, 20},
-			BOX:      Vec2D{3, 2},
-		},
-		"tags": []string{"ox"},
-	})
+	// oxen
+	spawnOxen := func(positions []Vec2D) {
+		for i := 0; i < len(positions); i++ {
+			w.Spawn(map[string]any{
+				"components": map[ComponentID]any{
+					POSITION: positions[i],
+					BOX:      Vec2D{3, 2},
+				},
+				"tags": []string{"ox"},
+			})
+		}
+	}
+	spawnOxen([]Vec2D{})
 	// field
 	field := w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
@@ -1208,8 +1193,6 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			BOX:      Vec2D{100, 100},
 		},
 	})
-
-	e.SetMind("field", field)
 
 	oxInFieldModal := GOAPModalVal{
 		name:  "oxInField",
@@ -1237,7 +1220,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 					awayFromField := field.GetVec2D(POSITION).Add(Vec2D{200, 200})
 					ws.SetModal(ox, POSITION, &awayFromField)
 				case 1:
-					fieldCenter := field.GetVec2D(POSITION).Add(field.GetVec2D(BOX).Scale(0.5))
+					fieldCenter := *field.GetVec2D(POSITION)
 					ws.SetModal(ox, POSITION, &fieldCenter)
 				}
 			}
@@ -1332,22 +1315,36 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	p.AddModalVals(oxInFieldModal, hasYokeModal)
 	p.AddActions(leadOxToField, getYoke, yokeOxplow, oxplow)
 
-	planField := e.GetMind("field").(*Entity)
+	mockMakeTillPlan := func() {
+		e.SetMind("plan.field", field)
+		planField := e.GetMind("plan.field").(*Entity)
+
+		// this would really be a filtering not of all entities but of perception
+		closestOxToField := e.World.ClosestEntityFilter(
+			*planField.GetVec2D(POSITION),
+			*planField.GetVec2D(BOX),
+			func(e *Entity) bool {
+				return e.GetTagList(GENERICTAGS).Has("ox")
+			})
+		e.SetMind("plan.ox", closestOxToField)
+	}
 
 	p.BindEntitySelectors(map[string]func(*Entity) bool{
-		// any ox
-		"ox": func(e *Entity) bool { return e.GetTagList(GENERICTAGS).Has("ox") },
+		// ox from blackboard plan - the closest to the field
+		"ox": func(candidate *Entity) bool {
+			return candidate == e.GetMind("plan.ox")
+		},
 		// any yoke
-		"yoke": func(e *Entity) bool {
-			if e.HasComponent(INVENTORY) {
-				inv := e.GetGeneric(INVENTORY).(*Inventory)
+		"yoke": func(candidate *Entity) bool {
+			if candidate.HasComponent(INVENTORY) {
+				inv := candidate.GetGeneric(INVENTORY).(*Inventory)
 				return inv.CountName("yoke") > 0
 			}
 			return false
 		},
 		// the field from the blackboard plan
-		"field": func(e *Entity) bool {
-			return e == planField
+		"field": func(candidate *Entity) bool {
+			return candidate == e.GetMind("plan.field")
 		},
 	})
 
@@ -1358,13 +1355,29 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	goal := map[string]int{
 		"fieldTilled,=": 1,
 	}
+
+	// first run with no oxen
 	t0 := time.Now()
+	mockMakeTillPlan() // include the blackboard context setting in the time
+	_, ok := p.Plan(ws, goal, 500)
+	if ok {
+		t.Fatal("No oxen spawned, how did you find a solution?")
+	}
+	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	Logger.Printf("Took %f ms to fail", dt_ms)
+
+	// spawn them
+	spawnOxen([]Vec2D{Vec2D{0, 100}, Vec2D{0, 20}, Vec2D{0, -100}})
+
+	// second run with oxen
+	t0 = time.Now()
+	mockMakeTillPlan() // include the blackboard context setting in the time
 	plan, ok := p.Plan(ws, goal, 500)
 	if !ok {
 		t.Fatal("Should've found a solution")
 	}
 	Logger.Println(color.InGreenOverWhite(GOAPPathToString(plan)))
-	dt_ms := float64(time.Since(t0).Nanoseconds()) / 1.0e6
+	dt_ms = float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 
 }

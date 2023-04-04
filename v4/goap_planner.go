@@ -2,6 +2,7 @@ package sameriver
 
 import (
 	"container/heap"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/TwiN/go-color"
 )
+
+var ErrGOAPNoValidBindEntity = errors.New("no entity matched selector")
 
 type GOAPPlanner struct {
 	e *Entity
@@ -30,7 +33,8 @@ func NewGOAPPlanner(e *Entity) *GOAPPlanner {
 	}
 }
 
-func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start bool) {
+func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start bool) (err error) {
+	logGOAPDebug(color.InPurple("-------bindEntities()"))
 	var pos *Vec2D
 	if start {
 		pos = p.e.GetVec2D(POSITION)
@@ -39,24 +43,39 @@ func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start boo
 	}
 	box := p.e.GetVec2D(BOX)
 	world := p.e.World
-	// don't overwrite one that we already have (inherit bindings from the earliest point
-	// in the chain that they are set)
 	for _, node := range nodes {
+		var bound *Entity
+		// don't overwrite one that we already have (inherit bindings from the earliest point
+		// in the chain that they are set)
 		if _, ok := ws.ModalEntities[node]; !ok {
 			if DEBUG_GOAP {
-				logGOAPDebug(color.InPurple(fmt.Sprintf(">>> binding modal entity %s...", node)))
+				logGOAPDebug(color.InPurple("|"))
+				logGOAPDebug(color.InPurple("|"))
+				logGOAPDebug(color.InPurple(fmt.Sprintf("--->>> binding modal entity %s...", node)))
 			}
 			ws.ModalEntities[node] = world.ClosestEntityFilter(*pos, *box, p.boundSelectors[node])
-			if DEBUG_GOAP {
-				var boundMsg string
-				boundMsg += fmt.Sprintf(">>> bound entity: %v ", ws.ModalEntities[node])
-				if ws.ModalEntities[node].HasComponent(POSITION) {
-					boundMsg += fmt.Sprintf(" @ position %v", *(ws.ModalEntities[node].GetVec2D(POSITION)))
-				}
-				logGOAPDebug(color.InPurple(boundMsg))
+
+		} else if DEBUG_GOAP {
+			logGOAPDebug(color.InPurple("|"))
+			logGOAPDebug(color.InPurple("|"))
+			logGOAPDebug(color.InPurple(fmt.Sprintf(">>> already-bound modal entity %s:", node)))
+		}
+		bound = ws.ModalEntities[node]
+		if bound == nil {
+			return fmt.Errorf("%w for node: %s", ErrGOAPNoValidBindEntity, node)
+		}
+		if DEBUG_GOAP {
+			var boundMsg string
+			logGOAPDebug(color.InPurple("|"))
+			logGOAPDebug(color.InPurple("|"))
+			boundMsg += fmt.Sprintf(">>> bound entity: %v ", bound)
+			if bound.HasComponent(POSITION) {
+				boundMsg += fmt.Sprintf(" @ position %v", *(bound.GetVec2D(POSITION)))
 			}
+			logGOAPDebug(color.InPurple(boundMsg))
 		}
 	}
+	return nil
 }
 
 func (p *GOAPPlanner) BindEntitySelectors(selectors map[string]func(*Entity) bool) {
@@ -141,7 +160,9 @@ func (p *GOAPPlanner) applyActionModal(a *GOAPAction, ws *GOAPWorldState) (newWS
 	// calculate cost of this action as cost to modally move position here + action.cost
 	beforePos := ws.GetModal(p.e, POSITION).(*Vec2D)
 	// find nearest matching entity
-	p.bindEntities(append(a.otherNodes, a.Node), ws, false)
+	if _, ok := ws.ModalEntities[a.Node]; !ok {
+		panic(fmt.Sprintf("%s's node '%s' was not bound at time applyActionModal() was called", a.Name, a.Node))
+	}
 	node := ws.ModalEntities[a.Node]
 	nodePos := ws.GetModal(node, POSITION).(*Vec2D)
 	distToGetHere := nodePos.Sub(*beforePos).Magnitude()
@@ -201,7 +222,7 @@ func (p *GOAPPlanner) applyActionModal(a *GOAPAction, ws *GOAPWorldState) (newWS
 	return newWS, cost
 }
 
-func (p *GOAPPlanner) computeCostAndRemainingsOfPath(path *GOAPPath, start *GOAPWorldState, main *GOAPTemporalGoal) {
+func (p *GOAPPlanner) computeCostAndRemainingsOfPath(path *GOAPPath, start *GOAPWorldState, main *GOAPTemporalGoal) (bindErr error) {
 	ws := start.CopyOf()
 	// one []*GOAPGoalRemaining for each action pre + 1 for main
 	surfaceLen := len(path.path) + 1
@@ -211,14 +232,18 @@ func (p *GOAPPlanner) computeCostAndRemainingsOfPath(path *GOAPPath, start *GOAP
 	path.statesAlong = make([]*GOAPWorldState, len(path.path)+1)
 	path.statesAlong[0] = ws
 	totalCost := 0.0
-	for i, action := range path.path {
-		for _, tg := range action.pres.temporalGoals {
+	for i, a := range path.path {
+		for _, tg := range a.pres.temporalGoals {
 			surface.surface[i] = append(
 				surface.surface[i],
 				tg.remaining(ws))
 		}
 		var cost float64
-		ws, cost = p.applyActionModal(action, ws)
+		bindErr = p.bindEntities(append(a.otherNodes, a.Node), ws, false)
+		if bindErr != nil {
+			return bindErr
+		}
+		ws, cost = p.applyActionModal(a, ws)
 		totalCost += cost
 		path.statesAlong[i+1] = ws
 	}
@@ -233,6 +258,7 @@ func (p *GOAPPlanner) computeCostAndRemainingsOfPath(path *GOAPPath, start *GOAP
 	// and the path cost is just the distance + inherent effort cost computed modally
 	path.cost = totalCost * float64(path.remainings.NUnfulfilled()+1)
 	logGOAPDebug("  --- ws after path: %v", ws.vals)
+	return nil
 }
 
 func (p *GOAPPlanner) presFulfilled(a *GOAPAction, ws *GOAPWorldState) bool {
@@ -251,12 +277,15 @@ func (p *GOAPPlanner) presFulfilled(a *GOAPAction, ws *GOAPWorldState) bool {
 func (p *GOAPPlanner) validateForward(path *GOAPPath, start *GOAPWorldState, main *GOAPTemporalGoal) bool {
 
 	ws := start.CopyOf()
-	for _, action := range path.path {
-		if len(action.pres.temporalGoals) > 0 && !p.presFulfilled(action, ws) {
-			logGOAPDebug(">>>>>>> in validateForward, %s was not fulfilled", action.DisplayName())
+	for _, a := range path.path {
+		if len(a.pres.temporalGoals) > 0 && !p.presFulfilled(a, ws) {
+			logGOAPDebug(">>>>>>> in validateForward, %s was not fulfilled", a.DisplayName())
 			return false
 		}
-		ws, _ = p.applyActionModal(action, ws)
+		// we don't check bindEntities() returned bindErr here cause it will never happen;
+		// we evaluate the full path modally already to compute its remainings and distance cost
+		p.bindEntities(append(a.otherNodes, a.Node), ws, false)
+		ws, _ = p.applyActionModal(a, ws)
 	}
 	endRemainingCount := 0
 	for _, tg := range main.temporalGoals {
@@ -350,19 +379,23 @@ func (p *GOAPPlanner) setPositionInStartModalIfNotDefined(start *GOAPWorldState)
 	start.SetModal(p.e, POSITION, p.e.GetVec2D(POSITION))
 }
 
-func (p *GOAPPlanner) setVarInStartIfNotDefined(start *GOAPWorldState, varName string) {
+func (p *GOAPPlanner) setVarInStartIfNotDefined(start *GOAPWorldState, varName string) (bindErr error) {
 	logGOAPDebug("[ ] setVarInStartIfNotDefined(%s)", varName)
 	if _, already := start.vals[varName]; !already {
 		if modal, isModal := p.modalVals[varName]; isModal {
-			p.bindEntities(modal.nodes, start, true)
+			bindErr = p.bindEntities(modal.nodes, start, true)
+			if bindErr != nil {
+				return bindErr
+			}
 			p.checkModalInto(varName, start)
-			logGOAPDebug(color.InPurple(fmt.Sprintf("[ ] start.modal[%s] %d", varName, start.vals[varName])))
+			logGOAPDebug(color.InPurple(fmt.Sprintf("[ ] start.vals[\"%s\"] = %d", varName, start.vals[varName])))
 		} else {
 			// NOTE: vars that don't have modal check default to 0
 			logGOAPDebug(color.InYellow(fmt.Sprintf("[ ] %s not defined in GOAP start state, and no modal check exists. Defaulting to 0.", varName)))
 			start.vals[varName] = 0
 		}
 	}
+	return nil
 }
 
 /*
@@ -472,18 +505,35 @@ func (p *GOAPPlanner) traverseFulfillers(
 						if _, ok := pathsSeen[pathStr]; ok {
 							logGOAPDebug(color.InBold(color.InWhiteOverCyan("path seen already")))
 							continue
-						} else {
-							pathsSeen[pathStr] = true
 						}
-						// compute remainings of path
-						p.computeCostAndRemainingsOfPath(newPath, start, goal)
 						// check any modal vals in the pres of action that aren't already
 						// in the start state
+						var bindErrInPres error = nil
+						var bindErrVar string
 						for _, tg := range toInsert.pres.temporalGoals {
 							for varName := range tg.vars {
-								p.setVarInStartIfNotDefined(start, varName)
+								bindErr := p.setVarInStartIfNotDefined(start, varName)
+								if bindErr != nil {
+									bindErrInPres = bindErr
+									bindErrVar = varName
+									break
+								}
+							}
+							if bindErrInPres != nil {
+								break
 							}
 						}
+						if bindErrInPres != nil {
+							logGOAPDebug(color.InBold(color.InWhiteOverCyan(fmt.Sprintf("in pre of action %s, modal varName %s's modal resolution encountered bind failure: %s", toInsert.DisplayName(), bindErrVar, bindErrInPres))))
+							continue
+						}
+						// compute remainings of path from start to end goal
+						bindErr := p.computeCostAndRemainingsOfPath(newPath, start, goal)
+						if bindErr != nil {
+							logGOAPDebug(color.InBold(color.InWhiteOverCyan(fmt.Sprintf("path encountered bind failure for action %s: %s", toInsert.DisplayName(), bindErr))))
+							continue
+						}
+
 						if DEBUG_GOAP {
 							msg := fmt.Sprintf("{} - {} - {}    new path: %s     (cost %.2f)",
 								GOAPPathToString(newPath), newPath.cost)
@@ -491,6 +541,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 							logGOAPDebug(color.InWhiteOverCyan(msg))
 							logGOAPDebug(color.InWhiteOverCyan(strings.Repeat(" ", len(msg))))
 						}
+						pathsSeen[pathStr] = true
 						heap.Push(pq, &GOAPPQueueItem{path: newPath})
 					} else {
 						logGOAPDebug("[_] %s not helpful", action.DisplayName())
