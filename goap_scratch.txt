@@ -1,3 +1,6 @@
+https://chat.openai.com/chat/e4bb4965-c043-4788-bd71-0abc19fa240e
+
+
 summary of the below, feedback by chatGPT:
 
 IDEA GAMMA: Introducing a gather action that symbolically represents gathering of materials is an interesting approach. It can simplify the initial planning process and make it more efficient. However, it may introduce complexities when implementing the actual gathering logic as a prelude to the subsequent actions like building or crafting.
