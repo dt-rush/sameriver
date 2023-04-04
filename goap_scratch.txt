@@ -15,6 +15,9 @@ to lay the materials by the fire and go do the build wherever it is, or craft ri
 [ ] IDEA GEMATRIA
 only consider actions whose nodes resolve aka would succeed in binding.
 
+[ ] IDEA GEM3000
+bind the modal val node from bb if we specify the varName with a dot, like field.tilled, it'll automatically go into modalEntity["field"].GetIntMap(STATE).m["tilled"]
+
 
 
 [ ] IDEA GAMMA PRIME (this is the next gen of GOAP testing functions:)
