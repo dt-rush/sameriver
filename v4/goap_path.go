@@ -5,8 +5,10 @@ import (
 )
 
 type GOAPPath struct {
-	path []*GOAPAction
-	cost int // set by GOAPPath.inserted()
+	// false until proven innocent
+	solution bool
+	path     []*GOAPAction
+	cost     float64 // set by GOAPPath.inserted()
 	// states after each action, from start state at [0]
 	// til the end state after the last action
 	statesAlong []*GOAPWorldState // set in GOAPEvaluator.computeRemainingsOfPath()
@@ -30,6 +32,7 @@ func NewGOAPPath(path []*GOAPAction) *GOAPPath {
 	}
 }
 
+/*
 func (p *GOAPPath) costOfAdd(a *GOAPAction) int {
 	// compute cost
 	cost := p.cost
@@ -41,6 +44,7 @@ func (p *GOAPPath) costOfAdd(a *GOAPAction) int {
 	}
 	return cost
 }
+*/
 
 // regionIx is the region index this action was inserted into, satisfying
 func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPPath {
@@ -56,7 +60,6 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 
 	path := &GOAPPath{
 		path: newSlice,
-		cost: p.costOfAdd(a),
 	}
 	a.insertionIx = insertionIx
 	a.regionIx = regionIx
@@ -116,7 +119,7 @@ func (p *GOAPPath) inserted(a *GOAPAction, insertionIx int, regionIx int) *GOAPP
 	}
 	logGOAPDebug("  insertionIxs after insert&update: %v", insertionIxs)
 	// add regionOffsets
-	// update this aciton's index
+	// update this action's index
 	return path
 }
 

@@ -12,7 +12,6 @@ type GOAPPriorityQueue []*GOAPPQueueItem
 func (pq GOAPPriorityQueue) Len() int { return len(pq) }
 
 func (pq GOAPPriorityQueue) Less(i, j int) bool {
-	// We goal Pop to give us the lowest cost
 	return pq[i].path.cost < pq[j].path.cost
 }
 

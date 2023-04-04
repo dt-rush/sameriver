@@ -19,14 +19,33 @@ type GOAPAction struct {
 	// the object used to construct this (used in Parametrized() to reconstruct)
 	spec map[string]any
 
-	Name            string
-	Count           int
-	cost            IntOrFunc
-	pres            *GOAPTemporalGoal
-	preModalChecks  map[string]func(ws *GOAPWorldState) int
+	// something like "chopWood"
+	Name string
+
+	// the entity from planner.BindEntitites() that will be used for modal
+	// considerations
+	Node string
+
+	// how many times we'll do the action
+	Count int
+
+	// the inherent cost of the action as an int or function
+	cost IntOrFunc
+
+	// preconditions for the action to be performed
+	pres *GOAPTemporalGoal
+
+	// functions that will check the numeric value of a varName (the string key) modally
+	preModalChecks map[string]func(ws *GOAPWorldState) int
+	// functions that will set the varName (the string key) to a certain value modally
 	effModalSetters map[string]func(ws *GOAPWorldState, op string, x int)
-	effs            map[string]*GOAPEff
-	ops             map[string]string
+
+	// effects of this action on ws numerically (non-modal)
+	effs map[string]*GOAPEff
+
+	// k: varName, v: op
+	// eg, "health": "+"
+	ops map[string]string
 }
 
 type GOAPEff struct {
@@ -50,6 +69,7 @@ func GOAPEffFunc(op string, val int) func(count int, x int) int {
 
 func NewGOAPAction(spec map[string]any) *GOAPAction {
 	name := spec["name"].(string)
+	node := spec["node"].(string)
 	cost := spec["cost"].(int)
 	pres := spec["pres"]
 	effs := spec["effs"].(map[string]int)
@@ -57,6 +77,7 @@ func NewGOAPAction(spec map[string]any) *GOAPAction {
 	a := &GOAPAction{
 		spec:            spec,
 		Name:            name,
+		Node:            node,
 		Count:           1,
 		cost:            cost,
 		pres:            NewGOAPTemporalGoal(pres),

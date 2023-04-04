@@ -11,6 +11,8 @@ type GOAPWorldState struct {
 	vals map[string]int
 	// TODO: change this to a map[int](map[string]any) [ID][component]
 	modal map[string]any
+	//
+	ModalEntities map[string]*Entity
 }
 
 func (ws *GOAPWorldState) CopyOf() *GOAPWorldState {
@@ -22,10 +24,15 @@ func (ws *GOAPWorldState) CopyOf() *GOAPWorldState {
 	for k, v := range ws.modal {
 		copyModal[k] = v
 	}
+	copyModalEntities := make(map[string]*Entity)
+	for k, v := range ws.ModalEntities {
+		copyModalEntities[k] = v
+	}
 	copyWS := &GOAPWorldState{
 		ws.w,
 		copyvals,
 		copyModal,
+		copyModalEntities,
 	}
 	return copyWS
 }

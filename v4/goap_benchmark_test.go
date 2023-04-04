@@ -177,8 +177,8 @@ func BenchmarkGOAPClassic(b *testing.B) {
 
 	p := NewGOAPPlanner(e)
 
-	p.eval.AddModalVals(hasGloveModal, hasAxeModal, atAxeModal, atGloveModal, atTreeModal)
-	p.eval.AddActions(getAxe, getGlove, goToAxe, goToGlove, goToTree, chopTree)
+	p.AddModalVals(hasGloveModal, hasAxeModal, atAxeModal, atGloveModal, atTreeModal)
+	p.AddActions(getAxe, getGlove, goToAxe, goToGlove, goToTree, chopTree)
 
 	ws := NewGOAPWorldState(map[string]int{
 		"woodChopped": 0,
@@ -388,8 +388,8 @@ func BenchmarkGOAPAlanWatts(b *testing.B) {
 
 	p := NewGOAPPlanner(e)
 
-	p.eval.AddModalVals(drunkModal, hasBoozeModal, atBoozeModal, inTempleModal)
-	p.eval.AddActions(drink, dropAllBooze, purifyOneself, enterTemple, goToBooze, getBooze)
+	p.AddModalVals(drunkModal, hasBoozeModal, atBoozeModal, inTempleModal)
+	p.AddActions(drink, dropAllBooze, purifyOneself, enterTemple, goToBooze, getBooze)
 
 	ws := NewGOAPWorldState(map[string]int{
 		"rituallyPure": 0,
@@ -471,7 +471,7 @@ func BenchmarkGOAPSimple(b *testing.B) {
 
 	p := NewGOAPPlanner(e)
 
-	p.eval.AddActions(equipBow, moveToTarget, rangedCombat)
+	p.AddActions(equipBow, moveToTarget, rangedCombat)
 
 	ws := NewGOAPWorldState(nil)
 

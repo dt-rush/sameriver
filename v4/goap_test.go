@@ -186,12 +186,12 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 		},
 	})
 
-	p.eval.AddModalVals(hasBoozeModal)
-	p.eval.AddActions(drink)
+	p.AddModalVals(hasBoozeModal)
+	p.AddActions(drink)
 
 	start := NewGOAPWorldState(nil)
 	start.w = w // this would be done automatically in Plan()
-	p.eval.checkModalInto("hasBooze", start)
+	p.checkModalInto("hasBooze", start)
 
 	goal := map[string]int{
 		"drunk,>=": 3,
@@ -201,7 +201,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 
 	Logger.Printf("-------------------------------------------- 1")
 
-	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
+	p.computeCostAndRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
@@ -214,7 +214,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 
 	path = NewGOAPPath([]*GOAPAction{drink.Parametrized(3)})
 
-	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
+	p.computeCostAndRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
@@ -228,11 +228,11 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	booze := e.GetInt(BOOZEAMOUNT)
 	*booze = 3
 
-	p.eval.checkModalInto("hasBooze", start)
+	p.checkModalInto("hasBooze", start)
 
 	Logger.Printf("start: %v", start.vals)
 
-	p.eval.computeRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
+	p.computeCostAndRemainingsOfPath(path, start, NewGOAPTemporalGoal(goal))
 
 	Logger.Printf("%d unfulfilled", path.remainings.NUnfulfilled())
 	printGoalRemainingSurface(path.remainings)
@@ -243,10 +243,12 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 
 func TestGOAPActionPresFulfilled(t *testing.T) {
 
-	eval := NewGOAPEvaluator()
+	w := testingWorld()
+	e := w.Spawn(nil)
+	p := NewGOAPPlanner(e)
 
 	doTest := func(ws *GOAPWorldState, a *GOAPAction, expected bool) {
-		if eval.presFulfilled(a, ws) != expected {
+		if p.presFulfilled(a, ws) != expected {
 			Logger.Println("world state:")
 			printWorldState(ws)
 			Logger.Println("action.pres:")
@@ -299,13 +301,13 @@ func TestGOAPActionPresFulfilled(t *testing.T) {
 		},
 	})
 
-	eval.AddActions(goToAxe, drink, chopTree)
+	p.AddActions(goToAxe, drink, chopTree)
 
 	doDrinkTest(0, false)
 	doDrinkTest(1, true)
 	doDrinkTest(2, true)
 
-	if !eval.presFulfilled(
+	if !p.presFulfilled(
 		chopTree,
 		NewGOAPWorldState(map[string]int{
 			"hasGlove": 1,
@@ -315,7 +317,7 @@ func TestGOAPActionPresFulfilled(t *testing.T) {
 		t.Fatal("chopTree pres should have been fulfilled")
 	}
 
-	if eval.presFulfilled(
+	if p.presFulfilled(
 		chopTree,
 		NewGOAPWorldState(map[string]int{
 			"hasGlove": 1,
@@ -339,7 +341,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	ws := nilWS.CopyOf()
 	treePos := &Vec2D{11, 11}
 
-	eval := NewGOAPEvaluator()
+	p := NewGOAPPlanner(e)
 
 	atTreeModal := GOAPModalVal{
 		name: "atTree",
@@ -412,21 +414,21 @@ func TestGOAPActionModalVal(t *testing.T) {
 		},
 	})
 
-	eval.AddModalVals(atTreeModal, atOceanModal)
-	eval.AddActions(goToTree, hugTree, chopTree, goToOcean)
+	p.AddModalVals(atTreeModal, atOceanModal)
+	p.AddActions(goToTree, hugTree, chopTree, goToOcean)
 
 	//
 	// test presfulfilled
 	//
 	*e.GetVec2D(POSITION) = *treePos
 
-	if !eval.presFulfilled(hugTree, ws) {
+	if !p.presFulfilled(hugTree, ws) {
 		t.Fatal("check result of atTreeModal should have returned 1, satisfying atTree,=: 1")
 	}
 
 	*e.GetVec2D(POSITION) = Vec2D{-100, -100}
 
-	if eval.presFulfilled(hugTree, ws) {
+	if p.presFulfilled(hugTree, ws) {
 		t.Fatal("check result of atTreeModal should have returned 0, failing to satisfy atTree,=: 1")
 	}
 
@@ -437,7 +439,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 
 	*e.GetVec2D(POSITION) = *treePos
 
-	if !eval.presFulfilled(hugTree, badWS) {
+	if !p.presFulfilled(hugTree, badWS) {
 		t.Fatal("regardless of what worldstate says, modal pre should decide and should've been true based on entity position = tree position")
 	}
 
@@ -445,7 +447,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 		"hasAxe": 1,
 	})
 	axeWS.w = w
-	if !eval.presFulfilled(chopTree, axeWS) {
+	if !p.presFulfilled(chopTree, axeWS) {
 		t.Fatal("mix of modal and basic world state vals should fulfill pre")
 	}
 
@@ -456,7 +458,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	g := newGOAPGoal(map[string]int{
 		"atTree,=": 1,
 	})
-	appliedState := eval.applyActionBasic(goToTree, nilWS, true)
+	appliedState := p.applyActionBasic(goToTree, nilWS, true)
 	remaining := g.remaining(appliedState)
 	Logger.Println("goal:")
 	printGoal(g)
@@ -488,7 +490,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 
 	*e.GetVec2D(POSITION) = Vec2D{-100, -100}
 
-	atTreeApplied := eval.applyActionModal(goToTree, nilWS)
+	atTreeApplied, _ := p.applyActionModal(goToTree, nilWS)
 	Logger.Println("state after applying modal action eff of atTree:")
 	printWorldState(atTreeApplied)
 	if val, ok := atTreeApplied.vals["atTree"]; !ok || val != 1 {
@@ -503,15 +505,15 @@ func TestGOAPActionModalVal(t *testing.T) {
 	//
 
 	*e.GetVec2D(POSITION) = Vec2D{-100, -100}
-	atOceanApplied := eval.applyActionModal(goToOcean, nilWS)
+	atOceanApplied, _ := p.applyActionModal(goToOcean, nilWS)
 	Logger.Println("state after applying modal action eff of atOcean:")
 	printWorldState(atOceanApplied)
 
-	if eval.presFulfilled(hugTree, atOceanApplied) {
+	if p.presFulfilled(hugTree, atOceanApplied) {
 		t.Fatal("atTree modal pre of hugTree should fail when modal position is set at ocean")
 	}
 
-	nowGoToTreeApplied := eval.applyActionModal(goToTree, atOceanApplied)
+	nowGoToTreeApplied, _ := p.applyActionModal(goToTree, atOceanApplied)
 	Logger.Println("state after goToOcean->goToTree:")
 	printWorldState(nowGoToTreeApplied)
 	if nowGoToTreeApplied.vals["atOcean"] != 0 {
@@ -564,11 +566,11 @@ func TestGOAPPlanSimple(t *testing.T) {
 
 	ws := NewGOAPWorldState(nil)
 
-	planner := NewGOAPPlanner(e)
-	planner.eval.AddModalVals(atTreeModal)
-	planner.eval.AddActions(goToTree)
+	p := NewGOAPPlanner(e)
+	p.AddModalVals(atTreeModal)
+	p.AddActions(goToTree)
 
-	Logger.Println(planner.Plan(ws, goal, 50))
+	Logger.Println(p.Plan(ws, goal, 50))
 
 }
 
@@ -622,16 +624,16 @@ func TestGOAPPlanSimpleIota(t *testing.T) {
 
 	ws := NewGOAPWorldState(nil)
 
-	planner := NewGOAPPlanner(e)
-	planner.eval.AddModalVals(drunkModal)
-	planner.eval.AddActions(drink)
+	p := NewGOAPPlanner(e)
+	p.AddModalVals(drunkModal)
+	p.AddActions(drink)
 
-	Logger.Println(planner.Plan(ws, goal, 50))
+	Logger.Println(p.Plan(ws, goal, 50))
 
 	goal = newGOAPGoal(map[string]int{
 		"drunk,=": 3,
 	})
-	Logger.Println(planner.Plan(ws, goal, 50))
+	Logger.Println(p.Plan(ws, goal, 50))
 
 }
 
@@ -689,15 +691,15 @@ func TestGOAPPlanSimpleEnough(t *testing.T) {
 
 	ws := NewGOAPWorldState(nil)
 
-	planner := NewGOAPPlanner(e)
-	planner.eval.AddModalVals(drunkModal)
-	planner.eval.AddActions(drink, purifyOneself)
+	p := NewGOAPPlanner(e)
+	p.AddModalVals(drunkModal)
+	p.AddActions(drink, purifyOneself)
 
 	goal := newGOAPGoal(map[string]int{
 		"drunk,=":        10,
 		"rituallyPure,=": 1,
 	})
-	Logger.Println(planner.Plan(ws, goal, 50))
+	Logger.Println(p.Plan(ws, goal, 50))
 }
 
 func TestGOAPPlanAlanWatts(t *testing.T) {
@@ -879,8 +881,8 @@ func TestGOAPPlanAlanWatts(t *testing.T) {
 
 	p := NewGOAPPlanner(e)
 
-	p.eval.AddModalVals(drunkModal, hasBoozeModal, atBoozeModal, inTempleModal)
-	p.eval.AddActions(drink, dropAllBooze, purifyOneself, enterTemple, goToBooze, getBooze)
+	p.AddModalVals(drunkModal, hasBoozeModal, atBoozeModal, inTempleModal)
+	p.AddActions(drink, dropAllBooze, purifyOneself, enterTemple, goToBooze, getBooze)
 
 	ws := NewGOAPWorldState(map[string]int{
 		"rituallyPure": 0,
@@ -1064,8 +1066,8 @@ func TestGOAPPlanClassic(t *testing.T) {
 
 	p := NewGOAPPlanner(e)
 
-	p.eval.AddModalVals(hasGloveModal, hasAxeModal, atAxeModal, atGloveModal, atTreeModal)
-	p.eval.AddActions(getAxe, getGlove, goToAxe, goToGlove, goToTree, chopTree)
+	p.AddModalVals(hasGloveModal, hasAxeModal, atAxeModal, atGloveModal, atTreeModal)
+	p.AddActions(getAxe, getGlove, goToAxe, goToGlove, goToTree, chopTree)
 
 	ws := NewGOAPWorldState(nil)
 
@@ -1116,7 +1118,7 @@ func TestGOAPPlanResponsibleFridgeUsage(t *testing.T) {
 
 	p := NewGOAPPlanner(e)
 
-	p.eval.AddActions(openFridge, getFoodFromFridge, closeFridge)
+	p.AddActions(openFridge, getFoodFromFridge, closeFridge)
 
 	ws := NewGOAPWorldState(map[string]int{
 		"fridgeOpen": 0,
@@ -1162,7 +1164,12 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			INVENTORY: inventories.Create(nil),
 		},
 	})
-
+	yoke := w.Spawn(map[string]any{
+		"components": map[ComponentID]any{
+			POSITION: Vec2D{-5, 0},
+			BOX:      Vec2D{0.2, 0.2},
+		},
+	})
 	ox := w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
 			POSITION: Vec2D{-19, -19},
@@ -1189,8 +1196,21 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			}
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			fieldCenter := field.GetVec2D(POSITION).Add(field.GetVec2D(BOX).Scale(0.5))
-			ws.SetModal(ox, POSITION, &fieldCenter)
+			ox := ws.ModalEntities["ox"]
+			field := ws.ModalEntities["field"]
+			if op == "=" {
+				switch x {
+				case 0:
+					// TODO: this should really be a call to some kind of sophisticated
+					// relocation function that avoids obstacles and makes sure there's a path
+					// to be able to get there via navmesh/grid
+					awayFromField := field.GetVec2D(POSITION).Add(Vec2D{200, 200})
+					ws.SetModal(ox, POSITION, &awayFromField)
+				case 1:
+					fieldCenter := field.GetVec2D(POSITION).Add(field.GetVec2D(BOX).Scale(0.5))
+					ws.SetModal(ox, POSITION, &fieldCenter)
+				}
+			}
 		},
 	}
 	hasYokeModal := GOAPModalVal{
@@ -1229,6 +1249,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 
 	leadOxToField := NewGOAPAction(map[string]any{
 		"name": "leadOxToField",
+		"node": "ox",
 		"cost": 1,
 		"pres": nil,
 		"effs": map[string]int{
@@ -1237,6 +1258,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	})
 	getYoke := NewGOAPAction(map[string]any{
 		"name": "getYoke",
+		"node": "yoke",
 		"cost": 1,
 		"pres": nil,
 		"effs": map[string]int{
@@ -1245,6 +1267,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	})
 	yokeOxplow := NewGOAPAction(map[string]any{
 		"name": "yokeOxplow",
+		"node": "ox",
 		"cost": 1,
 		"pres": []any{
 			map[string]int{
@@ -1257,6 +1280,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	})
 	oxplow := NewGOAPAction(map[string]any{
 		"name": "oxplow",
+		"node": "ox",
 		"cost": 1,
 		"pres": []any{
 			map[string]int{
@@ -1273,8 +1297,14 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 
 	p := NewGOAPPlanner(e)
 
-	p.eval.AddModalVals(oxInFieldModal, hasYokeModal)
-	p.eval.AddActions(leadOxToField, getYoke, yokeOxplow, oxplow)
+	p.AddModalVals(oxInFieldModal, hasYokeModal)
+	p.AddActions(leadOxToField, getYoke, yokeOxplow, oxplow)
+
+	p.BindEntities(map[string]*Entity{
+		"ox":    ox,
+		"yoke":  yoke,
+		"field": field,
+	})
 
 	ws := NewGOAPWorldState(map[string]int{
 		"fieldTilled": 0,
