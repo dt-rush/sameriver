@@ -63,7 +63,7 @@ func TestItemSystemLoadArchetypes(t *testing.T) {
 		t.Fatal("Did not load from JSON file!")
 	}
 	coin := i.Archetypes["coin_copper"]
-	if len(coin.Entity) != 2 {
+	if coin.Entity["sprite"] != "coin_copper" {
 		t.Fatal("Did not load entity map of coin_copper")
 	}
 }

@@ -5,10 +5,8 @@ import (
 )
 
 type GOAPPath struct {
-	// false until proven innocent
-	solution bool
-	path     []*GOAPAction
-	cost     float64 // set by GOAPPath.inserted()
+	path []*GOAPAction
+	cost float64 // set by GOAPPath.inserted()
 	// states after each action, from start state at [0]
 	// til the end state after the last action
 	statesAlong []*GOAPWorldState // set in GOAPEvaluator.computeRemainingsOfPath()

@@ -1,20 +1,14 @@
 package sameriver
 
-func (w *World) PredicateAllEntities(p func(*Entity) bool) []*Entity {
-	entities := make([]*Entity, 0)
-	for e := range w.GetCurrentEntitiesSet() {
-		entities = append(entities, e)
-	}
-	return w.PredicateEntities(entities, p)
-}
+import "math"
 
-func (w *World) PredicateEntities(entities []*Entity, p func(*Entity) bool) []*Entity {
+func (w *World) FilterAllEntities(filter func(*Entity) bool) []*Entity {
 	results := make([]*Entity, 0)
-	for _, e := range entities {
+	for e := range w.GetCurrentEntitiesSet() {
 		if !e.Active {
 			continue
 		}
-		if p(e) {
+		if filter(e) {
 			results = append(results, e)
 		}
 	}
@@ -54,6 +48,22 @@ func (w *World) ActiveEntitiesWithTags(tags ...string) []*Entity {
 
 func (w *World) EntitiesWithinDistance(pos, box Vec2D, d float64) []*Entity {
 	return w.SpatialHasher.EntitiesWithinDistance(pos, box, d)
+}
+
+func (w *World) ClosestEntityFilter(pos Vec2D, box Vec2D, filter func(*Entity) bool) *Entity {
+	closest := (*Entity)(nil)
+	closestDistance := math.MaxFloat64
+	for _, e := range w.FilterAllEntities(filter) {
+		entityPos := e.GetVec2D(POSITION)
+		entityBox := e.GetVec2D(BOX)
+		distance := RectDistance(pos, box, *entityPos, *entityBox)
+		if distance < closestDistance {
+			closestDistance = distance
+			closest = e
+		}
+	}
+
+	return closest
 }
 
 func (w *World) EntitiesWithinDistanceFilter(

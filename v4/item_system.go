@@ -318,7 +318,7 @@ func (i *ItemSystem) SpawnItemEntity(pos Vec2D, item *Item) *Entity {
 
 	return i.w.Spawn(map[string]any{
 		"components": components,
-		"tags":       []string{"item"},
+		"tags":       []string{"item", fmt.Sprintf("item.%s", arch.Name)},
 	})
 }
 

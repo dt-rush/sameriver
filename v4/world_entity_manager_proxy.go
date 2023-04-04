@@ -64,6 +64,10 @@ func (w *World) EntityHasComponent(e *Entity, name ComponentID) bool {
 	return w.em.EntityHasComponent(e, name)
 }
 
+func (w *World) EntityHasComponents(e *Entity, names ...ComponentID) bool {
+	return w.em.EntityHasComponents(e, names...)
+}
+
 func (w *World) EntityHasTag(e *Entity, tag string) bool {
 	return w.em.EntityHasTag(e, tag)
 }

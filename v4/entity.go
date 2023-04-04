@@ -19,6 +19,14 @@ type Entity struct {
 	mind              map[string]any
 }
 
+func (e *Entity) HasComponent(name ComponentID) bool {
+	return e.World.EntityHasComponent(e, name)
+}
+
+func (e *Entity) HasComponents(names ...ComponentID) bool {
+	return e.World.EntityHasComponents(e, names...)
+}
+
 func (e *Entity) LogicUnitName(name string) string {
 	return fmt.Sprintf("entity-logic-%d-%s", e.ID, name)
 }

@@ -64,46 +64,51 @@ func RectWithinRadiusOfPoint(pos, box Vec2D, d float64, point Vec2D) bool {
 	return dx*dx+dy*dy < d*d
 }
 
-func RectWithinDistanceOfRect(iPos, iBox, jPos, jBox Vec2D, d float64) bool {
-	dist := func(iPos, iBox, jPos, jBox Vec2D) (d float64) {
-		x1 := iPos.X
-		y1 := iPos.Y
-		x1b := iPos.X + iBox.X
-		y1b := iPos.Y + iBox.Y
+func RectDistance(iPos, iBox, jPos, jBox Vec2D) float64 {
 
-		x2 := jPos.X
-		y2 := jPos.Y
-		x2b := jPos.X + jBox.X
-		y2b := jPos.Y + jBox.Y
+	// the result
+	var d float64
 
-		// adapted from Maxim's stackoverflow answer
-		// https://stackoverflow.com/a/26178015
+	x1 := iPos.X
+	y1 := iPos.Y
+	x1b := iPos.X + iBox.X
+	y1b := iPos.Y + iBox.Y
 
-		left := x2b < x1
-		right := x1b < x2
-		bottom := y2b < y1
-		top := y1b < y2
+	x2 := jPos.X
+	y2 := jPos.Y
+	x2b := jPos.X + jBox.X
+	y2b := jPos.Y + jBox.Y
 
-		if top && left {
-			_, _, d = Vec2D{x1, y1b}.Distance(Vec2D{x2b, y2})
-		} else if left && bottom {
-			_, _, d = Vec2D{x1, y1}.Distance(Vec2D{x2b, y2b})
-		} else if bottom && right {
-			_, _, d = Vec2D{x1b, y1}.Distance(Vec2D{x2, y2b})
-		} else if right && top {
-			_, _, d = Vec2D{x1b, y1b}.Distance(Vec2D{x2, y2})
-		} else if left {
-			return x1 - x2b
-		} else if right {
-			return x2 - x1b
-		} else if bottom {
-			return y1 - y2b
-		} else if top {
-			return y2 - y1b
-		}
-		return d
+	// adapted from Maxim's stackoverflow answer
+	// https://stackoverflow.com/a/26178015
+
+	left := x2b < x1
+	right := x1b < x2
+	bottom := y2b < y1
+	top := y1b < y2
+
+	if top && left {
+		_, _, d = Vec2D{x1, y1b}.Distance(Vec2D{x2b, y2})
+	} else if left && bottom {
+		_, _, d = Vec2D{x1, y1}.Distance(Vec2D{x2b, y2b})
+	} else if bottom && right {
+		_, _, d = Vec2D{x1b, y1}.Distance(Vec2D{x2, y2b})
+	} else if right && top {
+		_, _, d = Vec2D{x1b, y1b}.Distance(Vec2D{x2, y2})
+	} else if left {
+		return x1 - x2b
+	} else if right {
+		return x2 - x1b
+	} else if bottom {
+		return y1 - y2b
+	} else if top {
+		return y2 - y1b
 	}
-	return dist(iPos, iBox, jPos, jBox) < d
+	return d
+}
+
+func RectWithinDistanceOfRect(iPos, iBox, jPos, jBox Vec2D, d float64) bool {
+	return RectDistance(iPos, iBox, jPos, jBox) < d
 }
 
 /* TODO: reconsider this (even though it doesn't work right) if the above ever breaks?

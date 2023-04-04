@@ -22,9 +22,12 @@ type GOAPAction struct {
 	// something like "chopWood"
 	Name string
 
-	// the entity from planner.BindEntitites() that will be used for modal
+	// the entity from planner.BindEntititySelectors() that will be used for modal
 	// considerations
 	Node string
+
+	// other nodes we want to look at modally - named by string a la BindEntitySelectors()
+	otherNodes []string
 
 	// how many times we'll do the action
 	Count int
@@ -70,6 +73,10 @@ func GOAPEffFunc(op string, val int) func(count int, x int) int {
 func NewGOAPAction(spec map[string]any) *GOAPAction {
 	name := spec["name"].(string)
 	node := spec["node"].(string)
+	otherNodes, ok := spec["otherNodes"].([]string)
+	if !ok {
+		otherNodes = []string{}
+	}
 	cost := spec["cost"].(int)
 	pres := spec["pres"]
 	effs := spec["effs"].(map[string]int)
@@ -78,6 +85,7 @@ func NewGOAPAction(spec map[string]any) *GOAPAction {
 		spec:            spec,
 		Name:            name,
 		Node:            node,
+		otherNodes:      otherNodes,
 		Count:           1,
 		cost:            cost,
 		pres:            NewGOAPTemporalGoal(pres),

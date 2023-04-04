@@ -8,6 +8,8 @@ type IntOrFunc any
 type GOAPModalVal struct {
 	// the var name this value will be used with
 	name string
+	// the nodes to be used by name
+	nodes []string
 	// a func that is used when this state val appears in a pre
 	// eg. "atTree,=": atTreeModal
 	// where ctxAtTree.valAsPre will look in the modal state for the entity

@@ -1155,8 +1155,13 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			"value": 25,
 		},
 		"tags": []string{"item.agricultural"},
+		"entity": map[string]any{
+			"sprite": "yoke",
+			"box":    [2]float64{0.2, 0.2},
+		},
 	})
 
+	// villager
 	e := w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
 			POSITION:  Vec2D{0, 0},
@@ -1164,18 +1169,18 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			INVENTORY: inventories.Create(nil),
 		},
 	})
-	yoke := w.Spawn(map[string]any{
-		"components": map[ComponentID]any{
-			POSITION: Vec2D{-5, 0},
-			BOX:      Vec2D{0.2, 0.2},
-		},
-	})
-	ox := w.Spawn(map[string]any{
+	// yoke
+	yoke := items.CreateItemSimple("yoke")
+	items.SpawnItemEntity(Vec2D{-5, 0}, yoke)
+	// ox
+	w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
 			POSITION: Vec2D{-19, -19},
 			BOX:      Vec2D{3, 2},
 		},
+		"tags": []string{"ox"},
 	})
+	// field
 	field := w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
 			POSITION: Vec2D{50, 50},
@@ -1183,9 +1188,13 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		},
 	})
 
+	e.SetMind("field", field)
+
 	oxInFieldModal := GOAPModalVal{
-		name: "oxInField",
+		name:  "oxInField",
+		nodes: []string{"ox", "field"},
 		check: func(ws *GOAPWorldState) int {
+			ox := ws.ModalEntities["ox"]
 			oxPos := ws.GetModal(ox, POSITION).(*Vec2D)
 			if RectIntersectsRect(
 				*oxPos, *ox.GetVec2D(BOX),
@@ -1266,9 +1275,10 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		},
 	})
 	yokeOxplow := NewGOAPAction(map[string]any{
-		"name": "yokeOxplow",
-		"node": "ox",
-		"cost": 1,
+		"name":       "yokeOxplow",
+		"node":       "ox",
+		"otherNodes": []string{"field"},
+		"cost":       1,
 		"pres": []any{
 			map[string]int{
 				"hasYoke,=": 1,
@@ -1300,10 +1310,23 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	p.AddModalVals(oxInFieldModal, hasYokeModal)
 	p.AddActions(leadOxToField, getYoke, yokeOxplow, oxplow)
 
-	p.BindEntities(map[string]*Entity{
-		"ox":    ox,
-		"yoke":  yoke,
-		"field": field,
+	planField := e.GetMind("field").(*Entity)
+
+	p.BindEntitySelectors(map[string]func(*Entity) bool{
+		// any ox
+		"ox": func(e *Entity) bool { return e.GetTagList(GENERICTAGS).Has("ox") },
+		// any yoke
+		"yoke": func(e *Entity) bool {
+			if e.HasComponent(INVENTORY) {
+				inv := e.GetGeneric(INVENTORY).(*Inventory)
+				return inv.CountName("yoke") > 0
+			}
+			return false
+		},
+		// the field from the blackboard plan
+		"field": func(e *Entity) bool {
+			return e == planField
+		},
 	})
 
 	ws := NewGOAPWorldState(map[string]int{

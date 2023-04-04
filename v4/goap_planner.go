@@ -13,9 +13,10 @@ import (
 type GOAPPlanner struct {
 	e *Entity
 
-	boundEntities map[string]*Entity
-	modalVals     map[string]GOAPModalVal
-	actions       *GOAPActionSet
+	// the functions selecting an entity
+	boundSelectors map[string]func(*Entity) bool
+	modalVals      map[string]GOAPModalVal
+	actions        *GOAPActionSet
 	// map of [varName](Set (in the sense of a map->bool) of actions that affect that var)
 	varActions map[string](map[*GOAPAction]bool)
 }
@@ -29,10 +30,24 @@ func NewGOAPPlanner(e *Entity) *GOAPPlanner {
 	}
 }
 
-func (p *GOAPPlanner) BindEntities(entities map[string]*Entity) {
-	p.boundEntities = make(map[string]*Entity)
-	for k, v := range entities {
-		p.boundEntities[k] = v
+func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start bool) {
+	var pos *Vec2D
+	if start {
+		pos = p.e.GetVec2D(POSITION)
+	} else {
+		pos = ws.GetModal(p.e, POSITION).(*Vec2D)
+	}
+	box := p.e.GetVec2D(BOX)
+	world := p.e.World
+	for _, node := range nodes {
+		ws.ModalEntities[node] = world.ClosestEntityFilter(*pos, *box, p.boundSelectors[node])
+	}
+}
+
+func (p *GOAPPlanner) BindEntitySelectors(selectors map[string]func(*Entity) bool) {
+	p.boundSelectors = make(map[string]func(*Entity) bool)
+	for k, v := range selectors {
+		p.boundSelectors[k] = v
 	}
 }
 
@@ -109,10 +124,12 @@ func (p *GOAPPlanner) applyActionBasic(
 func (p *GOAPPlanner) applyActionModal(a *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState, cost float64) {
 
 	// calculate cost of this action as cost to modally move position here + action.cost
-	oldPos := ws.GetModal(p.e, POSITION).(*Vec2D)
+	beforePos := ws.GetModal(p.e, POSITION).(*Vec2D)
+	// find nearest matching entity
+	p.bindEntities(append(a.otherNodes, a.Node), ws, false)
 	node := ws.ModalEntities[a.Node]
 	nodePos := ws.GetModal(node, POSITION).(*Vec2D)
-	distToGetHere := nodePos.Sub(*oldPos).Magnitude()
+	distToGetHere := nodePos.Sub(*beforePos).Magnitude()
 	cost = distToGetHere
 	switch a.cost.(type) {
 	case int:
@@ -304,8 +321,10 @@ func (p *GOAPPlanner) setPositionInStartModalIfNotDefined(start *GOAPWorldState)
 }
 
 func (p *GOAPPlanner) setVarInStartIfNotDefined(start *GOAPWorldState, varName string) {
+	logGOAPDebug("[ ] setVarInStartIfNotDefined(%s)", varName)
 	if _, already := start.vals[varName]; !already {
-		if _, isModal := p.modalVals[varName]; isModal {
+		if modal, isModal := p.modalVals[varName]; isModal {
+			p.bindEntities(modal.nodes, start, true)
 			p.checkModalInto(varName, start)
 			logGOAPDebug(color.InPurple(fmt.Sprintf("[ ] start.modal[%s] %d", varName, start.vals[varName])))
 		} else {
@@ -432,6 +451,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 						// in the start state
 						for _, tg := range toInsert.pres.temporalGoals {
 							for varName := range tg.vars {
+								p.bindEntities(append(toInsert.otherNodes, toInsert.Node), newPath.statesAlong[toInsert.insertionIx], false)
 								p.setVarInStartIfNotDefined(start, varName)
 							}
 						}
@@ -462,7 +482,6 @@ func (p *GOAPPlanner) Plan(
 	// to pollute the caller's state object
 	start = start.CopyOf()
 	start.w = p.e.World
-	start.ModalEntities = p.boundEntities
 	p.setPositionInStartModalIfNotDefined(start)
 
 	logGOAPDebug("Planning...")
@@ -532,7 +551,6 @@ func (p *GOAPPlanner) Plan(
 				logGOAPDebug(color.InGreenOverWhite(color.InBold(GOAPPathToString(here.path))))
 				logGOAPDebug(color.InGreenOverWhite(color.InBold(fmt.Sprintf("%d solutions found so far", resultPq.Len()+1))))
 			}
-			here.path.solution = true
 			heap.Push(resultPq, here)
 		} else {
 			p.traverseFulfillers(pq, start, here, goal, pathsSeen)

@@ -364,6 +364,10 @@ func TestWorldPredicateEntities(t *testing.T) {
 			}
 		}
 	}
+	isTree := func(e *Entity) bool {
+		return w.EntityHasTag(e, "tree")
+	}
+
 	w.Update(FRAME_MS / 2)
 	nearGot := w.EntitiesWithinDistance(
 		*e.GetVec2D(POSITION),
@@ -372,14 +376,16 @@ func TestWorldPredicateEntities(t *testing.T) {
 	if len(nearGot) != len(near)+1 {
 		t.Fatalf("Should be %d near entities; got %d", len(near)+1, len(nearGot))
 	}
-	isTree := func(e *Entity) bool {
-		return w.EntityHasTag(e, "tree")
-	}
-	treesFound := w.PredicateEntities(nearGot, isTree)
+
+	treesFound := w.EntitiesWithinDistanceFilter(
+		*e.GetVec2D(POSITION),
+		*e.GetVec2D(BOX),
+		30.0,
+		isTree)
 	if len(treesFound) != 19 {
 		t.Fatalf("Should have found 19 near trees (1 original, 18 radial); got %d", len(treesFound))
 	}
-	allTrees := w.PredicateAllEntities(isTree)
+	allTrees := w.FilterAllEntities(isTree)
 	if len(allTrees) != 37 {
 		t.Fatal("Should have found 37 trees in the world (1 original, 18 radial x 2 layers")
 	}
