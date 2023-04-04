@@ -192,9 +192,6 @@ func (p *GOAPPlanner) applyActionModal(a *GOAPAction, ws *GOAPWorldState) (newWS
 			setter(newWS, op, a.Count*eff.val)
 		}
 	}
-	if DEBUG_GOAP {
-		logGOAPDebug(color.InBlueOverWhite(fmt.Sprintf("            ws after action: %v", newWS.vals)))
-	}
 
 	// re-check any modal vals
 	for varName := range newWS.vals {
@@ -641,10 +638,11 @@ func (p *GOAPPlanner) Plan(
 	dt := float64(time.Since(t0).Nanoseconds()) / 1.0e6
 	if iter >= maxIter {
 		logGOAPDebug("Took %f ms to reach max iter (%d)", dt, iter)
-		logGOAPDebug("================================ REACHED MAX ITER !!!")
+		logGOAPDebug("================================ REACHED MAX ITER")
 	}
 	if pq.Len() == 0 && resultPq.Len() == 0 {
 		logGOAPDebug("Took %f ms to exhaust pq without solution (%d iterations)", dt, iter)
+		logGOAPDebug("================================ EXHAUSTED PQ WITHOUT SOLUTION")
 	}
 	if resultPq.Len() > 0 {
 		logGOAPDebug("Took %f ms to find %d solutions (%d iterations)", dt, resultPq.Len(), iter)
