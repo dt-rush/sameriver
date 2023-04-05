@@ -1309,7 +1309,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			*planField.GetVec2D(POSITION),
 			*planField.GetVec2D(BOX),
 			func(e *Entity) bool {
-				return e.GetTagList(GENERICTAGS).Has("ox")
+				return e.GetTagList(GENERICTAGS).Has("ox") && e.GetIntMap(STATE).ValCanBeSetTo("yoked", 1)
 			})
 		if closestOxToField != nil {
 			Logger.Printf("closest ox to field: (position: %v)%v", *closestOxToField.GetVec2D(POSITION), closestOxToField)
@@ -1365,9 +1365,21 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	dt_ms = runAPlan(true)
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 
-	// third run with oxen all out of the field
+	// third run with oxen all out of the field by despawning the one we found in
 	w.Despawn(e.GetMind("plan.ox").(*Entity))
 	Logger.Println("All oxen are outside field")
+	// we will want to use {0, 20}, so let's make it unyokable
+	const BECOME_UNGOVERNABLE = true
+	if BECOME_UNGOVERNABLE {
+		for _, ox := range w.EntitiesWithTags("ox") {
+			if ox.GetVec2D(POSITION).Equals(Vec2D{0, 20}) {
+				// become ungovernable
+				ox.GetIntMap(STATE).SetValidInterval("yoked", 0, 0)
+			}
+		}
+	}
+	// inside runAPlan, when we plan the bb, the bound selector should check
+	// for yokable on state intmap
 	dt_ms = runAPlan(true)
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 

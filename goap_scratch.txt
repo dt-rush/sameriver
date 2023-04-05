@@ -1,6 +1,21 @@
 https://chat.openai.com/chat/e4bb4965-c043-4788-bd71-0abc19fa240e
 
 
+IDEA GREMLIN:
+TODO: add rules, valid ranges for IntMap values, so in Set() we can validate these
+values being set in a STATE intmap, ultimately so that State can enforce some operations it's impervious to, more often than any other use case, eg:
+
+eggsample being, an ox that can't be yoked = 1, can only be yoked = 0.
+
+and in fact we need to adapt to this in planning. if our bound entity is for some
+reason unyokable, it should bubble an err? i guess we would define rules as
+NumericInterval's, and when trying to Set the state in the generated effset func,
+if we cannot set that value, then the modal eff set will just silently fail to set
+the value and then the modal check func will see 0 when the action shuodl've set 1.
+modal failure.
+
+
+
 summary of the below, feedback by chatGPT:
 
 IDEA GAMMA: Introducing a gather action that symbolically represents gathering of materials is an interesting approach. It can simplify the initial planning process and make it more efficient. However, it may introduce complexities when implementing the actual gathering logic as a prelude to the subsequent actions like building or crafting.

@@ -146,12 +146,12 @@ func (p *GOAPPlanner) createModalValDotNotation(node, stateKey string) GOAPModal
 		name:  node + "." + stateKey,
 		nodes: []string{node},
 		check: func(ws *GOAPWorldState) int {
-			return ws.GetModal(ws.ModalEntities[node], STATE).(*IntMap).m[stateKey]
+			return ws.GetModal(ws.ModalEntities[node], STATE).(*IntMap).Get(stateKey)
 		},
 		effModalSet: func(ws *GOAPWorldState, op string, x int) {
 			state := ws.GetModal(ws.ModalEntities[node], STATE).(*IntMap).CopyOf()
 			if op == "=" {
-				state.m[stateKey] = x
+				state.Set(stateKey, x)
 			}
 			ws.SetModal(ws.ModalEntities[node], STATE, &state)
 		},

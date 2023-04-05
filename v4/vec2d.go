@@ -121,3 +121,7 @@ func (v *Vec2D) ShiftBottomLeftToCenter(box Vec2D) {
 	v.X += box.X / 2
 	v.Y += box.Y / 2
 }
+
+func (v *Vec2D) Equals(other Vec2D) bool {
+	return v.X == other.X && v.Y == other.Y
+}
