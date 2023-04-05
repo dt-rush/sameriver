@@ -757,6 +757,7 @@ func (p *GOAPPlanner) Plan(
 	start = start.CopyOf()
 	start.w = p.e.World
 	p.setPositionInStartModalIfNotDefined(start)
+	start.ModalEntities["self"] = p.e
 
 	logGOAPDebug("Planning...")
 

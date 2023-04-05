@@ -1243,55 +1243,6 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			}
 		},
 	}
-	hasYokeModal := GOAPModalVal{
-		name: "hasYoke",
-		check: func(ws *GOAPWorldState) int {
-			inv := ws.GetModal(e, INVENTORY).(*Inventory)
-			count := inv.CountName("yoke")
-			return count
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			inv := ws.GetModal(e, INVENTORY).(*Inventory).CopyOf()
-			if op == "-" {
-				inv.DebitNName(x, "yoke")
-			}
-			if op == "=" {
-				if x == 0 {
-					inv.DebitAllName("yoke")
-				}
-				count := inv.CountName("yoke")
-				if count == 0 {
-					inv.Credit(items.CreateStackSimple(1, "yoke"))
-				}
-				inv.SetCountName(x, "yoke")
-			}
-			if op == "+" {
-				count := inv.CountName("yoke")
-				if count == 0 {
-					inv.Credit(items.CreateStackSimple(x, "yoke"))
-				} else {
-					inv.SetCountName(count+x, "yoke")
-				}
-			}
-			ws.SetModal(e, INVENTORY, inv)
-		},
-	}
-	fieldTilledModal := GOAPModalVal{
-		name:  "fieldTilled",
-		nodes: []string{"field"},
-		check: func(ws *GOAPWorldState) int {
-			field := ws.ModalEntities["field"]
-			return ws.GetModal(field, STATE).(*IntMap).m["tilled"]
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			if op == "=" {
-				field := ws.ModalEntities["field"]
-				state := field.GetIntMap(STATE).CopyOf()
-				state.m["tilled"] = x
-				ws.SetModal(field, STATE, &state)
-			}
-		},
-	}
 
 	// GOAP actions
 	leadOxToField := NewGOAPAction(map[string]any{
@@ -1310,7 +1261,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		"cost": 1,
 		"pres": nil,
 		"effs": map[string]int{
-			"hasYoke,=": 1,
+			"self.inventoryHas(yoke),+": 1,
 		},
 	})
 	yokeOxplow := NewGOAPAction(map[string]any{
@@ -1320,7 +1271,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		"cost":       1,
 		"pres": []any{
 			map[string]int{
-				"hasYoke,=": 1,
+				"self.inventoryHas(yoke),=": 1,
 			},
 		},
 		"effs": map[string]int{
@@ -1373,7 +1324,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			return candidate.GetTagList(GENERICTAGS).Has("field")
 		},
 	})
-	p.AddModalVals(oxInFieldModal, hasYokeModal, fieldTilledModal)
+	p.AddModalVals(oxInFieldModal)
 	p.AddActions(leadOxToField, getYoke, yokeOxplow, oxplow)
 
 	//
