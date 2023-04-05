@@ -98,11 +98,39 @@ func (p *GOAPPlanner) RegisterGenericEntitySelectors(selectors map[string]func(*
 	}
 }
 
-func (p *GOAPPlanner) BindEntitySelectors(selectors map[string]func(*Entity) bool) {
+func (p *GOAPPlanner) selectorFromString(s string) func(*Entity) bool {
+	parts := strings.SplitN(s, ".", 2)
+	if len(parts) != 2 {
+		panic(fmt.Sprintf("Invalid selector string format: %s, should be like mind.plan.field", s))
+	}
+	bbname := parts[0]
+	bbkey := parts[1]
+	logGOAPDebug("parsing entity selector string: bb: %s, key: %s", bbname, bbkey)
+
+	return func(other *Entity) bool {
+		// if the bb is the entity's mind
+		if bbname == "mind" {
+			return other == p.e.GetMind(bbkey).(*Entity)
+		} else {
+			// else treat it as a world bb
+			return other == p.e.World.Blackboard(bbname).State[bbkey].(*Entity)
+		}
+	}
+
+}
+
+func (p *GOAPPlanner) BindEntitySelectors(selectors map[string]any) {
 	p.boundSelectorsFlipflop = true
 	p.boundSelectors = make(map[string]func(*Entity) bool)
 	for k, v := range selectors {
-		p.boundSelectors[k] = v
+		switch selector := v.(type) {
+		case func(*Entity) bool:
+			p.boundSelectors[k] = selector
+		case string:
+			p.boundSelectors[k] = p.selectorFromString(selector)
+		default:
+			panic("Invalid selector type")
+		}
 	}
 }
 

@@ -1401,15 +1401,11 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		e.SetMind("plan.ox", closestOxToField)
 	}
 	tillPlanBindEntities := func() {
-		p.BindEntitySelectors(map[string]func(*Entity) bool{
+		p.BindEntitySelectors(map[string]any{
 			// ox from blackboard plan - the closest to the field
-			"ox": func(candidate *Entity) bool {
-				return candidate == e.GetMind("plan.ox")
-			},
+			"ox": "mind.plan.ox",
 			// the field from the blackboard plan
-			"field": func(candidate *Entity) bool {
-				return candidate == e.GetMind("plan.field")
-			},
+			"field": "mind.plan.field",
 		})
 	}
 	mockMakeTillPlan := func() {

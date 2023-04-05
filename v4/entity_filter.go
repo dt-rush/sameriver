@@ -4,6 +4,8 @@ import (
 	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
+type EntityPredicate func(*Entity) bool
+
 type EntityFilter struct {
 	Name      string
 	Predicate func(e *Entity) bool
