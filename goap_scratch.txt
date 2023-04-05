@@ -1,6 +1,15 @@
 https://chat.openai.com/chat/e4bb4965-c043-4788-bd71-0abc19fa240e
 
 
+
+IDEA GODZILLA:
+histeresis for bind-selecting nodes that failed to interact and broke the plan (we will
+try another comparable node that passes our filter)
+
+
+
+
+
 IDEA GREMLIN:
 TODO: add rules, valid ranges for IntMap values, so in Set() we can validate these
 values being set in a STATE intmap, ultimately so that State can enforce some operations it's impervious to, more often than any other use case, eg:
