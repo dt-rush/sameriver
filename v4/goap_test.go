@@ -1209,42 +1209,8 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	})
 
 	//
-	// modal world state vars
-	//
-	oxInFieldModal := GOAPModalVal{
-		name:  "oxInField",
-		nodes: []string{"ox", "field"},
-		check: func(ws *GOAPWorldState) int {
-			ox := ws.ModalEntities["ox"]
-			oxPos := ws.GetModal(ox, POSITION).(*Vec2D)
-			if RectIntersectsRect(
-				*oxPos, *ox.GetVec2D(BOX),
-				*field.GetVec2D(POSITION), *field.GetVec2D(BOX)) {
-				return 1
-			} else {
-				return 0
-			}
-		},
-		effModalSet: func(ws *GOAPWorldState, op string, x int) {
-			ox := ws.ModalEntities["ox"]
-			field := ws.ModalEntities["field"]
-			if op == "=" {
-				switch x {
-				case 0:
-					// TODO: this should really be a call to some kind of sophisticated
-					// relocation function that avoids obstacles and makes sure there's a path
-					// to be able to get there via navmesh/grid
-					awayFromField := field.GetVec2D(POSITION).Add(Vec2D{200, 200})
-					ws.SetModal(ox, POSITION, &awayFromField)
-				case 1:
-					fieldCenter := *field.GetVec2D(POSITION)
-					ws.SetModal(ox, POSITION, &fieldCenter)
-				}
-			}
-		},
-	}
-
 	// GOAP actions
+	//
 	leadOxToField := NewGOAPAction(map[string]any{
 		"name":           "leadOxToField",
 		"node":           "ox",
@@ -1252,7 +1218,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		"cost":           1,
 		"pres":           nil,
 		"effs": map[string]int{
-			"oxInField,=": 1,
+			"ox.in(field),=": 1,
 		},
 	})
 	getYoke := NewGOAPAction(map[string]any{
@@ -1284,7 +1250,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 		"cost": 1,
 		"pres": []any{
 			map[string]int{
-				"oxInField,=": 1,
+				"ox.in(field),=": 1,
 			},
 			map[string]int{
 				"oxYoked,=": 1,
@@ -1324,7 +1290,6 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			return candidate.GetTagList(GENERICTAGS).Has("field")
 		},
 	})
-	p.AddModalVals(oxInFieldModal)
 	p.AddActions(leadOxToField, getYoke, yokeOxplow, oxplow)
 
 	//

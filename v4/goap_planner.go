@@ -202,10 +202,48 @@ func (p *GOAPPlanner) createModalValInventoryHas(node, archetype string) GOAPMod
 	}
 }
 
+func (p *GOAPPlanner) createModalValIn(node, other string) GOAPModalVal {
+	return GOAPModalVal{
+		name:  fmt.Sprintf("%s.in(%s)", node, other),
+		nodes: []string{node, other},
+		check: func(ws *GOAPWorldState) int {
+			entity := ws.ModalEntities[node]
+			otherEntity := ws.ModalEntities[other]
+			entityPos := ws.GetModal(entity, POSITION).(*Vec2D)
+			if RectIntersectsRect(
+				*entityPos, *entity.GetVec2D(BOX),
+				*otherEntity.GetVec2D(POSITION), *otherEntity.GetVec2D(BOX)) {
+				return 1
+			} else {
+				return 0
+			}
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			entity := ws.ModalEntities[node]
+			otherEntity := ws.ModalEntities[other]
+			if op == "=" {
+				switch x {
+				case 0:
+					// TODO: this should really be a call to some kind of sophisticated
+					// relocation function that avoids obstacles and makes sure there's a path
+					// to be able to get there via navmesh/grid
+					awayFromOther := otherEntity.GetVec2D(POSITION).Add(otherEntity.GetVec2D(BOX).Scale(1.1))
+					ws.SetModal(entity, POSITION, &awayFromOther)
+				case 1:
+					otherCenter := *otherEntity.GetVec2D(POSITION)
+					ws.SetModal(entity, POSITION, &otherCenter)
+				}
+			}
+		},
+	}
+}
+
 func (p *GOAPPlanner) createModalValMethodNotation(node, method, param string) GOAPModalVal {
 	switch method {
 	case "inventoryHas":
 		return p.createModalValInventoryHas(node, param)
+	case "in":
+		return p.createModalValIn(node, param)
 	}
 	panic(fmt.Sprintf("method %s does not exist for modal vals", method))
 }
