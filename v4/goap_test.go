@@ -1370,22 +1370,33 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	// third run with oxen all out of the field by despawning the one we found in
 	w.Despawn(e.GetMind("plan.ox").(*Entity))
 	Logger.Println("All oxen are outside field")
+	dt_ms = runAPlan(true)
+	Logger.Printf("Took %f ms to find solution", dt_ms)
+
 	// we will want to use {0, 20}, so let's make it unyokable
 	const BECOME_UNGOVERNABLE = true
 	if BECOME_UNGOVERNABLE {
 		oxen[1].GetIntMap(STATE).SetValidInterval("yoked", 0, 0)
-	}
-	// inside runAPlan, when we plan the bb, the bound selector should check
-	// for yokable on state intmap
-	dt_ms = runAPlan(true)
-	Logger.Printf("Took %f ms to find solution", dt_ms)
+		// inside runAPlan, when we plan the bb, the bound selector should check
+		// for yokable on state intmap
+		dt_ms = runAPlan(true)
+		Logger.Printf("Took %f ms to find solution", dt_ms)
 
-	if BECOME_UNGOVERNABLE {
+		// all oxen either despawned or unyokable
 		oxen[2].GetIntMap(STATE).SetValidInterval("yoked", 0, 0)
-		// all oxen are now either despawned or unyokable
 		Logger.Println("No *yokable* oxen")
 		dt_ms = runAPlan(false)
 		Logger.Printf("Took %f ms to fail", dt_ms)
-	}
 
+		// restore the humility of these brave beasts, make them fit to work!
+		oxen[1].GetIntMap(STATE).SetValidInterval("yoked", 0, 1)
+		oxen[2].GetIntMap(STATE).SetValidInterval("yoked", 0, 1)
+		Logger.Println("Pick the good ox!")
+		dt_ms = runAPlan(true)
+		if !e.GetMind("plan.ox").(*Entity).GetVec2D(POSITION).Equals(Vec2D{0, 20}) {
+			t.Fatalf("Didn't grandpappy learn ya right? Always pick the best ox!!! Ya done picked %v", e.GetMind("plan.ox").(*Entity))
+		}
+		Logger.Printf("Took %f ms to find solution", dt_ms)
+
+	}
 }
