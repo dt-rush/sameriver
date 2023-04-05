@@ -1416,10 +1416,9 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	//
 	// initial world state
 	//
-	// TODO: this would be a perception system thing
-	ws := NewGOAPWorldState(map[string]int{
-		"fieldTilled": 0,
-	})
+	// TODO: this would be a perception system thing - we would get the current
+	// state of the world from perception/memory
+	ws := NewGOAPWorldState(nil)
 
 	// TODO: this would derive from a utility, not be hardcoded
 	goal := map[string]int{

@@ -22,6 +22,8 @@ type GOAPPlanner struct {
 	boundSelectors map[string]func(*Entity) bool
 	// flipflop is needed for the bind once logic
 	boundSelectorsFlipflop bool
+	// selector result cache
+	selectorResultCache map[string]*Entity
 
 	modalVals map[string]GOAPModalVal
 	actions   *GOAPActionSet
@@ -31,11 +33,43 @@ type GOAPPlanner struct {
 
 func NewGOAPPlanner(e *Entity) *GOAPPlanner {
 	return &GOAPPlanner{
-		e:          e,
-		modalVals:  make(map[string]GOAPModalVal),
-		actions:    NewGOAPActionSet(),
-		varActions: make(map[string](map[*GOAPAction]bool)),
+		e:                   e,
+		modalVals:           make(map[string]GOAPModalVal),
+		actions:             NewGOAPActionSet(),
+		varActions:          make(map[string](map[*GOAPAction]bool)),
+		selectorResultCache: make(map[string]*Entity),
 	}
+}
+
+func (p *GOAPPlanner) testBindResolve(nodes []string) (bindErr error) {
+	pos := p.e.GetVec2D(POSITION)
+	box := p.e.GetVec2D(BOX)
+	world := p.e.World
+
+	for _, node := range nodes {
+		// If the result is already in the cache, skip this node
+		if _, ok := p.selectorResultCache[node]; ok {
+			continue
+		}
+		// Get the appropriate selector for the node
+		var selector func(*Entity) bool
+		if _, ok := p.boundSelectors[node]; ok {
+			selector = p.boundSelectors[node]
+		} else if _, ok := p.genericSelectors[node]; ok {
+			selector = p.genericSelectors[node]
+		} else {
+			return fmt.Errorf("no selector for GOAP bind-entity %s", node)
+		}
+		// Run the selector and store the result in the cache *if non nil*
+		result := world.ClosestEntityFilter(*pos, *box, selector)
+		if result == nil {
+			return fmt.Errorf("%w for node: %s", ErrGOAPNoValidBindEntity, node)
+		}
+		p.selectorResultCache[node] = result
+
+	}
+
+	return nil
 }
 
 func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start bool) (err error) {
@@ -58,15 +92,21 @@ func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start boo
 				logGOAPDebug(color.InPurple("|"))
 				logGOAPDebug(color.InPurple(fmt.Sprintf("--->>> binding modal entity %s...", node)))
 			}
-			var selector func(*Entity) bool
-			if _, ok := p.boundSelectors[node]; ok {
-				selector = p.boundSelectors[node]
-			} else if _, ok := p.genericSelectors[node]; ok {
-				selector = p.genericSelectors[node]
+			// if we already called testBindResolve on this action, we don't wan to recompute the selector
+			// that it ran
+			if cached, ok := p.selectorResultCache[node]; ok {
+				ws.ModalEntities[node] = cached
 			} else {
-				panic(fmt.Sprintf("No selector for GOAP bind-entity %s", node))
+				var selector func(*Entity) bool
+				if _, ok := p.boundSelectors[node]; ok {
+					selector = p.boundSelectors[node]
+				} else if _, ok := p.genericSelectors[node]; ok {
+					selector = p.genericSelectors[node]
+				} else {
+					panic(fmt.Sprintf("No selector for GOAP bind-entity %s", node))
+				}
+				ws.ModalEntities[node] = world.ClosestEntityFilter(*pos, *box, selector)
 			}
-			ws.ModalEntities[node] = world.ClosestEntityFilter(*pos, *box, selector)
 
 		} else if DEBUG_GOAP {
 			logGOAPDebug(color.InPurple("|"))
@@ -507,6 +547,13 @@ func (p *GOAPPlanner) traverseFulfillers(
 				for action := range p.varActions[varName] {
 					// can't self-append (guard against considering i == len(path) (that's the main goal)
 					if i < len(here.path.path) && here.path.path[i].Name == action.Name {
+						continue
+					}
+					// if action affects var, ok, sure, but does a node resolve for it?
+					// try to bind:
+					bindErr := p.testBindResolve(append(action.otherNodes, action.Node))
+					if bindErr != nil {
+						logGOAPDebug(color.InBold(color.InYellow(fmt.Sprintf("although action %s affects var %s, it cannot bind: %s", action.Name, varName, bindErr))))
 						continue
 					}
 					logGOAPDebug("       ...")
