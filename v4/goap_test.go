@@ -490,7 +490,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 
 	*e.GetVec2D(POSITION) = Vec2D{-100, -100}
 
-	atTreeApplied, _ := p.applyActionModal(goToTree, nilWS)
+	atTreeApplied, _, _ := p.applyActionModal(goToTree, nilWS)
 	Logger.Println("state after applying modal action eff of atTree:")
 	printWorldState(atTreeApplied)
 	if val, ok := atTreeApplied.vals["atTree"]; !ok || val != 1 {
@@ -505,7 +505,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 	//
 
 	*e.GetVec2D(POSITION) = Vec2D{-100, -100}
-	atOceanApplied, _ := p.applyActionModal(goToOcean, nilWS)
+	atOceanApplied, _, _ := p.applyActionModal(goToOcean, nilWS)
 	Logger.Println("state after applying modal action eff of atOcean:")
 	printWorldState(atOceanApplied)
 
@@ -513,7 +513,7 @@ func TestGOAPActionModalVal(t *testing.T) {
 		t.Fatal("atTree modal pre of hugTree should fail when modal position is set at ocean")
 	}
 
-	nowGoToTreeApplied, _ := p.applyActionModal(goToTree, atOceanApplied)
+	nowGoToTreeApplied, _, _ := p.applyActionModal(goToTree, atOceanApplied)
 	Logger.Println("state after goToOcean->goToTree:")
 	printWorldState(nowGoToTreeApplied)
 	if nowGoToTreeApplied.vals["atOcean"] != 0 {
@@ -1184,9 +1184,10 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	yoke := items.CreateItemSimple("yoke")
 	items.SpawnItemEntity(Vec2D{0, 5}, yoke)
 	// oxen
-	spawnOxen := func(positions []Vec2D) {
+	spawnOxen := func(positions []Vec2D) (oxen []*Entity) {
+		oxen = make([]*Entity, len(positions))
 		for i := 0; i < len(positions); i++ {
-			w.Spawn(map[string]any{
+			oxen[i] = w.Spawn(map[string]any{
 				"components": map[ComponentID]any{
 					POSITION: positions[i],
 					BOX:      Vec2D{3, 2},
@@ -1197,8 +1198,8 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 				"tags": []string{"ox"},
 			})
 		}
+		return oxen
 	}
-	spawnOxen([]Vec2D{})
 	// field
 	field := w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
@@ -1362,7 +1363,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 
 	// second run with oxen
 	// spawn them (note: one is in the field already)
-	spawnOxen([]Vec2D{Vec2D{0, 100}, Vec2D{0, 20}, Vec2D{0, -100}})
+	oxen := spawnOxen([]Vec2D{Vec2D{0, 100}, Vec2D{0, 20}, Vec2D{0, -100}})
 	dt_ms = runAPlan(true)
 	Logger.Printf("Took %f ms to find solution", dt_ms)
 
@@ -1372,16 +1373,19 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	// we will want to use {0, 20}, so let's make it unyokable
 	const BECOME_UNGOVERNABLE = true
 	if BECOME_UNGOVERNABLE {
-		for _, ox := range w.EntitiesWithTags("ox") {
-			if ox.GetVec2D(POSITION).Equals(Vec2D{0, 20}) {
-				// become ungovernable
-				ox.GetIntMap(STATE).SetValidInterval("yoked", 0, 0)
-			}
-		}
+		oxen[1].GetIntMap(STATE).SetValidInterval("yoked", 0, 0)
 	}
 	// inside runAPlan, when we plan the bb, the bound selector should check
 	// for yokable on state intmap
 	dt_ms = runAPlan(true)
 	Logger.Printf("Took %f ms to find solution", dt_ms)
+
+	if BECOME_UNGOVERNABLE {
+		oxen[2].GetIntMap(STATE).SetValidInterval("yoked", 0, 0)
+		// all oxen are now either despawned or unyokable
+		Logger.Println("No *yokable* oxen")
+		dt_ms = runAPlan(false)
+		Logger.Printf("Took %f ms to fail", dt_ms)
+	}
 
 }

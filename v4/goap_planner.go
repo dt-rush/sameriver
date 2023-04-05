@@ -13,11 +13,16 @@ import (
 )
 
 var ErrGOAPNoValidBindEntity = errors.New("no entity matched selector")
+var ErrGOAPModalVsSymbolicValueConflict = errors.New("modal value was not what the eff math said it should be after action was applied")
 
 var METHOD_NOTATION_RE = regexp.MustCompile(`(\w+)\.(\w+)\((\w+)\)`)
 
 type GOAPPlanner struct {
 	e *Entity
+
+	//
+	// entity binding section
+	//
 
 	// the functions selecting an entity for binding
 	genericSelectors map[string]func(*Entity) bool
@@ -28,9 +33,13 @@ type GOAPPlanner struct {
 	// selector result cache
 	selectorResultCache map[string]*Entity
 
+	//
+	// GOAP tetris pieces to put together :)
+	//
 	modalVals map[string]GOAPModalVal
 	actions   *GOAPActionSet
-	// map of [varName](Set (in the sense of a map->bool) of actions that affect that var)
+
+	// map of [varName](map[action]bool), the set of actions for affecting each varName
 	varActions map[string](map[*GOAPAction]bool)
 }
 
@@ -44,47 +53,65 @@ func NewGOAPPlanner(e *Entity) *GOAPPlanner {
 	}
 }
 
-func (p *GOAPPlanner) tryBindResolve(nodes []string) (bindErr error) {
-	pos := p.e.GetVec2D(POSITION)
-	box := p.e.GetVec2D(BOX)
-	world := p.e.World
+//
+// ENTITY/NODE BINDING
+//
 
+// run selectNode if not in cache for all nodes, err on any
+func (p *GOAPPlanner) trySelectNodes(ws *GOAPWorldState, nodes []string) (bindErr error) {
 	for _, node := range nodes {
 		// If the result is already in the cache, skip this node
 		if _, ok := p.selectorResultCache[node]; ok {
 			continue
 		}
-		// Get the appropriate selector for the node
-		var selector func(*Entity) bool
-		if _, ok := p.boundSelectors[node]; ok {
-			selector = p.boundSelectors[node]
-		} else if _, ok := p.genericSelectors[node]; ok {
-			selector = p.genericSelectors[node]
-		} else {
-			return fmt.Errorf("no selector for GOAP bind-entity %s", node)
-		}
-		// Run the selector and store the result in the cache *if non nil*
-		result := world.ClosestEntityFilter(*pos, *box, selector)
-		if result == nil {
+		// selectNode caches so it's ok to just call this
+		ent := p.selectNode(ws, node)
+		if ent == nil {
 			return fmt.Errorf("%w for node: %s", ErrGOAPNoValidBindEntity, node)
 		}
-		p.selectorResultCache[node] = result
-
 	}
+	return nil
+}
 
+// the ws arg is READ ONLY for modal pos
+// tries cache, then tries the bound selector, falling back to generic
+// returns nil if nothing valid
+func (p *GOAPPlanner) selectNode(ws *GOAPWorldState, node string) (ent *Entity) {
+	defer func() {
+		if ent != nil {
+			p.selectorResultCache[node] = ent
+		}
+	}()
+	world := p.e.World
+	pos := ws.GetModal(p.e, POSITION).(*Vec2D)
+	box := p.e.GetVec2D(BOX)
+
+	// use a selector to find the node entity (ent)
+	trySelect := func(selector func(*Entity) bool) *Entity {
+		return world.ClosestEntityFilter(*pos, *box, selector)
+	}
+	var selector func(*Entity) bool
+	var okBound bool
+	var okGeneric bool
+	if selector, okBound = p.boundSelectors[node]; okBound {
+		ent = trySelect(selector)
+		if ent != nil {
+			return ent
+		}
+	}
+	// fallback to generic if the boundSelector failed, or if didn't exist
+	if selector, okGeneric = p.genericSelectors[node]; okGeneric {
+		ent = trySelect(selector)
+		if ent != nil {
+			return ent
+		}
+	}
 	return nil
 }
 
 func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start bool) (err error) {
 	logGOAPDebug(color.InPurple("-------bindEntities()"))
-	var pos *Vec2D
-	if start {
-		pos = p.e.GetVec2D(POSITION)
-	} else {
-		pos = ws.GetModal(p.e, POSITION).(*Vec2D)
-	}
-	box := p.e.GetVec2D(BOX)
-	world := p.e.World
+
 	for _, node := range nodes {
 		var bound *Entity
 		// don't overwrite one that we already have (inherit bindings from the earliest point
@@ -95,20 +122,14 @@ func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start boo
 				logGOAPDebug(color.InPurple("|"))
 				logGOAPDebug(color.InPurple(fmt.Sprintf("--->>> binding modal entity %s...", node)))
 			}
-			// if we already called tryBindResolve on this action, we don't wan to recompute the selector
+			// if we already called tryBindResolve on this action,
+			// we don't wan to recompute the selector
 			// that it ran
 			if cached, ok := p.selectorResultCache[node]; ok {
 				ws.ModalEntities[node] = cached
 			} else {
-				var selector func(*Entity) bool
-				if _, ok := p.boundSelectors[node]; ok {
-					selector = p.boundSelectors[node]
-				} else if _, ok := p.genericSelectors[node]; ok {
-					selector = p.genericSelectors[node]
-				} else {
-					panic(fmt.Sprintf("No selector for GOAP bind-entity %s", node))
-				}
-				ws.ModalEntities[node] = world.ClosestEntityFilter(*pos, *box, selector)
+				// if not in cache, run selector
+				ws.ModalEntities[node] = p.selectNode(ws, node)
 			}
 
 		} else if DEBUG_GOAP {
@@ -140,6 +161,45 @@ func (p *GOAPPlanner) RegisterGenericEntitySelectors(selectors map[string]func(*
 		p.genericSelectors[k] = v
 	}
 }
+
+func (p *GOAPPlanner) BindEntitySelectors(selectors map[string]any) {
+	p.boundSelectorsFlipflop = true
+	p.boundSelectors = make(map[string]func(*Entity) bool)
+	for k, v := range selectors {
+		switch selector := v.(type) {
+		case func(*Entity) bool:
+			p.boundSelectors[k] = selector
+		case string:
+			p.boundSelectors[k] = p.selectorFromString(selector)
+		default:
+			panic("Invalid selector type")
+		}
+	}
+}
+
+func (p *GOAPPlanner) selectorFromString(s string) func(*Entity) bool {
+	parts := strings.SplitN(s, ".", 2)
+	if len(parts) != 2 {
+		panic(fmt.Sprintf("Invalid selector string format: %s, should be like mind.plan.field", s))
+	}
+	bbname := parts[0]
+	bbkey := parts[1]
+	logGOAPDebug("parsing entity selector string: bb: %s, key: %s", bbname, bbkey)
+
+	return func(other *Entity) bool {
+		// if the bb is the entity's mind
+		if bbname == "mind" {
+			return other == p.e.GetMind(bbkey).(*Entity)
+		} else {
+			// else treat it as a world bb
+			return other == p.e.World.Blackboard(bbname).State[bbkey].(*Entity)
+		}
+	}
+}
+
+//
+// SPECIAL MODAL VAL NOTATIONS
+//
 
 func (p *GOAPPlanner) createModalValDotNotation(node, stateKey string) GOAPModalVal {
 	return GOAPModalVal{
@@ -248,41 +308,9 @@ func (p *GOAPPlanner) createModalValMethodNotation(node, method, param string) G
 	panic(fmt.Sprintf("method %s does not exist for modal vals", method))
 }
 
-func (p *GOAPPlanner) selectorFromString(s string) func(*Entity) bool {
-	parts := strings.SplitN(s, ".", 2)
-	if len(parts) != 2 {
-		panic(fmt.Sprintf("Invalid selector string format: %s, should be like mind.plan.field", s))
-	}
-	bbname := parts[0]
-	bbkey := parts[1]
-	logGOAPDebug("parsing entity selector string: bb: %s, key: %s", bbname, bbkey)
-
-	return func(other *Entity) bool {
-		// if the bb is the entity's mind
-		if bbname == "mind" {
-			return other == p.e.GetMind(bbkey).(*Entity)
-		} else {
-			// else treat it as a world bb
-			return other == p.e.World.Blackboard(bbname).State[bbkey].(*Entity)
-		}
-	}
-
-}
-
-func (p *GOAPPlanner) BindEntitySelectors(selectors map[string]any) {
-	p.boundSelectorsFlipflop = true
-	p.boundSelectors = make(map[string]func(*Entity) bool)
-	for k, v := range selectors {
-		switch selector := v.(type) {
-		case func(*Entity) bool:
-			p.boundSelectors[k] = selector
-		case string:
-			p.boundSelectors[k] = p.selectorFromString(selector)
-		default:
-			panic("Invalid selector type")
-		}
-	}
-}
+//
+// GOAP's succulent heart-meat
+//
 
 func (p *GOAPPlanner) AddModalVals(vals ...GOAPModalVal) {
 	for _, val := range vals {
@@ -377,7 +405,7 @@ func (p *GOAPPlanner) applyActionBasic(
 	return ws
 }
 
-func (p *GOAPPlanner) applyActionModal(a *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState, cost float64) {
+func (p *GOAPPlanner) applyActionModal(a *GOAPAction, ws *GOAPWorldState) (newWS *GOAPWorldState, cost float64, err error) {
 
 	// calculate cost of this action as cost to modally move position here + action.cost
 	beforePos := ws.GetModal(p.e, POSITION).(*Vec2D)
@@ -419,8 +447,17 @@ func (p *GOAPPlanner) applyActionModal(a *GOAPAction, ws *GOAPWorldState) (newWS
 	for varName := range newWS.vals {
 		if modalVal, ok := p.modalVals[varName]; ok {
 			logGOAPDebug("              re-checking modal val %s", varName)
+			supposedToBe := newWS.vals[varName]
 			newWS.vals[varName] = modalVal.check(newWS)
+			if newWS.vals[varName] != supposedToBe {
+				err := fmt.Errorf("%w for %s", ErrGOAPModalVsSymbolicValueConflict, varName)
+				logGOAPDebug(color.InPurpleOverWhite(fmt.Sprintf("%s", err)))
+				return nil, -1, err
+			}
 		}
+	}
+	if DEBUG_GOAP {
+		logGOAPDebug(color.InPurpleOverWhite(fmt.Sprintf("            ws after re-checking modal vals: %v", newWS.vals)))
 	}
 
 	// we are still at the node after the action is done
@@ -434,14 +471,10 @@ func (p *GOAPPlanner) applyActionModal(a *GOAPAction, ws *GOAPWorldState) (newWS
 	logGOAPDebug("        distance travelled during action %s: %f", a.Name, distTravelled)
 	cost += distTravelled
 
-	if DEBUG_GOAP {
-		logGOAPDebug(color.InPurpleOverWhite(fmt.Sprintf("            ws after re-checking modal vals: %v", newWS.vals)))
-	}
-
-	return newWS, cost
+	return newWS, cost, nil
 }
 
-func (p *GOAPPlanner) computeCostAndRemainingsOfPath(path *GOAPPath, start *GOAPWorldState, main *GOAPTemporalGoal) (bindErr error) {
+func (p *GOAPPlanner) computeCostAndRemainingsOfPath(path *GOAPPath, start *GOAPWorldState, main *GOAPTemporalGoal) (err error) {
 	ws := start.CopyOf()
 	// one []*GOAPGoalRemaining for each action pre + 1 for main
 	surfaceLen := len(path.path) + 1
@@ -458,11 +491,14 @@ func (p *GOAPPlanner) computeCostAndRemainingsOfPath(path *GOAPPath, start *GOAP
 				tg.remaining(ws))
 		}
 		var cost float64
-		bindErr = p.bindEntities(append(a.otherNodes, a.Node), ws, false)
+		bindErr := p.bindEntities(append(a.otherNodes, a.Node), ws, false)
 		if bindErr != nil {
 			return bindErr
 		}
-		ws, cost = p.applyActionModal(a, ws)
+		ws, cost, modalErr := p.applyActionModal(a, ws)
+		if modalErr != nil {
+			return modalErr
+		}
 		totalCost += cost
 		path.statesAlong[i+1] = ws
 	}
@@ -504,7 +540,7 @@ func (p *GOAPPlanner) validateForward(path *GOAPPath, start *GOAPWorldState, mai
 		// we don't check bindEntities() returned bindErr here cause it will never happen;
 		// we evaluate the full path modally already to compute its remainings and distance cost
 		p.bindEntities(append(a.otherNodes, a.Node), ws, false)
-		ws, _ = p.applyActionModal(a, ws)
+		ws, _, _ = p.applyActionModal(a, ws)
 	}
 	endRemainingCount := 0
 	for _, tg := range main.temporalGoals {
@@ -682,13 +718,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 					if i < len(here.path.path) && here.path.path[i].Name == action.Name {
 						continue
 					}
-					// if action affects var, ok, sure, but does a node resolve for it?
-					// try to bind:
-					bindErr := p.tryBindResolve(append(action.otherNodes, action.Node))
-					if bindErr != nil {
-						logGOAPDebug(color.InBold(color.InYellow(fmt.Sprintf("although action %s affects var %s, it cannot bind: %s", action.Name, varName, bindErr))))
-						continue
-					}
+
 					logGOAPDebug("       ...")
 					logGOAPDebug("        |")
 					logGOAPDebug("        └>varName: %s", varName)
@@ -707,6 +737,18 @@ func (p *GOAPPlanner) traverseFulfillers(
 							fmt.Sprintf("checking if %s can be inserted at %d to satisfy %s",
 								action.DisplayName(), i, toSatisfyMsg)))
 					}
+
+					// if action affects var ok,
+					// sure, but does a node resolve for it?
+					// try to bind (use modal position of the state at that point
+					// after the action prior to the insertion point aka, the state
+					// at the insertion point, to resolve modal pos
+					bindErr := p.trySelectNodes(here.path.statesAlong[insertionIx], append(action.otherNodes, action.Node))
+					if bindErr != nil {
+						logGOAPDebug(color.InBold(color.InYellow(fmt.Sprintf("although action %s affects var %s, it cannot select a node: %s", action.Name, varName, bindErr))))
+						continue
+					}
+
 					scale, helpful := p.actionHelpsToInsert(
 						start,
 						here.path,
@@ -717,6 +759,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 						if DEBUG_GOAP {
 							logGOAPDebug("[X] %s helpful!", action.DisplayName())
 						}
+
 						// construct the path (with parametrised action)
 						var toInsert *GOAPAction
 						if scale > 1 {
@@ -754,9 +797,9 @@ func (p *GOAPPlanner) traverseFulfillers(
 							continue
 						}
 						// compute remainings of path from start to end goal
-						bindErr := p.computeCostAndRemainingsOfPath(newPath, start, goal)
-						if bindErr != nil {
-							logGOAPDebug(color.InBold(color.InWhiteOverCyan(fmt.Sprintf("path encountered bind failure for action %s: %s", toInsert.DisplayName(), bindErr))))
+						computeErr := p.computeCostAndRemainingsOfPath(newPath, start, goal)
+						if computeErr != nil {
+							logGOAPDebug(color.InBold(color.InWhiteOverCyan(fmt.Sprintf("err for action %s: %s", toInsert.DisplayName(), computeErr))))
 							continue
 						}
 
