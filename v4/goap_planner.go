@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"regexp"
 	"strings"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 )
 
 var ErrGOAPNoValidBindEntity = errors.New("no entity matched selector")
+
+var METHOD_NOTATION_RE = regexp.MustCompile(`(\w+)\.(\w+)\((\w+)\)`)
 
 type GOAPPlanner struct {
 	e *Entity
@@ -138,6 +141,75 @@ func (p *GOAPPlanner) RegisterGenericEntitySelectors(selectors map[string]func(*
 	}
 }
 
+func (p *GOAPPlanner) createModalValDotNotation(node, stateKey string) GOAPModalVal {
+	return GOAPModalVal{
+		name:  node + "." + stateKey,
+		nodes: []string{node},
+		check: func(ws *GOAPWorldState) int {
+			return ws.GetModal(ws.ModalEntities[node], STATE).(*IntMap).m[stateKey]
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			state := ws.GetModal(ws.ModalEntities[node], STATE).(*IntMap).CopyOf()
+			if op == "=" {
+				state.m[stateKey] = x
+			}
+			ws.SetModal(ws.ModalEntities[node], STATE, &state)
+		},
+	}
+}
+
+func (p *GOAPPlanner) parseParenthesesNotation(valName string) (node, method, param string) {
+	matches := METHOD_NOTATION_RE.FindStringSubmatch(valName)
+	if len(matches) == 4 {
+		node = matches[1]
+		method = matches[2]
+		param = matches[3]
+	}
+	return
+}
+
+func (p *GOAPPlanner) createModalValInventoryHas(node, archetype string) GOAPModalVal {
+	items := p.e.World.systems["ItemSystem"].(*ItemSystem)
+	return GOAPModalVal{
+		name:  node + ".inventoryHas(" + archetype + ")",
+		nodes: []string{node},
+		check: func(ws *GOAPWorldState) int {
+			inv := ws.GetModal(ws.ModalEntities[node], INVENTORY).(*Inventory)
+			count := inv.CountName(archetype)
+			return count
+		},
+		effModalSet: func(ws *GOAPWorldState, op string, x int) {
+			inv := ws.GetModal(ws.ModalEntities[node], INVENTORY).(*Inventory).CopyOf()
+			switch op {
+			case "-":
+				inv.DebitNName(x, archetype)
+			case "=":
+				if x == 0 {
+					inv.DebitAllName(archetype)
+				} else {
+					inv.SetCountName(x, archetype)
+				}
+			case "+":
+				count := inv.CountName(archetype)
+				if count == 0 {
+					inv.Credit(items.CreateStackSimple(x, archetype))
+				} else {
+					inv.SetCountName(count+x, archetype)
+				}
+			}
+			ws.SetModal(ws.ModalEntities[node], INVENTORY, inv)
+		},
+	}
+}
+
+func (p *GOAPPlanner) createModalValMethodNotation(node, method, param string) GOAPModalVal {
+	switch method {
+	case "inventoryHas":
+		return p.createModalValInventoryHas(node, param)
+	}
+	panic(fmt.Sprintf("method %s does not exist for modal vals", method))
+}
+
 func (p *GOAPPlanner) selectorFromString(s string) func(*Entity) bool {
 	parts := strings.SplitN(s, ".", 2)
 	if len(parts) != 2 {
@@ -200,15 +272,38 @@ func (p *GOAPPlanner) AddActions(actions ...*GOAPAction) {
 		// link up modal setters for effs matching modal varnames
 		for varName := range action.effs {
 			p.actionAffectsVar(action, varName)
+			// basic pre-added modal val (simple string, no dots)
 			if modal, ok := p.modalVals[varName]; ok {
 				logGOAPDebug("[][][]     adding modal setter for %s", varName)
 				action.effModalSetters[varName] = modal.effModalSet
+			} else {
+				// this modal doesn't exist yet - does it have a special notation?
+				// method notation? aka villager.hasInventory(bow)
+				if METHOD_NOTATION_RE.MatchString(varName) {
+					node, method, param := p.parseParenthesesNotation(varName)
+					logGOAPDebug("[][][]     adding modal setter for %s", varName)
+					modal := p.createModalValMethodNotation(node, method, param)
+					p.modalVals[varName] = modal
+					action.effModalSetters[varName] = modal.effModalSet
+				} else if parts := strings.SplitN(varName, ".", 2); len(parts) == 2 {
+					// dot STATE intmap notation? aka field.tilled
+					node := parts[0]
+					key := parts[1]
+					logGOAPDebug("[][][]     adding modal setter for %s", varName)
+					// create modal val
+					modal := p.createModalValDotNotation(node, key)
+					p.modalVals[varName] = modal
+					action.effModalSetters[varName] = modal.effModalSet
+				}
 			}
 		}
 		// link up modal checks for pres matching modal varnames
 		for _, tg := range action.pres.temporalGoals {
 			for varName := range tg.vars {
 				if modal, ok := p.modalVals[varName]; ok {
+					// NOTE: this will pick up the generated special notation modals too
+					// since they were just added to p.modalVals
+					logGOAPDebug("[][][]     adding modal check for %s", varName)
 					action.preModalChecks[varName] = modal.check
 				}
 			}

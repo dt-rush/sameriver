@@ -1149,12 +1149,6 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	items := NewItemSystem(nil)
 	inventories := NewInventorySystem()
 	w.RegisterSystems(ps, items, inventories)
-	const (
-		STATE = GENERICTAGS + 1 + iota
-	)
-	w.RegisterComponents([]any{
-		STATE, INTMAP, "STATE",
-	})
 
 	//
 	// item system init
@@ -1346,7 +1340,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			},
 		},
 		"effs": map[string]int{
-			"fieldTilled,=": 1,
+			"field.tilled,=": 1,
 		},
 	})
 
@@ -1425,7 +1419,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 
 	// TODO: this would derive from a utility, not be hardcoded
 	goal := map[string]int{
-		"fieldTilled,=": 1,
+		"field.tilled,=": 1,
 	}
 
 	runAPlan := func(expect bool) (dt_ms float64) {

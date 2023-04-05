@@ -35,10 +35,14 @@ to lay the materials by the fire and go do the build wherever it is, or craft ri
 
 
 
-[ ] IDEA GEMATRIA
+[x] IDEA GEMATRIA
 only consider actions whose nodes resolve aka would succeed in binding.
 
 [ ] IDEA GEM3000
+
+implemented the below but instead of bb used STATE intmap
+oh, we didn't do inventoryHas(archetype) or .inventoryHasTag(tagstr) or .aggro()
+
 bind the modal val node from bb if we specify the varName with a dot, like field.tilled, it'll automatically go into modalEntity["field"].GetIntMap(STATE).m["tilled"]
 this opens up a whole bunch of nice notations, like if we wanted to maybe ask a villager for an item they're carrying, like villager.inventoryHas(bow) would resolve the inventory check for the modal entity villager and the archetype name "bow", or villager.inventoryHasTag(weapon), or animal.aggro, which would check the STATE map for its enemies and return 1 if we are in it
 

@@ -135,6 +135,7 @@ func NewWorld(spec map[string]any) *World {
 	// register basic components
 	w.RegisterComponents([]any{
 		GENERICTAGS, TAGLIST, "GENERICTAGS",
+		STATE, INTMAP, "STATE",
 		POSITION, VEC2D, "POSITION",
 		BOX, VEC2D, "BOX",
 	})
