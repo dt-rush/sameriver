@@ -38,7 +38,7 @@ to lay the materials by the fire and go do the build wherever it is, or craft ri
 [x] IDEA GEMATRIA
 only consider actions whose nodes resolve aka would succeed in binding.
 
-[ ] IDEA GEM3000
+[x] IDEA GEM3000
 
 implemented the below but instead of bb used STATE intmap
 oh, we didn't do inventoryHas(archetype) or .inventoryHasTag(tagstr) or .aggro()
