@@ -1275,6 +1275,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 	// so really, this would happen not before the planning as the BindEntitySelectors() call below,
 	// but this RegisterGenericEntitySelectors() call would happen on setup of the planner itself
 	p := NewGOAPPlanner(e)
+
 	p.RegisterGenericEntitySelectors(map[string]func(*Entity) bool{
 		// any ox
 		"ox": func(candidate *Entity) bool {
