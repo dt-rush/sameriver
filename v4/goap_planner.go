@@ -41,7 +41,7 @@ func NewGOAPPlanner(e *Entity) *GOAPPlanner {
 	}
 }
 
-func (p *GOAPPlanner) testBindResolve(nodes []string) (bindErr error) {
+func (p *GOAPPlanner) tryBindResolve(nodes []string) (bindErr error) {
 	pos := p.e.GetVec2D(POSITION)
 	box := p.e.GetVec2D(BOX)
 	world := p.e.World
@@ -92,7 +92,7 @@ func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start boo
 				logGOAPDebug(color.InPurple("|"))
 				logGOAPDebug(color.InPurple(fmt.Sprintf("--->>> binding modal entity %s...", node)))
 			}
-			// if we already called testBindResolve on this action, we don't wan to recompute the selector
+			// if we already called tryBindResolve on this action, we don't wan to recompute the selector
 			// that it ran
 			if cached, ok := p.selectorResultCache[node]; ok {
 				ws.ModalEntities[node] = cached
@@ -551,7 +551,7 @@ func (p *GOAPPlanner) traverseFulfillers(
 					}
 					// if action affects var, ok, sure, but does a node resolve for it?
 					// try to bind:
-					bindErr := p.testBindResolve(append(action.otherNodes, action.Node))
+					bindErr := p.tryBindResolve(append(action.otherNodes, action.Node))
 					if bindErr != nil {
 						logGOAPDebug(color.InBold(color.InYellow(fmt.Sprintf("although action %s affects var %s, it cannot bind: %s", action.Name, varName, bindErr))))
 						continue
@@ -653,6 +653,8 @@ func (p *GOAPPlanner) Plan(
 
 	defer func() {
 		p.boundSelectorsFlipflop = false
+		// we especially must clear this between Plan() calls
+		p.selectorResultCache = make(map[string]*Entity)
 	}()
 
 	// we may be writing to this with modal vals as we explore and don't want

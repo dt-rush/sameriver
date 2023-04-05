@@ -1398,6 +1398,9 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			func(e *Entity) bool {
 				return e.GetTagList(GENERICTAGS).Has("ox")
 			})
+		if closestOxToField != nil {
+			Logger.Printf("closest ox to field: (position: %v)%v", *closestOxToField.GetVec2D(POSITION), closestOxToField)
+		}
 		e.SetMind("plan.ox", closestOxToField)
 	}
 	tillPlanBindEntities := func() {
