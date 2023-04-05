@@ -16,6 +16,9 @@ try another comparable genericselector node that passes the generic filter)
 
 Introducing hysteresis for bind-selecting nodes based on previous failures during the execution of a plan can make the system more resilient and adaptive. By avoiding nodes that have caused a plan to fail, the planner can learn from its mistakes and try alternative nodes that may be more suitable for the current situation. This approach is especially useful when dealing with dynamic environments where conditions may change, and the same action might have different outcomes depending on the state of the world and the entities involved.
 
+the hysteresis is valuable especially because say some seemingly optimal ox, in order to get it to the field, requires going near bandits. the plan would break due to fight-flight utility supercession during the action "leadOxTOField", which has the bound "ox" as its node. then we would have hysteresis, so we would go get another less optimal ox that may not involve going near the bandits, and we can bring it to the field and farm.
+
+
 
 
 
