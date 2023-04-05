@@ -4,17 +4,22 @@ https://chat.openai.com/chat/e4bb4965-c043-4788-bd71-0abc19fa240e
 IDEA GARTH VADER:
 fallback to generic selector if more specific bound selector doesn't work
 
+Adding a fallback mechanism to use a generic selector when a more specific bound selector doesn't return any valid entity is a good approach. This allows the system to be more adaptable when the optimal choice isn't available, and ensures the planner can still generate a valid plan. This can be particularly useful in situations where the environment or the state of the entities is dynamic and may change during runtime.
+
+
+
 
 
 IDEA GODZILLA:
 histeresis for bind-selecting nodes that failed to interact and broke the plan (we will
 try another comparable genericselector node that passes the generic filter)
 
+Introducing hysteresis for bind-selecting nodes based on previous failures during the execution of a plan can make the system more resilient and adaptive. By avoiding nodes that have caused a plan to fail, the planner can learn from its mistakes and try alternative nodes that may be more suitable for the current situation. This approach is especially useful when dealing with dynamic environments where conditions may change, and the same action might have different outcomes depending on the state of the world and the entities involved.
 
 
 
 
-IDEA GREMLIN:
+[x] IDEA GREMLIN:
 TODO: add rules, valid ranges for IntMap values, so in Set() we can validate these
 values being set in a STATE intmap, ultimately so that State can enforce some operations it's impervious to, more often than any other use case, eg:
 
