@@ -1190,6 +1190,9 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 				"components": map[ComponentID]any{
 					POSITION: positions[i],
 					BOX:      Vec2D{3, 2},
+					STATE: map[string]int{
+						"yoked": 0,
+					},
 				},
 				"tags": []string{"ox"},
 			})
@@ -1241,7 +1244,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			},
 		},
 		"effs": map[string]int{
-			"oxYoked,=": 1,
+			"ox.yoked,=": 1,
 		},
 	})
 	oxplow := NewGOAPAction(map[string]any{
@@ -1253,7 +1256,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 				"ox.in(field),=": 1,
 			},
 			map[string]int{
-				"oxYoked,=": 1,
+				"ox.yoked,=": 1,
 			},
 		},
 		"effs": map[string]int{
