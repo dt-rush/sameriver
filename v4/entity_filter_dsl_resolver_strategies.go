@@ -1,5 +1,40 @@
 package sameriver
 
+/*
+This file implements the identifier resolver functionality for the
+Entity Filter DSL. The parser recognizes expressions that are structured
+like a series of function calls, but it does not differentiate between the
+different types of notation that can be used to reference different types of
+values. Instead, it just identifies a series of functions and their arguments,
+like "F(x, y) && G(z); H(q)". The identifier resolver is responsible for
+interpreting these expressions (x, y, z, q) and determining the appropriate value
+to pass to the implementation predicate/sort funcs.
+
+To accomplish this, the identifier resolver supports several different types
+of notation.
+
+"self" refers to the current entity
+
+"mind.field" and "bb.village4.huntingParty" allow the user to look up values
+in the entity's mind or a named blackboard, respectively.
+
+Entity-access notation, like
+
+"bb.village4.fisherman[position]" (component access)
+
+or
+
+"mind.friend<mood>" (state access),
+
+... allows the user to access specific components or state values associated with
+the entity.
+
+This file contains two resolver types: EntityResolver and
+WorldResolver, which implement the IdentifierResolver interface and provide
+functionality for resolving identifiers in the context of an entity or the
+entire world, respectively.
+*/
+
 import "strings"
 
 type IdentifierResolver interface {
@@ -10,66 +45,66 @@ type EntityResolver struct {
 	e *Entity
 }
 
-func (er *EntityResolver) Resolve(identifier string) any {
-	parts := strings.SplitN(identifier, ".", 2)
+type WorldResolver struct {
+	w *World
+}
 
-	entityAccess := func(entity *Entity, bracket string, accessor string) any {
-		switch bracket {
-		case "[":
-			ct := entity.World.em.components
-			componentID, ok := ct.stringsRev[accessor]
-			if !ok {
-				logDSLError("Component %s doesn't exist for DSL expression \"%s\"", accessor, identifier)
-			}
-			return entity.GetVal(componentID)
-		case "<":
-			key := accessor
-			state := entity.GetIntMap(STATE)
-			if !state.Has(key) {
-				logDSLError("Entity %s doesn't have state key %s to resolve DSL expression \"%s\"", entity, accessor, identifier)
-			}
-			return entity.GetIntMap(STATE).Get(key)
-		}
+func valueOrEntityAccess(value any, identifier string) any {
+	bracket := ""
+	switch {
+	case strings.ContainsRune(identifier, '['):
+		bracket = "["
+	case strings.ContainsRune(identifier, '<'):
+		bracket = "<"
+	default:
+		return value
+	}
+
+	split := strings.Split(identifier, bracket)
+	object, accessor := split[0], split[1]
+	accessor = accessor[:len(accessor)-1]
+
+	entity, entityOk := value.(*Entity)
+	if !entityOk {
+		logDSLError("for expression %s, what appears to be entity access notation did not have an entity as its object (%s is not an entity)", identifier, object)
 		return nil
 	}
 
-	valueOrEntityAccess := func(value any) any {
-		bracket := ""
-		switch {
-		case strings.Contains(identifier, "["):
-			bracket = "["
-		case strings.Contains(identifier, "<"):
-			bracket = "<"
-		default:
-			// else if no access notation, this is just a value, return early
-			return value
+	switch bracket {
+	case "[":
+		ct := entity.World.em.components
+		componentID, ok := ct.stringsRev[accessor]
+		if !ok {
+			logDSLError("Component %s doesn't exist for DSL expression \"%s\"", accessor, identifier)
+			return nil
 		}
-		// parse the actual access notation by splitting at the bracket
-		split := strings.Split(identifier, bracket)
-		object, accessor := split[0], split[1]
-		// chop the hanging close bracket off the end >:3
-		accessor = accessor[:len(accessor)-1]
-		// the type of the value any we got as param must be an entity if we're
-		// using entity access notation, eg. self for self[position]
-		// must be an entity, or mind.bestFriend for mind.bestFriend[mood]
-		// must be an entity
-		entity, entityOk := value.(*Entity)
-		if !entityOk {
-			logDSLError("for expression %s, what appears to be entity access notation did not have an entity as its object (%s is not an entity)", identifier, object)
+		return entity.GetVal(componentID)
+	case "<":
+		key := accessor
+		state := entity.GetIntMap(STATE)
+		if !state.Has(key) {
+			logDSLError("Entity %s doesn't have state key %s to resolve DSL expression \"%s\"", entity, accessor, identifier)
+			return nil
 		}
-		return entityAccess(entity, bracket, accessor)
+		return entity.GetIntMap(STATE).Get(key)
 	}
+
+	return nil
+}
+
+func (er *EntityResolver) Resolve(identifier string) any {
+	parts := strings.SplitN(identifier, ".", 2)
 
 	switch parts[0] {
 	case "self":
 		if len(parts) > 1 {
-			return valueOrEntityAccess(er.e)
+			return valueOrEntityAccess(er.e, identifier)
 		}
 		return er.e
 	case "mind":
 		if len(parts) > 1 {
 			key := parts[1]
-			return valueOrEntityAccess(er.e.GetMind(key))
+			return valueOrEntityAccess(er.e.GetMind(key), identifier)
 		}
 	case "bb":
 		if len(parts) > 1 {
@@ -77,16 +112,12 @@ func (er *EntityResolver) Resolve(identifier string) any {
 			if len(bbParts) > 1 {
 				bbname := bbParts[0]
 				key := bbParts[1]
-				return valueOrEntityAccess(er.e.World.Blackboard(bbname).Get(key))
+				return valueOrEntityAccess(er.e.World.Blackboard(bbname).Get(key), identifier)
 			}
 		}
 	}
 
 	return nil
-}
-
-type WorldResolver struct {
-	w *World
 }
 
 func (wr *WorldResolver) Resolve(identifier string) any {
@@ -98,7 +129,7 @@ func (wr *WorldResolver) Resolve(identifier string) any {
 			if len(bbParts) > 1 {
 				bbname := bbParts[0]
 				key := bbParts[1]
-				return wr.w.Blackboard(bbname).Get(key)
+				return valueOrEntityAccess(wr.w.Blackboard(bbname).Get(key), identifier)
 			}
 		}
 	}
