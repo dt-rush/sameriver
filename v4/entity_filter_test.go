@@ -84,3 +84,41 @@ func TestEntityFilterDSLParser(t *testing.T) {
 	}
 	Logger.Printf("%s", ast)
 }
+
+func TestEntityFilterDSLEvaluator(t *testing.T) {
+	w := testingWorld()
+	ox := w.Spawn(map[string]any{
+		"components": map[ComponentID]any{
+			POSITION: Vec2D{0, 0},
+			BOX:      Vec2D{3, 2},
+			STATE: map[string]int{
+				"yoked": 0,
+			},
+		},
+		"tags": []string{"ox"},
+	})
+
+	// Initialize parser and evaluator with your custom function maps
+	parser := &EntityFilterDSLParser{}
+	evaluator := NewEntityFilterDSLEvaluator(EntityFilterDSLPredicates, EntityFilterDSLSorts)
+
+	expression := "HasTags(ox)"
+
+	// Parse and evaluate the expression
+	ast, err := parser.Parse(expression)
+	if err != nil {
+		t.Fatalf("Failed to parse expression: %s", err)
+	}
+
+	resolver := &EntityResolver{entity: ox}
+	filter, _ := evaluator.Evaluate(ast, resolver)
+
+	// Filter entities using the generated filter function
+	result := w.FilterAllEntities(filter)
+
+	// Check if the filtered list contains the expected ox entity
+	if len(result) != 1 || result[0] != ox {
+		t.Fatalf("Failed to select ox entity: got %v", result)
+	}
+	Logger.Printf("result of HasTags(ox): %v", result)
+}

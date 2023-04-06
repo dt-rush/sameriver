@@ -139,6 +139,12 @@ func (e *Entity) HasComponents(names ...ComponentID) bool {
 	return has
 }
 
+func (e *Entity) DistanceFrom(x *Entity) float64 {
+	iPos, iBox := e.GetVec2D(POSITION), e.GetVec2D(BOX)
+	jPos, jBox := x.GetVec2D(POSITION), x.GetVec2D(BOX)
+	return RectDistance(*iPos, *iBox, *jPos, *jBox)
+}
+
 func (e *Entity) String() string {
 	return fmt.Sprintf("{id:%d, tags:%s, components:%s}",
 		e.ID,
