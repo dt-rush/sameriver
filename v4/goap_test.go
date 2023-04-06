@@ -1311,7 +1311,7 @@ func TestGOAPPlanFarmer2000(t *testing.T) {
 			*planField.GetVec2D(POSITION),
 			*planField.GetVec2D(BOX),
 			func(e *Entity) bool {
-				return e.GetTagList(GENERICTAGS).Has("ox") && e.GetIntMap(STATE).ValCanBeSetTo("yoked", 1)
+				return e.HasTag("ox") && e.GetIntMap(STATE).ValCanBeSetTo("yoked", 1)
 			})
 		if closestOxToField != nil {
 			Logger.Printf("closest ox to field: (position: %v)%v", *closestOxToField.GetVec2D(POSITION), closestOxToField)

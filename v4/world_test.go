@@ -365,7 +365,7 @@ func TestWorldPredicateEntities(t *testing.T) {
 		}
 	}
 	isTree := func(e *Entity) bool {
-		return w.EntityHasTag(e, "tree")
+		return e.HasTag("tree")
 	}
 
 	w.Update(FRAME_MS / 2)

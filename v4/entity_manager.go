@@ -115,24 +115,6 @@ func (m *EntityManager) createEntitiesWithTagListIfNeeded(tag string) {
 	}
 }
 
-func (m *EntityManager) EntityHasComponent(e *Entity, name ComponentID) bool {
-	b, _ := e.ComponentBitArray.GetBit(uint64(m.components.ixs[name]))
-	return b
-}
-
-func (m *EntityManager) EntityHasComponents(e *Entity, names ...ComponentID) bool {
-	has := true
-	for _, name := range names {
-		b, _ := e.ComponentBitArray.GetBit(uint64(m.components.ixs[name]))
-		has = has && b
-	}
-	return has
-}
-
-func (m *EntityManager) EntityHasTag(e *Entity, tag string) bool {
-	return e.GetTagList(GENERICTAGS).Has(tag)
-}
-
 // apply the given tags to the given entity
 func (m *EntityManager) TagEntity(e *Entity, tags ...string) {
 	for _, tag := range tags {

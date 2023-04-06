@@ -122,7 +122,7 @@ func EntityManagerInterfaceTestEntityHasComponent(
 
 	pos := Vec2D{11, 11}
 	e := testingSpawnPosition(em, pos)
-	if !em.EntityHasComponent(e, POSITION) {
+	if !e.HasComponent(POSITION) {
 		t.Fatal("failed to set or get entity component bit array")
 	}
 }
@@ -173,7 +173,7 @@ func EntityManagerInterfaceTestTagUntagEntity(
 	if empty {
 		t.Fatal("failed to find Spawned entity in EntitiesWithTag")
 	}
-	if !em.EntityHasTag(e, tag) {
+	if !e.HasTag(tag) {
 		t.Fatal("EntityHasTag() saw entity as untagged")
 	}
 	em.UntagEntity(e, tag)
@@ -181,7 +181,7 @@ func EntityManagerInterfaceTestTagUntagEntity(
 	if !empty {
 		t.Fatal("entity was still in EntitiesWithTag after untag")
 	}
-	if em.EntityHasTag(e, tag) {
+	if e.HasTag(tag) {
 		t.Fatal("EntityHasTag() saw entity as still having removed tag")
 	}
 }

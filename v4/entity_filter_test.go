@@ -66,7 +66,13 @@ func TestEntityFilterDSLLexer(t *testing.T) {
 		fmt.Println()
 	}
 
-	lex(`HasTag("ox") && CanBe("yoked", 1); Closest(mind.field)`)
-	lex(`HasTags(bb.village1.enemyTags)`)
+	lex(`HasTag(ox) && CanBe(yoked, 1); Closest(mind.field)`)
+	lex(`First(HasTag(ox) && CanBe(yoked, 1); Closest(mind.field))`)
+	lex(`VillagerOf(self.village)`)
+	lex(`!VillagerOf(self.village)`)
+	lex(`Is(bb.village1.strongest)`)
+	lex(`HasTag(deer); Closest(self)`)
+	lex(`HasTags(ox,legendary)`)
 	lex(`Closest(self)`)
+
 }

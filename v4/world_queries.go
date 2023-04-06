@@ -20,7 +20,7 @@ func (w *World) EntitiesWithTags(tags ...string) []*Entity {
 	for e := range w.GetCurrentEntitiesSet() {
 		has := true
 		for _, tag := range tags {
-			has = has && w.EntityHasTag(e, tag)
+			has = has && e.HasTag(tag)
 		}
 		if has {
 			entities = append(entities, e)
@@ -37,7 +37,7 @@ func (w *World) ActiveEntitiesWithTags(tags ...string) []*Entity {
 		}
 		has := true
 		for _, tag := range tags {
-			has = has && w.EntityHasTag(e, tag)
+			has = has && e.HasTag(tag)
 		}
 		if has {
 			entities = append(entities, e)
@@ -62,7 +62,6 @@ func (w *World) ClosestEntityFilter(pos Vec2D, box Vec2D, filter func(*Entity) b
 			closest = e
 		}
 	}
-
 	return closest
 }
 

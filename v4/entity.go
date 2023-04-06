@@ -19,14 +19,6 @@ type Entity struct {
 	mind              map[string]any
 }
 
-func (e *Entity) HasComponent(name ComponentID) bool {
-	return e.World.EntityHasComponent(e, name)
-}
-
-func (e *Entity) HasComponents(names ...ComponentID) bool {
-	return e.World.EntityHasComponents(e, names...)
-}
-
 func (e *Entity) LogicUnitName(name string) string {
 	return fmt.Sprintf("entity-logic-%d-%s", e.ID, name)
 }
@@ -119,6 +111,32 @@ func (e *Entity) GetMind(name string) any {
 
 func (e *Entity) SetMind(name string, val any) {
 	e.mind[name] = val
+}
+
+func (e *Entity) HasTag(tag string) bool {
+	return e.GetTagList(GENERICTAGS).Has(tag)
+}
+
+func (e *Entity) HasTags(tags ...string) bool {
+	has := true
+	for _, t := range tags {
+		has = has && e.GetTagList(GENERICTAGS).Has(t)
+	}
+	return has
+}
+
+func (e *Entity) HasComponent(name ComponentID) bool {
+	b, _ := e.ComponentBitArray.GetBit(uint64(e.World.em.components.ixs[name]))
+	return b
+}
+
+func (e *Entity) HasComponents(names ...ComponentID) bool {
+	has := true
+	for _, name := range names {
+		b, _ := e.ComponentBitArray.GetBit(uint64(e.World.em.components.ixs[name]))
+		has = has && b
+	}
+	return has
 }
 
 func (e *Entity) String() string {

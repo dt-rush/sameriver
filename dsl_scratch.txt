@@ -1,0 +1,461 @@
+Here are some expressions in a DSL for entity selection/filtering i want to use in my game engine. I've written a lexer so far.
+
+(ignore the wrapping call to lex(), it just echoes the input stirng and then lexes it token by token)
+
+lex(`HasTag(ox) && CanBe(yoked, 1); Closest(mind.field)`)
+lex(`First(HasTag(ox) && CanBe(yoked, 1); Closest(mind.field))`)
+	lex(`VillagerOf(self.village)`)
+	lex(`!VillagerOf(self.village)`)
+	lex(`Is(bb.village1.strongest)`)
+	lex(`HasTag(deer); Closest(self)`)
+	lex(`HasTags(ox,legendary)`)
+	lex(`Closest(self)`)
+
+with the corresponding test output:
+
+```
+HasTag(ox) && CanBe(yoked, 1); Closest(mind.field)
+Function: HasTag
+OpenParen:
+Identifier: ox
+CloseParen:
+And:
+Function: CanBe
+OpenParen:
+Identifier: yoked
+Comma:
+Identifier: 1
+CloseParen:
+Semicolon:
+Function: Closest
+OpenParen:
+Identifier: mind.field
+CloseParen:
+
+First(HasTag(ox) && CanBe(yoked, 1); Closest(mind.field))
+Function: First
+OpenParen:
+Function: HasTag
+OpenParen:
+Identifier: ox
+CloseParen:
+And:
+Function: CanBe
+OpenParen:
+Identifier: yoked
+Comma:
+Identifier: 1
+CloseParen:
+Semicolon:
+Function: Closest
+OpenParen:
+Identifier: mind.field
+CloseParen:
+CloseParen:
+
+VillagerOf(self.village)
+Function: VillagerOf
+OpenParen:
+Identifier: self.village
+CloseParen:
+
+!VillagerOf(self.village)
+Not:
+Function: VillagerOf
+OpenParen:
+Identifier: self.village
+CloseParen:
+
+Is(bb.village1.strongest)
+Function: Is
+OpenParen:
+Identifier: bb.village1.strongest
+CloseParen:
+
+HasTag(deer); Closest(self)
+Function: HasTag
+OpenParen:
+Identifier: deer
+CloseParen:
+Semicolon:
+Function: Closest
+OpenParen:
+Identifier: self
+CloseParen:
+
+HasTags(ox,legendary)
+Function: HasTags
+OpenParen:
+Identifier: ox
+Comma:
+Identifier: legendary
+CloseParen:
+
+Closest(self)
+Function: Closest
+OpenParen:
+Identifier: self
+CloseParen:
+```
+
+and here is the lexer code:
+
+```
+package sameriver
+
+import (
+	"strings"
+	"text/scanner"
+	"unicode"
+)
+
+type EntityFilterDSLToken int
+
+const (
+	EOF EntityFilterDSLToken = iota
+	Not
+	And
+	Or
+	Function
+	Identifier
+	OpenParen
+	CloseParen
+	Comma
+	Semicolon
+)
+
+func (t EntityFilterDSLToken) String() string {
+	switch t {
+	case EOF:
+		return "EOF"
+	case Not:
+		return "Not"
+	case And:
+		return "And"
+	case Or:
+		return "Or"
+	case Function:
+		return "Function"
+	case Identifier:
+		return "Identifier"
+	case OpenParen:
+		return "OpenParen"
+	case CloseParen:
+		return "CloseParen"
+	case Comma:
+		return "Comma"
+	case Semicolon:
+		return "Semicolon"
+	default:
+		return "Unknown"
+	}
+}
+
+type EntityFilterDSLLexer struct {
+	scanner.Scanner
+	token       EntityFilterDSLToken
+	stringValue string
+}
+
+func (l *EntityFilterDSLLexer) IsEOF() bool {
+	return l.Peek() == scanner.EOF
+}
+
+func (l *EntityFilterDSLLexer) TokenText() string {
+	return l.stringValue
+}
+
+func (l *EntityFilterDSLLexer) Lex() EntityFilterDSLToken {
+	l.stringValue = ""
+	l.token = EOF
+
+	for !l.IsEOF() {
+		r := l.Peek()
+
+		if unicode.IsSpace(r) {
+			l.Next()
+			continue
+		}
+
+		switch {
+		case r == '!':
+			l.Next()
+			l.token = Not
+		case r == '&':
+			l.Next()
+			if l.Peek() == '&' {
+				l.Next()
+				l.token = And
+			} else {
+				l.token = EOF
+			}
+		case r == '|':
+			l.Next()
+			if l.Peek() == '|' {
+				l.Next()
+				l.token = Or
+			} else {
+				l.token = EOF
+			}
+		case r == '(':
+			l.Next()
+			l.token = OpenParen
+		case r == ')':
+			l.Next()
+			l.token = CloseParen
+		case r == ',':
+			l.Next()
+			l.token = Comma
+		case r == ';':
+			l.Next()
+			l.token = Semicolon
+		case unicode.IsUpper(r):
+			str := l.scanString(func(r rune) bool {
+				return unicode.IsLetter(r)
+			})
+			if str != "" {
+				l.stringValue = str
+				l.token = Function
+			} else {
+				l.token = EOF
+			}
+		case unicode.IsLower(r) || unicode.IsDigit(r) || r == '.':
+			str := l.scanString(func(r rune) bool {
+				return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.'
+			})
+			if str != "" {
+				l.stringValue = str
+				l.token = Identifier
+			} else {
+				l.token = EOF
+			}
+		default:
+			l.token = EOF
+			l.Next()
+		}
+
+		if l.token != EOF {
+			break
+		}
+	}
+
+	return l.token
+}
+
+func (l *EntityFilterDSLLexer) scanString(isValid func(rune) bool) string {
+	var buf strings.Builder
+	for !l.IsEOF() && isValid(l.Peek()) {
+		buf.WriteRune(l.Next())
+	}
+	return buf.String()
+}
+```
+
+you'll notice i took a design decision to have it very simple so that i get output like this:
+
+```
+for: HasTags(bb.village1.enemyTags)
+
+tokens:
+
+Function: HasTags
+OpenParen:
+Identifier: bb.village1.enemyTags
+CloseParen:
+```
+
+the Function names are not tokenized to specific types of functions, and the Identifiers are not split on dots and are just plain strings.
+
+So, we have this lexer.
+
+How can we read the stream of tokens and make an AST object? One where we would be able to basically assign our own functions to evaluate the nodes in the tree?
+
+Operators would be implemented with a func signature like
+
+```
+func Or(pa func(*Entity) bool, pb func(*Entity) bool) func(*Entity) bool {
+  return func (e *Entity) bool { return pa(e) || pb(e)
+}
+```
+
+or
+
+```
+func Not(p func(*Entity) bool) func(*Entity) bool {
+  return func(e *Entity) bool { return !p(e) }
+}
+```
+
+while a function might be either of type Predicate or Sort.
+
+```
+Predicates: [CanBe, Is, HasTag, HasTags, VillagerOf]
+Sorts: [Closest]
+```
+
+The functions that we would implement to resolve the value of a Predicate in the tree would be of type `func(args []string) func(*Entity)bool`
+
+For example:
+
+```
+// e is in scope as the *Entity that this DSL expression is being evaluated from
+// the perspective *of*. We would do something like 
+//     e.EntityFilterDSL("CanBe(yoked, 1)")
+
+var EntityFilterDSLPredicates := map[string]any {
+	"CanBe": func(args []string) func(*Entity) bool {
+	    k, v := args[0], args[1]
+		return func (x *Entity) bool {
+			return e.GetIntMap(STATE).ValCanBeSetTo(k, v)
+		}
+	},
+	"HasTags": func(args []string) func(*Entity) bool {
+		return func (x *Entity) bool {
+			return e.HasTags(args...)
+		}
+	},
+	"Is": func(args[]string) func(*Entity) bool {
+		return func(x *Entity) bool {
+			lookup := resolveIdentifier(args[0])
+			if ent, ok := lookup.(*Entity); ok {
+				return true
+			}
+			return false
+		}
+	},
+}
+```
+
+the resolveIdentifier() function will be left for me to work out.
+
+ We would basically write one handler for Function call operations, with a switch statement inside on the string, the lexer.TokenText(), that would invoke different methods in the above map, passing them the comma-separated tokens as a spread array of strings for the variadic signature.
+
+Closest, as a sort, would yield a comparator we can use to sort a list of entities or find the min/max element.
+
+```
+var EntityFilterDSLSorts := map[string]any {
+"Closest": func(args ...string) func(a, b *Entity) int {
+	pole := resolveIdentifier(args[0]).(*Entity)
+	return func(a, b *Entity) int {
+		return a.DistanceFrom(pole) - b.DistanceFrom(pole)
+	}
+}
+```
+
+So, given these maps, I would like to define our basic correct syntax for an expression in our DSL as:
+
+`<Predicate Expr>;<Sort Expr>`
+
+How can I verify the expected structure as output by the lexer? Does this happen during parsing? Maybe we need to generate a grammar map with regexes?
+
+Finally, consider the tree induced by this expression should always be with the Semicolon token has highest precedence (or i dunno if i'm using precedence right here). The tree's root should be the semicolon. Because it's there that we do something different on the left and right.
+
+For the predicate expressions, we evaluated the function calls - which produced func(*Entity)bool's, and we passed these up through their operators which just wrap such predicate functions, and we came to the top with one big predicate function with nested babies inside. 
+
+But for the sort expression, there's just one function call - in this case to Closest (we can define as many as we want later).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+func (w *World) ClosestEntityFilter(pos Vec2D, box Vec2D, filter func(*Entity) bool) *Entity {
+	closest := (*Entity)(nil)
+	closestDistance := math.MaxFloat64
+	for _, e := range w.FilterAllEntities(filter) {
+		entityPos := e.GetVec2D(POSITION)
+		entityBox := e.GetVec2D(BOX)
+		distance := RectDistance(pos, box, *entityPos, *entityBox)
+		if distance < closestDistance {
+			closestDistance = distance
+			closest = e
+		}
+	}
+	return closest
+}
+
+// e is in scope as the *Entity that this DSL expression is being evaluated from
+// the perspective *of*.
+
+var EntityFilterDSLFuncs := map[string]any {
+
+}
+
+func (pos Vec2D, box Vec2D, filter func(*Entity) bool) *Entity {
+	closest := (*Entity)(nil)
+	closestDistance := math.MaxFloat64
+	for _, e := range w.FilterAllEntities(filter) {
+		entityPos := e.GetVec2D(POSITION)
+		entityBox := e.GetVec2D(BOX)
+		distance := RectDistance(pos, box, *entityPos, *entityBox)
+		if distance < closestDistance {
+			closestDistance = distance
+			closest = e
+		}
+	}
+	return closest
+}
+
+
