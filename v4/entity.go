@@ -140,9 +140,14 @@ func (e *Entity) HasComponents(names ...ComponentID) bool {
 }
 
 func (e *Entity) DistanceFrom(x *Entity) float64 {
-	iPos, iBox := e.GetVec2D(POSITION), e.GetVec2D(BOX)
-	jPos, jBox := x.GetVec2D(POSITION), x.GetVec2D(BOX)
-	return RectDistance(*iPos, *iBox, *jPos, *jBox)
+	ePos, eBox := e.GetVec2D(POSITION), e.GetVec2D(BOX)
+	xPos, xBox := x.GetVec2D(POSITION), x.GetVec2D(BOX)
+	return RectDistance(*ePos, *eBox, *xPos, *xBox)
+}
+
+func (e *Entity) DistanceFromRect(pos Vec2D, box Vec2D) float64 {
+	ePos, eBox := e.GetVec2D(POSITION), e.GetVec2D(BOX)
+	return RectDistance(*ePos, *eBox, pos, box)
 }
 
 func (e *Entity) String() string {

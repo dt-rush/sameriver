@@ -33,6 +33,14 @@ func SubLogFunction(
 	}
 }
 
+var logError = SubLogFunction(
+	"ERROR", true,
+	func(s string) string { return color.InRed(color.InBold(s)) })
+
+var logDSLError = SubLogFunction(
+	"ERROR", true,
+	func(s string) string { return color.InRed("[Entity Filter DSL]" + s) })
+
 var logWarning = SubLogFunction(
 	"WARNING", true,
 	func(s string) string { return color.InYellow(color.InBold(s)) })

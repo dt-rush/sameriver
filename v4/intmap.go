@@ -43,3 +43,8 @@ func (m *IntMap) Set(k string, v int) {
 func (m *IntMap) Get(k string) int {
 	return m.m[k]
 }
+
+func (m *IntMap) Has(k string) bool {
+	_, ok := m.m[k]
+	return ok
+}
