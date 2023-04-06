@@ -47,11 +47,12 @@ type ComponentTable struct {
 	// the size of the tables
 	capacity int
 
-	nextIx  int
-	ixs     map[ComponentID]int
-	ixsRev  map[int]ComponentID
-	strings map[ComponentID]string
-	kinds   map[ComponentID]ComponentKind
+	nextIx     int
+	ixs        map[ComponentID]int
+	ixsRev     map[int]ComponentID
+	strings    map[ComponentID]string
+	stringsRev map[string]ComponentID
+	kinds      map[ComponentID]ComponentKind
 
 	// data storage
 	vec2DMap           map[ComponentID][]Vec2D
@@ -73,10 +74,11 @@ func NewComponentTable(capacity int) *ComponentTable {
 	return &ComponentTable{
 		capacity: capacity,
 
-		ixs:     make(map[ComponentID]int),
-		ixsRev:  make(map[int]ComponentID),
-		strings: make(map[ComponentID]string),
-		kinds:   make(map[ComponentID]ComponentKind),
+		ixs:        make(map[ComponentID]int),
+		ixsRev:     make(map[int]ComponentID),
+		strings:    make(map[ComponentID]string),
+		stringsRev: make(map[string]ComponentID),
+		kinds:      make(map[ComponentID]ComponentKind),
 
 		vec2DMap:           make(map[ComponentID][]Vec2D),
 		boolMap:            make(map[ComponentID][]bool),
@@ -167,6 +169,7 @@ func (ct *ComponentTable) expand(n int) {
 func (ct *ComponentTable) RegisterComponentStrings(strings map[ComponentID]string) {
 	for name, str := range strings {
 		ct.strings[name] = str
+		ct.stringsRev[str] = name
 	}
 }
 
@@ -226,6 +229,7 @@ func (ct *ComponentTable) addComponent(kind ComponentKind, name ComponentID, str
 
 	// note string
 	ct.strings[name] = str
+	ct.stringsRev[str] = name
 }
 
 func (ct *ComponentTable) addCCC(name ComponentID, custom CustomContiguousComponent) {

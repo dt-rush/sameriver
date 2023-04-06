@@ -72,28 +72,47 @@ func TestDSLBasic(t *testing.T) {
 	})
 	w.Blackboard("somebb").Set("field", field)
 
+	//
 	// entity
-	filterExpr := "HasTag(ox)"
-	sortExpr := "HasTag(ox); Closest(self)"
+	//
+
 	// Test Entity.DSLFilter
-	entities, err := e.DSLFilter(filterExpr)
+	Logger.Println("1")
+	entities, err := e.DSLFilter("HasTag(ox)")
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, oxen, entities)
+
+	Logger.Println("2")
+	entities, err = e.DSLFilter("HasComponent(position)")
+	assert.NoError(t, err)
+	assert.Equal(t, 5, len(entities)) // e, item.yoke, 2 oxen, field
+
+	Logger.Println("3")
+	oxen[0].GetIntMap(STATE).Set("yoked", 1)
+	entities, err = e.DSLFilter("State(yoked, 1)")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(entities))
+	assert.Equal(t, oxen[0], entities[0])
+
 	// Test Entity.DSLFilterSort
-	filterSortEntities, err := e.DSLFilterSort(sortExpr)
+	Logger.Println("4")
+	filterSortEntities, err := e.DSLFilterSort("HasTag(ox); Closest(self)")
 	assert.NoError(t, err)
 	assert.Equal(t, oxen[0], filterSortEntities[0]) // a close
 	assert.Equal(t, oxen[1], filterSortEntities[1]) // b far
 
+	//
 	// world
-	filterExpr = "HasTag(ox)"
-	sortExpr = "HasTag(ox); Closest(bb.somebb.field)"
+	//
+
 	// Test World.DSLFilter
-	worldEntities, err := w.DSLFilter(filterExpr)
+	Logger.Println("5")
+	worldEntities, err := w.DSLFilter("HasTag(ox)")
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, oxen, worldEntities)
 	// Test World.DSLFilterSort
-	worldFilterSortEntities, err := w.DSLFilterSort(sortExpr)
+	Logger.Println("6")
+	worldFilterSortEntities, err := w.DSLFilterSort("HasTag(ox); Closest(bb.somebb.field)")
 	assert.NoError(t, err)
 	assert.Equal(t, oxen[1], worldFilterSortEntities[0]) // b close
 	assert.Equal(t, oxen[0], worldFilterSortEntities[1]) // a far
