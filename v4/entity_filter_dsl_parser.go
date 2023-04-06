@@ -1,5 +1,77 @@
 package sameriver
 
+/*
+EntityFilterDSLParser uses EntityFilterDSLLexer's token stream to build an AST
+of Node. Note that the grammar amounts to phrases like
+
+F(x)
+F(x, y)
+F(x, y) && G(z)
+F(x, y) && G(z); H(q)
+
+it's just ultimately this grammar, a kind of "SQL" in the sense of WHERE, ORDER BY:
+
+Expr            := PredicateExpr (Semicolon SortExpr)?
+PredicateExpr   := Not? Function (And PredicateExpr | Or PredicateExpr)?
+Function        := Identifier OpenParen Args CloseParen
+Args            := Identifier (Comma Identifier)*
+
+In which, crucially, the identifiers are just the strings between the commas.
+
+So Identifier can be any string (the whitespace gets trimmed) in the arguments
+of a function which begins with a capital letter.
+
+In the case of the Identifiers x, y, z, p in the examples above, they could be:
+
+F(x, y) as VillageWithdrawable(self, bow)
+
+G(z) as InVillageStocks(bow)
+
+H(q) as Closest(self)
+
+The evaluator that uses the Parser's output AST will evaluate the tree by using the
+functions in EntityFilterDSLPredicates or EntityFilterDSLSorts and in these,
+they *complete* the parsing of x, y, z, p in a way by finally either reading these
+strings-between-commas-in-parens (Identifiers) as
+
+- Atoi if it's expected to be an int
+- ParseFloat() if they expect a float
+- as a string if it's just a string (no quotes!)
+
+	OR they try to use the evaluator's passed-in *resolver* strategy
+	such as EntityResolver or WorldResolver.
+
+The IdentifierResolver interface with func
+
+Resolve(identifier string) any
+
+... is what transforms an identifier raw string like
+
+self
+bow
+mind.focusedChest<locked>
+bb.village.huntingParty.position
+
+... into *whatever it resolves to* according to the object(accessor)? notation
+
+objects:
+
+self is *Entity
+bow is *Item
+mind.focusedChest is *Entity
+bb.village.huntingParty.position is *Vec2D
+
+accessors:
+
+<locked> is an accessor
+
+For the full notation/details of identifier resolution and object(accessor)? notation,
+see
+
+entity_filter_dsl_resolver_strategies.go
+
+*/
+
 import (
 	"errors"
 	"fmt"
