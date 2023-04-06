@@ -2,12 +2,12 @@ package sameriver
 
 type EntityFilterDSLEvaluator struct {
 	predicates map[string](func(args []string, resolver IdentifierResolver) func(*Entity) bool)
-	sorts      map[string](func(args []string, resolver IdentifierResolver) func(a, b *Entity) int)
+	sorts      map[string](func(args []string, resolver IdentifierResolver) func(xs []*Entity) func(i, j int) bool)
 }
 
 func NewEntityFilterDSLEvaluator(
 	predicates map[string](func(args []string, resolver IdentifierResolver) func(*Entity) bool),
-	sorts map[string](func(args []string, resolver IdentifierResolver) func(a, b *Entity) int),
+	sorts map[string](func(args []string, resolver IdentifierResolver) func(xs []*Entity) func(i, j int) bool),
 ) *EntityFilterDSLEvaluator {
 	return &EntityFilterDSLEvaluator{
 		predicates: predicates,
@@ -15,7 +15,7 @@ func NewEntityFilterDSLEvaluator(
 	}
 }
 
-func (e *EntityFilterDSLEvaluator) Evaluate(n *Node, resolver IdentifierResolver) (filter func(*Entity) bool, sort func(a, b *Entity) int) {
+func (e *EntityFilterDSLEvaluator) Evaluate(n *Node, resolver IdentifierResolver) (filter func(*Entity) bool, sort func(xs []*Entity) func(i, j int) bool) {
 	if n.Type != NodeExpr {
 		panic("Node type must be NodeExpr")
 	}
@@ -72,7 +72,7 @@ func (e *EntityFilterDSLEvaluator) evaluatePredicate(n *Node, resolver Identifie
 	panic("Invalid node type for predicate")
 }
 
-func (e *EntityFilterDSLEvaluator) evaluateSort(n *Node, resolver IdentifierResolver) func(a, b *Entity) int {
+func (e *EntityFilterDSLEvaluator) evaluateSort(n *Node, resolver IdentifierResolver) func(xs []*Entity) func(i, j int) bool {
 	if n.Type != NodeSortExpr {
 		panic("Node type must be NodeSortExpr")
 	}

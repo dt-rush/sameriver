@@ -14,7 +14,7 @@ func TestBlackboardWorldEntities(t *testing.T) {
 	bb := w.Blackboard(bname)
 
 	setupVillageBB := func() {
-		bb.State["roles"] = []string{"farmer", "baker", "fisher", "crafts"}
+		bb.Set("roles", []string{"farmer", "baker", "fisher", "crafts"})
 	}
 
 	spawnVillager := func(rolePreference string) {
@@ -25,10 +25,10 @@ func TestBlackboardWorldEntities(t *testing.T) {
 		reactThreat := func(data map[string]any) {
 			// ( interrupt current plan if we were in GOAP )
 			// add ourselves to responders
-			if _, ok := bb.State["threatResponders"]; !ok {
-				bb.State["threatResponders"] = make(map[*Entity]bool)
+			if bb.Has("threatResponders") {
+				bb.Set("threatResponders", make(map[*Entity]bool))
 			}
-			responders := bb.State["threatResponders"].(map[*Entity]bool)
+			responders := bb.Get("threatResponders").(map[*Entity]bool)
 			responders[e] = true
 			// more GOAP:
 			// check bb threat location and add it to our mind to be used
@@ -37,8 +37,8 @@ func TestBlackboardWorldEntities(t *testing.T) {
 
 		reactMorning := func() {
 			Logger.Printf("villager %d reacting to morning :)", e.ID)
-			todayRoles := bb.State["todayRoles"].(map[*Entity]string)
-			unfilledRoles := bb.State["unfilledRoles"].(map[string]bool)
+			todayRoles := bb.Get("todayRoles").(map[*Entity]string)
+			unfilledRoles := bb.Get("unfilledRoles").(map[string]bool)
 			selectRole := func(role string) {
 				todayRoles[e] = role
 				unfilledRoles[role] = false
@@ -56,7 +56,7 @@ func TestBlackboardWorldEntities(t *testing.T) {
 				}
 			}
 			// otherwise, if all roles are already filled, select one at random
-			allRoles := bb.State["roles"].([]string)
+			allRoles := bb.Get("roles").([]string)
 			randomRole := allRoles[rand.Intn(len(allRoles))]
 			selectRole(randomRole)
 		}
@@ -86,13 +86,13 @@ func TestBlackboardWorldEntities(t *testing.T) {
 		morningTimer := NewTimeAccumulator(500)
 
 		villageBBMorning := func() {
-			bb.State["unfilledRoles"] = map[string]bool{
+			bb.Set("unfilledRoles", map[string]bool{
 				"farmer": true,
 				"baker":  true,
 				"fisher": true,
 				"crafts": true,
-			}
-			bb.State["todayRoles"] = make(map[*Entity]string)
+			})
+			bb.Set("todayRoles", make(map[*Entity]string))
 			bb.Events.Publish("village-events", map[string]any{
 				"kind": "morning",
 			})
@@ -121,7 +121,7 @@ func TestBlackboardWorldEntities(t *testing.T) {
 	time.Sleep(550 * time.Millisecond)
 	w.Update(FRAME_MS / 2)
 	w.Update(FRAME_MS / 2)
-	for e, role := range bb.State["todayRoles"].(map[*Entity]string) {
+	for e, role := range bb.Get("todayRoles").(map[*Entity]string) {
 		Logger.Printf("%d will be doing '%s'", e.ID, role)
 	}
 }

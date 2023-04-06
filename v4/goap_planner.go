@@ -192,7 +192,7 @@ func (p *GOAPPlanner) selectorFromString(s string) func(*Entity) bool {
 			return other == p.e.GetMind(bbkey).(*Entity)
 		} else {
 			// else treat it as a world bb
-			return other == p.e.World.Blackboard(bbname).State[bbkey].(*Entity)
+			return other == p.e.World.Blackboard(bbname).Get(bbkey).(*Entity)
 		}
 	}
 }
