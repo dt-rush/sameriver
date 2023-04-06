@@ -74,5 +74,13 @@ func TestEntityFilterDSLLexer(t *testing.T) {
 	lex(`HasTag(deer); Closest(self)`)
 	lex(`HasTags(ox,legendary)`)
 	lex(`Closest(self)`)
+}
 
+func TestEntityFilterDSLParser(t *testing.T) {
+	parser := &EntityFilterDSLParser{}
+	ast, err := parser.Parse(`HasTag(ox) && CanBe(yoked, 1); Closest(mind.field)`)
+	if err != nil {
+		t.Fatalf("Why did the expression return an error? it's valid!")
+	}
+	Logger.Printf("%s", ast)
 }
