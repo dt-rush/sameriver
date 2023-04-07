@@ -26,7 +26,11 @@ func TestEntityFilterDSLLexer(t *testing.T) {
 	lex(`HasTags(ox,legendary)`)
 	lex(`Closest(self)`)
 	lex(`WithinDistance(self, self[hearingDistance])`)
+	lex(`HasInv(mind.topWantedItem)`)
 	lex(`HasInvAny(mind.wantedItems)`)
+	lex(`HasInvTagsAny(tool, food, book)`)
+	// a coinosseur:
+	lex(`HasInvTags(tool,legendary)`)
 }
 
 func TestEntityFilterDSLParser(t *testing.T) {

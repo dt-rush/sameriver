@@ -25,6 +25,8 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 	},
 	// State :: string -> int -> *Entity -> bool
 	"State": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
+		// TODO: instead of just args[1] = an int, what if its' a string
+		// that can* be an int, but can also be like >3, or <=80
 		k, v := args[0], args[1]
 		vi, err := strconv.Atoi(v)
 		if err != nil {
@@ -135,5 +137,38 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 		}
 		logDSLError("WithinDistance() invocation was neither WithinDistance(*Vec2D,*Vec2D,float64) nor WithinDistance(*Entity,float64). Got WithinDistance(%s)", strings.Join(args, ","))
 		return nil
+	},
+	// RectOverlap :: IdentResolve<*Vec2D> -> IdentResolve<*Vec2D> -> *Entity -> bool
+	"RectOverlap": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
+		return func(e *Entity) bool {
+			arg0 := resolver.Resolve(args[0])
+			arg1 := resolver.Resolve(args[1])
+
+			pos, posOk := arg0.(*Vec2D)
+			if !posOk {
+				// (don't care if it's a pointer or the value itself)
+				var posVal Vec2D
+				posVal, posOk = arg0.(Vec2D)
+				pos = &posVal
+			}
+
+			box, boxOk := arg1.(*Vec2D)
+			if !boxOk {
+				// (don't care if it's a pointer or the value itself)
+				var boxVal Vec2D
+				boxVal, boxOk = arg1.(Vec2D)
+				box = &boxVal
+			}
+
+			if !posOk || !boxOk {
+				logDSLError("RectOverlap() invocation requires arguments that resolve to *Vec2D. Got RectOverlap(%s)", strings.Join(args, ","))
+				return false
+			}
+
+			ePos := e.GetVec2D(POSITION)
+			eBox := e.GetVec2D(BOX)
+
+			return RectIntersectsRect(*pos, *box, *ePos, *eBox)
+		}
 	},
 }
