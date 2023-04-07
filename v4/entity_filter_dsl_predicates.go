@@ -1,13 +1,8 @@
 package sameriver
 
 import (
-	"errors"
 	"strings"
 )
-
-var ErrDSLEntityAccessFailure = errors.New("value specified is not *Entity")
-var ErrDSLExpectedTypeFailure = errors.New("identifier doesn't resolve to type wanted according to siganture (IdentResolve<t>)")
-var ErrDSLNumericParseFailure = errors.New("identifier doesn't parse but should be int/float")
 
 var EntityFilterDSLPredicates = map[string](func(args []string, resolver IdentifierResolver) func(*Entity) bool){
 
