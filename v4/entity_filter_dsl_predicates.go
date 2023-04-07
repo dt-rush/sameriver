@@ -2,43 +2,43 @@ package sameriver
 
 import (
 	"errors"
-	"fmt"
-	"strconv"
 	"strings"
 )
 
 var ErrDSLEntityAccessFailure = errors.New("value specified is not *Entity")
-var ErrDSLExpectedTypeFailure = errors.New("identifier doesn't resolve to type wanted")
+var ErrDSLExpectedTypeFailure = errors.New("identifier doesn't resolve to type wanted according to siganture (IdentResolve<t>)")
+var ErrDSLNumericParseFailure = errors.New("identifier doesn't parse but should be int/float")
 
 var EntityFilterDSLPredicates = map[string](func(args []string, resolver IdentifierResolver) func(*Entity) bool){
 
-	// CanBe :: string -> int -> *Entity -> bool
 	"CanBe": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
-		k, v := args[0], args[1]
-		vi, err := strconv.Atoi(v)
+		argsTyped, err := DSLAssertArgTypes("CanBe(string, int)", args, resolver)
 		if err != nil {
-			logDSLError("CanBe got non-numeric argument in EntityFilter DSL: %s; will not behave properly.", v)
+			logDSLError("%s", err)
 		}
+		k, v := argsTyped[0].(string), argsTyped[1].(int)
 		return func(x *Entity) bool {
-			return x.HasComponent(STATE) && x.GetIntMap(STATE).ValCanBeSetTo(k, vi)
+			return x.HasComponent(STATE) && x.GetIntMap(STATE).ValCanBeSetTo(k, v)
 		}
 	},
-	// State :: string -> int -> *Entity -> bool
 	"State": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
-		// TODO: instead of just args[1] = an int, what if its' a string
-		// that can* be an int, but can also be like >3, or <=80
-		k, v := args[0], args[1]
-		vi, err := strconv.Atoi(v)
+		argsTyped, err := DSLAssertArgTypes("State(string, int)", args, resolver)
 		if err != nil {
-			logDSLError("State got non-numeric argument in EntityFilter DSL: %s; will not behave properly.", v)
+			logDSLError("%s", err)
 		}
+		k, v := argsTyped[0].(string), argsTyped[1].(int)
 		return func(x *Entity) bool {
-			return x.HasComponent(STATE) && x.GetIntMap(STATE).Get(k) == vi
+			// TODO: instead of just args[1] = an int, what if its' a string
+			// that can* be an int, but can also be like >3, or <=80
+			return x.HasComponent(STATE) && x.GetIntMap(STATE).Get(k) == v
 		}
 	},
-	// HasComponent :: string -> *Entity -> bool
 	"HasComponent": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
-		componentStr := strings.ToUpper(args[0])
+		argsTyped, err := DSLAssertArgTypes("HasComponent(string)", args, resolver)
+		if err != nil {
+			logDSLError("%s", err)
+		}
+		componentStr := strings.ToUpper(argsTyped[0].(string))
 		return func(x *Entity) bool {
 			w := x.World
 			ct := w.em.components
@@ -46,125 +46,77 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 			return x.HasComponent(component)
 		}
 	},
-	// HasTag :: string -> *Entity -> bool
 	"HasTag": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
+		argsTyped, err := DSLAssertArgTypes("HasTag(string)", args, resolver)
+		if err != nil {
+			logDSLError("%s", err)
+		}
+		tag := argsTyped[0].(string)
 		return func(x *Entity) bool {
-			return x.HasTag(args[0])
+			return x.HasTag(tag)
 		}
 	},
-	// HasTags :: []string -> *Entity -> bool
-	// do we have the tags
 	"HasTags": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
+		argsTyped, err := DSLAssertArgTypes("HasTags([]string)", args, resolver)
+		if err != nil {
+			logDSLError("%s", err)
+		}
+		tags := argsTyped[0].([]string)
 		return func(x *Entity) bool {
-			return x.HasTags(args...)
+			return x.HasTags(tags...)
 		}
 	},
-	// Is :: IdentResolve<*Entity> -> *Entity -> bool
-	// are we a certain identity by pointer
 	"Is": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
+		argsTyped, err := DSLAssertArgTypes("Is(IdentResolve<*Entity>)", args, resolver)
+		if err != nil {
+			logDSLError("%s", err)
+		}
+		entity := argsTyped[0].(*Entity)
 		return func(x *Entity) bool {
-			lookup := resolver.Resolve(args[0])
-			if ent, ok := lookup.(*Entity); ok {
-				return x == ent
-			}
-			return false
+			return x == entity
 		}
 	},
-	// WithinDistance :: IdentResolve<*Entity> -> float64 -> *Entity -> bool
-	// OR
-	// WithinDistance :: IdentResolve<*Vec2D> -> IdentResolve<*Vec2D> -> float64 -> *Entity -> bool
 	"WithinDistance": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
-		// overloading hell yeah F U Rob Pike we smuggled it in
-
-		// ultimately we need two *Vec2D and a float,
-		// so a signature is some way of transforming
-		// our args into posp, boxp, d
-		signatures := []func() (posp, boxp *Vec2D, d float64, err error){
-			func() (posp, boxp *Vec2D, d float64, err error) {
-				// try WithinDistance(*Entity, float64)
-				ent, entOk := resolver.Resolve(args[0]).(*Entity)
-				d, err = strconv.ParseFloat(args[1], 64)
-				if err != nil {
-					return nil, nil, -1, err
-				}
-				if entOk {
-					posp = ent.GetVec2D(POSITION)
-					boxp = ent.GetVec2D(BOX)
-					return posp, boxp, d, nil
-				} else {
-					return nil, nil, -1, fmt.Errorf("%w for %s", ErrDSLEntityAccessFailure, args[0])
-				}
-			},
-			func() (posp, boxp *Vec2D, d float64, err error) {
-				// try WithinDistance(Vec2D, Vec2D, float64)
-				arg0 := resolver.Resolve(args[0])
-				arg1 := resolver.Resolve(args[1])
-				posp, posOk := arg0.(*Vec2D)
-				if !posOk {
-					// (don't care if it's a pointer or the value itself)
-					var pos Vec2D
-					pos, posOk = arg0.(Vec2D)
-					posp = &pos // re-pointer it lol
-				}
-				if !posOk {
-					return nil, nil, -1, fmt.Errorf("%w for \"%s\" should be *Vec2D", ErrDSLExpectedTypeFailure, args[0])
-				}
-				boxp, boxOk := arg1.(*Vec2D)
-				if !boxOk {
-					var box Vec2D
-					// (don't care if it's a pointer or the value itself)
-					box, boxOk = arg0.(Vec2D)
-					boxp = &box // re-pointer it lol
-				}
-				if !boxOk {
-					return nil, nil, -1, fmt.Errorf("%w for \"%s\" should be *Vec2D", ErrDSLExpectedTypeFailure, args[1])
-				}
-				d, err = strconv.ParseFloat(args[2], 64)
-				if err != nil {
-					return nil, nil, -1, err
-				}
-				return posp, boxp, d, nil
-			},
+		signatures := []string{
+			"WithinDistance(IdentResolve<*Entity>, float64)",
+			"WithinDistance(IdentResolve<*Vec2D>, IdentResolve<*Vec2D>, float64)",
 		}
-
-		for _, sig := range signatures {
-			posp, boxp, d, err := sig()
-			if err == nil {
-				return func(e *Entity) bool {
-					return e.DistanceFromRect(*posp, *boxp) < d
-				}
+		argsTyped, i, err := DSLAssertOverloadedArgTypes(signatures, args, resolver)
+		if err != nil {
+			logDSLError("WithinDistance: %s", err)
+			logDSLError("Failed to match argument types for WithinDistance(%s)", strings.Join(args, ", "))
+			return nil
+		}
+		switch i {
+		case 0:
+			entity := argsTyped[0].(*Entity)
+			distance := argsTyped[1].(float64)
+			return func(e *Entity) bool {
+				pos := entity.GetVec2D(POSITION)
+				box := entity.GetVec2D(BOX)
+				return e.DistanceFromRect(*pos, *box) < distance
 			}
+		case 1:
+			pos := argsTyped[0].(*Vec2D)
+			box := argsTyped[1].(*Vec2D)
+			distance := argsTyped[2].(float64)
+			return func(e *Entity) bool {
+				return e.DistanceFromRect(*pos, *box) < distance
+			}
+		default:
+			logDSLError("Invalid arguments for WithinDistance, no matching signature found. Expected signatures: %v, got: WithinDistance(%s)", signatures, strings.Join(args, ", "))
+			return nil
 		}
-		logDSLError("WithinDistance() invocation was neither WithinDistance(*Vec2D,*Vec2D,float64) nor WithinDistance(*Entity,float64). Got WithinDistance(%s)", strings.Join(args, ","))
-		return nil
 	},
-	// RectOverlap :: IdentResolve<*Vec2D> -> IdentResolve<*Vec2D> -> *Entity -> bool
 	"RectOverlap": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
+		argsTyped, err := DSLAssertArgTypes("RectOverlap", args, resolver)
+		if err != nil {
+			logDSLError("%s", err)
+		}
+		pos := argsTyped[0].(*Vec2D)
+		box := argsTyped[1].(*Vec2D)
+
 		return func(e *Entity) bool {
-			arg0 := resolver.Resolve(args[0])
-			arg1 := resolver.Resolve(args[1])
-
-			pos, posOk := arg0.(*Vec2D)
-			if !posOk {
-				// (don't care if it's a pointer or the value itself)
-				var posVal Vec2D
-				posVal, posOk = arg0.(Vec2D)
-				pos = &posVal
-			}
-
-			box, boxOk := arg1.(*Vec2D)
-			if !boxOk {
-				// (don't care if it's a pointer or the value itself)
-				var boxVal Vec2D
-				boxVal, boxOk = arg1.(Vec2D)
-				box = &boxVal
-			}
-
-			if !posOk || !boxOk {
-				logDSLError("RectOverlap() invocation requires arguments that resolve to *Vec2D. Got RectOverlap(%s)", strings.Join(args, ","))
-				return false
-			}
-
 			ePos := e.GetVec2D(POSITION)
 			eBox := e.GetVec2D(BOX)
 
