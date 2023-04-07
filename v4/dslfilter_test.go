@@ -88,6 +88,11 @@ func TestDSLBasic(t *testing.T) {
 	assert.Equal(t, 5, len(entities)) // e, item.yoke, 2 oxen, field
 
 	Logger.Println("3")
+	entities, err = e.DSLFilter("WithinDistance(self, 15)")
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(entities)) // e, item.yoke, close ox
+
+	Logger.Println("4")
 	oxen[0].GetIntMap(STATE).Set("yoked", 1)
 	entities, err = e.DSLFilter("State(yoked, 1)")
 	assert.NoError(t, err)
@@ -95,7 +100,7 @@ func TestDSLBasic(t *testing.T) {
 	assert.Equal(t, oxen[0], entities[0])
 
 	// Test Entity.DSLFilterSort
-	Logger.Println("4")
+	Logger.Println("5")
 	filterSortEntities, err := e.DSLFilterSort("HasTag(ox); Closest(self)")
 	assert.NoError(t, err)
 	assert.Equal(t, oxen[0], filterSortEntities[0]) // a close
@@ -106,12 +111,12 @@ func TestDSLBasic(t *testing.T) {
 	//
 
 	// Test World.DSLFilter
-	Logger.Println("5")
+	Logger.Println("6")
 	worldEntities, err := w.DSLFilter("HasTag(ox)")
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, oxen, worldEntities)
 	// Test World.DSLFilterSort
-	Logger.Println("6")
+	Logger.Println("7")
 	worldFilterSortEntities, err := w.DSLFilterSort("HasTag(ox); Closest(bb.somebb.field)")
 	assert.NoError(t, err)
 	assert.Equal(t, oxen[1], worldFilterSortEntities[0]) // b close

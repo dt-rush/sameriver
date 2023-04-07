@@ -33,10 +33,17 @@ func SubLogFunction(
 	}
 }
 
+/* uncork when needed?
 var logError = SubLogFunction(
 	"ERROR", true,
 	func(s string) string { return color.InRed(color.InBold(s)) })
+*/
 
+// we have come around to using ERROR LOGGING instead of just always panicing.
+// overall i think we should panic way less... Sometimes it's better to just log
+// the error in red, but *try* to continue to function. SOmething is broken and
+// probably/possibly might lead to a panic, but we keep moving and if it does happen,
+// the red bold log is right there, with the greppable prefix [ERROR] :)
 var logDSLError = SubLogFunction(
 	"ERROR", true,
 	func(s string) string { return color.InRed("[Entity Filter DSL]" + s) })

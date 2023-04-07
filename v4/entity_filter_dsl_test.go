@@ -25,6 +25,8 @@ func TestEntityFilterDSLLexer(t *testing.T) {
 	lex(`HasTag(deer); Closest(self)`)
 	lex(`HasTags(ox,legendary)`)
 	lex(`Closest(self)`)
+	lex(`WithinDistance(self, self[hearingDistance])`)
+	lex(`HasInvAny(mind.wantedItems)`)
 }
 
 func TestEntityFilterDSLParser(t *testing.T) {
