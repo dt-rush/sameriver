@@ -133,8 +133,10 @@ func NewBehaviourTree(name string, root *BTNode) *BehaviourTree {
 	// set the Tree reference
 	var refChildren func(node *BTNode)
 	refChildren = func(node *BTNode) {
-		if node.Init != nil {
+		if node.State == nil {
 			node.State = make(map[string]any)
+		}
+		if node.Init != nil {
 			node.Init(node)
 		}
 		node.Tree = bt

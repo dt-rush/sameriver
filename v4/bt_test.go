@@ -134,9 +134,13 @@ func TestBTAnyNodeFailure(t *testing.T) {
 		"anyRoot",
 		&BTNode{
 			Name: "Any",
+			Init: func(self *BTNode) {
+				perm := rand.Perm(len(self.Children))
+				self.State["perm"] = perm
+			},
 			Selector: func(self *BTNode) int {
 				// Implement your logic for selecting the Any node
-				perm := rand.Perm(len(self.Children))
+				perm := self.State["perm"].([]int)
 				for _, i := range perm {
 					child := self.Children[i]
 					if btr.RunDecorators(child) {
@@ -151,11 +155,18 @@ func TestBTAnyNodeFailure(t *testing.T) {
 				for _, ch := range self.Children {
 					failed = failed && ch.Failed
 				}
+				if failed {
+					self.Init(self)
+				}
 				return failed
 			},
 			CompletionPredicate: func(self *BTNode) bool {
 				// complete if one has run
-				return self.CompletedChildren > 0
+				complete := self.CompletedChildren > 0
+				if complete {
+					self.Init(self)
+				}
+				return complete
 			},
 			Children: []*BTNode{
 				{Name: "fail1", Decorators: []string{"fail"}},
@@ -363,8 +374,28 @@ func TestBTRandomPriorityLoopNode(t *testing.T) {
 		"randomRoot",
 		&BTNode{
 			Name: "Random",
+			Init: func(self *BTNode) {
+				self.State["ix"] = rand.Intn(len(self.Children))
+			},
 			Selector: func(self *BTNode) int {
-				return rand.Intn(len(self.Children))
+				ix := self.State["ix"].(int)
+				if !btr.RunDecorators(self.Children[ix]) {
+					return -1
+				}
+				return ix
+			},
+			WhenChildDone: func(self *BTNode) {
+				self.Init(self)
+			},
+			IsFailed: func(self *BTNode) bool {
+				// fail if all fail
+				for _, child := range self.Children {
+					if !child.Failed {
+						return false
+					}
+				}
+				self.Init(self)
+				return true
 			},
 			CompletionPredicate: func(self *BTNode) bool {
 				return false
@@ -387,14 +418,24 @@ func TestBTRandomPriorityLoopNode(t *testing.T) {
 				minPriority := math.MaxFloat64
 				selectedIdx := -1
 				for idx, child := range self.Children {
-					if !child.Complete && !child.Failed {
-						if child.State["priority"].(float64) < minPriority {
-							minPriority = child.State["priority"].(float64)
-							selectedIdx = idx
-						}
+					valid := !child.Complete && !child.Failed
+					prio := child.State["priority"].(float64) < minPriority
+					dec := btr.RunDecorators(child)
+					if valid && prio && dec {
+						minPriority = child.State["priority"].(float64)
+						selectedIdx = idx
 					}
 				}
 				return selectedIdx
+			},
+			IsFailed: func(self *BTNode) bool {
+				// fail if all fail
+				for _, child := range self.Children {
+					if !child.Failed {
+						return false
+					}
+				}
+				return true
 			},
 			CompletionPredicate: func(self *BTNode) bool {
 				for _, child := range self.Children {
@@ -425,7 +466,20 @@ func TestBTRandomPriorityLoopNode(t *testing.T) {
 				if self.State["currentIndex"] == nil {
 					self.State["currentIndex"] = 0
 				}
-				return self.State["currentIndex"].(int)
+				ix := self.State["currentIndex"].(int)
+				if !btr.RunDecorators(self.Children[ix]) {
+					return -1
+				}
+				return ix
+			},
+			IsFailed: func(self *BTNode) bool {
+				// fail if any fail
+				for _, child := range self.Children {
+					if child.Failed {
+						return true
+					}
+				}
+				return false
 			},
 			CompletionPredicate: func(self *BTNode) bool {
 				if _, ok := self.State["N"]; !ok {
