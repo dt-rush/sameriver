@@ -1,8 +1,12 @@
 package sameriver
 
 import (
+	"fmt"
+	"math"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBTSimple(t *testing.T) {
@@ -348,3 +352,160 @@ func TestBTAllNode(t *testing.T) {
 		}
 	}
 }
+
+func TestBTRandomPriorityLoopNode(t *testing.T) {
+	w := testingWorld()
+
+	btr := NewBTRunner()
+
+	// Create and add randomRoot tree
+	randomRoot := NewBehaviourTree(
+		"randomRoot",
+		&BTNode{
+			Name: "Random",
+			Selector: func(self *BTNode) int {
+				return rand.Intn(len(self.Children))
+			},
+			CompletionPredicate: func(self *BTNode) bool {
+				return false
+			},
+			Children: []*BTNode{
+				{Name: "actionA"},
+				{Name: "actionB"},
+				{Name: "actionC"},
+			},
+		},
+	)
+	btr.trees["randomRoot"] = randomRoot
+
+	// Create and add priorityRoot tree
+	priorityRoot := NewBehaviourTree(
+		"priorityRoot",
+		&BTNode{
+			Name: "Priority",
+			Selector: func(self *BTNode) int {
+				minPriority := math.MaxFloat64
+				selectedIdx := -1
+				for idx, child := range self.Children {
+					if !child.Complete && !child.Failed {
+						if child.State["priority"].(float64) < minPriority {
+							minPriority = child.State["priority"].(float64)
+							selectedIdx = idx
+						}
+					}
+				}
+				return selectedIdx
+			},
+			CompletionPredicate: func(self *BTNode) bool {
+				for _, child := range self.Children {
+					if child.Complete {
+						return true
+					}
+				}
+				return false
+			},
+			Children: []*BTNode{
+				{Name: "actionD", State: map[string]any{"priority": 1.0}},
+				{Name: "actionE", State: map[string]any{"priority": 2.0}},
+				{Name: "actionF", State: map[string]any{"priority": 3.0}},
+			},
+		},
+	)
+	btr.trees["priorityRoot"] = priorityRoot
+
+	// Create and add loopRoot tree
+	loopRoot := NewBehaviourTree(
+		"loopRoot",
+		&BTNode{
+			Name: "Loop",
+			State: map[string]any{
+				"N": 3,
+			},
+			Selector: func(self *BTNode) int {
+				if self.State["currentIndex"] == nil {
+					self.State["currentIndex"] = 0
+				}
+				return self.State["currentIndex"].(int)
+			},
+			CompletionPredicate: func(self *BTNode) bool {
+				if _, ok := self.State["N"]; !ok {
+					// if no N, we loop forever
+					return false
+				}
+				// else, have we done N full sets?
+				loops := self.CompletedChildren / len(self.Children)
+				return loops >= self.State["N"].(int)
+			},
+			WhenChildDone: func(self *BTNode) {
+				// increment modulo
+				self.State["currentIndex"] = (self.State["currentIndex"].(int) + 1) % len(self.Children)
+				// when we wrap around, turn all back to Done false
+				if self.State["currentIndex"].(int) == 0 {
+					for _, ch := range self.Children {
+						ch.Complete = false
+					}
+				}
+			},
+			Children: []*BTNode{
+				{Name: "actionG"},
+				{Name: "actionH"},
+				{Name: "actionI"},
+			},
+		},
+	)
+	btr.trees["loopRoot"] = loopRoot
+
+	// the test itself
+	e := w.Spawn(nil)
+
+	// Helper function to run the behavior tree and collect executed nodes
+	var executedNodes map[string]bool
+	runAndCollectExecutedNodes := func(treeName string, iterations int) {
+		for i := 0; i < iterations; i++ {
+			result := btr.ExecuteBT(e, btr.trees[treeName])
+			if result != nil {
+				Logger.Println(result.Path)
+				result.Action.Done()
+				executedNodes[result.Action.Name] = true
+			} else {
+				Logger.Println("nil")
+			}
+		}
+	}
+
+	// Run each tree using the helper function
+
+	// run random 10 times cause the odds are crazy
+	randomPassed := false
+	for i := 0; i < 10; i++ {
+		executedNodes = make(map[string]bool)
+		runAndCollectExecutedNodes("randomRoot", 10)
+		if executedNodes["actionA"] && executedNodes["actionB"] && executedNodes["actionC"] {
+			randomPassed = true
+			break
+		}
+	}
+	if !randomPassed {
+		t.Error("Failed to run all required nodes after 10 tries")
+	}
+
+	runAndCollectExecutedNodes("priorityRoot", 1)
+	runAndCollectExecutedNodes("loopRoot", 4*len(loopRoot.Root.Children))
+
+	fmt.Printf("Executed nodes: %v", executedNodes)
+
+	expectedNodes := []string{"actionD", "actionG", "actionH", "actionI"}
+	for _, node := range expectedNodes {
+		assert.Contains(t, executedNodes, node, "expected node %q to be executed", node)
+	}
+}
+
+/*
+
+TODO:
+
+this is actually a decorator
+Cooldown: This composite node adds a cooldown period to its child, preventing the child from being executed until the cooldown has expired. This can help prevent entities from repeatedly performing certain actions too quickly, which could be unrealistic or unbalanced.
+
+Parallel: This composite node executes its children concurrently, allowing for simultaneous actions. For example, an entity could be moving and attacking at the same time. Note that parallel execution may be more complex to implement depending on your game engine.
+*/

@@ -30,7 +30,7 @@ type BTNode struct {
 	// the runs counter from the behaviour tree of in which run we last ran
 	// all the decorators to success (prevent recalculation when a parent node
 	// wanted to run the decorator first before running)
-	decoratorsCompletedInRun int
+	decoratorsSucceededInRun int
 	// if non-nil, this is a composite node; the selector will tell which
 	// child to select for running.
 	// (for Sequence, this is { return ChildrenCompleted })
@@ -48,6 +48,8 @@ type BTNode struct {
 	// for an All node, this is n.ChildrenCompleted == len(n.Children)
 	Complete            bool
 	CompletionPredicate func(self *BTNode) bool
+	WhenDone            func(self *BTNode)
+	WhenChildDone       func(self *BTNode)
 }
 
 func (n *BTNode) SetChildren(children []*BTNode) {
@@ -63,19 +65,24 @@ func (n *BTNode) SetChildren(children []*BTNode) {
 
 // when the currently-active action finishes, inform the tree
 func (n *BTNode) Done() {
+	// set flag
 	n.Complete = true
-	node := n.Parent
-	for node != nil {
-		node.CompletedChildren++
-		if node.CompletionPredicate != nil {
-			if node.CompletionPredicate(node) {
-				node.Complete = true
-				node = node.Parent
-			} else {
-				break
-			}
-		} else {
-			node = node.Parent
+	// callback
+	if n.WhenDone != nil {
+		n.WhenDone(n)
+	}
+	// percolate up
+	p := n.Parent
+	if p != nil && p.WhenChildDone != nil {
+		p.WhenChildDone(p)
+	}
+	// percolate up
+	if p != nil {
+		p.CompletedChildren++
+		// skip over those with nil CompletionPredicate up to the next
+		// parent that has a completion predicate
+		if p.CompletionPredicate != nil && p.CompletionPredicate(p) {
+			p.Done()
 		}
 	}
 }
@@ -189,7 +196,7 @@ func (btr *BTRunner) RunDecorators(node *BTNode) bool {
 			panic(fmt.Sprintf("Unknown decorator: %s", dstr))
 		}
 	}
-	node.decoratorsCompletedInRun = node.Tree.run
+	node.decoratorsSucceededInRun = node.Tree.run
 	return true
 }
 
@@ -210,12 +217,16 @@ func (btr *BTRunner) ExecuteBT(e *Entity, bt *BehaviourTree) *BTExecState {
 	}
 	// go til we reach the bottom
 	for node != nil {
-		// when we reach something that's done, our path ends in a dot.
-		// you should detect this and know your tree ran out of things to do,
-		// it ended up in a state where it doesn't have some other path,
-		// the thing it wants to do is actually already done.
+		// every node we visit, is on the path
+		// how beautiful
+		dotPath(node.Name)
+
 		if node.Complete {
-			dotPath(node.Name + ".")
+			// when we reach something that's done, our path ends in a dot.
+			// you should detect this and know your tree ran out of things to do,
+			// it ended up in a state where it doesn't have some other path,
+			// the thing it wants to do is actually already done.
+			state.Path += "."
 			state.Action = node
 			return state
 		}
@@ -229,18 +240,16 @@ func (btr *BTRunner) ExecuteBT(e *Entity, bt *BehaviourTree) *BTExecState {
 			node.Tree = bt
 		}
 		// run decorators (unless we ran them already this run, by a parent probing)
-		if len(node.Decorators) > 0 && node.decoratorsCompletedInRun != bt.run {
+		if len(node.Decorators) > 0 && node.decoratorsSucceededInRun != bt.run {
 			if !btr.RunDecorators(node) {
 				// we failed.
 				return nil
 			}
 		}
 		if node.Selector != nil {
-			dotPath(node.Name)
 			childIndex := node.Selector(node)
 			if childIndex >= 0 && childIndex < len(node.Children) {
 				child := node.Children[childIndex]
-				dotPath(child.Name)
 				node = child
 				continue
 			} else {
