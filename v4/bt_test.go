@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestBTConstruction(t *testing.T) {
+func TestBTSimple(t *testing.T) {
 	w := testingWorld()
 
 	btr := NewBTRunner()
@@ -13,9 +13,9 @@ func TestBTConstruction(t *testing.T) {
 	btr.RegisterDecorators([]BTDecorator{
 		BTDecorator{
 			Name: "planPlant",
-			Impl: func(node *BTNode) bool {
+			Impl: func(self *BTNode) bool {
 				// mock GOAP
-				node.SetChildren([]*BTNode{
+				self.SetChildren([]*BTNode{
 					{Name: "getHandplow"},
 					{Name: "goToField"},
 					{Name: "doHandplow"},
@@ -142,7 +142,16 @@ func TestBTAnyNodeFailure(t *testing.T) {
 				return -1
 			},
 			IsFailed: func(self *BTNode) bool {
-				return false
+				// failed if they all failed
+				failed := true
+				for _, ch := range self.Children {
+					failed = failed && ch.Failed
+				}
+				return failed
+			},
+			CompletionPredicate: func(self *BTNode) bool {
+				// complete if one has run
+				return self.CompletedChildren > 0
 			},
 			Children: []*BTNode{
 				{Name: "fail1", Decorators: []string{"fail"}},
@@ -197,6 +206,7 @@ func TestBTOrderedAnyNodeFailure(t *testing.T) {
 	orderedAnyRoot := NewBehaviourTree(
 		"orderedAnyRoot",
 		&BTNode{
+			// OrderedAny runs the first of its children whose decorators pass
 			Name: "OrderedAny",
 			Selector: func(self *BTNode) int {
 				// Implement your logic for selecting the OrderedAny node
@@ -208,7 +218,16 @@ func TestBTOrderedAnyNodeFailure(t *testing.T) {
 				return -1
 			},
 			IsFailed: func(self *BTNode) bool {
-				return false
+				// failed if they all failed
+				failed := true
+				for _, ch := range self.Children {
+					failed = failed && ch.Failed
+				}
+				return failed
+			},
+			CompletionPredicate: func(self *BTNode) bool {
+				// complete if one has run
+				return self.CompletedChildren > 0
 			},
 			Children: []*BTNode{
 				{Name: "fail1", Decorators: []string{"fail"}},
@@ -263,6 +282,7 @@ func TestBTAllNode(t *testing.T) {
 	allRoot := NewBehaviourTree(
 		"allRoot",
 		&BTNode{
+			// All composite node runs all of its children in a random order
 			Name: "All",
 			Init: func(self *BTNode) {
 				self.State["perm"] = rand.Perm(len(self.Children))

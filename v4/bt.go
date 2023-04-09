@@ -2,11 +2,14 @@ package sameriver
 
 import "fmt"
 
+// Decorators are used to modify or control the execution of their child nodes.
 type BTDecorator struct {
 	Name string
 	Impl func(self *BTNode) bool
 }
 
+// BTNode: A struct that represents a node in the Behavior Tree, either an action
+// or a composite node.
 type BTNode struct {
 	Tree *BehaviourTree
 
@@ -21,7 +24,8 @@ type BTNode struct {
 	IsFailed func(self *BTNode) bool
 
 	Name string
-	// decorators are just strings - either plains strings or... TODO: a DSL?
+	// decorators are just strings that index a BTDecorator in the BTRunner's map.
+	// either plains strings or... TODO: a DSL?
 	Decorators []string
 	// the runs counter from the behaviour tree of in which run we last ran
 	// all the decorators to success (prevent recalculation when a parent node
@@ -208,7 +212,7 @@ func (btr *BTRunner) ExecuteBT(e *Entity, bt *BehaviourTree) *BTExecState {
 	for node != nil {
 		// when we reach something that's done, our path ends in a dot.
 		// you should detect this and know your tree ran out of things to do,
-		// it ended up in a state where it doesn't have some other behaviour,
+		// it ended up in a state where it doesn't have some other path,
 		// the thing it wants to do is actually already done.
 		if node.Complete {
 			dotPath(node.Name + ".")
