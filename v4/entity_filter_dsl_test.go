@@ -35,7 +35,12 @@ func TestEntityFilterDSLLexer(t *testing.T) {
 
 func TestEntityFilterDSLParser(t *testing.T) {
 	parser := &EntityFilterDSLParser{}
-	ast, err := parser.Parse(`HasTag(ox) && CanBe(yoked, 1); Closest(mind.field)`)
+	// TODO: use ast from this call
+	_, err := parser.Parse(`HasTag(ox) && CanBe(yoked, 1); Closest(mind.field)`)
+	if err != nil {
+		t.Fatalf("Why did the expression return an error? it's valid!")
+	}
+	ast, err := parser.Parse(`HasTag(animal) && WithinDistance(self, 100) && !TimeSinceEventGt(mind.lastAnimalMetta, 10000)`)
 	if err != nil {
 		t.Fatalf("Why did the expression return an error? it's valid!")
 	}

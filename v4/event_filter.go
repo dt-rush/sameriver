@@ -1,5 +1,7 @@
 package sameriver
 
+type EventPredicate func(e Event) bool
+
 type EventFilter struct {
 	eventType string
 	predicate func(e Event) bool

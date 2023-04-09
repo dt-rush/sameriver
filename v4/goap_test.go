@@ -153,6 +153,8 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 
 	e := w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
+			POSITION:    Vec2D{0, 0},
+			BOX:         Vec2D{0.5, 0.5},
 			BOOZEAMOUNT: 0,
 		},
 	})
@@ -176,6 +178,7 @@ func TestGOAPGoalRemainingsOfPath(t *testing.T) {
 	}
 	drink := NewGOAPAction(map[string]any{
 		"name": "drink",
+		"node": "self",
 		"cost": 1,
 		"pres": map[string]int{
 			"EACH:hasBooze,>=": 1,

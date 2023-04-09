@@ -26,6 +26,20 @@ var typeAssertionFuncs = map[string]map[string]DSLArgTypeAssertionFunc{
 			}
 			return vec2D, nil
 		},
+		"[]*Vec2D": func(arg string, resolver IdentifierResolver) (any, error) {
+			vec2Ds, ok := resolver.Resolve(arg).([]*Vec2D)
+			if !ok {
+				return nil, errors.New("type assert failed")
+			}
+			return vec2Ds, nil
+		},
+		"*EventPredicate": func(arg string, resolver IdentifierResolver) (any, error) {
+			eventPredicate, ok := resolver.Resolve(arg).(*EventPredicate)
+			if !ok {
+				return nil, errors.New("type assert failed")
+			}
+			return eventPredicate, nil
+		},
 		// Add more types here...
 	},
 	// Add other rules for other parametrized types here...
@@ -42,6 +56,21 @@ func ExtractTypesFromSignature(signature string) ([]string, error) {
 	return types, nil
 }
 
+/*
+DSLAssertArgTypes is responsible for checking if the arguments match the
+expected types in a function signature. It uses the typeAssertionFuncs map to
+perform type assertions for parametrized types. When a parametrized type is
+encountered in the function signature, the type assertion function
+corresponding to the type is called, and it returns the resolved value if the
+assertion is successful.
+
+a signature is a string like
+
+WithinDistance(IdentResolve<*Entity>, int)
+InPolygon(IdentResolve<[]*Vec2D>)
+Closest(IdentResolve<*Entity>)
+WithinRect(IdentResolve<*Vec2D>,IdentResolve<*Vec2D>)
+*/
 func DSLAssertArgTypes(signature string, args []string, resolver IdentifierResolver) ([]any, error) {
 	expectedTypes, err := ExtractTypesFromSignature(signature)
 	if err != nil {

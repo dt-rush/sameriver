@@ -4,6 +4,9 @@ import (
 	"strings"
 )
 
+// given the Identifier strings as args,
+// the resolver strategy
+// , we return a func(*Entity) bool, a "predicate", or "filter"
 var EntityFilterDSLPredicates = map[string](func(args []string, resolver IdentifierResolver) func(*Entity) bool){
 
 	"CanBe": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
@@ -16,6 +19,7 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 			return x.HasComponent(STATE) && x.GetIntMap(STATE).ValCanBeSetTo(k, v)
 		}
 	},
+
 	"State": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
 		argsTyped, err := DSLAssertArgTypes("State(string, int)", args, resolver)
 		if err != nil {
@@ -28,6 +32,7 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 			return x.HasComponent(STATE) && x.GetIntMap(STATE).Get(k) == v
 		}
 	},
+
 	"HasComponent": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
 		argsTyped, err := DSLAssertArgTypes("HasComponent(string)", args, resolver)
 		if err != nil {
@@ -41,6 +46,7 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 			return x.HasComponent(component)
 		}
 	},
+
 	"HasTag": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
 		argsTyped, err := DSLAssertArgTypes("HasTag(string)", args, resolver)
 		if err != nil {
@@ -51,6 +57,7 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 			return x.HasTag(tag)
 		}
 	},
+
 	"HasTags": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
 		argsTyped, err := DSLAssertArgTypes("HasTags([]string)", args, resolver)
 		if err != nil {
@@ -61,6 +68,7 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 			return x.HasTags(tags...)
 		}
 	},
+
 	"Is": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
 		argsTyped, err := DSLAssertArgTypes("Is(IdentResolve<*Entity>)", args, resolver)
 		if err != nil {
@@ -71,6 +79,7 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 			return x == entity
 		}
 	},
+
 	"WithinDistance": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
 		signatures := []string{
 			"WithinDistance(IdentResolve<*Entity>, float64)",
@@ -84,6 +93,7 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 		}
 		switch i {
 		case 0:
+			// distance from an entity
 			entity := argsTyped[0].(*Entity)
 			distance := argsTyped[1].(float64)
 			return func(e *Entity) bool {
@@ -92,6 +102,7 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 				return e.DistanceFromRect(*pos, *box) < distance
 			}
 		case 1:
+			// distance from pos, box
 			pos := argsTyped[0].(*Vec2D)
 			box := argsTyped[1].(*Vec2D)
 			distance := argsTyped[2].(float64)
@@ -103,6 +114,7 @@ var EntityFilterDSLPredicates = map[string](func(args []string, resolver Identif
 			return nil
 		}
 	},
+
 	"RectOverlap": func(args []string, resolver IdentifierResolver) func(*Entity) bool {
 		argsTyped, err := DSLAssertArgTypes("RectOverlap", args, resolver)
 		if err != nil {

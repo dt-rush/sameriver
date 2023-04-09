@@ -126,12 +126,12 @@ func (p *GOAPPlanner) bindEntities(nodes []string, ws *GOAPWorldState, start boo
 			// we don't wan to recompute the selector
 			// that it ran
 			if cached, ok := p.selectorResultCache[node]; ok {
+				logGOAPDebug(color.InPurple("        in cache"))
 				ws.ModalEntities[node] = cached
 			} else {
-				// if not in cache, run selector
+				logGOAPDebug(color.InPurple("        not in cache, running selector"))
 				ws.ModalEntities[node] = p.selectNode(ws, node)
 			}
-
 		} else if DEBUG_GOAP {
 			logGOAPDebug(color.InPurple("|"))
 			logGOAPDebug(color.InPurple("|"))

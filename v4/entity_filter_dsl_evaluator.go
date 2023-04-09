@@ -59,6 +59,8 @@ func (e *EntityFilterDSLEvaluator) evaluatePredicate(n *Node, resolver Identifie
 	} else if n.Type == NodeAnd || n.Type == NodeOr {
 		left := e.evaluatePredicate(n.Children[0], resolver)
 		right := e.evaluatePredicate(n.Children[1], resolver)
+		// TODO: how does this work for P && Q && R ?
+		// or P && Q || R for that matter?
 		if n.Type == NodeAnd {
 			return func(entity *Entity) bool {
 				return left(entity) && right(entity)
