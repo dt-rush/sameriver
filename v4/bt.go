@@ -206,6 +206,15 @@ func (btr *BTRunner) ExecuteBT(e *Entity, bt *BehaviourTree) *BTExecState {
 	}
 	// go til we reach the bottom
 	for node != nil {
+		// when we reach something that's done, our path ends in a dot.
+		// you should detect this and know your tree ran out of things to do,
+		// it ended up in a state where it doesn't have some other behaviour,
+		// the thing it wants to do is actually already done.
+		if node.Complete {
+			dotPath(node.Name + ".")
+			state.Action = node
+			return state
+		}
 		// this is a parasitic bit of code that is not directly related to
 		// execution. We just happent to be traversing the tree so, it's a good place
 		// to do it. Tell the node who it lives in, if it doesn't know yet

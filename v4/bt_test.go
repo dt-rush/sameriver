@@ -37,6 +37,9 @@ func TestBTConstruction(t *testing.T) {
 			IsFailed: func(self *BTNode) bool {
 				return false
 			},
+			CompletionPredicate: func(self *BTNode) bool {
+				return false
+			},
 			Children: []*BTNode{
 				{Name: "fight-flight"},
 				{Name: "rest"},
@@ -67,6 +70,9 @@ func TestBTConstruction(t *testing.T) {
 					}
 				}
 				return false
+			},
+			CompletionPredicate: func(self *BTNode) bool {
+				return self.CompletedChildren == len(self.Children)
 			},
 			Children: nil,
 		},
