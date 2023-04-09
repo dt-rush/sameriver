@@ -58,7 +58,7 @@ func TestBTConstruction(t *testing.T) {
 			Name:       "Sequence",
 			Decorators: []string{"planPlant"},
 			Selector: func(self *BTNode) int {
-				return 1
+				return self.CompletedChildren
 			},
 			IsFailed: func(self *BTNode) bool {
 				for _, child := range self.Children {
@@ -77,13 +77,26 @@ func TestBTConstruction(t *testing.T) {
 	e := w.Spawn(nil)
 
 	result := btr.ExecuteBT(e, villagerRoot)
-	expectedPath := "Utility.plant.Sequence.goToField"
+	expectedPath := "Utility.plant.Sequence.getHandplow"
 
 	Logger.Printf("BT descent path: %s", result.Path)
 
 	if result.Path != expectedPath {
 		t.Errorf("Expected result: %s, got: %s", expectedPath, result.Path)
 	}
+
+	for i := 0; i < 5; i++ {
+		if result != nil {
+			result.Action.Done()
+		}
+		result = btr.ExecuteBT(e, villagerRoot)
+		if result != nil {
+			Logger.Printf("BT descent path: %s", result.Path)
+		} else {
+			Logger.Printf("Nil")
+		}
+	}
+
 }
 
 func TestBTAnyNodeFailure(t *testing.T) {
