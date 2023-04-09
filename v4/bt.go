@@ -2,11 +2,20 @@ package sameriver
 
 import "fmt"
 
-type BTCompletionPredicate func(*BTNode) bool
+type BTDecorator struct {
+	Name string
+	Impl func(self *BTNode) bool
+}
 
 type BTNode struct {
+	Tree *BehaviourTree
+
 	Parent   *BTNode
 	Children []*BTNode
+
+	State map[string]any
+
+	Init func(self *BTNode)
 
 	Failed   bool
 	IsFailed func(self *BTNode) bool
@@ -14,6 +23,10 @@ type BTNode struct {
 	Name string
 	// decorators are just strings - either plains strings or... TODO: a DSL?
 	Decorators []string
+	// the runs counter from the behaviour tree of in which run we last ran
+	// all the decorators to success (prevent recalculation when a parent node
+	// wanted to run the decorator first before running)
+	decoratorsCompletedInRun int
 	// if non-nil, this is a composite node; the selector will tell which
 	// child to select for running.
 	// (for Sequence, this is { return ChildrenCompleted })
@@ -24,21 +37,60 @@ type BTNode struct {
 	// consider itself done and increment the counter in its parent, then
 	// checking if its done to continue to percolate up.
 	CompletedChildren int
+
 	// for a node that never ends, this is always false
 	// for a Sequence node, this is n.ChildrenCompleted == len(n.Children)
 	// for an Any node, this is n.ChildrenCompleted > 0
 	// for an All node, this is n.ChildrenCompleted == len(n.Children)
+	Complete            bool
 	CompletionPredicate func(self *BTNode) bool
 }
 
-type BTDecorator func(*BTNode) bool
+func (n *BTNode) SetChildren(children []*BTNode) {
+	n.Children = children
+	for _, ch := range children {
+		ch.Parent = n
+		if ch.Init != nil {
+			ch.State = make(map[string]any)
+			ch.Init(ch)
+		}
+	}
+}
 
-// named with a string so we can modularly reuse subtrees by string name
-type BehaviourTree struct {
-	Name string
-	Root *BTNode
-	// current state is the path that's active down to its lowest node, an action
-	state *BTExecState
+// when the currently-active action finishes, inform the tree
+func (n *BTNode) Done() {
+	n.Complete = true
+	node := n.Parent
+	for node != nil {
+		node.CompletedChildren++
+		if node.CompletionPredicate != nil {
+			if node.CompletionPredicate(node) {
+				node.Complete = true
+				node = node.Parent
+			} else {
+				break
+			}
+		} else {
+			node = node.Parent
+		}
+	}
+}
+
+func (n *BTNode) SetFailed() {
+	n.Failed = true
+	n.Tree.FailedNodeSet[n] = true
+	parent := n.Parent
+	// percolate failure up
+	for parent != nil {
+		if parent.IsFailed(parent) {
+			parent.Failed = true
+			n.Tree.FailedNodeSet[parent] = true
+			parent = parent.Parent
+			continue
+		} else {
+			break
+		}
+	}
 }
 
 // at any time a BT has a pathway down to an action
@@ -47,21 +99,48 @@ type BTExecState struct {
 	Action *BTNode
 }
 
+type BehaviourTree struct {
+	// how many times we've run this bad boy
+	run int
+	// named with a string so we can modularly reuse subtrees by string name
+	Name          string
+	Root          *BTNode
+	FailedNodeSet map[*BTNode]bool
+	// current state is the path that's active down to its lowest node, an action
+	state *BTExecState
+}
+
 func NewBehaviourTree(name string, root *BTNode) *BehaviourTree {
 	bt := &BehaviourTree{
-		Name: name,
-		Root: root,
+		Name:          name,
+		Root:          root,
+		FailedNodeSet: make(map[*BTNode]bool),
 	}
-	// set the parent of all nodes by descent
-	var setChildren func(node *BTNode)
-	setChildren = func(node *BTNode) {
+	// recursively iterate the tree and do 3 things:
+	// call node.Init(),
+	// set the Parent reference
+	// set the Tree reference
+	var refChildren func(node *BTNode)
+	refChildren = func(node *BTNode) {
+		if node.Init != nil {
+			node.State = make(map[string]any)
+			node.Init(node)
+		}
+		node.Tree = bt
 		for _, ch := range node.Children {
-			setChildren(ch)
 			ch.Parent = node
+			refChildren(ch)
 		}
 	}
-	setChildren(bt.Root)
+	refChildren(bt.Root)
 	return bt
+}
+
+func (bt *BehaviourTree) ResetFailed() {
+	for node := range bt.FailedNodeSet {
+		node.Failed = false
+		delete(bt.FailedNodeSet, node)
+	}
 }
 
 // stores the database of named trees and decorators needed to run a tree
@@ -75,10 +154,44 @@ type BTRunner struct {
 
 	// the runner has a set of decorators that it can honour - a decorator is
 	// just a string for now, but really, it should be a parsed DSL
-	decorators map[string]BTDecorator
+	decorators map[string]func(*BTNode) bool
+}
+
+func NewBTRunner() *BTRunner {
+	return &BTRunner{
+		trees:      make(map[string]*BehaviourTree),
+		decorators: make(map[string]func(self *BTNode) bool),
+	}
+}
+
+func (btr *BTRunner) RegisterDecorators(decorators []BTDecorator) {
+	for _, d := range decorators {
+		btr.decorators[d.Name] = d.Impl
+	}
+}
+
+func (btr *BTRunner) RunDecorators(node *BTNode) bool {
+	for _, dstr := range node.Decorators {
+		if dec, ok := btr.decorators[dstr]; ok {
+			// run the decorator (it can transform the node in any way,
+			// add children etc., write to blackboards, etc.)
+			// and if it returns false, it failed. Mark this node as
+			// failed and
+			if !dec(node) {
+				node.SetFailed()
+				return false
+			}
+		} else {
+			panic(fmt.Sprintf("Unknown decorator: %s", dstr))
+		}
+	}
+	node.decoratorsCompletedInRun = node.Tree.run
+	return true
 }
 
 func (btr *BTRunner) ExecuteBT(e *Entity, bt *BehaviourTree) *BTExecState {
+	bt.run++
+	bt.ResetFailed()
 	state := &BTExecState{}
 	if bt.Root == nil {
 		return state
@@ -91,33 +204,22 @@ func (btr *BTRunner) ExecuteBT(e *Entity, bt *BehaviourTree) *BTExecState {
 			state.Path += "." + s
 		}
 	}
+	// go til we reach the bottom
 	for node != nil {
-		if len(node.Decorators) > 0 {
-			for _, dstr := range node.Decorators {
-				if dec, ok := btr.decorators[dstr]; ok {
-					// run the decorator (it can transform the node in any way,
-					// add children etc., write to blackboards, etc.)
-					// and if it returns false, it failed. Mark this node as
-					// failed and
-					if !dec(node) {
-						node.Failed = true
-						parent := node.Parent
-						// percolate failure up
-						for parent != nil {
-							if parent.IsFailed(parent) {
-								parent.Failed = true
-								parent = parent.Parent
-								continue
-							} else {
-								break
-							}
-						}
-						// re-execute
-						return btr.ExecuteBT(e, bt)
-					}
-				} else {
-					panic(fmt.Sprintf("Unknown decorator: %s", dstr))
-				}
+		// this is a parasitic bit of code that is not directly related to
+		// execution. We just happent to be traversing the tree so, it's a good place
+		// to do it. Tell the node who it lives in, if it doesn't know yet
+		// (it might have been spawned in as a child of a node by a decorator,
+		// eg. a GOAP planner)
+		if node.Tree == nil {
+			// if ya don't know, now ya know
+			node.Tree = bt
+		}
+		// run decorators (unless we ran them already this run, by a parent probing)
+		if len(node.Decorators) > 0 && node.decoratorsCompletedInRun != bt.run {
+			if !btr.RunDecorators(node) {
+				// we failed.
+				return nil
 			}
 		}
 		if node.Selector != nil {
@@ -128,6 +230,8 @@ func (btr *BTRunner) ExecuteBT(e *Entity, bt *BehaviourTree) *BTExecState {
 				dotPath(child.Name)
 				node = child
 				continue
+			} else {
+				return nil
 			}
 		} else {
 			if tree, ok := btr.trees[node.Name]; ok {
@@ -141,24 +245,4 @@ func (btr *BTRunner) ExecuteBT(e *Entity, bt *BehaviourTree) *BTExecState {
 	}
 	bt.state = state
 	return bt.state
-}
-
-func (bt *BehaviourTree) Done() {
-	if bt.state == nil {
-		return
-	}
-
-	node := bt.state.Action.Parent
-	for node != nil {
-		node.CompletedChildren++
-		if node.CompletionPredicate != nil {
-			if node.CompletionPredicate(node) {
-				node = node.Parent
-			} else {
-				break
-			}
-		} else {
-			node = node.Parent
-		}
-	}
 }

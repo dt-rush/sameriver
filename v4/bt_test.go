@@ -8,28 +8,27 @@ import (
 func TestBTConstruction(t *testing.T) {
 	w := testingWorld()
 
-	// Define your decorator functions and add them to BTRunner
-	decorators := map[string]BTDecorator{
-		"planPlant": func(node *BTNode) bool {
-			// mock GOAP
-			node.Children = []*BTNode{
-				{Name: "getHandplow"},
-				{Name: "goToField"},
-				{Name: "doHandplow"},
-			}
-			return true
-		},
-	}
+	btr := NewBTRunner()
 
-	btr := &BTRunner{
-		trees:      make(map[string]*BehaviourTree),
-		decorators: decorators,
-	}
+	btr.RegisterDecorators([]BTDecorator{
+		BTDecorator{
+			Name: "planPlant",
+			Impl: func(node *BTNode) bool {
+				// mock GOAP
+				node.SetChildren([]*BTNode{
+					{Name: "getHandplow"},
+					{Name: "goToField"},
+					{Name: "doHandplow"},
+				})
+				return true
+			},
+		},
+	})
 
 	// Create and add villagerRoot tree
-	villagerRoot := &BehaviourTree{
-		Name: "villagerRoot",
-		Root: &BTNode{
+	villagerRoot := NewBehaviourTree(
+		"villagerRoot",
+		&BTNode{
 			Name: "Utility",
 			Selector: func(self *BTNode) int {
 				// Implement your logic for selecting the Utility node
@@ -49,13 +48,13 @@ func TestBTConstruction(t *testing.T) {
 				{Name: "religion"},
 			},
 		},
-	}
+	)
 	btr.trees["villagerRoot"] = villagerRoot
 
 	// Create and add plant tree
-	plant := &BehaviourTree{
-		Name: "plant",
-		Root: &BTNode{
+	plant := NewBehaviourTree(
+		"plant",
+		&BTNode{
 			Name:       "Sequence",
 			Decorators: []string{"planPlant"},
 			Selector: func(self *BTNode) int {
@@ -71,7 +70,7 @@ func TestBTConstruction(t *testing.T) {
 			},
 			Children: nil,
 		},
-	}
+	)
 	btr.trees["plant"] = plant
 
 	// Execute the behavior tree and check the result
@@ -90,40 +89,34 @@ func TestBTConstruction(t *testing.T) {
 func TestBTAnyNodeFailure(t *testing.T) {
 	w := testingWorld()
 
-	// Define your decorator functions and add them to BTRunner
-	decorators := map[string]BTDecorator{
-		"fail": func(node *BTNode) bool {
-			return false
-		},
-		"pass": func(node *BTNode) bool {
-			return true
-		},
-	}
+	btr := NewBTRunner()
 
-	btr := &BTRunner{
-		trees:      make(map[string]*BehaviourTree),
-		decorators: decorators,
-	}
+	btr.RegisterDecorators([]BTDecorator{
+		BTDecorator{
+			Name: "fail",
+			Impl: func(self *BTNode) bool {
+				return false
+			},
+		},
+		BTDecorator{
+			Name: "pass",
+			Impl: func(self *BTNode) bool {
+				return true
+			},
+		},
+	})
 
 	// Create and add anyRoot tree
-	anyRoot := &BehaviourTree{
-		Name: "anyRoot",
-		Root: &BTNode{
+	anyRoot := NewBehaviourTree(
+		"anyRoot",
+		&BTNode{
 			Name: "Any",
 			Selector: func(self *BTNode) int {
 				// Implement your logic for selecting the Any node
 				perm := rand.Perm(len(self.Children))
 				for _, i := range perm {
 					child := self.Children[i]
-					decoratorsPassed := true
-					for _, decorator := range child.Decorators {
-						decoratorFunc, ok := btr.decorators[decorator]
-						if !ok || !decoratorFunc(child) {
-							decoratorsPassed = false
-							break
-						}
-					}
-					if decoratorsPassed && !child.Failed {
+					if btr.RunDecorators(child) {
 						return i
 					}
 				}
@@ -145,7 +138,7 @@ func TestBTAnyNodeFailure(t *testing.T) {
 				{Name: "success", Decorators: []string{"pass"}},
 			},
 		},
-	}
+	)
 	btr.trees["anyRoot"] = anyRoot
 
 	// Execute the behavior tree and check the result
@@ -164,38 +157,32 @@ func TestBTAnyNodeFailure(t *testing.T) {
 func TestBTOrderedAnyNodeFailure(t *testing.T) {
 	w := testingWorld()
 
-	// Define your decorator functions and add them to BTRunner
-	decorators := map[string]BTDecorator{
-		"fail": func(node *BTNode) bool {
-			return false
-		},
-		"pass": func(node *BTNode) bool {
-			return true
-		},
-	}
+	btr := NewBTRunner()
 
-	btr := &BTRunner{
-		trees:      make(map[string]*BehaviourTree),
-		decorators: decorators,
-	}
+	btr.RegisterDecorators([]BTDecorator{
+		BTDecorator{
+			Name: "fail",
+			Impl: func(self *BTNode) bool {
+				return false
+			},
+		},
+		BTDecorator{
+			Name: "pass",
+			Impl: func(self *BTNode) bool {
+				return true
+			},
+		},
+	})
 
 	// Create and add orderedAnyRoot tree
-	orderedAnyRoot := &BehaviourTree{
-		Name: "orderedAnyRoot",
-		Root: &BTNode{
+	orderedAnyRoot := NewBehaviourTree(
+		"orderedAnyRoot",
+		&BTNode{
 			Name: "OrderedAny",
 			Selector: func(self *BTNode) int {
 				// Implement your logic for selecting the OrderedAny node
 				for i, child := range self.Children {
-					decoratorsPassed := true
-					for _, decorator := range child.Decorators {
-						decoratorFunc, ok := btr.decorators[decorator]
-						if !ok || !decoratorFunc(child) {
-							decoratorsPassed = false
-							break
-						}
-					}
-					if decoratorsPassed && !child.Failed {
+					if btr.RunDecorators(child) {
 						return i
 					}
 				}
@@ -217,7 +204,7 @@ func TestBTOrderedAnyNodeFailure(t *testing.T) {
 				{Name: "successB", Decorators: []string{"pass"}},
 			},
 		},
-	}
+	)
 	btr.trees["orderedAnyRoot"] = orderedAnyRoot
 
 	// Execute the behavior tree and check the result
@@ -230,5 +217,95 @@ func TestBTOrderedAnyNodeFailure(t *testing.T) {
 
 	if result.Path != expectedPath {
 		t.Errorf("Expected result: %s, got: %s", expectedPath, result.Path)
+	}
+}
+
+func TestBTAllNode(t *testing.T) {
+	w := testingWorld()
+
+	btr := NewBTRunner()
+
+	btr.RegisterDecorators([]BTDecorator{
+		BTDecorator{
+			Name: "fail",
+			Impl: func(self *BTNode) bool {
+				return false
+			},
+		},
+		BTDecorator{
+			Name: "pass",
+			Impl: func(self *BTNode) bool {
+				return true
+			},
+		},
+	})
+
+	// Create and add allRoot tree
+	allRoot := NewBehaviourTree(
+		"allRoot",
+		&BTNode{
+			Name: "All",
+			Init: func(self *BTNode) {
+				self.State["perm"] = rand.Perm(len(self.Children))
+			},
+			Selector: func(self *BTNode) int {
+				perm := self.State["perm"].([]int)
+				for _, idx := range perm {
+					child := self.Children[idx]
+					if !child.Complete {
+						return idx
+					}
+				}
+				return -1
+			},
+			IsFailed: func(self *BTNode) bool {
+				for _, child := range self.Children {
+					if child.Failed {
+						return true
+					}
+				}
+				return false
+			},
+			CompletionPredicate: func(self *BTNode) bool {
+				for _, child := range self.Children {
+					if !child.Complete {
+						return false
+					}
+				}
+				self.Init(self)
+				return true
+			},
+			Children: []*BTNode{
+				{Name: "successA", Decorators: []string{"pass"}},
+				{Name: "successB", Decorators: []string{"pass"}},
+				{Name: "successC", Decorators: []string{"pass"}},
+				{Name: "successD", Decorators: []string{"pass"}},
+			},
+		},
+	)
+	btr.trees["allRoot"] = allRoot
+
+	// the test itself
+	e := w.Spawn(nil)
+
+	expectedNodes := []string{"successA", "successB", "successC", "successD"}
+
+	executedNodes := map[string]bool{}
+	for i := 0; i < 10; i++ {
+		result := btr.ExecuteBT(e, allRoot)
+		if result != nil {
+			Logger.Println(result.Path)
+			result.Action.Done()
+			executedNodes[result.Action.Name] = true
+		} else {
+			Logger.Println("nil")
+		}
+	}
+
+	// Check if all child nodes were executed
+	for _, expectedNode := range expectedNodes {
+		if !executedNodes[expectedNode] {
+			t.Errorf("Expected %s to be in the path, but it was not.", expectedNode)
+		}
 	}
 }
