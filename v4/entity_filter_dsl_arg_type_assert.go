@@ -8,41 +8,51 @@ import (
 	"strings"
 )
 
+// these are really resolution funcs TODO rename
 type DSLArgTypeAssertionFunc func(arg string, resolver IdentifierResolver) (any, error)
 
-var typeAssertionFuncs = map[string]map[string]DSLArgTypeAssertionFunc{
-	"IdentResolve": {
-		"*Entity": func(arg string, resolver IdentifierResolver) (any, error) {
-			entity, ok := resolver.Resolve(arg).(*Entity)
-			if !ok {
-				return nil, errors.New("type assert failed")
-			}
-			return entity, nil
-		},
-		"*Vec2D": func(arg string, resolver IdentifierResolver) (any, error) {
-			vec2D, ok := resolver.Resolve(arg).(*Vec2D)
-			if !ok {
-				return nil, errors.New("type assert failed")
-			}
-			return vec2D, nil
-		},
-		"[]*Vec2D": func(arg string, resolver IdentifierResolver) (any, error) {
-			vec2Ds, ok := resolver.Resolve(arg).([]*Vec2D)
-			if !ok {
-				return nil, errors.New("type assert failed")
-			}
-			return vec2Ds, nil
-		},
-		"*EventPredicate": func(arg string, resolver IdentifierResolver) (any, error) {
-			eventPredicate, ok := resolver.Resolve(arg).(*EventPredicate)
-			if !ok {
-				return nil, errors.New("type assert failed")
-			}
-			return eventPredicate, nil
-		},
-		// Add more types here...
+var IdentResolveTypeAssertMap = map[string]DSLArgTypeAssertionFunc{
+	"*Entity": func(arg string, resolver IdentifierResolver) (any, error) {
+		entity, ok := resolver.Resolve(arg).(*Entity)
+		if !ok {
+			return nil, errors.New("type assert failed")
+		}
+		return entity, nil
 	},
-	// Add other rules for other parametrized types here...
+	"string": func(arg string, resolver IdentifierResolver) (any, error) {
+		str, ok := resolver.Resolve(arg).(string)
+		if !ok {
+			return nil, errors.New("type assert failed")
+		}
+		return str, nil
+	},
+	"*Vec2D": func(arg string, resolver IdentifierResolver) (any, error) {
+		vec2D, ok := resolver.Resolve(arg).(*Vec2D)
+		if !ok {
+			return nil, errors.New("type assert failed")
+		}
+		return vec2D, nil
+	},
+	"[]*Vec2D": func(arg string, resolver IdentifierResolver) (any, error) {
+		vec2Ds, ok := resolver.Resolve(arg).([]*Vec2D)
+		if !ok {
+			return nil, errors.New("type assert failed")
+		}
+		return vec2Ds, nil
+	},
+	"*EventPredicate": func(arg string, resolver IdentifierResolver) (any, error) {
+		eventPredicate, ok := resolver.Resolve(arg).(*EventPredicate)
+		if !ok {
+			return nil, errors.New("type assert failed")
+		}
+		return eventPredicate, nil
+	},
+	// Add more types here...
+}
+
+var typeResolveFuncs = map[string]map[string]DSLArgTypeAssertionFunc{
+	"IdentResolve": IdentResolveTypeAssertMap,
+	// Add other rules for other parametrized types than IdentResolve<T> here...
 }
 
 func ExtractTypesFromSignature(signature string) ([]string, error) {
@@ -58,7 +68,7 @@ func ExtractTypesFromSignature(signature string) ([]string, error) {
 
 /*
 DSLAssertArgTypes is responsible for checking if the arguments match the
-expected types in a function signature. It uses the typeAssertionFuncs map to
+expected types in a function signature. It uses the typeResolveFuncs map to
 perform type assertions for parametrized types. When a parametrized type is
 encountered in the function signature, the type assertion function
 corresponding to the type is called, and it returns the resolved value if the
@@ -84,10 +94,10 @@ func DSLAssertArgTypes(signature string, args []string, resolver IdentifierResol
 	resolved := make([]any, len(args))
 	for i, arg := range args {
 		parts := strings.Split(expectedTypes[i], "<")
-		if typeAssertionFuncsMap, ok := typeAssertionFuncs[parts[0]]; ok && len(parts) > 1 {
+		if typeResolveFuncsMap, ok := typeResolveFuncs[parts[0]]; ok && len(parts) > 1 {
 			typeName := strings.TrimSuffix(parts[1], ">")
-			if typeAssertionFunc, ok := typeAssertionFuncsMap[typeName]; ok {
-				value, err := typeAssertionFunc(arg, resolver)
+			if typeResolveFunc, ok := typeResolveFuncsMap[typeName]; ok {
+				value, err := typeResolveFunc(arg, resolver)
 				if err != nil {
 					return nil, fmt.Errorf("error for %s(%s): expected %s for argument %s, but %s", signature, strings.Join(args, ", "), expectedTypes[i], arg, err)
 				}

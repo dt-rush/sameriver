@@ -559,7 +559,38 @@ func TestBTRandomPriorityLoopNode(t *testing.T) {
 TODO:
 
 this is actually a decorator
-Cooldown: This composite node adds a cooldown period to its child, preventing the child from being executed until the cooldown has expired. This can help prevent entities from repeatedly performing certain actions too quickly, which could be unrealistic or unbalanced.
+
+
+Decorators:
+
+Invert: inverts the success/failure of its child node.
+
+Time Limit: specifies a maximum time limit for its child node to complete. If the child node doesn't complete within the specified time, the decorator fails.
+
+Retry: retries its child node a certain number of times before giving up.
+
+Counter: counts the number of times its child node has been run, and can fail or succeed based on a threshold.
+
+Blackboard Check: checks a value in the blackboard and either succeeds or fails based on its value.
+
+Cooldown: This decorator adds a cooldown period to its node, preventing the node from being executed until the cooldown has expired. This can help prevent entities from repeatedly performing certain actions too quickly, which could be unrealistic or unbalanced.
+
+
+
+
+Composite Nodes:
+
+
+Switch: similar to a switch statement in programming, selects one of its children to run based on a value in the blackboard.
+
+Random Selector: similar to a priority selector, but selects a child node randomly instead of in priority order.
+
+Parallel Sequence: runs its children in parallel, but only succeeds if all of its children succeed.
+
+Parallel Selector: runs its children in parallel, but only succeeds if at least one of its children succeeds.
+
+Weighted Selector: similar to a priority selector, but assigns weights to its children to influence the selection order.
 
 Parallel: This composite node executes its children concurrently, allowing for simultaneous actions. For example, an entity could be moving and attacking at the same time. Note that parallel execution may be more complex to implement depending on your game engine.
+
 */
