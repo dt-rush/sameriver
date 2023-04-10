@@ -554,6 +554,98 @@ func TestBTRandomPriorityLoopNode(t *testing.T) {
 	}
 }
 
+func TestBTSwitchNode(t *testing.T) {
+
+	w := testingWorld()
+
+	btr := NewBTRunner()
+
+	// TODO: use DSL to IdentResolve the case, so that we get a string from
+	// the blackboard/an entity component etc, and that's the case for the switch
+	switchRoot := NewBehaviourTree(
+		"switchRoot",
+		&BTNode{
+			Name: "Switch",
+			Init: func(self *BTNode) {
+				self.State["case"] = "caseB"
+			},
+			Selector: func(self *BTNode) int {
+				// Get the current case from the state
+				currentCase := self.State["case"].(string)
+
+				// Find the child node that corresponds to the current case
+				for i, child := range self.Children {
+					if child.Name == currentCase {
+						if !btr.RunDecorators(child) {
+							return -1
+						}
+						return i
+					}
+				}
+				// No child node was found for the current case
+				return -1
+			},
+			IsFailed: func(self *BTNode) bool {
+				// The Switch node fails if there is no child node for the current case
+				currentCase := self.State["case"].(string)
+				for _, child := range self.Children {
+					if child.Name == currentCase && child.Failed {
+						return true
+					}
+				}
+				return false
+			},
+			CompletionPredicate: func(self *BTNode) bool {
+				// The Switch node completes if a child node for the current case has completed
+				currentCase := self.State["case"].(string)
+				for _, child := range self.Children {
+					if child.Name == currentCase && child.Complete {
+						return true
+					}
+				}
+				return false
+			},
+			Children: []*BTNode{
+				{Name: "caseA"},
+				{Name: "caseB"},
+				{Name: "caseC"},
+			},
+		},
+	)
+
+	btr.trees["switchRoot"] = switchRoot
+
+	// the test itself
+	e := w.Spawn(nil)
+
+	// Helper function to run the behavior tree and collect executed nodes
+	executedNodes := make(map[string]bool)
+	runAndCollectExecutedNodes := func(treeName string, iterations int) {
+		for i := 0; i < iterations; i++ {
+			result := btr.ExecuteBT(e, btr.trees[treeName])
+			if result != nil {
+				Logger.Println(result.Path)
+				executedNodes[result.Action.Name] = true
+			} else {
+				Logger.Println("nil")
+			}
+		}
+	}
+
+	runAndCollectExecutedNodes("switchRoot", 1)
+	switchRoot.Root.State["case"] = "caseC"
+	runAndCollectExecutedNodes("switchRoot", 1)
+	runAndCollectExecutedNodes("switchRoot", 1)
+
+	fmt.Printf("Executed nodes: %v", executedNodes)
+
+	expectedNodes := []string{"caseB", "caseC"}
+	for _, node := range expectedNodes {
+		assert.Contains(t, executedNodes, node, "expected node %q to be executed", node)
+	}
+
+}
+
 /*
 
 TODO:
@@ -585,11 +677,9 @@ Switch: similar to a switch statement in programming, selects one of its childre
 
 Random Selector: similar to a priority selector, but selects a child node randomly instead of in priority order.
 
-Parallel Sequence: runs its children in parallel, but only succeeds if all of its children succeed.
-
-Parallel Selector: runs its children in parallel, but only succeeds if at least one of its children succeeds.
-
 Weighted Selector: similar to a priority selector, but assigns weights to its children to influence the selection order.
+
+Parallel Sequence: runs its children in parallel, but only succeeds if all of its children succeed.
 
 Parallel: This composite node executes its children concurrently, allowing for simultaneous actions. For example, an entity could be moving and attacking at the same time. Note that parallel execution may be more complex to implement depending on your game engine.
 
