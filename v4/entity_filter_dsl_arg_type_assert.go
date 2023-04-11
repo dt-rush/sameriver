@@ -1,8 +1,8 @@
 package sameriver
 
 import (
-	"errors"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -11,41 +11,30 @@ import (
 // these are really resolution funcs TODO rename
 type DSLArgTypeAssertionFunc func(arg string, resolver IdentifierResolver) (any, error)
 
+func AssertT[T any](x interface{}, expectedTypeStr string) (T, error) {
+	t, ok := x.(T)
+	if ok {
+		return t, nil
+	} else {
+		return reflect.Zero(reflect.TypeOf((*T)(nil)).Elem()).Interface().(T), fmt.Errorf("type assertion failed: expected %s", expectedTypeStr)
+	}
+}
+
 var IdentResolveTypeAssertMap = map[string]DSLArgTypeAssertionFunc{
 	"*Entity": func(arg string, resolver IdentifierResolver) (any, error) {
-		entity, ok := resolver.Resolve(arg).(*Entity)
-		if !ok {
-			return nil, errors.New("type assert failed")
-		}
-		return entity, nil
+		return AssertT[*Entity](resolver.Resolve(arg), "*Entity")
 	},
 	"string": func(arg string, resolver IdentifierResolver) (any, error) {
-		str, ok := resolver.Resolve(arg).(string)
-		if !ok {
-			return nil, errors.New("type assert failed")
-		}
-		return str, nil
+		return AssertT[string](resolver.Resolve(arg), "string")
 	},
 	"*Vec2D": func(arg string, resolver IdentifierResolver) (any, error) {
-		vec2D, ok := resolver.Resolve(arg).(*Vec2D)
-		if !ok {
-			return nil, errors.New("type assert failed")
-		}
-		return vec2D, nil
+		return AssertT[*Vec2D](resolver.Resolve(arg), "*Vec2D")
 	},
 	"[]*Vec2D": func(arg string, resolver IdentifierResolver) (any, error) {
-		vec2Ds, ok := resolver.Resolve(arg).([]*Vec2D)
-		if !ok {
-			return nil, errors.New("type assert failed")
-		}
-		return vec2Ds, nil
+		return AssertT[[]*Vec2D](resolver.Resolve(arg), "[]*Vec2D")
 	},
 	"*EventPredicate": func(arg string, resolver IdentifierResolver) (any, error) {
-		eventPredicate, ok := resolver.Resolve(arg).(*EventPredicate)
-		if !ok {
-			return nil, errors.New("type assert failed")
-		}
-		return eventPredicate, nil
+		return AssertT[*EventPredicate](resolver.Resolve(arg), "*EventPredicate")
 	},
 	// Add more types here...
 }
