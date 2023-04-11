@@ -1,18 +1,48 @@
 package sameriver
 
+type EFDSLPredicateMap map[string](func(args []string, resolver IdentifierResolver) func(*Entity) bool)
+type EFDSLSortMap map[string](func(args []string, resolver IdentifierResolver) func(xs []*Entity) func(i, j int) bool)
+
 type EntityFilterDSLEvaluator struct {
-	predicates map[string](func(args []string, resolver IdentifierResolver) func(*Entity) bool)
-	sorts      map[string](func(args []string, resolver IdentifierResolver) func(xs []*Entity) func(i, j int) bool)
+	predicates EFDSLPredicateMap
+	sorts      EFDSLSortMap
+	// used to allow - in a performant way avoiding reflect - users to
+	// specify their own predicate/sort func type signatures beyond
+	// those defined in the switch block in efdsl_evaluator.go
+	userPredicateSignatureAsserter func(f any, argsTyped []any) func(*Entity) bool
+	userSortSignatureAsserter      func(f any, argsTyped []any) func(xs []*Entity) func(i, j int) int
 }
 
-func NewEntityFilterDSLEvaluator(
-	predicates map[string](func(args []string, resolver IdentifierResolver) func(*Entity) bool),
-	sorts map[string](func(args []string, resolver IdentifierResolver) func(xs []*Entity) func(i, j int) bool),
-) *EntityFilterDSLEvaluator {
-	return &EntityFilterDSLEvaluator{
-		predicates: predicates,
-		sorts:      sorts,
+func NewEntityFilterDSLEvaluator() *EntityFilterDSLEvaluator {
+	e := &EntityFilterDSLEvaluator{
+		predicates: EFDSLPredicateMap{},
+		sorts:      EFDSLSortMap{},
 	}
+	e.RegisterPredicates(EFDSLPredicatesBase(e))
+	e.RegisterSorts(EFDSLSortsBase(e))
+	return e
+}
+
+func (e *EntityFilterDSLEvaluator) RegisterPredicates(predicates EFDSLPredicateMap) *EntityFilterDSLEvaluator {
+	for k, v := range predicates {
+		e.predicates[k] = v
+	}
+	return e
+}
+
+func (e *EntityFilterDSLEvaluator) RegisterSorts(sorts EFDSLSortMap) *EntityFilterDSLEvaluator {
+	for k, v := range sorts {
+		e.sorts[k] = v
+	}
+	return e
+}
+
+func (e *EntityFilterDSLEvaluator) RegisterUserPredicateSignatureAsserter(asserter func(f any, argsTyped []any) func(*Entity) bool) {
+	e.userPredicateSignatureAsserter = asserter
+}
+
+func (e *EntityFilterDSLEvaluator) RegisterUserSortSignatureAsserter(asserter func(f any, argsTyped []any) func(xs []*Entity) func(i, j int) int) {
+	e.userSortSignatureAsserter = asserter
 }
 
 func (e *EntityFilterDSLEvaluator) Evaluate(n *Node, resolver IdentifierResolver) (filter func(*Entity) bool, sort func(xs []*Entity) func(i, j int) bool) {

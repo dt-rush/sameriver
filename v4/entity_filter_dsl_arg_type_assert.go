@@ -3,7 +3,6 @@ package sameriver
 import (
 	"fmt"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -45,13 +44,38 @@ var typeResolveFuncs = map[string]map[string]DSLArgTypeAssertionFunc{
 }
 
 func ExtractTypesFromSignature(signature string) ([]string, error) {
-	re := regexp.MustCompile(`\((.+)\)`)
-	matches := re.FindStringSubmatch(signature)
-	if len(matches) < 2 {
+	// Remove any whitespace before and after the commas
+	signature = strings.TrimSpace(signature)
+
+	// Make sure the signature is not empty
+	if signature == "" {
 		return nil, fmt.Errorf("malformed signature: %s", signature)
 	}
-	typesStr := matches[1]
-	types := strings.Split(typesStr, ", ")
+
+	// Split the signature into individual types
+	// we have to do it in this lexer-y way so that we can handle commas *inside* the
+	// parametric types, like
+	//
+	// IdentResolve<*Entity>, TemporalFilter<*Entity,*Vec2D,*Vec2D>
+	var types []string
+	var currentType string
+	var openBrackets int
+	for i, r := range signature {
+		if r == '<' {
+			openBrackets++
+		} else if r == '>' {
+			openBrackets--
+		} else if r == ',' && openBrackets == 0 {
+			types = append(types, strings.TrimSpace(currentType))
+			currentType = ""
+			continue
+		}
+		currentType += string(r)
+		if i == len(signature)-1 {
+			types = append(types, strings.TrimSpace(currentType))
+		}
+	}
+
 	return types, nil
 }
 
@@ -65,12 +89,13 @@ assertion is successful.
 
 a signature is a string like
 
-WithinDistance(IdentResolve<*Entity>, int)
-InPolygon(IdentResolve<[]*Vec2D>)
-Closest(IdentResolve<*Entity>)
-WithinRect(IdentResolve<*Vec2D>,IdentResolve<*Vec2D>)
+IdentResolve<*Entity>, int
+IdentResolve<[]*Vec2D>
+IdentResolve<*Entity>
+IdentResolve<*Vec2D>,IdentResolve<*Vec2D>
 */
 func DSLAssertArgTypes(signature string, args []string, resolver IdentifierResolver) ([]any, error) {
+
 	expectedTypes, err := ExtractTypesFromSignature(signature)
 	if err != nil {
 		return nil, err
@@ -82,6 +107,8 @@ func DSLAssertArgTypes(signature string, args []string, resolver IdentifierResol
 
 	resolved := make([]any, len(args))
 	for i, arg := range args {
+		// types are either simply defined in the switch statement below
+		// or else are parametric in some way like IdentResolve<*Entity>
 		parts := strings.Split(expectedTypes[i], "<")
 		if typeResolveFuncsMap, ok := typeResolveFuncs[parts[0]]; ok && len(parts) > 1 {
 			typeName := strings.TrimSuffix(parts[1], ">")
@@ -95,9 +122,14 @@ func DSLAssertArgTypes(signature string, args []string, resolver IdentifierResol
 				return nil, fmt.Errorf("unsupported type in signature: %s", expectedTypes[i])
 			}
 		} else {
+			// regular types
 			switch expectedTypes[i] {
-			case "string":
-				resolved[i] = arg
+			case "bool":
+				v, err := strconv.ParseBool(arg)
+				if err != nil {
+					return nil, fmt.Errorf("expected bool for argument %s, got: %s", arg, err)
+				}
+				resolved[i] = v
 			case "int":
 				v, err := strconv.Atoi(arg)
 				if err != nil {
@@ -110,6 +142,8 @@ func DSLAssertArgTypes(signature string, args []string, resolver IdentifierResol
 					return nil, fmt.Errorf("expected float64 for argument %s, got: %s", arg, err)
 				}
 				resolved[i] = v
+			case "string":
+				resolved[i] = arg
 			case "[]string":
 				resolved[i] = args
 			default:

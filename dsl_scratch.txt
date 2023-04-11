@@ -1,3 +1,75 @@
+the "problem" of the reflection/switch from https://chat.openai.com/chat/715d54db-81e1-46ee-b4b0-137c305df659
+
+is a problem in search of a solution
+
+even for users who want to extend to their own entity filter DSL (EFDSL = Extremely Fucking Delicious Spaghetti Lasagna)
+with their own predicates, they can use the existing predicates to implement their logic assuming:
+
+they put relevant data they want to predicate over into a component/blackboard/tag/state
+
+for example if the game was chess, you don't need to implement CanQueen for a pawn, you can just
+look at
+
+Eq(self<rank>, 7)
+
+
+
+
+
+
+
+code generation:
+engine:
+list of types we want supported -> EntityFilterDSLPredicate()
+  (EntityFilterDSLPredicate() checks for wrapper overrides from user)
+
+user:
+list of types we want supported -> predicateTypeSignatureWrapperOverrides
+
+
+
+
+
+
+
+
+
+"CanBe": EntityFilterDSLPredicate(
+	      "string, int",
+	      func(args []any) func(*Entity) bool {
+		      t, err := DSLAssertArgTypes("string,int", args, resolver)
+		      if err != nil {
+			      logDSLError("%s", err)
+		      }
+		      k, v := t[0].([]string), t[0].([]string)
+
+		      return func(x *Entity) bool {
+			      return x.HasComponent(STATE) && x.GetIntMap(STATE).ValCanBeSetTo(k, v)
+		      }
+	      },
+      ),
+
+
+"CanBe": EntityFilterDSLPredicate(
+		"string, int",
+		func(k string, v int) func(*Entity) bool {
+			return func(x *Entity) bool {
+				return x.HasComponent(STATE) && x.GetIntMap(STATE).ValCanBeSetTo(k, v)
+			}
+		},
+	),
+
+
+
+
+
+
+
+
+
+
+
+
 Here are some expressions in a DSL for entity selection/filtering i want to use in my game engine. I've written a lexer so far.
 
 (ignore the wrapping call to lex(), it just echoes the input stirng and then lexes it token by token)

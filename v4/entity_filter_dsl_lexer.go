@@ -1,10 +1,17 @@
 package sameriver
 
 import (
+	"regexp"
 	"strings"
 	"text/scanner"
 	"unicode"
 )
+
+var DSLIdentRuneRe = regexp.MustCompile("[A-Za-z0-9.<>\\[\\]{}]")
+
+func DSLIdentRune(r rune) bool {
+	return DSLIdentRuneRe.MatchString(string(r))
+}
 
 type EntityFilterDSLToken int
 
@@ -116,10 +123,8 @@ func (l *EntityFilterDSLLexer) Lex() EntityFilterDSLToken {
 			} else {
 				l.token = EOF
 			}
-		case unicode.IsLower(r) || unicode.IsDigit(r) || r == '.':
-			str := l.scanString(func(r rune) bool {
-				return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.'
-			})
+		case DSLIdentRune(r):
+			str := l.scanString(DSLIdentRune)
 			if str != "" {
 				l.stringValue = str
 				l.token = Identifier
