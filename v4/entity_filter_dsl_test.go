@@ -60,9 +60,7 @@ func TestEntityFilterDSLEvaluator(t *testing.T) {
 		"tags": []string{"ox"},
 	})
 
-	// Initialize parser and evaluator with your custom function maps
 	parser := &EntityFilterDSLParser{}
-	evaluator := NewEntityFilterDSLEvaluator(EntityFilterDSLPredicates, EntityFilterDSLSorts)
 
 	expression := "HasTags(ox)"
 
@@ -73,7 +71,7 @@ func TestEntityFilterDSLEvaluator(t *testing.T) {
 	}
 
 	resolver := &EntityResolver{e: ox}
-	filter, _ := evaluator.Evaluate(ast, resolver)
+	filter, _ := EFDSL.Evaluate(ast, resolver)
 
 	// Filter entities using the generated filter function
 	result := w.FilterAllEntities(filter)

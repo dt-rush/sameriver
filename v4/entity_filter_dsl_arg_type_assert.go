@@ -19,25 +19,6 @@ func AssertT[T any](x interface{}, expectedTypeStr string) (T, error) {
 	}
 }
 
-var IdentResolveTypeAssertMap = map[string]DSLArgTypeAssertionFunc{
-	"*Entity": func(arg string, resolver IdentifierResolver) (any, error) {
-		return AssertT[*Entity](resolver.Resolve(arg), "*Entity")
-	},
-	"string": func(arg string, resolver IdentifierResolver) (any, error) {
-		return AssertT[string](resolver.Resolve(arg), "string")
-	},
-	"*Vec2D": func(arg string, resolver IdentifierResolver) (any, error) {
-		return AssertT[*Vec2D](resolver.Resolve(arg), "*Vec2D")
-	},
-	"[]*Vec2D": func(arg string, resolver IdentifierResolver) (any, error) {
-		return AssertT[[]*Vec2D](resolver.Resolve(arg), "[]*Vec2D")
-	},
-	"*EventPredicate": func(arg string, resolver IdentifierResolver) (any, error) {
-		return AssertT[*EventPredicate](resolver.Resolve(arg), "*EventPredicate")
-	},
-	// Add more types here...
-}
-
 var typeResolveFuncs = map[string]map[string]DSLArgTypeAssertionFunc{
 	"IdentResolve": IdentResolveTypeAssertMap,
 	// Add other rules for other parametrized types than IdentResolve<T> here...
