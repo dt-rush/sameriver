@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-func TestEntityFilterDSLLexer(t *testing.T) {
+func TestEFDSLLexer(t *testing.T) {
 	lex := func(s string) {
 		fmt.Println(s)
-		var l EntityFilterDSLLexer
+		var l EFDSLLexer
 		l.Init(strings.NewReader(s))
 		for tok := l.Lex(); tok != EOF; tok = l.Lex() {
 			fmt.Printf("%s: %s\n", tok, l.TokenText())
@@ -33,8 +33,8 @@ func TestEntityFilterDSLLexer(t *testing.T) {
 	lex(`HasInvTags(tool,legendary)`)
 }
 
-func TestEntityFilterDSLParser(t *testing.T) {
-	parser := &EntityFilterDSLParser{}
+func TestEFDSLParser(t *testing.T) {
+	parser := &EFDSLParser{}
 	// TODO: use ast from this call
 	_, err := parser.Parse(`HasTag(ox) && CanBe(yoked, 1); Closest(mind.field)`)
 	if err != nil {
@@ -47,7 +47,7 @@ func TestEntityFilterDSLParser(t *testing.T) {
 	Logger.Printf("%s", ast)
 }
 
-func TestEntityFilterDSLEvaluator(t *testing.T) {
+func TestEFDSLEvaluator(t *testing.T) {
 	w := testingWorld()
 	ox := w.Spawn(map[string]any{
 		"components": map[ComponentID]any{
@@ -60,7 +60,7 @@ func TestEntityFilterDSLEvaluator(t *testing.T) {
 		"tags": []string{"ox"},
 	})
 
-	parser := &EntityFilterDSLParser{}
+	parser := &EFDSLParser{}
 
 	expression := "HasTags(ox)"
 

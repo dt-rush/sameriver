@@ -1,7 +1,7 @@
 package sameriver
 
 /*
-EntityFilterDSLParser uses EntityFilterDSLLexer's token stream to build an AST
+EFDSLParser uses EFDSLLexer's token stream to build an AST
 of Node. Note that the grammar amounts to phrases like
 
 F(x)
@@ -30,7 +30,7 @@ G(z) as InVillageStocks(bow)
 H(q) as Closest(self)
 
 The evaluator that uses the Parser's output AST will evaluate the tree by using the
-functions in EntityFilterDSLPredicates or EntityFilterDSLSorts and in these,
+functions in EFDSLPredicates or EFDSLSorts and in these,
 they *complete* the parsing of x, y, z, p in a way by finally either reading these
 strings-between-commas-in-parens (Identifiers) as
 
@@ -133,13 +133,13 @@ func (n *Node) AddChild(child *Node) {
 	n.Children = append(n.Children, child)
 }
 
-type EntityFilterDSLParser struct {
-	lexer *EntityFilterDSLLexer
-	token EntityFilterDSLToken
+type EFDSLParser struct {
+	lexer *EFDSLLexer
+	token EFDSLToken
 }
 
-func (p *EntityFilterDSLParser) Parse(input string) (*Node, error) {
-	p.lexer = &EntityFilterDSLLexer{}
+func (p *EFDSLParser) Parse(input string) (*Node, error) {
+	p.lexer = &EFDSLLexer{}
 	p.lexer.Init(strings.NewReader(input))
 	p.token = p.lexer.Lex()
 	node, err := p.parseExpr()
@@ -152,7 +152,7 @@ func (p *EntityFilterDSLParser) Parse(input string) (*Node, error) {
 	return node, nil
 }
 
-func (p *EntityFilterDSLParser) parseExpr() (*Node, error) {
+func (p *EFDSLParser) parseExpr() (*Node, error) {
 	node := &Node{Type: NodeExpr}
 	child, err := p.parsePredicateExpr()
 	if err != nil {
@@ -172,7 +172,7 @@ func (p *EntityFilterDSLParser) parseExpr() (*Node, error) {
 	return node, nil
 }
 
-func (p *EntityFilterDSLParser) parsePredicateExpr() (*Node, error) {
+func (p *EFDSLParser) parsePredicateExpr() (*Node, error) {
 	node := &Node{Type: NodePredicateExpr}
 
 	if p.token == Not {
@@ -200,7 +200,7 @@ func (p *EntityFilterDSLParser) parsePredicateExpr() (*Node, error) {
 	return node, nil
 }
 
-func (p *EntityFilterDSLParser) parseFunction() (*Node, error) {
+func (p *EFDSLParser) parseFunction() (*Node, error) {
 	if p.token != Function {
 		return nil, fmt.Errorf("expected function, got: %v", p.token)
 	}
@@ -229,7 +229,7 @@ func (p *EntityFilterDSLParser) parseFunction() (*Node, error) {
 	return node, nil
 }
 
-func (p *EntityFilterDSLParser) parseSortExpr() (*Node, error) {
+func (p *EFDSLParser) parseSortExpr() (*Node, error) {
 	node := &Node{Type: NodeSortExpr}
 	child, err := p.parseFunction()
 	if err != nil {

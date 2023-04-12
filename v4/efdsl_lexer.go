@@ -13,10 +13,10 @@ func DSLIdentRune(r rune) bool {
 	return DSLIdentRuneRe.MatchString(string(r))
 }
 
-type EntityFilterDSLToken int
+type EFDSLToken int
 
 const (
-	EOF EntityFilterDSLToken = iota
+	EOF EFDSLToken = iota
 	Not
 	And
 	Or
@@ -28,7 +28,7 @@ const (
 	Semicolon
 )
 
-func (t EntityFilterDSLToken) String() string {
+func (t EFDSLToken) String() string {
 	switch t {
 	case EOF:
 		return "EOF"
@@ -55,21 +55,21 @@ func (t EntityFilterDSLToken) String() string {
 	}
 }
 
-type EntityFilterDSLLexer struct {
+type EFDSLLexer struct {
 	scanner.Scanner
-	token       EntityFilterDSLToken
+	token       EFDSLToken
 	stringValue string
 }
 
-func (l *EntityFilterDSLLexer) IsEOF() bool {
+func (l *EFDSLLexer) IsEOF() bool {
 	return l.Peek() == scanner.EOF
 }
 
-func (l *EntityFilterDSLLexer) TokenText() string {
+func (l *EFDSLLexer) TokenText() string {
 	return l.stringValue
 }
 
-func (l *EntityFilterDSLLexer) Lex() EntityFilterDSLToken {
+func (l *EFDSLLexer) Lex() EFDSLToken {
 	l.stringValue = ""
 	l.token = EOF
 
@@ -144,7 +144,7 @@ func (l *EntityFilterDSLLexer) Lex() EntityFilterDSLToken {
 	return l.token
 }
 
-func (l *EntityFilterDSLLexer) scanString(isValid func(rune) bool) string {
+func (l *EFDSLLexer) scanString(isValid func(rune) bool) string {
 	var buf strings.Builder
 	for !l.IsEOF() && isValid(l.Peek()) {
 		buf.WriteRune(l.Next())

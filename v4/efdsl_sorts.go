@@ -1,6 +1,6 @@
 package sameriver
 
-// EntityFilterDSLSorts key is the Function, like
+// EFDSLSorts key is the Function, like
 // "Closest"
 // given the Identifiers that were interspersed with commas as strings as args,
 // and the resolver strategy,
@@ -9,7 +9,7 @@ package sameriver
 // can be used to both compare / sort elements in xs.
 // since the i, j func needs the closure reference to xs to actually sort it
 // that's just the way sort.Slice() goes kid
-func EFDSLSortsBase(e *EntityFilterDSLEvaluator) EFDSLSortMap {
+func EFDSLSortsBase(e *EFDSLEvaluator) EFDSLSortMap {
 
 	return map[string](func(args []string, resolver IdentifierResolver) func(xs []*Entity) func(i, j int) bool){
 
