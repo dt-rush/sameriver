@@ -7,11 +7,17 @@ func EFDSLPredicatesBase(e *EFDSLEvaluator) EFDSLPredicateMap {
 
 	return map[string](func(args []string, resolver IdentifierResolver) func(*Entity) bool){
 
+		// we want to be able to do something like:
+		// Eq(self<martialarts.skill>, <martialarts.skill>)
+		// and overload for whether these are bool,bool, int,int, etc.
 		"Eq": e.Predicate(
-			"IdentResolve<any>, IdentResolve<any>",
-			func(x any, y any) func(*Entity) bool {
+			"IdentResolve<bool>, string",
+			func(a bool, bAccess bool) func(*Entity) bool {
 				return func(x *Entity) bool {
-					return x.HasComponent(STATE) && x.GetIntMap(STATE).ValCanBeSetTo(k, v)
+					xResolver := EntityResolver{e: x}
+
+					b := xResolver.Resolve(bAccess)
+					return a == b
 				}
 			},
 		),
