@@ -8,6 +8,7 @@
 *.test
 
 # Output of the go coverage tool, specifically when used with LiteIDE
+# or builds of cmd's
 *.out
 
 # built tests
