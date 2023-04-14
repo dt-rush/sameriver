@@ -27,6 +27,107 @@ func writeFile(filename string, code string) {
 	}
 }
 
+/*
+permutationsWithRepetitions([]string{"a", "b", "c"}, 2)
+yields
+
+[[a a] [b a] [c a] [a b] [b b] [c b] [a c] [b c] [c c]]
+
+permutationsWithRepetitions([]string{"a", "b", "c"}, 3)
+yields
+
+[[a a a] [b a a] [c a a] [a b a] [b b a] [c b a] [a c a] [b c a] [c c a] [a a b] [b a b] [c a b] [a b b] [b b b] [c b b] [a c b] [b c b] [c c b] [a a c] [b a c] [c a c] [a b c] [b b c] [c b c] [a c c] [b c c] [c c c]]
+*/
+func permutationsWithRepetitions(elements []string, length int) [][]string {
+	if length == 1 {
+		result := make([][]string, len(elements))
+		for i, element := range elements {
+			result[i] = []string{element}
+		}
+		return result
+	}
+
+	previousPermutations := permutationsWithRepetitions(elements, length-1)
+	result := [][]string{}
+	for _, element := range elements {
+		for _, previousPermutation := range previousPermutations {
+			result = append(result, append(previousPermutation, element))
+		}
+	}
+
+	return result
+}
+
+//
+// Eq predicate overloaded signatures with IdentResolve<> y/n
+//
+
+const (
+	intType      = "int"
+	float64Type  = "float64"
+	boolType     = "bool"
+	stringType   = "string"
+	ptrType      = "*any"
+	identResolve = "IdentResolve<%s>"
+)
+
+func genCodeEqPredicate() string {
+	eqTypes := []string{intType, float64Type, boolType, stringType, ptrType}
+
+	code := `"%s": e.Predicate(`
+
+	for _, t1 := range eqTypes {
+		for _, t2 := range eqTypes {
+			if t1 != t2 {
+				continue
+			}
+
+			for i := 0; i < 2; i++ {
+				for j := 0; j < 2; j++ {
+					t1Wrapped := t1
+					t2Wrapped := t2
+
+					if i == 1 {
+						t1Wrapped = fmt.Sprintf(identResolve, t1)
+					}
+					if j == 1 {
+						t2Wrapped = fmt.Sprintf(identResolve, t2)
+					}
+
+					code += fmt.Sprintf(`,
+	"%s, %s",
+	func(a, b %s) func(*Entity) bool {
+		return func(x *Entity) bool {`, t1Wrapped, t2Wrapped, t1)
+					if t1 != ptrType || t2 != ptrType {
+						code += `
+			return a == b`
+					} else {
+						code += `
+			aPtr := reflect.ValueOf(a).Pointer()
+			bPtr := reflect.ValueOf(b).Pointer()
+			return aPtr == bPtr`
+					}
+					code += `
+		}
+	}`
+				}
+			}
+		}
+	}
+
+	code += `,
+)`
+	return code
+}
+
+func genFileEqPredicate() {
+	eqPredicate := genCodeEqPredicate()
+
+	code := "package sameriver\n\n" + commentWarning + "\n\n" + eqPredicate
+
+	writeFile("GENERATED_efdsl_eq_predicate.go", code)
+}
+
 //
 // switch statements
 //
@@ -110,35 +211,5 @@ func main() {
 
 	genFileSigAssertSwitches(types)
 	genFileIdentResolveTypeAssertMap(types)
-}
-
-/*
-permutationsWithRepetitions([]string{"a", "b", "c"}, 2)
-yields
-
-[[a a] [b a] [c a] [a b] [b b] [c b] [a c] [b c] [c c]]
-
-permutationsWithRepetitions([]string{"a", "b", "c"}, 3)
-yields
-
-[[a a a] [b a a] [c a a] [a b a] [b b a] [c b a] [a c a] [b c a] [c c a] [a a b] [b a b] [c a b] [a b b] [b b b] [c b b] [a c b] [b c b] [c c b] [a a c] [b a c] [c a c] [a b c] [b b c] [c b c] [a c c] [b c c] [c c c]]
-*/
-func permutationsWithRepetitions(elements []string, length int) [][]string {
-	if length == 1 {
-		result := make([][]string, len(elements))
-		for i, element := range elements {
-			result[i] = []string{element}
-		}
-		return result
-	}
-
-	previousPermutations := permutationsWithRepetitions(elements, length-1)
-	result := [][]string{}
-	for _, element := range elements {
-		for _, previousPermutation := range previousPermutations {
-			result = append(result, append(previousPermutation, element))
-		}
-	}
-
-	return result
+	genFileEqPredicate()
 }

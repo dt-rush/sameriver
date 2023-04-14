@@ -1,3 +1,51 @@
+for EqPredicate: add this to IdentResolveTypeAssertMap
+
+"*any": func(arg string, resolver IdentifierResolver) (any, error) {
+		return AssertPointer(resolver.Resolve(arg), "*any")
+},
+
+this allows us to match on arbitrary pointers
+
+where AssertPointer is probably going to need reflect?
+
+this way when the signature receives its args, if it has IdentResolve<*any> it'll know, ah, this is a pointer to something somewhere, with no further info, just a pointer. This is useful for object comparison (is this entity the big bad goblin? pointer==pointer)
+
+
+
+add val types to lexer/parser:
+
+  - numeric
+  - bool
+  - string (with quotes **** strings must have quotes or else "mind.something" is an invalid string)
+
+  (this implies "valueOrEntityAccess" will look different, in addition to other parts probably)
+
+
+
+x. Notation (but we don't have x in the same scope as e... hmmmm)
+  (sub-problem: . notation generally, like instead of HasTag we should have either e.HasTag or x.HasTag)
+
+
+
+overloaded(?) int,int bool,bool float,float string,string pointer,pointer Eq
+
+
+
+Numeric (+attempt dereference) comparator predicates (Lt(x,y))
+
+
+
+*Vec2D component access (access self[position].X for example)
+
+
+
+Spatial hash if WithinDistance (change withindistance to a literal part of the syntax. like <Distance>;<FilterExpr>;<SortExpr>;
+
+
+
+
+
+
 the "problem" of the reflection/switch from https://chat.openai.com/chat/715d54db-81e1-46ee-b4b0-137c305df659
 
 is a problem in search of a solution
@@ -11,6 +59,8 @@ for example if the game was chess, you don't need to implement CanQueen for a pa
 look at
 
 Eq(self<rank>, 7)
+
+actually that's not a good example. rather anyway abstrawctly put, you'd compute down some complex query into a flag every so often, so u can just match on it
 
 
 

@@ -19,8 +19,8 @@ func TestEFDSLLexer(t *testing.T) {
 
 	lex(`HasTag(ox) && CanBe(yoked, 1); Closest(mind.field)`)
 	lex(`First(HasTag(ox) && CanBe(yoked, 1); Closest(mind.field))`)
-	lex(`VillagerOf(self.village)`)
-	lex(`!VillagerOf(self.village)`)
+	lex(`VillagerOf(mind.village)`)
+	lex(`!VillagerOf(mind.village)`)
 	lex(`Is(bb.village1.strongest)`)
 	lex(`HasTag(deer); Closest(self)`)
 	lex(`HasTags(ox,legendary)`)

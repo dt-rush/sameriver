@@ -7,17 +7,27 @@ func EFDSLPredicatesBase(e *EFDSLEvaluator) EFDSLPredicateMap {
 
 	return map[string](func(args []string, resolver IdentifierResolver) func(*Entity) bool){
 
+
+		//TODO
+		// generic Eq
+		// generic Lt, Le, Gt, Ge
+		/*
+signature IdentResolve<int>,IdentResolve<int>
+"Gt(self<martialarts.skill>, mind.martialarts.prospectiveOpponent<martialarts.skill>)"
+
+signature IdentResolve<int>,IdentResolve<int>
+Lt(mind.trading.lowestBargain, mind.trading.other.offer)
+		*/
+
+
 		// we want to be able to do something like:
 		// Eq(self<martialarts.skill>, <martialarts.skill>)
 		// and overload for whether these are bool,bool, int,int, etc.
 		"Eq": e.Predicate(
-			"IdentResolve<bool>, string",
-			func(a bool, bAccess bool) func(*Entity) bool {
+			"what EFDSL signature string goes here?"
+			func(/* what func signature goes here? */) func(*Entity) bool {
 				return func(x *Entity) bool {
-					xResolver := EntityResolver{e: x}
-
-					b := xResolver.Resolve(bAccess)
-					return a == b
+					// what code happens in here?
 				}
 			},
 		),

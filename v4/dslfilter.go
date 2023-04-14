@@ -43,22 +43,22 @@ func EFDSLFilterSort(expr string, resolver IdentifierResolver, world *World) ([]
 	return result, nil
 }
 
-func (e *Entity) DSLFilter(expr string) ([]*Entity, error) {
+func (e *Entity) EFDSLFilter(expr string) ([]*Entity, error) {
 	resolver := &EntityResolver{e: e}
 	return EFDSLFilter(expr, resolver, e.World)
 }
 
-func (w *World) DSLFilter(expr string) ([]*Entity, error) {
+func (w *World) EFDSLFilter(expr string) ([]*Entity, error) {
 	resolver := &WorldResolver{w: w}
 	return EFDSLFilter(expr, resolver, w)
 }
 
-func (e *Entity) DSLFilterSort(expr string) ([]*Entity, error) {
+func (e *Entity) EFDSLFilterSort(expr string) ([]*Entity, error) {
 	resolver := &EntityResolver{e: e}
 	return EFDSLFilterSort(expr, resolver, e.World)
 }
 
-func (w *World) DSLFilterSort(expr string) ([]*Entity, error) {
+func (w *World) EFDSLFilterSort(expr string) ([]*Entity, error) {
 	resolver := &WorldResolver{w: w}
 	return EFDSLFilterSort(expr, resolver, w)
 }

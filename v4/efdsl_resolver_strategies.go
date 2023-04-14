@@ -96,6 +96,11 @@ func (er *EntityResolver) Resolve(identifier string) any {
 	parts := strings.SplitN(identifier, ".", 2)
 
 	switch parts[0] {
+	case "x":
+		if len(parts) > 1 {
+			// what do we do here? how do we do valueOrEntityAccess on x? we don't have it
+		}
+		// TODO: what do we return here? we don't have access to x?
 	case "self":
 		if len(parts) > 1 {
 			return valueOrEntityAccess(er.e, identifier)
